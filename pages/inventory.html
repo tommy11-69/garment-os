@@ -53,94 +53,8 @@
             </div>
 
             <!-- Inventory Items List -->
-            <div class="flex flex-col gap-sm">
-                
-                <!-- Low Stock Item -->
-                <div class="bg-error-container/30 rounded-[24px] border border-error/20 p-md shadow-sm">
-                    <div class="flex justify-between items-start mb-3">
-                        <div class="flex gap-3 items-center">
-                            <div class="w-10 h-10 rounded-full bg-error/10 text-error flex items-center justify-center">
-                                <span class="material-symbols-outlined text-[20px]">warning</span>
-                            </div>
-                            <div>
-                                <h3 class="text-[16px] font-bold text-on-surface leading-tight">Cotton Jersey 180GSM</h3>
-                                <span class="text-[12px] font-medium text-secondary">Fabric • Black</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="flex justify-between items-center bg-surface/50 rounded-xl p-3">
-                        <div>
-                            <span class="block text-[12px] text-secondary uppercase tracking-wider mb-0.5">Current Stock</span>
-                            <span class="text-[18px] font-bold text-error">45 kgs</span>
-                        </div>
-                        <div class="text-right">
-                            <span class="block text-[12px] text-secondary uppercase tracking-wider mb-0.5">Min Required</span>
-                            <span class="text-[14px] font-semibold text-on-surface">150 kgs</span>
-                        </div>
-                    </div>
-                    <button class="w-full mt-3 py-2.5 rounded-xl bg-error text-white font-bold text-[14px] active-scale transition-apple">
-                        Order Now
-                    </button>
-                </div>
-
-                <!-- Normal Item 1 -->
-                <div role="button" tabindex="0" class="bg-surface-container-lowest rounded-[24px] border border-outline-variant p-md shadow-sm active-scale transition-apple cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary" onclick="openSheet('itemDetailsSheet')">
-                    <div class="flex justify-between items-start mb-3">
-                        <div class="flex gap-3 items-center">
-                            <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
-                                <span class="material-symbols-outlined text-[20px]">texture</span>
-                            </div>
-                            <div>
-                                <h3 class="text-[16px] font-bold text-on-surface leading-tight">French Terry 320GSM</h3>
-                                <span class="text-[12px] font-medium text-secondary">Fabric • Heather Grey</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-3 mb-3">
-                        <div class="bg-surface-variant p-3 rounded-xl">
-                            <span class="block text-[12px] text-secondary uppercase tracking-wider mb-0.5">Stock</span>
-                            <span class="text-[16px] font-bold text-on-surface">850 kgs</span>
-                        </div>
-                        <div class="bg-surface-variant p-3 rounded-xl">
-                            <span class="block text-[12px] text-secondary uppercase tracking-wider mb-0.5">Location</span>
-                            <span class="text-[16px] font-bold text-on-surface">A-12</span>
-                        </div>
-                    </div>
-                    <div class="flex justify-between items-center px-1">
-                        <span class="text-[12px] text-secondary">Supplier: Raj Textiles</span>
-                        <span class="text-[12px] text-secondary">Updated Today</span>
-                    </div>
-                </div>
-
-                <!-- Normal Item 2 -->
-                <div role="button" tabindex="0" class="bg-surface-container-lowest rounded-[24px] border border-outline-variant p-md shadow-sm active-scale transition-apple cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary" onclick="openSheet('itemDetailsSheet')">
-                    <div class="flex justify-between items-start mb-3">
-                        <div class="flex gap-3 items-center">
-                            <div class="w-10 h-10 rounded-full bg-[#5E5CE6]/10 text-[#5E5CE6] flex items-center justify-center">
-                                <span class="material-symbols-outlined text-[20px]">straighten</span>
-                            </div>
-                            <div>
-                                <h3 class="text-[16px] font-bold text-on-surface leading-tight">YKK Zippers 6"</h3>
-                                <span class="text-[12px] font-medium text-secondary">Accessories • Metal</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="grid grid-cols-2 gap-3 mb-3">
-                        <div class="bg-surface-variant p-3 rounded-xl">
-                            <span class="block text-[12px] text-secondary uppercase tracking-wider mb-0.5">Stock</span>
-                            <span class="text-[16px] font-bold text-on-surface">2,400 pcs</span>
-                        </div>
-                        <div class="bg-surface-variant p-3 rounded-xl">
-                            <span class="block text-[12px] text-secondary uppercase tracking-wider mb-0.5">Location</span>
-                            <span class="text-[16px] font-bold text-on-surface">B-04</span>
-                        </div>
-                    </div>
-                    <div class="flex justify-between items-center px-1">
-                        <span class="text-[12px] text-secondary">Supplier: YKK India</span>
-                        <span class="text-[12px] text-secondary">Updated Oct 20</span>
-                    </div>
-                </div>
-                
+            <div id="inventory-list" class="flex flex-col gap-sm">
+                <!-- Data will be injected here -->
             </div>
             
             <div class="h-6"></div>
@@ -155,6 +69,8 @@
         import { BottomSheet, TimelineEvent } from '../js/components/index.js';
         import { TextInput, SelectInput, TextareaInput } from '../js/components/inputs.js';
         import { bindFormValidation } from '../js/utils/formHandler.js';
+        import { api } from '../js/services/api.js';
+        import { renderers } from '../js/renderers.js';
 
         const sheetsContainer = document.getElementById('sheets-container');
         
@@ -312,6 +228,25 @@
         bindFormValidation('stockOutSheet-content', 'out-submit');
         bindFormValidation('adjustStockSheet-content', 'adj-submit');
         bindFormValidation('transferStockSheet-content', 'tr-submit');
+        
+        async function loadInventory() {
+            const container = document.getElementById('inventory-list');
+            if (window.setLoading) {
+                window.setLoading('inventory-list');
+            } else {
+                container.innerHTML = '<div class="p-md text-center text-secondary">Loading...</div>';
+            }
+            
+            try {
+                const inventory = await api.getInventory();
+                container.innerHTML = inventory.map(item => renderers.inventoryCard(item)).join('');
+            } catch (error) {
+                container.innerHTML = '<div class="p-md text-center text-error">Failed to load inventory</div>';
+                console.error(error);
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', loadInventory);
     </script>
 
     <script src="../js/utils/sheet.js"></script>

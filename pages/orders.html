@@ -40,6 +40,9 @@
             <script type="module">
                 import { SegmentedControl, StatusBadge, ProgressBar } from '../js/components/index.js';
                 
+                import { api } from '../js/services/api.js';
+                import { renderers } from '../js/renderers.js';
+                
                 // Segmented Control
                 document.getElementById('orders-segmented-control').innerHTML = SegmentedControl({
                     options: [
@@ -50,63 +53,24 @@
                     activeOption: 'all'
                 });
 
-                // Order Cards (Demo replacing two hardcoded cards)
-                const ordersHtml = `
-                    <div role="button" tabindex="0" onclick="openSheet('orderDetailsSheet')" class="bg-surface-container-lowest rounded-[24px] border border-outline-variant p-lg shadow-sm active-bg transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary">
-                        <div class="flex items-start justify-between mb-4">
-                            <div>
-                                <span class="text-[13px] font-semibold text-primary mb-1 block">ORD-992</span>
-                                <h3 class="text-[18px] font-bold text-on-surface leading-tight">Everlane Corp.</h3>
-                            </div>
-                            ${StatusBadge({ status: 'success', label: 'On Track' })}
-                        </div>
-                        
-                        <div class="flex flex-col gap-3 mb-4">
-                            <div class="flex justify-between items-center">
-                                <span class="text-secondary text-[14px]">Amount</span>
-                                <span class="text-on-surface font-semibold text-[15px]">$12,400</span>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-secondary text-[14px]">Delivery Date</span>
-                                <span class="text-on-surface font-semibold text-[15px]">Oct 24, 2026</span>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-secondary text-[14px]">Units</span>
-                                <span class="text-on-surface font-semibold text-[15px]">5,000</span>
-                            </div>
-                        </div>
-                        
-                        ${ProgressBar({ label: '65% Complete', secondaryLabel: 'Cutting Phase', percentage: 65, color: 'primary' })}
-                    </div>
-
-                    <div role="button" tabindex="0" class="bg-surface-container-lowest rounded-[24px] border border-outline-variant p-lg shadow-sm active-bg transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary">
-                        <div class="flex items-start justify-between mb-4">
-                            <div>
-                                <span class="text-[13px] font-semibold text-primary mb-1 block">ORD-995</span>
-                                <h3 class="text-[18px] font-bold text-on-surface leading-tight">Patagonia</h3>
-                            </div>
-                            ${StatusBadge({ status: 'warning', label: 'Delayed' })}
-                        </div>
-                        
-                        <div class="flex flex-col gap-3 mb-4">
-                            <div class="flex justify-between items-center">
-                                <span class="text-secondary text-[14px]">Amount</span>
-                                <span class="text-on-surface font-semibold text-[15px]">$8,950</span>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-secondary text-[14px]">Delivery Date</span>
-                                <span class="text-[#FF9F0A] font-semibold text-[15px]">Oct 26, 2026</span>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-secondary text-[14px]">Units</span>
-                                <span class="text-on-surface font-semibold text-[15px]">1,200</span>
-                            </div>
-                        </div>
-                        
-                        ${ProgressBar({ label: '', secondaryLabel: 'Sourcing Phase', percentage: 30, color: 'warning' })}
-                    </div>
-                `;
-                document.getElementById('orders-list').innerHTML = ordersHtml;
+                async function loadOrders() {
+                    const container = document.getElementById('orders-list');
+                    if (window.setLoading) {
+                        window.setLoading('orders-list');
+                    } else {
+                        container.innerHTML = '<div class="p-md text-center text-secondary">Loading...</div>';
+                    }
+                    
+                    try {
+                        const orders = await api.getOrders();
+                        container.innerHTML = orders.map(o => renderers.orderCard(o)).join('');
+                    } catch (error) {
+                        container.innerHTML = '<div class="p-md text-center text-error">Failed to load orders</div>';
+                        console.error(error);
+                    }
+                }
+                
+                document.addEventListener('DOMContentLoaded', loadOrders);
             </script>
             
             <div class="h-6"></div>

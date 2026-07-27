@@ -100,46 +100,8 @@
                     <button class="text-[14px] font-bold text-primary active:opacity-70">See All</button>
                 </div>
                 
-                <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-sm overflow-hidden flex flex-col divide-y divide-outline-variant/50">
-                    
-                    <div role="button" tabindex="0" class="p-md border-b border-outline-variant/30 flex justify-between items-center active-scale transition-apple cursor-pointer outline-none focus-visible:bg-surface-variant focus-visible:ring-2 focus-visible:ring-primary" onclick="openSheet('transactionDetailsSheet')">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-full bg-error/10 text-error flex items-center justify-center">
-                                <span class="material-symbols-outlined text-[20px]">store</span>
-                            </div>
-                            <div>
-                                <h4 class="text-[15px] font-bold text-on-surface leading-tight">Yarn Suppliers Ltd</h4>
-                                <span class="text-[12px] text-secondary">Supplier Payment • Oct 26</span>
-                            </div>
-                        </div>
-                        <span class="text-[15px] font-bold text-on-surface">-$4,200.00</span>
-                    </div>
-
-                    <div role="button" tabindex="0" class="p-md flex justify-between items-center active-scale transition-apple cursor-pointer outline-none focus-visible:bg-surface-variant focus-visible:ring-2 focus-visible:ring-primary" onclick="openSheet('transactionDetailsSheet')">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-full bg-[#008A00]/10 text-[#008A00] flex items-center justify-center">
-                                <span class="material-symbols-outlined text-[20px]">account_balance_wallet</span>
-                            </div>
-                            <div>
-                                <h4 class="text-[15px] font-bold text-on-surface leading-tight">Everlane Corp.</h4>
-                                <span class="text-[12px] text-secondary">Advance Payment • Oct 25</span>
-                            </div>
-                        </div>
-                        <span class="text-[15px] font-bold text-[#008A00]">+$25,000.00</span>
-                    </div>
-                    
-                    <div role="button" tabindex="0" class="p-md flex justify-between items-center active-scale transition-apple cursor-pointer outline-none focus-visible:bg-surface-variant focus-visible:ring-2 focus-visible:ring-primary" onclick="openSheet('transactionDetailsSheet')">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-full bg-error/10 text-error flex items-center justify-center">
-                                <span class="material-symbols-outlined text-[20px]">electric_bolt</span>
-                            </div>
-                            <div>
-                                <h4 class="text-[15px] font-bold text-on-surface leading-tight">Utility Bill</h4>
-                                <span class="text-[12px] text-secondary">Electricity • Oct 24</span>
-                            </div>
-                        </div>
-                        <span class="text-[15px] font-bold text-on-surface">-$1,850.50</span>
-                    </div>
+                <div id="transactions-list" class="bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-sm overflow-hidden flex flex-col divide-y divide-outline-variant/50">
+                    <!-- Data will be injected here -->
                 </div>
             </div>
 
@@ -156,6 +118,8 @@
         import { BottomSheet } from '../js/components/index.js';
         import { TextInput, SelectInput, TextareaInput, SegmentedControl } from '../js/components/inputs.js';
         import { bindFormValidation } from '../js/utils/formHandler.js';
+        import { api } from '../js/services/api.js';
+        import { renderers } from '../js/renderers.js';
 
         const sheetsContainer = document.getElementById('sheets-container');
         
@@ -262,6 +226,25 @@
         // Bind validation
         bindFormValidation('addTransactionSheet-content', 'add-trans-submit');
         bindFormValidation('transferFundsSheet-content', 'tr-funds-submit');
+        
+        async function loadTransactions() {
+            const container = document.getElementById('transactions-list');
+            if (window.setLoading) {
+                window.setLoading('transactions-list');
+            } else {
+                container.innerHTML = '<div class="p-md text-center text-secondary">Loading...</div>';
+            }
+            
+            try {
+                const transactions = await api.getTransactions();
+                container.innerHTML = transactions.map(t => renderers.transactionCard(t)).join('');
+            } catch (error) {
+                container.innerHTML = '<div class="p-md text-center text-error">Failed to load transactions</div>';
+                console.error(error);
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', loadTransactions);
     </script>
 
     <script src="../js/app.js"></script>

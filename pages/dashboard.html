@@ -42,12 +42,43 @@
             <div id="dashboard-metrics" class="grid grid-cols-2 gap-md"></div>
             <script type="module">
                 import { MetricCard } from '../js/components/index.js';
+                import { api } from '../js/services/api.js';
+                import { renderers } from '../js/renderers.js';
+                
                 document.getElementById('dashboard-metrics').innerHTML = `
                     ${MetricCard({ title: 'Revenue', icon: 'payments', value: '$1.2M', trend: 'up', trendValue: '+12%', iconColorClass: 'bg-accent-primary-light text-[#0071E3]', trendColorClass: 'text-[#008A00]' })}
                     ${MetricCard({ title: 'Profit', icon: 'account_balance', value: '$428K', trend: 'up', trendValue: '+8%', iconColorClass: 'bg-[#008A00]/10 text-[#008A00]', trendColorClass: 'text-[#008A00]' })}
                     ${MetricCard({ title: 'Orders', icon: 'receipt_long', value: '42', trend: 'neutral', trendValue: '3 need attention', iconColorClass: 'bg-surface-container text-on-surface', trendColorClass: 'text-secondary' })}
                     ${MetricCard({ title: 'Capacity', icon: 'precision_manufacturing', value: '88%', trend: 'neutral', trendValue: '', iconColorClass: 'bg-[#FF9F0A]/10 text-[#FF9F0A]', trendColorClass: '' })}
                 `;
+                
+                async function loadDashboardData() {
+                    const ordersContainer = document.getElementById('dashboard-recent-orders');
+                    const batchesContainer = document.getElementById('dashboard-active-batches');
+                    
+                    if (window.setLoading) {
+                        window.setLoading('dashboard-recent-orders');
+                        window.setLoading('dashboard-active-batches');
+                    } else {
+                        ordersContainer.innerHTML = '<div class="p-md text-center text-secondary">Loading...</div>';
+                        batchesContainer.innerHTML = '<div class="p-md text-center text-secondary">Loading...</div>';
+                    }
+
+                    try {
+                        const [orders, batches] = await Promise.all([
+                            api.getOrders(),
+                            api.getActiveBatches()
+                        ]);
+                        ordersContainer.innerHTML = orders.map(o => renderers.dashboardOrderCard(o)).join('');
+                        batchesContainer.innerHTML = batches.map(b => renderers.dashboardBatchCard(b)).join('');
+                    } catch (error) {
+                        console.error('Failed to load dashboard data', error);
+                        ordersContainer.innerHTML = '<div class="p-md text-center text-error">Failed to load data</div>';
+                        batchesContainer.innerHTML = '<div class="p-md text-center text-error">Failed to load data</div>';
+                    }
+                }
+
+                document.addEventListener('DOMContentLoaded', loadDashboardData);
             </script>
 
             <!-- Quick Actions -->
@@ -88,36 +119,8 @@
                     <button class="text-primary text-body font-medium active:opacity-70">See All</button>
                 </div>
                 
-                <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-sm overflow-hidden flex flex-col divide-y divide-outline-variant/50">
-                    <!-- Order Item -->
-                    <div role="button" tabindex="0" class="p-md flex items-center justify-between active-bg transition-colors cursor-pointer outline-none focus-visible:bg-surface-variant focus-visible:ring-2 focus-visible:ring-primary inset-0">
-                        <div class="flex items-center gap-md">
-                            <div class="w-12 h-12 rounded-[14px] bg-[#F5F5F7] flex flex-col items-center justify-center border border-outline-variant/30">
-                                <span class="text-[10px] text-secondary font-medium uppercase">Oct</span>
-                                <span class="text-[18px] text-on-surface font-bold leading-none">24</span>
-                            </div>
-                            <div>
-                                <h4 class="text-[16px] font-semibold text-on-surface leading-tight mb-0.5">Everlane Corp.</h4>
-                                <p class="text-caption text-secondary">ORD-992 • $12,400</p>
-                            </div>
-                        </div>
-                        <span class="px-2.5 py-1 rounded-full text-[11px] font-medium bg-[#008A00]/10 text-[#008A00]">On Track</span>
-                    </div>
-
-                    <!-- Order Item -->
-                    <div role="button" tabindex="0" class="p-md flex items-center justify-between active-bg transition-colors cursor-pointer outline-none focus-visible:bg-surface-variant focus-visible:ring-2 focus-visible:ring-primary inset-0">
-                        <div class="flex items-center gap-md">
-                            <div class="w-12 h-12 rounded-[14px] bg-[#F5F5F7] flex flex-col items-center justify-center border border-outline-variant/30">
-                                <span class="text-[10px] text-secondary font-medium uppercase">Oct</span>
-                                <span class="text-[18px] text-on-surface font-bold leading-none">26</span>
-                            </div>
-                            <div>
-                                <h4 class="text-[16px] font-semibold text-on-surface leading-tight mb-0.5">Patagonia</h4>
-                                <p class="text-caption text-secondary">ORD-995 • $8,950</p>
-                            </div>
-                        </div>
-                        <span class="px-2.5 py-1 rounded-full text-[11px] font-medium bg-[#FF9F0A]/10 text-[#FF9F0A]">Delayed</span>
-                    </div>
+                <div id="dashboard-recent-orders" class="bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-sm overflow-hidden flex flex-col divide-y divide-outline-variant/50">
+                    <!-- Data will be injected here -->
                 </div>
             </div>
 
@@ -126,34 +129,8 @@
                 <div class="flex items-center justify-between px-xs">
                     <h3 class="font-section-title text-[20px] text-on-surface">Active Batches</h3>
                 </div>
-                <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-sm p-md flex flex-col gap-lg">
-                    <!-- Batch 1 -->
-                    <div>
-                        <div class="flex justify-between items-end mb-2">
-                            <div>
-                                <span class="text-body-bold text-on-surface block">Batch #B-8092</span>
-                                <span class="text-[13px] text-secondary">Organic Tees • 5k units</span>
-                            </div>
-                            <span class="text-[13px] font-medium text-primary">Cutting 60%</span>
-                        </div>
-                        <div class="relative w-full h-2.5 bg-surface-container rounded-full overflow-hidden">
-                            <div class="absolute top-0 left-0 h-full bg-primary rounded-full" style="width: 45%;"></div>
-                        </div>
-                    </div>
-                    
-                    <!-- Batch 2 -->
-                    <div>
-                        <div class="flex justify-between items-end mb-2">
-                            <div>
-                                <span class="text-body-bold text-on-surface block">Batch #B-8093</span>
-                                <span class="text-[13px] text-secondary">Denim Jackets • 1.2k units</span>
-                            </div>
-                            <span class="text-[13px] font-medium text-[#FF9F0A]">Sewing 15%</span>
-                        </div>
-                        <div class="relative w-full h-2.5 bg-surface-container rounded-full overflow-hidden">
-                            <div class="absolute top-0 left-0 h-full bg-[#FF9F0A] rounded-full" style="width: 70%;"></div>
-                        </div>
-                    </div>
+                <div id="dashboard-active-batches" class="bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-sm p-md flex flex-col gap-lg">
+                    <!-- Data will be injected here -->
                 </div>
             </div>
 

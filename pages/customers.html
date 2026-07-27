@@ -45,89 +45,8 @@
             <!-- Customer Cards List -->
             <div class="flex flex-col gap-md">
                 
-                <!-- Customer Card 1 (Click opens details sheet) -->
-                <div role="button" tabindex="0" onclick="openSheet('customerDetailsSheet')" class="bg-surface-container-lowest rounded-[24px] border border-outline-variant p-md shadow-sm active-bg transition-colors flex items-start gap-4 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary">
-                    <div class="w-[60px] h-[60px] rounded-full overflow-hidden border border-outline-variant/30 flex-shrink-0">
-                        <img class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDjsQrnDGH6EpdDe4Jzpub5fpI9paxS1qSAF-0EYDdMRn-40Zfp1H4ivFc2T7cTj7HS3uZnWtjlCmyhcGKN0KHS3HNaNzMWa9yB-DqA66rQK9arPwIXmP6fDsjao2TRWu0oBpTuJXOMi1KOYpAZUIu7lItqa1jt8lggfNjZcOdLiLUjAY1Pzb1YSCbv0Mv1uuofmOTAuRcPT0in4vDp1x6znmYUJiKEFUrz6dxdh7LMj1KSq02cN5HiRB1n2brh4gxTAT1U9qJlUa8Q" alt="Eleanor Vance"/>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <div class="flex justify-between items-start mb-1">
-                            <h3 class="text-[17px] font-bold text-on-surface truncate pr-2">Aethereal Collective</h3>
-                            <span class="material-symbols-outlined text-secondary hover:text-primary p-1">chevron_right</span>
-                        </div>
-                        <p class="text-[14px] text-secondary font-medium mb-3 truncate">Eleanor Vance</p>
-                        
-                        <div class="flex gap-4">
-                            <div class="flex flex-col">
-                                <span class="text-[11px] text-secondary font-medium uppercase tracking-wider">Orders</span>
-                                <span class="text-[15px] font-bold text-on-surface">12</span>
-                            </div>
-                            <div class="flex flex-col">
-                                <span class="text-[11px] text-secondary font-medium uppercase tracking-wider">LTV</span>
-                                <span class="text-[15px] font-bold text-primary">$145K</span>
-                            </div>
-                            <div class="flex flex-col ml-auto justify-end">
-                                <span class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-primary-container text-on-primary-container">Active</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Customer Card 2 -->
-                <div role="button" tabindex="0" onclick="openSheet('customerDetailsSheet')" class="bg-surface-container-lowest rounded-[24px] border border-outline-variant p-md shadow-sm active-bg transition-colors flex items-start gap-4 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary">
-                    <div class="w-[60px] h-[60px] rounded-full overflow-hidden border border-outline-variant/30 flex-shrink-0">
-                        <img class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDnM486kZM-lpNWk2IlqpzF64WxPwyZNAGRmmwbnl1hZ-4jogabI--2ibQdvzPZRfGgcdsRhOwmJc4blIdV_dfrApDpiQ-m6C8uPLmMUb6vUjeCvEyruI55DlXQUPPUz4Wbk722E-G5pUrRRZHOpe912RqyxaxQseAPz4miWYpvNJHYJShsMaEi7ViP2m5_Hc5EXSnMakPPbSQ45nQQTAYQ5l5gwT6clchpVQxqZCiAOfsBJ5hzqwoaHDLdD-YRAA1JFY8S7YOnN_ON" alt="Marcus Thorne"/>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <div class="flex justify-between items-start mb-1">
-                            <h3 class="text-[17px] font-bold text-on-surface truncate pr-2">Nomad Gear Inc.</h3>
-                            <span class="material-symbols-outlined text-secondary hover:text-primary p-1">chevron_right</span>
-                        </div>
-                        <p class="text-[14px] text-secondary font-medium mb-3 truncate">Marcus Thorne</p>
-                        
-                        <div class="flex gap-4">
-                            <div class="flex flex-col">
-                                <span class="text-[11px] text-secondary font-medium uppercase tracking-wider">Orders</span>
-                                <span class="text-[15px] font-bold text-on-surface">4</span>
-                            </div>
-                            <div class="flex flex-col">
-                                <span class="text-[11px] text-secondary font-medium uppercase tracking-wider">LTV</span>
-                                <span class="text-[15px] font-bold text-primary">$32.8K</span>
-                            </div>
-                            <div class="flex flex-col ml-auto justify-end">
-                                <span class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-primary-container text-on-primary-container">Active</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Customer Card 3 -->
-                <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant p-md shadow-sm active:bg-surface-variant transition-colors flex items-start gap-4">
-                    <div class="w-[60px] h-[60px] rounded-full overflow-hidden border border-outline-variant/30 flex-shrink-0 bg-surface-variant flex items-center justify-center">
-                        <span class="font-bold text-[20px] text-on-surface-variant">SK</span>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <div class="flex justify-between items-start mb-1">
-                            <h3 class="text-[17px] font-bold text-on-surface truncate pr-2">Kinsley Basics</h3>
-                            <span class="material-symbols-outlined text-secondary hover:text-primary p-1">chevron_right</span>
-                        </div>
-                        <p class="text-[14px] text-secondary font-medium mb-3 truncate">Sarah Kinsley</p>
-                        
-                        <div class="flex gap-4">
-                            <div class="flex flex-col">
-                                <span class="text-[11px] text-secondary font-medium uppercase tracking-wider">Orders</span>
-                                <span class="text-[15px] font-bold text-on-surface">0</span>
-                            </div>
-                            <div class="flex flex-col">
-                                <span class="text-[11px] text-secondary font-medium uppercase tracking-wider">LTV</span>
-                                <span class="text-[15px] font-bold text-primary">$8.4K</span>
-                            </div>
-                            <div class="flex flex-col ml-auto justify-end">
-                                <span class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-surface-variant text-on-surface-variant">Inactive</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <!-- Customers will be injected here -->
+                <div id="customers-list-container" class="flex flex-col gap-md min-h-[200px]"></div>
 
             </div>
             
@@ -151,6 +70,8 @@
         import { BottomSheet } from '../js/components/index.js';
         import { TextInput, TextareaInput } from '../js/components/inputs.js';
         import { bindFormValidation } from '../js/utils/formHandler.js';
+        import { api } from '../js/services/api.js';
+        import { renderers } from '../js/renderers.js';
 
         const sheetsContainer = document.getElementById('sheets-container');
         
@@ -272,6 +193,28 @@
         // Bind validation
         bindFormValidation('addCustomerSheet-content', 'add-customer-submit');
         bindFormValidation('editCustomerSheet-content', 'edit-customer-submit');
+        
+        // Fetch and render data
+        async function loadCustomers() {
+            const container = document.getElementById('customers-list-container');
+            // Check if global setLoading is available (it's injected via sheet.js/app.js)
+            if (window.setLoading) {
+                window.setLoading('customers-list-container');
+            } else {
+                container.innerHTML = '<div class="p-md text-center text-secondary">Loading...</div>';
+            }
+            
+            try {
+                const customers = await api.getCustomers();
+                container.innerHTML = customers.map(c => renderers.customerCard(c)).join('');
+            } catch (error) {
+                container.innerHTML = '<div class="p-md text-center text-error">Failed to load customers</div>';
+                console.error(error);
+            }
+        }
+        
+        // Initial load
+        document.addEventListener('DOMContentLoaded', loadCustomers);
     </script>
 
     <script src="../js/utils/sheet.js"></script>
