@@ -1,0 +1,37 @@
+/* Base layout and structural resets */
+body {
+    background-color: #F5F5F7; /* Enforced background color based on DESIGN.md */
+    color: #1D1D1F;
+    /* Prevent overscroll bounce background showing white */
+    overscroll-behavior-y: none;
+    /* Optimize for touch */
+    -webkit-tap-highlight-color: transparent;
+}
+
+.material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+}
+
+/* Mobile constraints */
+.mobile-wrapper {
+    max-width: 100%;
+    margin: 0 auto;
+    min-height: 100vh;
+    padding-bottom: 96px; /* Space for bottom nav */
+    padding-top: 64px; /* Space for top bar */
+    display: flex;
+    flex-direction: column;
+}
+
+@media (min-width: 640px) {
+    .mobile-wrapper {
+        max-width: 480px;
+        background-color: #FFFFFF;
+        box-shadow: 0 0 20px rgba(0,0,0,0.05);
+        border-left: 1px solid #E5E5EA;
+        border-right: 1px solid #E5E5EA;
+    }
+    body {
+        background-color: #E5E5EA;
+    }
+}

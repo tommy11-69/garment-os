@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta name="description" content="Page not found — Garment OS"/>
+    <title>404 Not Found — Garment OS</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com" rel="preconnect"/>
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="../js/tailwind.config.js"></script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; background-color: #F5F5F7; }
+        .btn {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 14px 28px; border-radius: 14px;
+            font-size: 15px; font-weight: 600;
+            cursor: pointer; transition: transform 150ms ease, background 150ms ease;
+            text-decoration: none;
+        }
+        .btn:active { transform: scale(0.97); }
+        .btn-primary { background: #0059B5; color: white; box-shadow: 0 2px 8px rgba(0,89,181,0.25); }
+        .btn-primary:hover { background: #004FA3; }
+        .btn-secondary { background: #FFFFFF; color: #1B1B1D; border: 1px solid #C1C6D6; }
+        .btn-secondary:hover { background: #F0EDEF; }
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-12px); }
+        }
+        .float-anim { animation: float 4s ease-in-out infinite; }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-6">
+    <div class="max-w-[400px] w-full text-center">
+
+        <!-- SVG Illustration -->
+        <div class="float-anim mb-8 mx-auto w-fit">
+            <svg width="200" height="160" viewBox="0 0 200 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <!-- Background circle -->
+                <circle cx="100" cy="90" r="70" fill="#EAE7EA"/>
+                <!-- Document -->
+                <rect x="60" y="35" width="80" height="100" rx="10" fill="white" stroke="#C1C6D6" stroke-width="1.5"/>
+                <!-- Lines on document -->
+                <rect x="74" y="58" width="52" height="6" rx="3" fill="#E4E2E4"/>
+                <rect x="74" y="72" width="38" height="6" rx="3" fill="#E4E2E4"/>
+                <rect x="74" y="86" width="44" height="6" rx="3" fill="#E4E2E4"/>
+                <!-- 404 -->
+                <text x="100" y="122" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0059B5">404</text>
+                <!-- Search icon floating -->
+                <circle cx="148" cy="44" r="18" fill="#0059B5"/>
+                <circle cx="146" cy="42" r="7" fill="none" stroke="white" stroke-width="2.5"/>
+                <line x1="151" y1="47" x2="157" y2="53" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+                <!-- Small star decorations -->
+                <circle cx="38" cy="55" r="4" fill="#ABC7FF" opacity="0.7"/>
+                <circle cx="168" cy="95" r="3" fill="#ABC7FF" opacity="0.5"/>
+                <circle cx="52" cy="120" r="2.5" fill="#C1C6D6"/>
+            </svg>
+        </div>
+
+        <h1 class="text-[32px] font-bold text-on-surface mb-3 tracking-tight">Page Not Found</h1>
+        <p class="text-[16px] text-secondary leading-relaxed mb-8">
+            The page you're looking for doesn't exist or has been moved. Let's get you back on track.
+        </p>
+
+        <div class="flex flex-col gap-3">
+            <a href="dashboard.html" class="btn btn-primary justify-center">
+                <span class="material-symbols-outlined text-[20px]">home</span>
+                Go to Dashboard
+            </a>
+            <button onclick="history.back()" class="btn btn-secondary justify-center">
+                <span class="material-symbols-outlined text-[20px]">arrow_back</span>
+                Go Back
+            </button>
+        </div>
+
+        <p class="text-[12px] text-secondary mt-8">Error code: 404 • Garment OS</p>
+    </div>
+</body>
+</html>

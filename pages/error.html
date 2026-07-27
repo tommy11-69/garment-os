@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta name="description" content="Network error — Garment OS"/>
+    <title>Connection Error — Garment OS</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com" rel="preconnect"/>
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="../js/tailwind.config.js"></script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; background-color: #F5F5F7; }
+        .btn {
+            display: inline-flex; align-items: center; gap: 8px;
+            padding: 14px 28px; border-radius: 14px;
+            font-size: 15px; font-weight: 600;
+            cursor: pointer; transition: transform 150ms ease, background 150ms ease;
+            text-decoration: none; border: none;
+        }
+        .btn:active { transform: scale(0.97); }
+        .btn-primary { background: #0059B5; color: white; box-shadow: 0 2px 8px rgba(0,89,181,0.25); }
+        .btn-primary:hover { background: #004FA3; }
+        .btn-secondary { background: #FFFFFF; color: #1B1B1D; border: 1px solid #C1C6D6; }
+        .btn-secondary:hover { background: #F0EDEF; }
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); opacity: 1; }
+            100% { transform: scale(1.4); opacity: 0; }
+        }
+        .pulse-ring {
+            animation: pulse-ring 2s ease-out infinite;
+        }
+        #retry-count { display: none; }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-6">
+    <div class="max-w-[400px] w-full text-center">
+
+        <!-- SVG Illustration -->
+        <div class="mb-8 mx-auto w-fit relative">
+            <svg width="200" height="160" viewBox="0 0 200 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="100" cy="90" r="70" fill="#FFDAD6" opacity="0.4"/>
+                <!-- Wifi signal broken -->
+                <path d="M65 75 Q100 45 135 75" stroke="#C1C6D6" stroke-width="5" stroke-linecap="round" fill="none"/>
+                <path d="M75 88 Q100 65 125 88" stroke="#C1C6D6" stroke-width="5" stroke-linecap="round" fill="none"/>
+                <path d="M85 101 Q100 85 115 101" stroke="#BA1A1A" stroke-width="5" stroke-linecap="round" fill="none" opacity="0.5"/>
+                <!-- Broken indicator dot -->
+                <circle cx="100" cy="112" r="6" fill="#BA1A1A"/>
+                <!-- X mark overlay -->
+                <circle cx="148" cy="48" r="18" fill="#BA1A1A"/>
+                <line x1="141" y1="41" x2="155" y2="55" stroke="white" stroke-width="3" stroke-linecap="round"/>
+                <line x1="155" y1="41" x2="141" y2="55" stroke="white" stroke-width="3" stroke-linecap="round"/>
+                <!-- Decorative dots -->
+                <circle cx="40" cy="60" r="4" fill="#E4E2E4"/>
+                <circle cx="165" cy="100" r="3" fill="#E4E2E4"/>
+            </svg>
+        </div>
+
+        <h1 class="text-[32px] font-bold text-on-surface mb-3 tracking-tight">Something Went Wrong</h1>
+        <p class="text-[16px] text-secondary leading-relaxed mb-2">
+            We couldn't connect to the server. Check your internet connection and try again.
+        </p>
+        <p id="retry-count" class="text-[14px] text-secondary mb-6">Retrying in <span id="countdown">5</span>s...</p>
+
+        <div class="flex flex-col gap-3 mb-8">
+            <button onclick="retryConnection()" class="btn btn-primary justify-center w-full">
+                <span class="material-symbols-outlined text-[20px]" id="retry-icon">refresh</span>
+                <span id="retry-text">Try Again</span>
+            </button>
+            <a href="dashboard.html" class="btn btn-secondary justify-center">
+                <span class="material-symbols-outlined text-[20px]">home</span>
+                Go to Dashboard
+            </a>
+        </div>
+
+        <!-- Status checklist -->
+        <div class="bg-white rounded-2xl border border-outline-variant p-4 text-left">
+            <p class="text-[13px] font-semibold text-on-surface mb-3">Troubleshooting checklist</p>
+            <div class="flex flex-col gap-2">
+                <div class="flex items-center gap-2 text-[13px] text-secondary">
+                    <span class="material-symbols-outlined text-[16px] text-[#008A00]" style="font-variation-settings:'FILL' 1;">check_circle</span>
+                    Check your internet connection
+                </div>
+                <div class="flex items-center gap-2 text-[13px] text-secondary">
+                    <span class="material-symbols-outlined text-[16px] text-[#008A00]" style="font-variation-settings:'FILL' 1;">check_circle</span>
+                    Try refreshing the page
+                </div>
+                <div class="flex items-center gap-2 text-[13px] text-secondary">
+                    <span class="material-symbols-outlined text-[16px] text-secondary">radio_button_unchecked</span>
+                    Contact support if issue persists
+                </div>
+            </div>
+        </div>
+
+        <p class="text-[12px] text-secondary mt-6">Error code: 503 • Garment OS</p>
+    </div>
+
+    <script>
+        function retryConnection() {
+            const icon = document.getElementById('retry-icon');
+            const text = document.getElementById('retry-text');
+            icon.style.animation = 'spin 1s linear infinite';
+            icon.style.cssText = 'animation: spin 1s linear infinite; display: inline-block;';
+            text.textContent = 'Retrying…';
+
+            const style = document.createElement('style');
+            style.textContent = '@keyframes spin { to { transform: rotate(360deg); } }';
+            document.head.appendChild(style);
+
+            setTimeout(() => {
+                // In production, this would re-attempt the failed request
+                window.location.reload();
+            }, 2000);
+        }
+    </script>
+</body>
+</html>

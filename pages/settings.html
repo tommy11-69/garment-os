@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="description" content="Settings — Garment OS"/>
+    <title>Settings — Garment OS</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com" rel="preconnect"/>
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="../js/tailwind.config.js"></script>
+
+    <link rel="stylesheet" href="../css/layout.css">
+    <link rel="stylesheet" href="../css/typography.css">
+    <link rel="stylesheet" href="../css/utilities.css">
+
+    <style>
+        details > summary { list-style: none; }
+        details > summary::-webkit-details-marker { display: none; }
+        details[open] summary .expand-icon { transform: rotate(180deg); }
+        .expand-icon { transition: transform 200ms ease; }
+
+        .toggle {
+            position: relative; width: 48px; height: 28px;
+            border-radius: 999px; background: #C1C6D6;
+            cursor: pointer; transition: background 200ms ease;
+            flex-shrink: 0; border: none; outline: none;
+        }
+        .toggle::after {
+            content: ''; position: absolute;
+            top: 3px; left: 3px;
+            width: 22px; height: 22px;
+            background: white; border-radius: 50%;
+            transition: transform 200ms ease;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+        .toggle.on { background: #0059B5; }
+        .toggle.on::after { transform: translateX(20px); }
+
+        .avatar-upload { position: relative; cursor: pointer; }
+        .avatar-upload input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+        .logo-preview {
+            width: 72px; height: 72px; border-radius: 16px;
+            background: linear-gradient(135deg, #0059B5, #0071E3);
+            display: flex; align-items: center; justify-content: center;
+            border: 2px dashed transparent; transition: border-color 200ms ease;
+        }
+        .logo-preview:hover { border-color: #0059B5; }
+    </style>
+</head>
+<body class="font-body text-body antialiased bg-background">
+
+    <div id="topbar-container"></div>
+
+    <div class="mobile-wrapper">
+        <main id="main-content-area" class="flex-1 p-md flex flex-col gap-md">
+
+            <div class="px-xs pt-sm">
+                <h2 class="text-[28px] leading-tight font-semibold tracking-tight text-on-surface mb-1">Settings</h2>
+                <p class="text-[15px] text-secondary">Manage your account and preferences</p>
+            </div>
+
+            <!-- ─── 1. Company Profile ─── -->
+            <details class="bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-sm overflow-hidden" open>
+                <summary class="flex justify-between items-center p-md cursor-pointer outline-none select-none">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+                            <span class="material-symbols-outlined text-[20px]">business</span>
+                        </div>
+                        <h3 class="text-[17px] font-semibold text-on-surface">Company Profile</h3>
+                    </div>
+                    <span class="material-symbols-outlined text-secondary expand-icon">expand_more</span>
+                </summary>
+                <div class="px-md pb-md border-t border-outline-variant/30 pt-md flex flex-col gap-4">
+                    <!-- Logo -->
+                    <div class="flex items-center gap-4">
+                        <div class="avatar-upload">
+                            <div class="logo-preview">
+                                <span class="material-symbols-outlined text-white text-[28px]" style="font-variation-settings:'FILL' 1;">precision_manufacturing</span>
+                            </div>
+                            <input type="file" accept="image/*" onchange="previewLogo(event)" aria-label="Upload company logo"/>
+                        </div>
+                        <div>
+                            <p class="text-[15px] font-semibold text-on-surface">Company Logo</p>
+                            <p class="text-[13px] text-secondary">Tap to upload. PNG, JPG up to 2MB</p>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-[13px] font-semibold text-on-surface-variant">Company Name</label>
+                        <input type="text" value="Mehta Garments Pvt. Ltd." class="bg-surface border border-outline-variant rounded-xl px-4 py-3 text-[16px] text-on-surface focus:border-primary focus:ring-2 focus:ring-primary/10 outline-none transition-all"/>
+                    </div>
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-[13px] font-semibold text-on-surface-variant">GST / Tax ID</label>
+                        <input type="text" value="27AABCM1234F1Z5" class="bg-surface border border-outline-variant rounded-xl px-4 py-3 text-[16px] text-on-surface font-mono focus:border-primary focus:ring-2 focus:ring-primary/10 outline-none transition-all"/>
+                    </div>
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-[13px] font-semibold text-on-surface-variant">Business Address</label>
+                        <textarea rows="2" class="bg-surface border border-outline-variant rounded-xl px-4 py-3 text-[16px] text-on-surface focus:border-primary focus:ring-2 focus:ring-primary/10 outline-none transition-all resize-none">Plot 14, MIDC Industrial Area, Tarapur, Maharashtra 401506</textarea>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-[13px] font-semibold text-on-surface-variant">Country</label>
+                            <select class="bg-surface border border-outline-variant rounded-xl px-4 py-3 text-[16px] text-on-surface outline-none">
+                                <option selected>India</option>
+                                <option>United States</option>
+                                <option>United Kingdom</option>
+                            </select>
+                        </div>
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-[13px] font-semibold text-on-surface-variant">Timezone</label>
+                            <select class="bg-surface border border-outline-variant rounded-xl px-4 py-3 text-[16px] text-on-surface outline-none">
+                                <option selected>IST (UTC+5:30)</option>
+                                <option>EST (UTC-5)</option>
+                                <option>GMT (UTC+0)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="w-full bg-primary text-on-primary font-semibold text-[15px] py-3.5 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
+                        Save Changes
+                    </button>
+                </div>
+            </details>
+
+            <!-- ─── 2. Appearance ─── -->
+            <details class="bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-sm overflow-hidden">
+                <summary class="flex justify-between items-center p-md cursor-pointer outline-none select-none">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-surface-variant text-on-surface-variant flex items-center justify-center">
+                            <span class="material-symbols-outlined text-[20px]">palette</span>
+                        </div>
+                        <h3 class="text-[17px] font-semibold text-on-surface">Appearance</h3>
+                    </div>
+                    <span class="material-symbols-outlined text-secondary expand-icon">expand_more</span>
+                </summary>
+                <div class="px-md pb-md border-t border-outline-variant/30 pt-md flex flex-col gap-4">
+                    <div>
+                        <p class="text-[14px] font-semibold text-on-surface mb-3">Theme</p>
+                        <div class="flex bg-surface-variant p-1 rounded-xl">
+                            <button onclick="setTheme(this,'light')" class="flex-1 py-2.5 text-[14px] font-semibold rounded-lg bg-surface-container-lowest shadow-sm text-on-surface flex items-center justify-center gap-1.5">
+                                <span class="material-symbols-outlined text-[16px]">light_mode</span> Light
+                            </button>
+                            <button onclick="setTheme(this,'dark')" class="flex-1 py-2.5 text-[14px] font-semibold rounded-lg text-secondary flex items-center justify-center gap-1.5">
+                                <span class="material-symbols-outlined text-[16px]">dark_mode</span> Dark
+                            </button>
+                            <button onclick="setTheme(this,'system')" class="flex-1 py-2.5 text-[14px] font-semibold rounded-lg text-secondary flex items-center justify-center gap-1.5">
+                                <span class="material-symbols-outlined text-[16px]">brightness_auto</span> System
+                            </button>
+                        </div>
+                    </div>
+                    <div class="bg-surface-container rounded-xl p-3 text-[13px] text-secondary flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[16px]">info</span>
+                        Dark mode is coming soon. Currently showing Light theme.
+                    </div>
+                </div>
+            </details>
+
+            <!-- ─── 3. Users & Roles ─── -->
+            <details class="bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-sm overflow-hidden">
+                <summary class="flex justify-between items-center p-md cursor-pointer outline-none select-none">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-[#5E5CE6]/10 text-[#5E5CE6] flex items-center justify-center">
+                            <span class="material-symbols-outlined text-[20px]">manage_accounts</span>
+                        </div>
+                        <h3 class="text-[17px] font-semibold text-on-surface">Users & Roles</h3>
+                    </div>
+                    <span class="material-symbols-outlined text-secondary expand-icon">expand_more</span>
+                </summary>
+                <div class="border-t border-outline-variant/30">
+                    <div class="flex flex-col divide-y divide-outline-variant/40">
+                        <div class="px-md py-3 flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-full bg-primary text-on-primary flex items-center justify-center text-[14px] font-bold">MK</div>
+                                <div>
+                                    <p class="text-[15px] font-semibold text-on-surface">Michael Kumar</p>
+                                    <p class="text-[12px] text-secondary">michael@mehtagarments.com</p>
+                                </div>
+                            </div>
+                            <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-primary/10 text-primary">Admin</span>
+                        </div>
+                        <div class="px-md py-3 flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-full bg-surface-variant text-on-surface-variant flex items-center justify-center text-[14px] font-bold">RS</div>
+                                <div>
+                                    <p class="text-[15px] font-semibold text-on-surface">Rohan Shah</p>
+                                    <p class="text-[12px] text-secondary">rohan@mehtagarments.com</p>
+                                </div>
+                            </div>
+                            <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-surface-variant text-on-surface-variant">Manager</span>
+                        </div>
+                        <div class="px-md py-3 flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div class="w-9 h-9 rounded-full bg-surface-variant text-on-surface-variant flex items-center justify-center text-[14px] font-bold">PD</div>
+                                <div>
+                                    <p class="text-[15px] font-semibold text-on-surface">Priya Desai</p>
+                                    <p class="text-[12px] text-secondary">priya@mehtagarments.com</p>
+                                </div>
+                            </div>
+                            <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-surface-variant text-on-surface-variant">Operator</span>
+                        </div>
+                    </div>
+                    <div class="p-md">
+                        <button class="w-full flex items-center justify-center gap-2 border-2 border-dashed border-outline-variant text-secondary font-semibold text-[14px] py-3 rounded-2xl hover:border-primary hover:text-primary active:scale-[0.98] transition-all">
+                            <span class="material-symbols-outlined text-[18px]">person_add</span>
+                            Invite Team Member
+                        </button>
+                    </div>
+                </div>
+            </details>
+
+            <!-- ─── 4. Tax & Currency ─── -->
+            <details class="bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-sm overflow-hidden">
+                <summary class="flex justify-between items-center p-md cursor-pointer outline-none select-none">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-[#008A00]/10 text-[#008A00] flex items-center justify-center">
+                            <span class="material-symbols-outlined text-[20px]">payments</span>
+                        </div>
+                        <h3 class="text-[17px] font-semibold text-on-surface">Tax & Currency</h3>
+                    </div>
+                    <span class="material-symbols-outlined text-secondary expand-icon">expand_more</span>
+                </summary>
+                <div class="px-md pb-md border-t border-outline-variant/30 pt-md flex flex-col gap-4">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-[13px] font-semibold text-on-surface-variant">Currency</label>
+                            <select class="bg-surface border border-outline-variant rounded-xl px-4 py-3 text-[16px] text-on-surface outline-none">
+                                <option>₹ INR</option>
+                                <option>$ USD</option>
+                                <option>€ EUR</option>
+                                <option>£ GBP</option>
+                            </select>
+                        </div>
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-[13px] font-semibold text-on-surface-variant">Tax Type</label>
+                            <select class="bg-surface border border-outline-variant rounded-xl px-4 py-3 text-[16px] text-on-surface outline-none">
+                                <option>GST</option>
+                                <option>VAT</option>
+                                <option>None</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-[13px] font-semibold text-on-surface-variant">Default Tax Rate</label>
+                        <div class="relative">
+                            <input type="number" value="18" class="w-full bg-surface border border-outline-variant rounded-xl px-4 py-3 pr-10 text-[16px] text-on-surface outline-none focus:border-primary"/>
+                            <span class="absolute right-4 top-1/2 -translate-y-1/2 text-secondary text-[14px] font-medium">%</span>
+                        </div>
+                    </div>
+                    <button class="w-full bg-primary text-on-primary font-semibold text-[15px] py-3.5 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
+                        Save Changes
+                    </button>
+                </div>
+            </details>
+
+            <!-- ─── 5. Notifications ─── -->
+            <details class="bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-sm overflow-hidden">
+                <summary class="flex justify-between items-center p-md cursor-pointer outline-none select-none">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-[#FF9F0A]/10 text-[#FF9F0A] flex items-center justify-center">
+                            <span class="material-symbols-outlined text-[20px]">notifications</span>
+                        </div>
+                        <h3 class="text-[17px] font-semibold text-on-surface">Notifications</h3>
+                    </div>
+                    <span class="material-symbols-outlined text-secondary expand-icon">expand_more</span>
+                </summary>
+                <div class="border-t border-outline-variant/30">
+                    <div class="flex flex-col divide-y divide-outline-variant/40">
+                        <div class="px-md py-4 flex items-center justify-between">
+                            <div>
+                                <p class="text-[15px] font-semibold text-on-surface">Low Stock Alerts</p>
+                                <p class="text-[12px] text-secondary">Notify when material falls below minimum</p>
+                            </div>
+                            <button class="toggle on" onclick="toggleSwitch(this)" aria-label="Toggle low stock alerts"></button>
+                        </div>
+                        <div class="px-md py-4 flex items-center justify-between">
+                            <div>
+                                <p class="text-[15px] font-semibold text-on-surface">Order Delay Warnings</p>
+                                <p class="text-[12px] text-secondary">Alert when orders risk missing deadline</p>
+                            </div>
+                            <button class="toggle on" onclick="toggleSwitch(this)" aria-label="Toggle order delay warnings"></button>
+                        </div>
+                        <div class="px-md py-4 flex items-center justify-between">
+                            <div>
+                                <p class="text-[15px] font-semibold text-on-surface">Payment Reminders</p>
+                                <p class="text-[12px] text-secondary">Remind customers of overdue invoices</p>
+                            </div>
+                            <button class="toggle" onclick="toggleSwitch(this)" aria-label="Toggle payment reminders"></button>
+                        </div>
+                        <div class="px-md py-4 flex items-center justify-between">
+                            <div>
+                                <p class="text-[15px] font-semibold text-on-surface">System Updates</p>
+                                <p class="text-[12px] text-secondary">New features and maintenance notices</p>
+                            </div>
+                            <button class="toggle on" onclick="toggleSwitch(this)" aria-label="Toggle system updates"></button>
+                        </div>
+                    </div>
+                </div>
+            </details>
+
+            <!-- ─── 6. Backup & Export ─── -->
+            <details class="bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-sm overflow-hidden">
+                <summary class="flex justify-between items-center p-md cursor-pointer outline-none select-none">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-surface-variant text-on-surface-variant flex items-center justify-center">
+                            <span class="material-symbols-outlined text-[20px]">backup</span>
+                        </div>
+                        <h3 class="text-[17px] font-semibold text-on-surface">Backup & Export</h3>
+                    </div>
+                    <span class="material-symbols-outlined text-secondary expand-icon">expand_more</span>
+                </summary>
+                <div class="px-md pb-md border-t border-outline-variant/30 pt-md flex flex-col gap-3">
+                    <div class="bg-surface-container rounded-xl p-3 flex items-center justify-between">
+                        <div>
+                            <p class="text-[14px] font-semibold text-on-surface">Last Backup</p>
+                            <p class="text-[12px] text-secondary">Today at 3:00 AM (Automatic)</p>
+                        </div>
+                        <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#008A00]/10 text-[#008A00]">Successful</span>
+                    </div>
+                    <button class="w-full flex items-center justify-center gap-2 bg-surface-container-high text-on-surface font-semibold text-[14px] py-3.5 rounded-2xl active:scale-[0.98] transition-transform">
+                        <span class="material-symbols-outlined text-[18px]">download</span>
+                        Download Backup
+                    </button>
+                    <button class="w-full flex items-center justify-center gap-2 bg-surface-container-high text-on-surface font-semibold text-[14px] py-3.5 rounded-2xl active:scale-[0.98] transition-transform">
+                        <span class="material-symbols-outlined text-[18px]">table_view</span>
+                        Export All Data (CSV)
+                    </button>
+                    <button class="w-full flex items-center justify-center gap-2 text-error font-semibold text-[14px] py-3.5 rounded-2xl border border-error/20 bg-error/5 active:scale-[0.98] transition-transform">
+                        <span class="material-symbols-outlined text-[18px]">delete_forever</span>
+                        Delete All Data
+                    </button>
+                </div>
+            </details>
+
+            <!-- Danger Zone: Sign Out -->
+            <button onclick="if(confirm('Sign out of Garment OS?')) window.location.href='../auth/login.html'"
+                    class="w-full mt-2 p-md rounded-2xl text-[16px] font-semibold text-error bg-error/10 hover:bg-error/15 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                <span class="material-symbols-outlined text-[20px]">logout</span>
+                Sign Out
+            </button>
+
+            <p class="text-center text-[12px] text-secondary pb-4">Garment OS v1.0.0 — Build 2026.07</p>
+        </main>
+    </div>
+
+    <div id="bottom-nav-container"></div>
+
+    <script>
+        function toggleSwitch(btn) {
+            btn.classList.toggle('on');
+        }
+
+        function setTheme(btn, theme) {
+            const parent = btn.parentElement;
+            parent.querySelectorAll('button').forEach(b => {
+                b.classList.remove('bg-surface-container-lowest', 'shadow-sm', 'text-on-surface');
+                b.classList.add('text-secondary');
+            });
+            btn.classList.add('bg-surface-container-lowest', 'shadow-sm', 'text-on-surface');
+            btn.classList.remove('text-secondary');
+        }
+
+        function previewLogo(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const preview = event.target.closest('.avatar-upload').querySelector('.logo-preview');
+                preview.innerHTML = `<img src="${e.target.result}" alt="Company logo" class="w-full h-full object-cover rounded-[14px]"/>`;
+            };
+            reader.readAsDataURL(file);
+        }
+    </script>
+    <script src="../js/app.js"></script>
+</body>
+</html>

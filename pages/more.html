@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Garment OS - More</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com" rel="preconnect"/>
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+    
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="../js/tailwind.config.js"></script>
+    
+    <link rel="stylesheet" href="../css/layout.css">
+    <link rel="stylesheet" href="../css/typography.css">
+    <link rel="stylesheet" href="../css/utilities.css">
+</head>
+<body class="font-body text-body antialiased">
+
+    <div id="topbar-container"></div>
+
+    <div class="mobile-wrapper">
+        <main id="main-content-area" class="flex-1 p-md flex flex-col gap-lg">
+            
+            <div class="px-xs pt-sm pb-2">
+                <h2 class="text-[28px] leading-tight font-semibold tracking-tight text-on-surface mb-1">More</h2>
+            </div>
+            
+            <!-- Main Menu List -->
+            <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-sm overflow-hidden">
+                <ul class="flex flex-col divide-y divide-outline-variant/50">
+                    <li>
+                        <a href="customers.html" class="flex items-center gap-md p-lg active:bg-surface-variant transition-colors group">
+                            <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+                                <span class="material-symbols-outlined text-[20px]">groups</span>
+                            </div>
+                            <div class="flex-1">
+                                <h3 class="text-[17px] font-semibold text-on-surface">Customers</h3>
+                                <p class="text-[14px] text-secondary">Manage clients, LTV, payments</p>
+                            </div>
+                            <span class="material-symbols-outlined text-outline-variant group-active:text-secondary transition-colors">chevron_right</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="inventory.html" class="flex items-center gap-md p-lg active:bg-surface-variant transition-colors group">
+                            <div class="w-10 h-10 rounded-full bg-[#5E5CE6]/10 text-[#5E5CE6] flex items-center justify-center">
+                                <span class="material-symbols-outlined text-[20px]">inventory_2</span>
+                            </div>
+                            <div class="flex-1">
+                                <h3 class="text-[17px] font-semibold text-on-surface">Inventory</h3>
+                                <p class="text-[14px] text-secondary">Fabric, yarn, accessories, alerts</p>
+                            </div>
+                            <span class="material-symbols-outlined text-outline-variant group-active:text-secondary transition-colors">chevron_right</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="dispatch.html" class="flex items-center gap-md p-lg active:bg-surface-variant transition-colors group">
+                            <div class="w-10 h-10 rounded-full bg-[#008A00]/10 text-[#008A00] flex items-center justify-center">
+                                <span class="material-symbols-outlined text-[20px]">local_shipping</span>
+                            </div>
+                            <div class="flex-1">
+                                <h3 class="text-[17px] font-semibold text-on-surface">Dispatch</h3>
+                                <p class="text-[14px] text-secondary">Courier, tracking, invoices</p>
+                            </div>
+                            <span class="material-symbols-outlined text-outline-variant group-active:text-secondary transition-colors">chevron_right</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="reports.html" class="flex items-center gap-md p-lg active:bg-surface-variant transition-colors group">
+                            <div class="w-10 h-10 rounded-full bg-[#FF9F0A]/10 text-[#FF9F0A] flex items-center justify-center">
+                                <span class="material-symbols-outlined text-[20px]">analytics</span>
+                            </div>
+                            <div class="flex-1">
+                                <h3 class="text-[17px] font-semibold text-on-surface">Reports</h3>
+                                <p class="text-[14px] text-secondary">Sales, profit, performance</p>
+                            </div>
+                            <span class="material-symbols-outlined text-outline-variant group-active:text-secondary transition-colors">chevron_right</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Secondary Settings Menu -->
+            <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-sm overflow-hidden mt-sm">
+                <ul class="flex flex-col divide-y divide-outline-variant/50">
+                    <li>
+                        <a href="settings.html" class="flex items-center gap-md p-lg active:bg-surface-variant transition-colors group">
+                            <div class="w-10 h-10 rounded-full bg-surface-variant text-on-surface-variant flex items-center justify-center">
+                                <span class="material-symbols-outlined text-[20px]">settings</span>
+                            </div>
+                            <div class="flex-1">
+                                <h3 class="text-[17px] font-semibold text-on-surface">Settings</h3>
+                            </div>
+                            <span class="material-symbols-outlined text-outline-variant group-active:text-secondary transition-colors">chevron_right</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="#" class="flex items-center gap-md p-lg active:bg-surface-variant transition-colors group">
+                            <div class="w-10 h-10 rounded-full bg-surface-variant text-on-surface-variant flex items-center justify-center">
+                                <span class="material-symbols-outlined text-[20px]">help</span>
+                            </div>
+                            <div class="flex-1">
+                                <h3 class="text-[17px] font-semibold text-on-surface">Help & Support</h3>
+                            </div>
+                            <span class="material-symbols-outlined text-outline-variant group-active:text-secondary transition-colors">chevron_right</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+            
+            <!-- Log Out -->
+            <button class="w-full mt-4 p-md rounded-2xl text-[16px] font-semibold text-error bg-error/10 hover:bg-error/20 active:scale-95 transition-all">
+                Log Out
+            </button>
+            
+            <div class="h-6"></div>
+        </main>
+    </div>
+    
+    <div id="bottom-nav-container"></div>
+
+    <script src="../js/app.js"></script>
+</body>
+</html>

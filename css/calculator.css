@@ -1,0 +1,25 @@
+/* Details summary native chevron styling reset */
+details > summary {
+    list-style: none;
+}
+details > summary::-webkit-details-marker {
+    display: none;
+}
+details[open] summary .material-symbols-outlined.expand-icon {
+    transform: rotate(180deg);
+}
+
+.floating-results {
+    position: fixed;
+    bottom: 80px; /* above bottom nav */
+    left: 0;
+    width: 100%;
+    z-index: 35;
+}
+@media (min-width: 640px) {
+    .floating-results {
+        left: 50%;
+        transform: translateX(-50%);
+        max-width: 480px;
+    }
+}

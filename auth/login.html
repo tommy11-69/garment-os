@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta name="description" content="Sign in to Garment OS — Your manufacturing operating system"/>
+    <title>Sign In — Garment OS</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com" rel="preconnect"/>
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="../js/tailwind.config.js"></script>
+
+    <link rel="stylesheet" href="../css/typography.css">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+        .auth-bg {
+            background-color: #F5F5F7;
+            background-image: radial-gradient(ellipse at 20% 50%, rgba(0,89,181,0.06) 0%, transparent 60%),
+                              radial-gradient(ellipse at 80% 20%, rgba(0,89,181,0.04) 0%, transparent 50%);
+            min-height: 100vh;
+        }
+        .input-field {
+            width: 100%;
+            background: #FFFFFF;
+            border: 1.5px solid #C1C6D6;
+            border-radius: 14px;
+            padding: 14px 16px;
+            font-size: 16px;
+            color: #1B1B1D;
+            outline: none;
+            transition: border-color 200ms ease, box-shadow 200ms ease;
+        }
+        .input-field:focus {
+            border-color: #0059B5;
+            box-shadow: 0 0 0 4px rgba(0, 89, 181, 0.08);
+        }
+        .input-field::placeholder { color: #9A9AA0; }
+        .btn-primary {
+            width: 100%;
+            background: #0059B5;
+            color: #ffffff;
+            font-size: 16px;
+            font-weight: 600;
+            padding: 15px 24px;
+            border-radius: 14px;
+            border: none;
+            cursor: pointer;
+            transition: transform 150ms ease, background 150ms ease, box-shadow 150ms ease;
+            box-shadow: 0 2px 8px rgba(0,89,181,0.25);
+        }
+        .btn-primary:hover { background: #004FA3; box-shadow: 0 4px 16px rgba(0,89,181,0.30); }
+        .btn-primary:active { transform: scale(0.98); }
+        .checkbox-custom {
+            appearance: none; -webkit-appearance: none;
+            width: 18px; height: 18px;
+            border: 1.5px solid #C1C6D6; border-radius: 5px;
+            background: #fff; cursor: pointer; flex-shrink: 0;
+            transition: all 150ms ease; position: relative;
+        }
+        .checkbox-custom:checked {
+            background: #0059B5; border-color: #0059B5;
+        }
+        .checkbox-custom:checked::after {
+            content: '';
+            position: absolute; top: 2px; left: 5px;
+            width: 5px; height: 9px;
+            border: 2px solid white; border-top: none; border-left: none;
+            transform: rotate(45deg);
+        }
+        .brand-mark {
+            width: 44px; height: 44px;
+            background: linear-gradient(135deg, #0059B5 0%, #0071E3 100%);
+            border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 4px 12px rgba(0,89,181,0.3);
+        }
+    </style>
+</head>
+<body class="auth-bg flex items-center justify-center p-4">
+
+    <div class="w-full max-w-[1100px] mx-auto flex items-center justify-center min-h-screen gap-16 py-12">
+
+        <!-- Left Column: Branding (hidden on mobile) -->
+        <div class="hidden lg:flex flex-col flex-1 max-w-[480px]">
+            <div class="flex items-center gap-3 mb-12">
+                <div class="brand-mark">
+                    <span class="material-symbols-outlined text-white text-[24px]" style="font-variation-settings:'FILL' 1;">precision_manufacturing</span>
+                </div>
+                <span class="text-[20px] font-bold text-on-surface tracking-tight">Garment OS</span>
+            </div>
+
+            <h1 class="text-[40px] font-bold text-on-surface leading-tight tracking-tight mb-4">
+                Your manufacturing<br>operating system.
+            </h1>
+            <p class="text-[17px] text-secondary leading-relaxed mb-10">
+                Manage orders, production, inventory, and finances — all in one place, built for garment manufacturers.
+            </p>
+
+            <!-- Feature Pills -->
+            <div class="flex flex-col gap-3">
+                <div class="flex items-center gap-3 bg-surface-container-lowest rounded-2xl px-4 py-3 border border-outline-variant/50">
+                    <div class="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
+                        <span class="material-symbols-outlined text-[16px]" style="font-variation-settings:'FILL' 1;">receipt_long</span>
+                    </div>
+                    <span class="text-[14px] font-medium text-on-surface">End-to-end order tracking</span>
+                </div>
+                <div class="flex items-center gap-3 bg-surface-container-lowest rounded-2xl px-4 py-3 border border-outline-variant/50">
+                    <div class="w-8 h-8 rounded-full bg-[#008A00]/10 text-[#008A00] flex items-center justify-center flex-shrink-0">
+                        <span class="material-symbols-outlined text-[16px]" style="font-variation-settings:'FILL' 1;">inventory_2</span>
+                    </div>
+                    <span class="text-[14px] font-medium text-on-surface">Real-time inventory & alerts</span>
+                </div>
+                <div class="flex items-center gap-3 bg-surface-container-lowest rounded-2xl px-4 py-3 border border-outline-variant/50">
+                    <div class="w-8 h-8 rounded-full bg-[#FF9F0A]/10 text-[#FF9F0A] flex items-center justify-center flex-shrink-0">
+                        <span class="material-symbols-outlined text-[16px]" style="font-variation-settings:'FILL' 1;">payments</span>
+                    </div>
+                    <span class="text-[14px] font-medium text-on-surface">Finance & cost calculator</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column: Form Card -->
+        <div class="w-full max-w-[420px]">
+            <!-- Mobile brand mark -->
+            <div class="flex items-center justify-center gap-3 mb-8 lg:hidden">
+                <div class="brand-mark">
+                    <span class="material-symbols-outlined text-white text-[24px]" style="font-variation-settings:'FILL' 1;">precision_manufacturing</span>
+                </div>
+                <span class="text-[20px] font-bold text-on-surface tracking-tight">Garment OS</span>
+            </div>
+
+            <div class="bg-surface-container-lowest rounded-[28px] border border-outline-variant/60 p-8 shadow-[0_8px_32px_rgba(0,0,0,0.06)]">
+                <h2 class="text-[24px] font-bold text-on-surface mb-1">Welcome back</h2>
+                <p class="text-[15px] text-secondary mb-8">Sign in to your account</p>
+
+                <form onsubmit="handleLogin(event)" novalidate class="flex flex-col gap-5">
+
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-[13px] font-semibold text-on-surface-variant">Email Address</label>
+                        <input id="email" type="email" class="input-field" placeholder="you@company.com" autocomplete="email" required/>
+                        <p id="email-error" class="text-[12px] text-error hidden mt-0.5">Please enter a valid email address.</p>
+                    </div>
+
+                    <div class="flex flex-col gap-1.5">
+                        <div class="flex justify-between items-center">
+                            <label class="text-[13px] font-semibold text-on-surface-variant">Password</label>
+                            <a href="forgot-password.html" class="text-[13px] font-semibold text-primary hover:underline">Forgot password?</a>
+                        </div>
+                        <div class="relative">
+                            <input id="password" type="password" class="input-field pr-12" placeholder="Enter your password" autocomplete="current-password" required/>
+                            <button type="button" onclick="togglePassword()" class="absolute right-4 top-1/2 -translate-y-1/2 text-secondary hover:text-on-surface transition-colors">
+                                <span id="pw-eye" class="material-symbols-outlined text-[20px]">visibility</span>
+                            </button>
+                        </div>
+                        <p id="password-error" class="text-[12px] text-error hidden mt-0.5">Password is required.</p>
+                    </div>
+
+                    <label class="flex items-center gap-3 cursor-pointer">
+                        <input type="checkbox" class="checkbox-custom"/>
+                        <span class="text-[14px] text-on-surface">Remember me for 30 days</span>
+                    </label>
+
+                    <button type="submit" id="submit-btn" class="btn-primary mt-1">
+                        Sign In
+                    </button>
+
+                    <!-- Error Alert -->
+                    <div id="login-error" class="hidden rounded-xl bg-error-container border border-error/20 p-3 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-error text-[18px]">error</span>
+                        <span class="text-[13px] text-error font-medium">Invalid email or password. Please try again.</span>
+                    </div>
+
+                </form>
+            </div>
+
+            <p class="text-center text-[13px] text-secondary mt-6">
+                Having trouble? <a href="mailto:support@garmentos.com" class="text-primary font-semibold hover:underline">Contact Support</a>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        function togglePassword() {
+            const pw = document.getElementById('password');
+            const eye = document.getElementById('pw-eye');
+            if (pw.type === 'password') {
+                pw.type = 'text';
+                eye.textContent = 'visibility_off';
+            } else {
+                pw.type = 'password';
+                eye.textContent = 'visibility';
+            }
+        }
+
+        function handleLogin(e) {
+            e.preventDefault();
+            const email = document.getElementById('email');
+            const password = document.getElementById('password');
+            const emailError = document.getElementById('email-error');
+            const pwError = document.getElementById('password-error');
+            const loginError = document.getElementById('login-error');
+            const btn = document.getElementById('submit-btn');
+
+            let valid = true;
+            emailError.classList.add('hidden');
+            pwError.classList.add('hidden');
+            loginError.classList.add('hidden');
+
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email.value.trim())) {
+                emailError.classList.remove('hidden');
+                valid = false;
+            }
+            if (!password.value) {
+                pwError.classList.remove('hidden');
+                valid = false;
+            }
+            if (!valid) return;
+
+            // Loading state
+            btn.textContent = 'Signing in…';
+            btn.disabled = true;
+            btn.style.opacity = '0.7';
+
+            // Simulate auth (replace with real API call)
+            setTimeout(() => {
+                btn.textContent = 'Sign In';
+                btn.disabled = false;
+                btn.style.opacity = '1';
+                // Demo: redirect to dashboard
+                if (email.value === 'demo@garmentos.com' && password.value === 'demo1234') {
+                    window.location.href = '../pages/dashboard.html';
+                } else {
+                    loginError.classList.remove('hidden');
+                }
+            }, 1200);
+        }
+    </script>
+</body>
+</html>

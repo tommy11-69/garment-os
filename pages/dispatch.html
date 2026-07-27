@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Garment OS - Dispatch</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com" rel="preconnect"/>
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+    
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="../js/tailwind.config.js"></script>
+    
+    <link rel="stylesheet" href="../css/layout.css">
+    <link rel="stylesheet" href="../css/typography.css">
+    <link rel="stylesheet" href="../css/utilities.css">
+</head>
+<body class="font-body text-body antialiased bg-background">
+
+    <div id="topbar-container"></div>
+
+    <div class="mobile-wrapper">
+        <main id="main-content-area" class="flex-1 p-md flex flex-col gap-lg">
+            
+            <div class="px-xs pt-sm">
+                <h2 class="text-[28px] leading-tight font-semibold tracking-tight text-on-surface mb-1">Dispatch</h2>
+                <p class="text-body text-secondary">3 Shipments Today</p>
+            </div>
+            
+            <div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-1 flex">
+                <button class="flex-1 py-2 text-sm font-semibold rounded-lg bg-surface-variant text-on-surface shadow-sm">In Transit</button>
+                <button class="flex-1 py-2 text-sm font-semibold rounded-lg text-secondary active:bg-surface-variant/50">Ready</button>
+                <button class="flex-1 py-2 text-sm font-semibold rounded-lg text-secondary active:bg-surface-variant/50">Delivered</button>
+            </div>
+
+            <!-- Dispatch Cards -->
+            <div class="flex flex-col gap-md">
+                
+                <!-- Shipment 1 -->
+                <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant p-lg shadow-sm">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-full bg-surface-variant flex items-center justify-center">
+                                <span class="material-symbols-outlined text-[24px] text-primary">local_shipping</span>
+                            </div>
+                            <div>
+                                <h3 class="text-[17px] font-bold text-on-surface leading-tight">Everlane Corp.</h3>
+                                <span class="text-[13px] text-secondary">INV-2026-140</span>
+                            </div>
+                        </div>
+                        <span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#FF9F0A]/10 text-[#FF9F0A] uppercase tracking-wider">In Transit</span>
+                    </div>
+                    
+                    <div class="bg-surface-variant/50 rounded-xl p-3 flex flex-col gap-2 mb-4">
+                        <div class="flex justify-between items-center">
+                            <span class="text-[13px] text-secondary">Courier</span>
+                            <span class="text-[14px] font-semibold text-on-surface">FedEx Express</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-[13px] text-secondary">Tracking No.</span>
+                            <span class="text-[14px] font-semibold text-primary">FX-99827361</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-[13px] text-secondary">Expected</span>
+                            <span class="text-[14px] font-semibold text-on-surface">Oct 28, 2026</span>
+                        </div>
+                    </div>
+
+                    <button class="w-full bg-surface-container-high text-on-surface font-bold text-[14px] py-3 rounded-xl active:scale-[0.98] transition-transform">
+                        Track Shipment
+                    </button>
+                </div>
+
+                <!-- Shipment 2 -->
+                <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant p-lg shadow-sm">
+                    <div class="flex justify-between items-start mb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 rounded-full bg-surface-variant flex items-center justify-center">
+                                <span class="material-symbols-outlined text-[24px] text-primary">inventory_2</span>
+                            </div>
+                            <div>
+                                <h3 class="text-[17px] font-bold text-on-surface leading-tight">Patagonia</h3>
+                                <span class="text-[13px] text-secondary">INV-2026-141</span>
+                            </div>
+                        </div>
+                        <span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-primary/10 text-primary uppercase tracking-wider">Ready</span>
+                    </div>
+                    
+                    <div class="bg-surface-variant/50 rounded-xl p-3 flex flex-col gap-2 mb-4">
+                        <div class="flex justify-between items-center">
+                            <span class="text-[13px] text-secondary">Courier</span>
+                            <span class="text-[14px] font-semibold text-on-surface">DHL Freight</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-[13px] text-secondary">Boxes</span>
+                            <span class="text-[14px] font-semibold text-on-surface">12 Cartons</span>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-2">
+                        <button class="flex-1 bg-surface-container-high text-on-surface font-bold text-[14px] py-3 rounded-xl active:scale-[0.98] transition-transform">
+                            Print Labels
+                        </button>
+                        <button onclick="openSheet('dispatchOrderSheet')" class="flex-1 bg-primary text-white font-bold text-[14px] py-3 rounded-xl active:scale-[0.98] transition-transform shadow-sm">
+                            Mark Dispatched
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+            
+            <div class="h-6"></div>
+        </main>
+    </div>
+    <div id="fab-container" data-icon="local_shipping" data-action="openSheet('dispatchOrderSheet')"></div>
+    <div id="bottom-nav-container"></div>
+    
+    <div id="sheets-container"></div>
+    
+    <script type="module">
+        import { BottomSheet } from '../js/components/index.js';
+        import { TextInput, SelectInput, TextareaInput } from '../js/components/inputs.js';
+
+        const sheetsContainer = document.getElementById('sheets-container');
+
+        // Dispatch Order
+        const dispatchOrderContent = `
+            ${SelectInput({ label: 'Select Order', id: 'disp-order', options: [{label: 'Select Order...'}, {label: 'ORD-992 (Everlane Corp.)'}, {label: 'ORD-993 (Patagonia)'}] })}
+            ${SelectInput({ label: 'Courier Service', id: 'disp-courier', options: [{label: 'Select Courier...'}, {label: 'BlueDart'}, {label: 'Delhivery'}, {label: 'DHL Express'}] })}
+            ${TextInput({ label: 'LR Number / Tracking ID', id: 'disp-lr', placeholder: 'Enter tracking number' })}
+            <div class="flex gap-4">
+                <div class="flex-1">
+                    ${TextInput({ label: 'Number of Boxes', id: 'disp-boxes', type: 'number', placeholder: '0' })}
+                </div>
+                <div class="flex-1">
+                    ${TextInput({ label: 'Total Weight', id: 'disp-weight', type: 'number', placeholder: 'kg' })}
+                </div>
+            </div>
+            ${TextInput({ label: 'Invoice Number', id: 'disp-invoice', placeholder: 'INV-...' })}
+            
+            <div class="mt-2 flex gap-4 items-center">
+                <div class="flex-1">
+                    <button class="w-full bg-surface-variant text-on-surface font-semibold py-3 rounded-xl border border-outline-variant active:scale-[0.98] transition-transform flex items-center justify-center gap-2">
+                        <span class="material-symbols-outlined text-[18px]">upload_file</span>
+                        Attach LR Copy
+                    </button>
+                </div>
+            </div>
+            
+            ${TextareaInput({ label: 'Notes', id: 'disp-notes', rows: 2 })}
+            <div class="h-10"></div>
+        `;
+        const dispatchOrderFooter = `
+            <button onclick="closeSheet('dispatchOrderSheet')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
+                Confirm Dispatch
+            </button>
+        `;
+
+        // Render Sheets
+        sheetsContainer.innerHTML = [
+            BottomSheet({ id: 'dispatchOrderSheet', title: 'Dispatch Order', content: dispatchOrderContent, footerContent: dispatchOrderFooter })
+        ].join('');
+    </script>
+    
+    <script src="../js/utils/sheet.js"></script>
+    <script src="../js/app.js"></script>
+</body>
+</html>

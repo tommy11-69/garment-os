@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Garment OS - Inventory</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com" rel="preconnect"/>
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+    
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="../js/tailwind.config.js"></script>
+    
+    <link rel="stylesheet" href="../css/layout.css">
+    <link rel="stylesheet" href="../css/typography.css">
+    <link rel="stylesheet" href="../css/utilities.css">
+</head>
+<body class="font-body text-body antialiased bg-background">
+
+    <div id="topbar-container"></div>
+
+    <div class="mobile-wrapper">
+        <main id="main-content-area" class="flex-1 p-md flex flex-col gap-lg">
+            
+            <div class="px-xs pt-sm">
+                <h2 class="text-[28px] leading-tight font-semibold tracking-tight text-on-surface mb-1">Inventory</h2>
+                <div class="flex gap-2">
+                    <span class="px-2 py-0.5 rounded-md text-[12px] font-bold bg-error/10 text-error">2 Low Stock Alerts</span>
+                </div>
+            </div>
+            
+            <!-- Mobile Search & Filter -->
+            <div class="flex gap-2 w-full">
+                <div class="relative flex-1">
+                    <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
+                    <input class="w-full bg-surface-container-lowest border border-outline-variant rounded-2xl py-3 pl-12 pr-4 font-body text-[16px] text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm" placeholder="Search materials..." type="text"/>
+                </div>
+                <button class="w-[50px] h-[50px] rounded-2xl bg-surface-container-lowest border border-outline-variant shadow-sm flex items-center justify-center text-secondary active:bg-surface-variant transition-colors">
+                    <span class="material-symbols-outlined">filter_list</span>
+                </button>
+            </div>
+
+            <!-- Categories Horizontal Scroll -->
+            <div class="flex overflow-x-auto gap-2 pb-2 hide-scrollbar -mx-md px-md">
+                <button class="flex-shrink-0 px-4 py-2 rounded-full bg-on-surface text-surface font-semibold text-[14px]">All Items</button>
+                <button class="flex-shrink-0 px-4 py-2 rounded-full bg-surface-container-lowest border border-outline-variant text-on-surface font-semibold text-[14px]">Fabric</button>
+                <button class="flex-shrink-0 px-4 py-2 rounded-full bg-surface-container-lowest border border-outline-variant text-on-surface font-semibold text-[14px]">Yarn</button>
+                <button class="flex-shrink-0 px-4 py-2 rounded-full bg-surface-container-lowest border border-outline-variant text-on-surface font-semibold text-[14px]">Accessories</button>
+            </div>
+
+            <!-- Inventory Items List -->
+            <div class="flex flex-col gap-sm">
+                
+                <!-- Low Stock Item -->
+                <div class="bg-error-container/30 rounded-[24px] border border-error/20 p-md shadow-sm">
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="flex gap-3 items-center">
+                            <div class="w-10 h-10 rounded-full bg-error/10 text-error flex items-center justify-center">
+                                <span class="material-symbols-outlined text-[20px]">warning</span>
+                            </div>
+                            <div>
+                                <h3 class="text-[16px] font-bold text-on-surface leading-tight">Cotton Jersey 180GSM</h3>
+                                <span class="text-[12px] font-medium text-secondary">Fabric • Black</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center bg-surface/50 rounded-xl p-3">
+                        <div>
+                            <span class="block text-[12px] text-secondary uppercase tracking-wider mb-0.5">Current Stock</span>
+                            <span class="text-[18px] font-bold text-error">45 kgs</span>
+                        </div>
+                        <div class="text-right">
+                            <span class="block text-[12px] text-secondary uppercase tracking-wider mb-0.5">Min Required</span>
+                            <span class="text-[14px] font-semibold text-on-surface">150 kgs</span>
+                        </div>
+                    </div>
+                    <button class="w-full mt-3 py-2.5 rounded-xl bg-error text-white font-bold text-[14px] active:scale-[0.98] transition-transform">
+                        Order Now
+                    </button>
+                </div>
+
+                <!-- Normal Item 1 -->
+                <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant p-md shadow-sm active:scale-[0.99] transition-transform cursor-pointer" onclick="openSheet('itemDetailsSheet')">
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="flex gap-3 items-center">
+                            <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+                                <span class="material-symbols-outlined text-[20px]">texture</span>
+                            </div>
+                            <div>
+                                <h3 class="text-[16px] font-bold text-on-surface leading-tight">French Terry 320GSM</h3>
+                                <span class="text-[12px] font-medium text-secondary">Fabric • Heather Grey</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 mb-3">
+                        <div class="bg-surface-variant p-3 rounded-xl">
+                            <span class="block text-[12px] text-secondary uppercase tracking-wider mb-0.5">Stock</span>
+                            <span class="text-[16px] font-bold text-on-surface">850 kgs</span>
+                        </div>
+                        <div class="bg-surface-variant p-3 rounded-xl">
+                            <span class="block text-[12px] text-secondary uppercase tracking-wider mb-0.5">Location</span>
+                            <span class="text-[16px] font-bold text-on-surface">A-12</span>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center px-1">
+                        <span class="text-[12px] text-secondary">Supplier: Raj Textiles</span>
+                        <span class="text-[12px] text-secondary">Updated Today</span>
+                    </div>
+                </div>
+
+                <!-- Normal Item 2 -->
+                <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant p-md shadow-sm active:scale-[0.99] transition-transform cursor-pointer" onclick="openSheet('itemDetailsSheet')">
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="flex gap-3 items-center">
+                            <div class="w-10 h-10 rounded-full bg-[#5E5CE6]/10 text-[#5E5CE6] flex items-center justify-center">
+                                <span class="material-symbols-outlined text-[20px]">straighten</span>
+                            </div>
+                            <div>
+                                <h3 class="text-[16px] font-bold text-on-surface leading-tight">YKK Zippers 6"</h3>
+                                <span class="text-[12px] font-medium text-secondary">Accessories • Metal</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3 mb-3">
+                        <div class="bg-surface-variant p-3 rounded-xl">
+                            <span class="block text-[12px] text-secondary uppercase tracking-wider mb-0.5">Stock</span>
+                            <span class="text-[16px] font-bold text-on-surface">2,400 pcs</span>
+                        </div>
+                        <div class="bg-surface-variant p-3 rounded-xl">
+                            <span class="block text-[12px] text-secondary uppercase tracking-wider mb-0.5">Location</span>
+                            <span class="text-[16px] font-bold text-on-surface">B-04</span>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center px-1">
+                        <span class="text-[12px] text-secondary">Supplier: YKK India</span>
+                        <span class="text-[12px] text-secondary">Updated Oct 20</span>
+                    </div>
+                </div>
+                
+            </div>
+            
+            <div class="h-6"></div>
+        </main>
+    </div>
+    
+    <div id="fab-container" data-icon="add" data-action="openSheet('stockInSheet')"></div>
+    <div id="bottom-nav-container"></div>
+    
+    <div id="sheets-container"></div>
+    
+    <script type="module">
+        import { BottomSheet, TimelineEvent } from '../js/components/index.js';
+        import { TextInput, SelectInput, TextareaInput } from '../js/components/inputs.js';
+
+        const sheetsContainer = document.getElementById('sheets-container');
+        
+        // Add Stock (Stock In)
+        const stockInContent = `
+            ${SelectInput({ label: 'Item / Material', id: 'in-item', options: [{label: 'Select Item...'}, {label: 'Cotton Jersey 180GSM'}, {label: 'YKK Zippers 6"'}, {label: 'New Item...'}] })}
+            <div class="flex gap-4">
+                <div class="flex-1">
+                    ${TextInput({ label: 'Quantity', id: 'in-qty', type: 'number', placeholder: '0' })}
+                </div>
+                <div class="flex-1">
+                    ${SelectInput({ label: 'Unit', id: 'in-unit', options: [{label: 'kgs'}, {label: 'meters'}, {label: 'pcs'}, {label: 'boxes'}] })}
+                </div>
+            </div>
+            ${SelectInput({ label: 'Supplier', id: 'in-supplier', options: [{label: 'Select Supplier...'}, {label: 'Raj Textiles'}, {label: 'YKK India'}] })}
+            <div class="flex gap-4">
+                <div class="flex-1">
+                    ${TextInput({ label: 'Purchase Price', id: 'in-price', type: 'number', placeholder: '$' })}
+                </div>
+                <div class="flex-1">
+                    ${TextInput({ label: 'Location', id: 'in-loc', placeholder: 'e.g. A-12' })}
+                </div>
+            </div>
+            ${TextareaInput({ label: 'Notes / LR Number', id: 'in-notes', rows: 2 })}
+            <div class="h-10"></div>
+        `;
+        const stockInFooter = `
+            <button onclick="closeSheet('stockInSheet')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
+                Confirm Stock In
+            </button>
+        `;
+
+        // Stock Out
+        const stockOutContent = `
+            ${SelectInput({ label: 'Item / Material', id: 'out-item', options: [{label: 'Select Item...'}, {label: 'Cotton Jersey 180GSM'}, {label: 'YKK Zippers 6"'}] })}
+            <div class="flex gap-4">
+                <div class="flex-1">
+                    ${TextInput({ label: 'Quantity', id: 'out-qty', type: 'number', placeholder: '0' })}
+                </div>
+                <div class="flex-1">
+                    ${TextInput({ label: 'Current Stock', id: 'out-current', value: '1,250 kgs', disabled: true })}
+                </div>
+            </div>
+            ${SelectInput({ label: 'Assign To Order', id: 'out-order', options: [{label: 'None / General Use'}, {label: 'ORD-992 (Everlane Corp.)'}] })}
+            ${TextareaInput({ label: 'Reason / Notes', id: 'out-notes', placeholder: 'Production, sampling, etc.', rows: 2 })}
+            <div class="h-10"></div>
+        `;
+        const stockOutFooter = `
+            <button onclick="closeSheet('stockOutSheet')" class="w-full bg-warning text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
+                Record Stock Out
+            </button>
+        `;
+
+        // Adjust Stock
+        const adjustStockContent = `
+            ${SelectInput({ label: 'Item / Material', id: 'adj-item', options: [{label: 'Cotton Jersey 180GSM', value: '1'}] })}
+            <div class="flex gap-4">
+                <div class="flex-1">
+                    ${TextInput({ label: 'System Stock', id: 'adj-sys', value: '1250', disabled: true })}
+                </div>
+                <div class="flex-1">
+                    ${TextInput({ label: 'Actual Stock', id: 'adj-actual', type: 'number', placeholder: '0' })}
+                </div>
+            </div>
+            ${SelectInput({ label: 'Reason', id: 'adj-reason', options: [{label: 'Audit / Stocktake'}, {label: 'Damaged / Wastage'}, {label: 'Data Error'}] })}
+            ${TextareaInput({ label: 'Notes', id: 'adj-notes', rows: 2 })}
+            <div class="h-10"></div>
+        `;
+        const adjustStockFooter = `
+            <button onclick="closeSheet('adjustStockSheet')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
+                Update Stock Level
+            </button>
+        `;
+
+        // Transfer Stock
+        const transferStockContent = `
+            ${SelectInput({ label: 'Item / Material', id: 'tr-item', options: [{label: 'Cotton Jersey 180GSM'}] })}
+            ${TextInput({ label: 'Quantity to Transfer', id: 'tr-qty', type: 'number', placeholder: '0' })}
+            <div class="flex gap-4">
+                <div class="flex-1">
+                    ${TextInput({ label: 'From Location', id: 'tr-from', value: 'A-12', disabled: true })}
+                </div>
+                <div class="flex-1">
+                    ${TextInput({ label: 'To Location', id: 'tr-to', placeholder: 'e.g. B-04' })}
+                </div>
+            </div>
+            <div class="h-10"></div>
+        `;
+        const transferStockFooter = `
+            <button onclick="closeSheet('transferStockSheet')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
+                Transfer
+            </button>
+        `;
+
+        // Item Details Header & Content
+        const itemDetailsHeader = `
+        <div class="px-lg pb-md flex justify-between items-start border-b border-outline-variant/30">
+            <div>
+                <span class="text-[13px] font-bold text-secondary mb-1 block">Fabric • Knits</span>
+                <h2 class="text-[22px] font-bold text-on-surface leading-tight">Cotton Jersey 180GSM</h2>
+                <div class="flex gap-2 mt-2">
+                    <span class="inline-block px-3 py-1 rounded-full text-[12px] font-medium bg-error-container/30 text-error">Low Stock</span>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="closeSheet('itemDetailsSheet')" class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-secondary active:scale-95 transition-transform">
+                    <span class="material-symbols-outlined text-[20px]">close</span>
+                </button>
+            </div>
+        </div>`;
+        const itemDetailsContent = `
+            <div class="grid grid-cols-2 gap-3">
+                <div class="bg-surface-container-lowest p-4 rounded-[20px] border border-outline-variant shadow-sm">
+                    <span class="text-[12px] font-semibold text-secondary uppercase tracking-wider mb-1 block">Current Stock</span>
+                    <span class="text-[20px] font-bold text-on-surface">1,250 <span class="text-[14px] text-secondary font-medium">kgs</span></span>
+                </div>
+                <div class="bg-surface-container-lowest p-4 rounded-[20px] border border-outline-variant shadow-sm">
+                    <span class="text-[12px] font-semibold text-secondary uppercase tracking-wider mb-1 block">Location</span>
+                    <span class="text-[20px] font-bold text-on-surface">A-12</span>
+                </div>
+            </div>
+
+            <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-sm p-lg">
+                <h3 class="text-[16px] font-bold text-on-surface mb-4">Stock History</h3>
+                <div class="relative border-l-2 border-outline-variant ml-3 space-y-6">
+                    ${TimelineEvent({ title: 'Stock Out: 250 kgs', subtitle: 'Assigned to ORD-992', time: 'Oct 22, 10:30 AM', isCompleted: true })}
+                    ${TimelineEvent({ title: 'Stock In: 1,500 kgs', subtitle: 'Received from Raj Textiles', time: 'Oct 15, 02:15 PM', isCompleted: true })}
+                </div>
+            </div>
+            <div class="h-10"></div>
+        `;
+        const itemDetailsFooter = `
+            <button onclick="openSheet('stockOutSheet')" class="flex-1 bg-surface-container-high text-on-surface font-bold text-[15px] py-3.5 rounded-2xl active:scale-[0.98] transition-transform">
+                Stock Out
+            </button>
+            <button onclick="openSheet('adjustStockSheet')" class="flex-1 bg-surface-container-high text-on-surface font-bold text-[15px] py-3.5 rounded-2xl active:scale-[0.98] transition-transform">
+                Adjust
+            </button>
+            <button onclick="openSheet('stockInSheet')" class="flex-1 bg-primary text-on-primary font-bold text-[15px] py-3.5 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
+                Stock In
+            </button>
+        `;
+
+        // Render Sheets
+        sheetsContainer.innerHTML = [
+            BottomSheet({ id: 'stockInSheet', title: 'Stock In', content: stockInContent, footerContent: stockInFooter }),
+            BottomSheet({ id: 'stockOutSheet', title: 'Stock Out', content: stockOutContent, footerContent: stockOutFooter }),
+            BottomSheet({ id: 'adjustStockSheet', title: 'Adjust Stock Level', content: adjustStockContent, footerContent: adjustStockFooter }),
+            BottomSheet({ id: 'transferStockSheet', title: 'Transfer Location', content: transferStockContent, footerContent: transferStockFooter }),
+            BottomSheet({ id: 'itemDetailsSheet', customHeader: itemDetailsHeader, content: itemDetailsContent, footerContent: itemDetailsFooter, height: '90vh' })
+        ].join('');
+    </script>
+
+    <script src="../js/utils/sheet.js"></script>
+    <script src="../js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Garment OS - Finance</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com" rel="preconnect"/>
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+    
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="../js/tailwind.config.js"></script>
+    
+    <link rel="stylesheet" href="../css/layout.css">
+    <link rel="stylesheet" href="../css/typography.css">
+    <link rel="stylesheet" href="../css/utilities.css">
+</head>
+<body class="font-body text-body antialiased bg-background">
+
+    <div id="topbar-container"></div>
+
+    <div class="mobile-wrapper">
+        <main id="main-content-area" class="flex-1 p-md flex flex-col gap-lg">
+            
+            <div class="px-xs pt-sm">
+                <h2 class="text-[28px] leading-tight font-semibold tracking-tight text-on-surface mb-1">Finance</h2>
+                <p class="text-[15px] text-secondary">October 2026 Overview</p>
+            </div>
+            
+            <!-- Cash Flow Summary Card -->
+            <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant p-lg shadow-sm">
+                <p class="text-[13px] font-semibold text-secondary uppercase tracking-wider mb-2">Net Cash Flow</p>
+                <div class="text-[36px] font-bold tracking-tight text-on-surface mb-6">$124,500.00</div>
+                
+                <div class="grid grid-cols-2 gap-4 pt-4 border-t border-outline-variant/30">
+                    <div>
+                        <div class="flex items-center gap-1.5 mb-1">
+                            <div class="w-2 h-2 rounded-full bg-[#008A00]"></div>
+                            <span class="text-[13px] text-secondary">Income</span>
+                        </div>
+                        <span class="text-[18px] font-bold text-on-surface">$245,200</span>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-1.5 mb-1">
+                            <div class="w-2 h-2 rounded-full bg-error"></div>
+                            <span class="text-[13px] text-secondary">Expenses</span>
+                        </div>
+                        <span class="text-[18px] font-bold text-on-surface">$120,700</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Action Buttons -->
+            <div class="flex gap-3">
+                <button class="flex-1 py-3 rounded-[16px] bg-primary/10 text-primary font-bold text-[14px] flex flex-col items-center gap-1 active:bg-primary/20 transition-colors">
+                    <span class="material-symbols-outlined text-[20px]">call_received</span>
+                    Record In
+                </button>
+                <button class="flex-1 py-3 rounded-[16px] bg-error/10 text-error font-bold text-[14px] flex flex-col items-center gap-1 active:bg-error/20 transition-colors">
+                    <span class="material-symbols-outlined text-[20px]">call_made</span>
+                    Record Out
+                </button>
+            </div>
+
+            <!-- Pending Payments -->
+            <div class="flex flex-col gap-sm">
+                <h3 class="font-section-title text-[18px] text-on-surface px-xs">Pending (To Collect)</h3>
+                <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-sm overflow-hidden flex flex-col divide-y divide-outline-variant/50">
+                    <div class="p-md flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-surface-variant flex items-center justify-center text-on-surface-variant font-bold">A</div>
+                            <div>
+                                <h4 class="text-[15px] font-bold text-on-surface">Aethereal Collective</h4>
+                                <p class="text-[12px] text-error font-medium">Overdue by 5 days</p>
+                            </div>
+                        </div>
+                        <span class="text-[16px] font-bold text-on-surface">$12,400</span>
+                    </div>
+                    <div class="p-md flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-surface-variant flex items-center justify-center text-on-surface-variant font-bold">N</div>
+                            <div>
+                                <h4 class="text-[15px] font-bold text-on-surface">Nomad Gear Inc.</h4>
+                                <p class="text-[12px] text-secondary font-medium">Due in 14 days</p>
+                            </div>
+                        </div>
+                        <span class="text-[16px] font-bold text-on-surface">$8,950</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Transactions -->
+            <div class="flex flex-col gap-sm">
+                <div class="flex items-center justify-between px-xs">
+                    <h3 class="font-section-title text-[18px] text-on-surface">Recent Transactions</h3>
+                    <button class="text-[14px] font-bold text-primary active:opacity-70">See All</button>
+                </div>
+                
+                <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-sm overflow-hidden flex flex-col divide-y divide-outline-variant/50">
+                    
+                    <div class="p-md border-b border-outline-variant/30 flex justify-between items-center active:scale-[0.99] transition-transform cursor-pointer" onclick="openSheet('transactionDetailsSheet')">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-error/10 text-error flex items-center justify-center">
+                                <span class="material-symbols-outlined text-[20px]">store</span>
+                            </div>
+                            <div>
+                                <h4 class="text-[15px] font-bold text-on-surface leading-tight">Yarn Suppliers Ltd</h4>
+                                <span class="text-[12px] text-secondary">Supplier Payment • Oct 26</span>
+                            </div>
+                        </div>
+                        <span class="text-[15px] font-bold text-on-surface">-$4,200.00</span>
+                    </div>
+
+                    <div class="p-md flex justify-between items-center active:scale-[0.99] transition-transform cursor-pointer" onclick="openSheet('transactionDetailsSheet')">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-[#008A00]/10 text-[#008A00] flex items-center justify-center">
+                                <span class="material-symbols-outlined text-[20px]">account_balance_wallet</span>
+                            </div>
+                            <div>
+                                <h4 class="text-[15px] font-bold text-on-surface leading-tight">Everlane Corp.</h4>
+                                <span class="text-[12px] text-secondary">Advance Payment • Oct 25</span>
+                            </div>
+                        </div>
+                        <span class="text-[15px] font-bold text-[#008A00]">+$25,000.00</span>
+                    </div>
+                    
+                    <div class="p-md flex justify-between items-center active:scale-[0.99] transition-transform cursor-pointer" onclick="openSheet('transactionDetailsSheet')">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-error/10 text-error flex items-center justify-center">
+                                <span class="material-symbols-outlined text-[20px]">electric_bolt</span>
+                            </div>
+                            <div>
+                                <h4 class="text-[15px] font-bold text-on-surface leading-tight">Utility Bill</h4>
+                                <span class="text-[12px] text-secondary">Electricity • Oct 24</span>
+                            </div>
+                        </div>
+                        <span class="text-[15px] font-bold text-on-surface">-$1,850.50</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="h-6"></div>
+        </main>
+    </div>
+    
+    <div id="fab-container" data-icon="receipt_long" data-action="openSheet('addTransactionSheet')"></div>
+    <div id="bottom-nav-container"></div>
+    
+    <div id="sheets-container"></div>
+    
+    <script type="module">
+        import { BottomSheet } from '../js/components/index.js';
+        import { TextInput, SelectInput, TextareaInput, SegmentedControl } from '../js/components/inputs.js';
+
+        const sheetsContainer = document.getElementById('sheets-container');
+        
+        // Add Transaction
+        const addTransactionContent = `
+            <div class="mb-2">
+                ${SegmentedControl({ id: 'trans-type', options: [{label: 'Income', id: 'income'}, {label: 'Expense', id: 'expense'}], activeOption: 'income' })}
+            </div>
+            <div class="flex gap-4">
+                <div class="flex-1">
+                    ${TextInput({ label: 'Amount', id: 'trans-amount', type: 'number', placeholder: '$0.00', required: true })}
+                </div>
+                <div class="flex-1">
+                    ${TextInput({ label: 'Date', id: 'trans-date', type: 'date', required: true })}
+                </div>
+            </div>
+            ${SelectInput({ label: 'Category', id: 'trans-category', options: [{label: 'Advance Payment'}, {label: 'Final Payment'}, {label: 'Sales'}, {label: 'Other Income'}] })}
+            ${SelectInput({ label: 'Payment Mode', id: 'trans-mode', options: [{label: 'Bank Transfer'}, {label: 'Cash'}, {label: 'Cheque'}, {label: 'UPI'}] })}
+            ${TextInput({ label: 'Party / Reference', id: 'trans-party', placeholder: 'e.g. Everlane Corp.' })}
+            ${TextareaInput({ label: 'Notes', id: 'trans-notes', rows: 2 })}
+            <div class="h-10"></div>
+        `;
+        const addTransactionFooter = `
+            <button onclick="closeSheet('addTransactionSheet')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
+                Save Transaction
+            </button>
+        `;
+
+        // Transfer Funds
+        const transferFundsContent = `
+            <div class="flex gap-4">
+                <div class="flex-1">
+                    ${SelectInput({ label: 'From Account', id: 'tr-from', options: [{label: 'Main Bank Account'}] })}
+                </div>
+                <div class="flex-1">
+                    ${SelectInput({ label: 'To Account', id: 'tr-to', options: [{label: 'Petty Cash'}] })}
+                </div>
+            </div>
+            ${TextInput({ label: 'Amount', id: 'tr-amount', type: 'number', placeholder: '$0.00', required: true })}
+            ${TextInput({ label: 'Date', id: 'tr-date', type: 'date', required: true })}
+            ${TextareaInput({ label: 'Notes', id: 'tr-notes', rows: 2 })}
+            <div class="h-10"></div>
+        `;
+        const transferFundsFooter = `
+            <button onclick="closeSheet('transferFundsSheet')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
+                Transfer
+            </button>
+        `;
+
+        // Transaction Details
+        const transactionDetailsHeader = `
+        <div class="px-lg pb-md flex justify-between items-start border-b border-outline-variant/30">
+            <div>
+                <span class="text-[13px] font-bold text-secondary mb-1 block">Advance Payment • Oct 25</span>
+                <h2 class="text-[22px] font-bold text-on-surface leading-tight">Everlane Corp.</h2>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="closeSheet('transactionDetailsSheet')" class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-secondary active:scale-95 transition-transform">
+                    <span class="material-symbols-outlined text-[20px]">close</span>
+                </button>
+            </div>
+        </div>`;
+        const transactionDetailsContent = `
+            <div class="bg-surface-container-lowest p-6 rounded-[24px] border border-outline-variant shadow-sm text-center mb-2">
+                <span class="text-[32px] font-bold text-success">+$25,000.00</span>
+                <span class="block text-[14px] text-secondary mt-1">Bank Transfer (Ref: TXN-88192)</span>
+            </div>
+            <div class="flex flex-col gap-4 p-4">
+                <div class="flex justify-between border-b border-outline-variant/30 pb-3">
+                    <span class="text-secondary text-[14px]">Category</span>
+                    <span class="text-on-surface font-semibold text-[15px]">Advance Payment</span>
+                </div>
+                <div class="flex justify-between border-b border-outline-variant/30 pb-3">
+                    <span class="text-secondary text-[14px]">Associated Order</span>
+                    <span class="text-primary font-semibold text-[15px]">ORD-992</span>
+                </div>
+                <div class="flex justify-between border-b border-outline-variant/30 pb-3">
+                    <span class="text-secondary text-[14px]">Date</span>
+                    <span class="text-on-surface font-semibold text-[15px]">Oct 25, 2026</span>
+                </div>
+                <div class="flex flex-col gap-1 pt-2">
+                    <span class="text-secondary text-[14px]">Notes</span>
+                    <span class="text-on-surface text-[15px]">First 50% advance for the SS24-TS-01 production run.</span>
+                </div>
+            </div>
+            <div class="h-10"></div>
+        `;
+        const transactionDetailsFooter = `
+            <button class="flex-1 bg-surface-container-high text-on-surface font-bold text-[15px] py-3.5 rounded-2xl active:scale-[0.98] transition-transform">
+                Download Receipt
+            </button>
+            <button class="flex-1 bg-error-container/30 text-error font-bold text-[15px] py-3.5 rounded-2xl active:scale-[0.98] transition-transform">
+                Reverse Transaction
+            </button>
+        `;
+
+        // Render Sheets
+        sheetsContainer.innerHTML = [
+            BottomSheet({ id: 'addTransactionSheet', title: 'New Transaction', content: addTransactionContent, footerContent: addTransactionFooter }),
+            BottomSheet({ id: 'transferFundsSheet', title: 'Transfer Funds', content: transferFundsContent, footerContent: transferFundsFooter }),
+            BottomSheet({ id: 'transactionDetailsSheet', customHeader: transactionDetailsHeader, content: transactionDetailsContent, footerContent: transactionDetailsFooter, height: '90vh' })
+        ].join('');
+    </script>
+
+    <script src="../js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Cost Calculator - Garment OS</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com" rel="preconnect"/>
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+    
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="../js/tailwind.config.js"></script>
+    
+    <link rel="stylesheet" href="../css/layout.css">
+    <link rel="stylesheet" href="../css/typography.css">
+    <link rel="stylesheet" href="../css/utilities.css">
+
+    <link rel="stylesheet" href="../css/calculator.css">
+</head>
+<body class="font-body text-body antialiased pb-[120px] bg-background"> <!-- extra padding for floating results -->
+
+    <div id="topbar-container"></div>
+
+    <div class="mobile-wrapper" style="padding-bottom: 240px;">
+        <main id="main-content-area" class="flex-1 p-md flex flex-col gap-lg">
+            
+            <div class="px-xs pt-sm">
+                <h2 class="text-[28px] leading-tight font-semibold tracking-tight text-on-surface mb-1">Costing</h2>
+                <p class="text-[15px] text-secondary">Style #SS24-TS-01</p>
+            </div>
+            
+            <div class="flex flex-col gap-sm">
+                
+                <!-- Fabric Section (Expanded by default) -->
+                <details class="bg-surface-container-lowest border border-outline-variant rounded-[24px] shadow-sm overflow-hidden" open>
+                    <summary class="flex justify-between items-center p-md cursor-pointer outline-none select-none">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-surface-variant text-on-surface flex items-center justify-center">
+                                <span class="material-symbols-outlined text-[20px]">layers</span>
+                            </div>
+                            <h3 class="text-[17px] font-semibold text-on-surface">Fabric Costs</h3>
+                        </div>
+                        <span class="material-symbols-outlined text-secondary expand-icon transition-transform duration-200">expand_more</span>
+                    </summary>
+                    <div class="p-md pt-0 border-t border-outline-variant/30 flex flex-col gap-4 mt-2">
+                        <div>
+                            <label class="block text-[14px] font-medium text-on-surface-variant mb-1.5">Main Body (Cotton Jersey)</label>
+                            <div class="relative">
+                                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">$</span>
+                                <input type="number" value="4.50" class="w-full h-12 bg-surface pl-8 pr-12 rounded-xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary text-[16px] text-on-surface font-semibold">
+                                <span class="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-[14px]">/ yd</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[14px] font-medium text-on-surface-variant mb-1.5">Consumption</label>
+                            <div class="relative">
+                                <input type="number" value="1.2" class="w-full h-12 bg-surface pl-4 pr-12 rounded-xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary text-[16px] text-on-surface font-semibold">
+                                <span class="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-[14px]">yds</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[14px] font-medium text-on-surface-variant mb-1.5">Wastage Buffer</label>
+                            <div class="relative">
+                                <input type="number" value="5" class="w-full h-12 bg-surface pl-4 pr-12 rounded-xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary text-[16px] text-on-surface font-semibold">
+                                <span class="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-[14px]">%</span>
+                            </div>
+                        </div>
+                    </div>
+                </details>
+
+                <!-- Printing Section -->
+                <details class="bg-surface-container-lowest border border-outline-variant rounded-[24px] shadow-sm overflow-hidden">
+                    <summary class="flex justify-between items-center p-md cursor-pointer outline-none select-none">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-surface-variant text-on-surface flex items-center justify-center">
+                                <span class="material-symbols-outlined text-[20px]">format_paint</span>
+                            </div>
+                            <h3 class="text-[17px] font-semibold text-on-surface">Printing & Treatments</h3>
+                        </div>
+                        <span class="material-symbols-outlined text-secondary expand-icon transition-transform duration-200">expand_more</span>
+                    </summary>
+                    <div class="p-md pt-0 border-t border-outline-variant/30 flex flex-col gap-4 mt-2">
+                        <div>
+                            <label class="block text-[14px] font-medium text-on-surface-variant mb-1.5">Screen Print (Front)</label>
+                            <div class="relative">
+                                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">$</span>
+                                <input type="number" value="2.50" class="w-full h-12 bg-surface pl-8 pr-4 rounded-xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary text-[16px] text-on-surface font-semibold">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[14px] font-medium text-on-surface-variant mb-1.5">Setup Amortization</label>
+                            <div class="relative">
+                                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">$</span>
+                                <input type="number" value="0.50" class="w-full h-12 bg-surface pl-8 pr-4 rounded-xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary text-[16px] text-on-surface font-semibold">
+                            </div>
+                        </div>
+                    </div>
+                </details>
+
+                <!-- Labour Section -->
+                <details class="bg-surface-container-lowest border border-outline-variant rounded-[24px] shadow-sm overflow-hidden">
+                    <summary class="flex justify-between items-center p-md cursor-pointer outline-none select-none">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-surface-variant text-on-surface flex items-center justify-center">
+                                <span class="material-symbols-outlined text-[20px]">engineering</span>
+                            </div>
+                            <h3 class="text-[17px] font-semibold text-on-surface">Labour (CMT)</h3>
+                        </div>
+                        <span class="material-symbols-outlined text-secondary expand-icon transition-transform duration-200">expand_more</span>
+                    </summary>
+                    <div class="p-md pt-0 border-t border-outline-variant/30 flex flex-col gap-4 mt-2">
+                        <div>
+                            <label class="block text-[14px] font-medium text-on-surface-variant mb-1.5">Cut & Sew Cost</label>
+                            <div class="relative">
+                                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">$</span>
+                                <input type="number" value="8.00" class="w-full h-12 bg-surface pl-8 pr-4 rounded-xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary text-[16px] text-on-surface font-semibold">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[14px] font-medium text-on-surface-variant mb-1.5">Quality Control</label>
+                            <div class="relative">
+                                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">$</span>
+                                <input type="number" value="1.25" class="w-full h-12 bg-surface pl-8 pr-4 rounded-xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary text-[16px] text-on-surface font-semibold">
+                            </div>
+                        </div>
+                    </div>
+                </details>
+
+                <!-- Packaging Section -->
+                <details class="bg-surface-container-lowest border border-outline-variant rounded-[24px] shadow-sm overflow-hidden">
+                    <summary class="flex justify-between items-center p-md cursor-pointer outline-none select-none">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-surface-variant text-on-surface flex items-center justify-center">
+                                <span class="material-symbols-outlined text-[20px]">inventory_2</span>
+                            </div>
+                            <h3 class="text-[17px] font-semibold text-on-surface">Packaging & Trims</h3>
+                        </div>
+                        <span class="material-symbols-outlined text-secondary expand-icon transition-transform duration-200">expand_more</span>
+                    </summary>
+                    <div class="p-md pt-0 border-t border-outline-variant/30 flex flex-col gap-4 mt-2">
+                        <div>
+                            <label class="block text-[14px] font-medium text-on-surface-variant mb-1.5">Labels & Hangtags</label>
+                            <div class="relative">
+                                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">$</span>
+                                <input type="number" value="0.85" class="w-full h-12 bg-surface pl-8 pr-4 rounded-xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary text-[16px] text-on-surface font-semibold">
+                            </div>
+                        </div>
+                    </div>
+                </details>
+            </div>
+            
+        </main>
+    </div>
+    
+    <!-- Sticky Results Card -->
+    <div class="floating-results p-sm">
+        <div class="bg-surface/90 backdrop-blur-xl border border-outline-variant rounded-[28px] shadow-lg p-md">
+            <div class="flex justify-between items-center mb-3">
+                <span class="text-[15px] font-medium text-secondary">Total Unit Cost</span>
+                <span class="text-[24px] font-bold text-on-surface">$22.10</span>
+            </div>
+            <div class="flex justify-between items-center mb-4">
+                <span class="text-[15px] font-medium text-secondary">Retail Price</span>
+                <span class="text-[20px] font-bold text-primary">$34.50</span>
+            </div>
+            <div class="flex gap-3">
+                <button onclick="openSheet('saveCostSheet')" class="flex-1 bg-surface-container-high text-on-surface font-semibold py-3.5 rounded-2xl active:bg-surface-variant transition-colors">
+                    Save Draft
+                </button>
+                <button class="flex-1 bg-primary text-on-primary font-semibold py-3.5 rounded-2xl active:scale-95 transition-transform shadow-sm flex items-center justify-center gap-2">
+                    <span class="material-symbols-outlined text-[20px]">calculate</span>
+                    Calculate
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="bottom-nav-container"></div>
+    
+    <div id="sheets-container"></div>
+    
+    <script type="module">
+        import { BottomSheet } from '../js/components/index.js';
+        import { TextInput, SelectInput, TextareaInput } from '../js/components/inputs.js';
+
+        const sheetsContainer = document.getElementById('sheets-container');
+
+        // Save Cost Sheet
+        const saveCostContent = `
+            ${TextInput({ label: 'Style Name / Reference', id: 'save-style', placeholder: 'e.g. SS24-TS-01' })}
+            ${SelectInput({ label: 'Client / Brand (Optional)', id: 'save-client', options: [{label: 'Select Client...'}, {label: 'Everlane Corp.'}] })}
+            ${TextareaInput({ label: 'Notes', id: 'save-notes', rows: 2 })}
+            <div class="h-10"></div>
+        `;
+        const saveCostFooter = `
+            <button onclick="closeSheet('saveCostSheet')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
+                Save Costing
+            </button>
+        `;
+        
+        // Load Cost Sheet
+        const loadCostContent = `
+            ${SelectInput({ label: 'Saved Costings', id: 'load-style', options: [{label: 'SS24-TS-01 (Everlane Corp.)'}, {label: 'AW25-JK-02 (Patagonia)'}] })}
+            <div class="h-10"></div>
+        `;
+        const loadCostFooter = `
+            <button onclick="closeSheet('loadCostSheet')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
+                Load Data
+            </button>
+        `;
+
+        // Render Sheets
+        sheetsContainer.innerHTML = [
+            BottomSheet({ id: 'saveCostSheet', title: 'Save Costing Draft', content: saveCostContent, footerContent: saveCostFooter }),
+            BottomSheet({ id: 'loadCostSheet', title: 'Load Saved Costing', content: loadCostContent, footerContent: loadCostFooter })
+        ].join('');
+    </script>
+    
+    <script src="../js/utils/sheet.js"></script>
+    <script src="../js/app.js"></script>
+</body>
+</html>

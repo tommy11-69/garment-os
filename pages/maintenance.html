@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en" class="light">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <meta name="description" content="Garment OS is under maintenance"/>
+    <title>Under Maintenance — Garment OS</title>
+
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com" rel="preconnect"/>
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="../js/tailwind.config.js"></script>
+
+    <style>
+        body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; background-color: #F5F5F7; }
+        @keyframes rotate-slow {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        @keyframes rotate-reverse {
+            from { transform: rotate(360deg); }
+            to { transform: rotate(0deg); }
+        }
+        .gear-1 { animation: rotate-slow 8s linear infinite; transform-origin: 82px 60px; }
+        .gear-2 { animation: rotate-reverse 6s linear infinite; transform-origin: 118px 90px; }
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #0059B5, #0071E3);
+            border-radius: 999px;
+            animation: progress-load 3s ease-in-out infinite;
+        }
+        @keyframes progress-load {
+            0% { width: 0%; }
+            70% { width: 85%; }
+            100% { width: 85%; }
+        }
+        .status-dot {
+            width: 8px; height: 8px; border-radius: 50%;
+            background: #FF9F0A;
+            animation: blink 2s ease-in-out infinite;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-6">
+    <div class="max-w-[440px] w-full text-center">
+
+        <!-- SVG Illustration with animated gears -->
+        <div class="mb-8 mx-auto w-fit">
+            <svg width="200" height="160" viewBox="0 0 200 160" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="100" cy="90" r="70" fill="#EAE7EA"/>
+                <!-- Gear 1 (large) -->
+                <g class="gear-1">
+                    <path d="M82 38 L86 44 L78 52 L72 48 L66 54 L70 62 L62 68 L56 64 L52 72 L60 76 L60 86 L52 90 L56 98 L64 96 L70 104 L64 110 L70 116 L76 112 L84 118 L82 126" stroke="#0059B5" stroke-width="3" stroke-linecap="round" fill="none"/>
+                    <circle cx="82" cy="60" r="16" fill="white" stroke="#0059B5" stroke-width="3"/>
+                    <circle cx="82" cy="60" r="6" fill="#0059B5"/>
+                </g>
+                <!-- Gear 2 (small) -->
+                <g class="gear-2">
+                    <circle cx="118" cy="90" r="14" fill="white" stroke="#ABC7FF" stroke-width="3"/>
+                    <circle cx="118" cy="90" r="5" fill="#ABC7FF"/>
+                    <!-- Teeth simplified -->
+                    <rect x="115" y="73" width="6" height="8" rx="2" fill="#ABC7FF"/>
+                    <rect x="115" y="99" width="6" height="8" rx="2" fill="#ABC7FF"/>
+                    <rect x="101" y="87" width="8" height="6" rx="2" fill="#ABC7FF"/>
+                    <rect x="127" y="87" width="8" height="6" rx="2" fill="#ABC7FF"/>
+                </g>
+                <!-- Wrench -->
+                <path d="M130 45 L150 70" stroke="#5E5E63" stroke-width="4" stroke-linecap="round"/>
+                <circle cx="127" cy="43" r="8" fill="none" stroke="#5E5E63" stroke-width="3"/>
+                <!-- Decorative dots -->
+                <circle cx="40" cy="55" r="4" fill="#C1C6D6"/>
+                <circle cx="168" cy="110" r="3" fill="#C1C6D6"/>
+                <circle cx="155" cy="45" r="2.5" fill="#ABC7FF"/>
+            </svg>
+        </div>
+
+        <!-- Brand -->
+        <div class="flex items-center justify-center gap-2 mb-6">
+            <div class="w-6 h-6 rounded-md bg-primary flex items-center justify-center">
+                <span class="material-symbols-outlined text-white text-[14px]" style="font-variation-settings:'FILL' 1;">precision_manufacturing</span>
+            </div>
+            <span class="text-[16px] font-bold text-on-surface">Garment OS</span>
+        </div>
+
+        <div class="flex items-center justify-center gap-2 mb-3">
+            <div class="status-dot"></div>
+            <span class="text-[13px] font-semibold text-[#FF9F0A] uppercase tracking-wider">Under Maintenance</span>
+        </div>
+
+        <h1 class="text-[28px] font-bold text-on-surface mb-3 tracking-tight">We'll Be Right Back</h1>
+        <p class="text-[16px] text-secondary leading-relaxed mb-8">
+            We're upgrading Garment OS to serve you better. The system will be back online shortly.
+        </p>
+
+        <!-- Progress bar -->
+        <div class="bg-white rounded-2xl border border-outline-variant p-5 mb-6 text-left">
+            <div class="flex justify-between items-center mb-3">
+                <span class="text-[14px] font-semibold text-on-surface">Upgrade Progress</span>
+                <span class="text-[14px] font-bold text-primary">85%</span>
+            </div>
+            <div class="w-full h-2 bg-surface-variant rounded-full overflow-hidden">
+                <div class="progress-bar-fill"></div>
+            </div>
+            <p class="text-[12px] text-secondary mt-3">Database migration in progress. Almost done!</p>
+        </div>
+
+        <!-- Estimated time -->
+        <div class="bg-white rounded-2xl border border-outline-variant p-5 mb-6">
+            <div class="grid grid-cols-3 gap-4 text-center">
+                <div>
+                    <div class="text-[28px] font-bold text-on-surface" id="hours">00</div>
+                    <div class="text-[12px] text-secondary font-medium">Hours</div>
+                </div>
+                <div>
+                    <div class="text-[28px] font-bold text-on-surface" id="minutes">30</div>
+                    <div class="text-[12px] text-secondary font-medium">Minutes</div>
+                </div>
+                <div>
+                    <div class="text-[28px] font-bold text-on-surface" id="seconds">00</div>
+                    <div class="text-[12px] text-secondary font-medium">Seconds</div>
+                </div>
+            </div>
+            <p class="text-[12px] text-secondary text-center mt-3">Estimated time remaining</p>
+        </div>
+
+        <p class="text-[13px] text-secondary">
+            Questions? Email us at 
+            <a href="mailto:support@garmentos.com" class="text-primary font-semibold hover:underline">support@garmentos.com</a>
+        </p>
+    </div>
+
+    <script>
+        // Countdown timer (30 minutes demo)
+        let totalSeconds = 30 * 60;
+        function updateTimer() {
+            const h = Math.floor(totalSeconds / 3600);
+            const m = Math.floor((totalSeconds % 3600) / 60);
+            const s = totalSeconds % 60;
+            document.getElementById('hours').textContent = String(h).padStart(2, '0');
+            document.getElementById('minutes').textContent = String(m).padStart(2, '0');
+            document.getElementById('seconds').textContent = String(s).padStart(2, '0');
+            if (totalSeconds > 0) totalSeconds--;
+        }
+        updateTimer();
+        setInterval(updateTimer, 1000);
+    </script>
+</body>
+</html>

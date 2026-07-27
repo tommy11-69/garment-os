@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Garment OS - Customers</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com" rel="preconnect"/>
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+    
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="../js/tailwind.config.js"></script>
+    
+    <link rel="stylesheet" href="../css/layout.css">
+    <link rel="stylesheet" href="../css/typography.css">
+    <link rel="stylesheet" href="../css/utilities.css">
+</head>
+<body class="font-body text-body antialiased">
+
+    <div id="topbar-container"></div>
+
+    <div class="mobile-wrapper">
+        <main id="main-content-area" class="flex-1 p-md flex flex-col gap-lg">
+            
+            <div class="px-xs pt-sm">
+                <h2 class="text-[28px] leading-tight font-semibold tracking-tight text-on-surface mb-1">Customers</h2>
+                <p class="text-body text-secondary">24 Active Partners</p>
+            </div>
+            
+            <!-- Mobile Search & Filter -->
+            <div class="flex gap-2 w-full">
+                <div class="relative flex-1">
+                    <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
+                    <input class="w-full bg-surface-container-lowest border border-outline-variant rounded-2xl py-3 pl-12 pr-4 font-body text-[16px] text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm" placeholder="Search..." type="text"/>
+                </div>
+                <button class="w-[50px] h-[50px] rounded-2xl bg-surface-container-lowest border border-outline-variant shadow-sm flex items-center justify-center text-secondary active:bg-surface-variant transition-colors">
+                    <span class="material-symbols-outlined">tune</span>
+                </button>
+            </div>
+
+            <!-- Customer Cards List -->
+            <div class="flex flex-col gap-md">
+                
+                <!-- Customer Card 1 (Click opens details sheet) -->
+                <div onclick="openSheet('customerDetailsSheet')" class="bg-surface-container-lowest rounded-[24px] border border-outline-variant p-md shadow-sm active:bg-surface-variant transition-colors flex items-start gap-4 cursor-pointer">
+                    <div class="w-[60px] h-[60px] rounded-full overflow-hidden border border-outline-variant/30 flex-shrink-0">
+                        <img class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDjsQrnDGH6EpdDe4Jzpub5fpI9paxS1qSAF-0EYDdMRn-40Zfp1H4ivFc2T7cTj7HS3uZnWtjlCmyhcGKN0KHS3HNaNzMWa9yB-DqA66rQK9arPwIXmP6fDsjao2TRWu0oBpTuJXOMi1KOYpAZUIu7lItqa1jt8lggfNjZcOdLiLUjAY1Pzb1YSCbv0Mv1uuofmOTAuRcPT0in4vDp1x6znmYUJiKEFUrz6dxdh7LMj1KSq02cN5HiRB1n2brh4gxTAT1U9qJlUa8Q" alt="Eleanor Vance"/>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex justify-between items-start mb-1">
+                            <h3 class="text-[17px] font-bold text-on-surface truncate pr-2">Aethereal Collective</h3>
+                            <span class="material-symbols-outlined text-secondary hover:text-primary p-1">chevron_right</span>
+                        </div>
+                        <p class="text-[14px] text-secondary font-medium mb-3 truncate">Eleanor Vance</p>
+                        
+                        <div class="flex gap-4">
+                            <div class="flex flex-col">
+                                <span class="text-[11px] text-secondary font-medium uppercase tracking-wider">Orders</span>
+                                <span class="text-[15px] font-bold text-on-surface">12</span>
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="text-[11px] text-secondary font-medium uppercase tracking-wider">LTV</span>
+                                <span class="text-[15px] font-bold text-primary">$145K</span>
+                            </div>
+                            <div class="flex flex-col ml-auto justify-end">
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-primary-container text-on-primary-container">Active</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Customer Card 2 -->
+                <div onclick="openSheet('customerDetailsSheet')" class="bg-surface-container-lowest rounded-[24px] border border-outline-variant p-md shadow-sm active:bg-surface-variant transition-colors flex items-start gap-4 cursor-pointer">
+                    <div class="w-[60px] h-[60px] rounded-full overflow-hidden border border-outline-variant/30 flex-shrink-0">
+                        <img class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDnM486kZM-lpNWk2IlqpzF64WxPwyZNAGRmmwbnl1hZ-4jogabI--2ibQdvzPZRfGgcdsRhOwmJc4blIdV_dfrApDpiQ-m6C8uPLmMUb6vUjeCvEyruI55DlXQUPPUz4Wbk722E-G5pUrRRZHOpe912RqyxaxQseAPz4miWYpvNJHYJShsMaEi7ViP2m5_Hc5EXSnMakPPbSQ45nQQTAYQ5l5gwT6clchpVQxqZCiAOfsBJ5hzqwoaHDLdD-YRAA1JFY8S7YOnN_ON" alt="Marcus Thorne"/>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex justify-between items-start mb-1">
+                            <h3 class="text-[17px] font-bold text-on-surface truncate pr-2">Nomad Gear Inc.</h3>
+                            <span class="material-symbols-outlined text-secondary hover:text-primary p-1">chevron_right</span>
+                        </div>
+                        <p class="text-[14px] text-secondary font-medium mb-3 truncate">Marcus Thorne</p>
+                        
+                        <div class="flex gap-4">
+                            <div class="flex flex-col">
+                                <span class="text-[11px] text-secondary font-medium uppercase tracking-wider">Orders</span>
+                                <span class="text-[15px] font-bold text-on-surface">4</span>
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="text-[11px] text-secondary font-medium uppercase tracking-wider">LTV</span>
+                                <span class="text-[15px] font-bold text-primary">$32.8K</span>
+                            </div>
+                            <div class="flex flex-col ml-auto justify-end">
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-primary-container text-on-primary-container">Active</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Customer Card 3 -->
+                <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant p-md shadow-sm active:bg-surface-variant transition-colors flex items-start gap-4">
+                    <div class="w-[60px] h-[60px] rounded-full overflow-hidden border border-outline-variant/30 flex-shrink-0 bg-surface-variant flex items-center justify-center">
+                        <span class="font-bold text-[20px] text-on-surface-variant">SK</span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex justify-between items-start mb-1">
+                            <h3 class="text-[17px] font-bold text-on-surface truncate pr-2">Kinsley Basics</h3>
+                            <span class="material-symbols-outlined text-secondary hover:text-primary p-1">chevron_right</span>
+                        </div>
+                        <p class="text-[14px] text-secondary font-medium mb-3 truncate">Sarah Kinsley</p>
+                        
+                        <div class="flex gap-4">
+                            <div class="flex flex-col">
+                                <span class="text-[11px] text-secondary font-medium uppercase tracking-wider">Orders</span>
+                                <span class="text-[15px] font-bold text-on-surface">0</span>
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="text-[11px] text-secondary font-medium uppercase tracking-wider">LTV</span>
+                                <span class="text-[15px] font-bold text-primary">$8.4K</span>
+                            </div>
+                            <div class="flex flex-col ml-auto justify-end">
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-medium bg-surface-variant text-on-surface-variant">Inactive</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            
+            <div class="h-6"></div>
+        </main>
+    </div>
+    
+    <!-- Floating Action Button for Add Customer -->
+    <div id="fab-container" data-icon="add" data-action="openSheet('addCustomerSheet')"></div>
+
+    <div id="bottom-nav-container"></div>
+
+    <!-- ========================================== -->
+    <!-- BOTTOM SHEETS -->
+    <!-- ========================================== -->
+
+    <!-- Add Customer Sheet -->
+    <div id="sheets-container"></div>
+    
+    <script type="module">
+        import { BottomSheet } from '../js/components/index.js';
+        import { TextInput, TextareaInput } from '../js/components/inputs.js';
+
+        const sheetsContainer = document.getElementById('sheets-container');
+        
+        // Add Customer Form Content
+        const addCustomerContent = `
+            ${TextInput({ label: 'Company Name', id: 'add-company', placeholder: 'e.g. Everlane Corp.', required: true })}
+            ${TextInput({ label: 'Contact Person', id: 'add-contact', placeholder: 'Full Name', required: true })}
+            ${TextInput({ label: 'Email Address', id: 'add-email', placeholder: 'email@company.com', type: 'email' })}
+            ${TextInput({ label: 'Phone Number', id: 'add-phone', placeholder: '+1 (555) 000-0000', type: 'tel' })}
+            ${TextInput({ label: 'GST / Tax ID', id: 'add-gst', placeholder: 'Optional' })}
+            ${TextareaInput({ label: 'Billing Address', id: 'add-address', placeholder: 'Full address...' })}
+            <div class="h-20"></div>
+        `;
+        const addCustomerFooter = `
+            <button onclick="closeSheet('addCustomerSheet')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
+                Save Customer
+            </button>
+        `;
+
+        // Customer Details Content (Preserving existing design)
+        const customerDetailsHeader = `
+        <div class="px-lg pb-md flex justify-between items-start border-b border-outline-variant/30">
+            <div class="flex items-center gap-4">
+                <div class="w-14 h-14 rounded-full overflow-hidden border border-outline-variant/30 flex-shrink-0">
+                    <img class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDjsQrnDGH6EpdDe4Jzpub5fpI9paxS1qSAF-0EYDdMRn-40Zfp1H4ivFc2T7cTj7HS3uZnWtjlCmyhcGKN0KHS3HNaNzMWa9yB-DqA66rQK9arPwIXmP6fDsjao2TRWu0oBpTuJXOMi1KOYpAZUIu7lItqa1jt8lggfNjZcOdLiLUjAY1Pzb1YSCbv0Mv1uuofmOTAuRcPT0in4vDp1x6znmYUJiKEFUrz6dxdh7LMj1KSq02cN5HiRB1n2brh4gxTAT1U9qJlUa8Q" alt="Eleanor Vance"/>
+                </div>
+                <div>
+                    <h2 class="text-[22px] font-bold text-on-surface leading-tight">Aethereal Collective</h2>
+                    <span class="text-[14px] text-secondary">Eleanor Vance</span>
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="openSheet('deleteCustomerSheet')" class="w-8 h-8 rounded-full bg-error-container/30 flex items-center justify-center text-error active:scale-95 transition-transform">
+                    <span class="material-symbols-outlined text-[18px]">delete</span>
+                </button>
+                <button onclick="openSheet('editCustomerSheet')" class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary active:scale-95 transition-transform">
+                    <span class="material-symbols-outlined text-[18px]">edit</span>
+                </button>
+                <button onclick="closeSheet('customerDetailsSheet')" class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-secondary active:scale-95 transition-transform">
+                    <span class="material-symbols-outlined text-[20px]">close</span>
+                </button>
+            </div>
+        </div>`;
+        const customerDetailsContent = `
+            <div class="grid grid-cols-2 gap-3">
+                <div class="bg-surface-container-lowest p-4 rounded-[20px] border border-outline-variant shadow-sm">
+                    <span class="text-[12px] font-semibold text-secondary uppercase tracking-wider mb-1 block">Total Revenue</span>
+                    <span class="text-[22px] font-bold text-success">$145,200</span>
+                </div>
+                <div class="bg-surface-container-lowest p-4 rounded-[20px] border border-outline-variant shadow-sm">
+                    <span class="text-[12px] font-semibold text-secondary uppercase tracking-wider mb-1 block">Active Orders</span>
+                    <span class="text-[22px] font-bold text-on-surface">3</span>
+                </div>
+            </div>
+            <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-sm overflow-hidden">
+                <div class="p-4 border-b border-outline-variant/50">
+                    <h3 class="text-[16px] font-bold text-on-surface">Contact Information</h3>
+                </div>
+                <div class="p-4 flex flex-col gap-4">
+                    <div class="flex items-center gap-3">
+                        <span class="material-symbols-outlined text-secondary text-[20px]">mail</span>
+                        <a href="mailto:eleanor@aethereal.co" class="text-[15px] text-primary">eleanor@aethereal.co</a>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="material-symbols-outlined text-secondary text-[20px]">phone_iphone</span>
+                        <a href="tel:+15551234567" class="text-[15px] text-on-surface">+1 (555) 123-4567</a>
+                    </div>
+                    <div class="flex items-start gap-3">
+                        <span class="material-symbols-outlined text-secondary text-[20px]">location_on</span>
+                        <p class="text-[15px] text-on-surface">123 Fashion District Blvd,<br>Suite 400, Los Angeles, CA 90015</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="material-symbols-outlined text-secondary text-[20px]">receipt_long</span>
+                        <span class="text-[15px] text-on-surface font-mono">GST: 99-1234567</span>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-error-container/30 border border-error/20 rounded-[20px] p-4 flex items-center justify-between">
+                <div>
+                    <h4 class="text-[14px] font-bold text-error">Outstanding Balance</h4>
+                    <span class="text-[13px] text-on-surface-variant">Due in 5 days</span>
+                </div>
+                <span class="text-[20px] font-bold text-error">$12,400</span>
+            </div>
+            <div class="h-10"></div>
+        `;
+        const customerDetailsFooter = `
+            <button class="flex-1 bg-surface-container-high text-on-surface font-bold text-[15px] py-3.5 rounded-2xl active:scale-[0.98] transition-transform">
+                Statement
+            </button>
+            <button class="flex-1 bg-primary text-on-primary font-bold text-[15px] py-3.5 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
+                New Order
+            </button>
+        `;
+
+        // Edit Customer Form Content
+        const editCustomerContent = `
+            ${TextInput({ label: 'Company Name', id: 'edit-company', value: 'Aethereal Collective', required: true })}
+            ${TextInput({ label: 'Contact Person', id: 'edit-contact', value: 'Eleanor Vance', required: true })}
+            ${TextInput({ label: 'Email Address', id: 'edit-email', value: 'eleanor@aethereal.co', type: 'email' })}
+            ${TextInput({ label: 'Phone Number', id: 'edit-phone', value: '+1 (555) 123-4567', type: 'tel' })}
+            ${TextInput({ label: 'GST / Tax ID', id: 'edit-gst', value: '99-1234567' })}
+            ${TextareaInput({ label: 'Billing Address', id: 'edit-address', value: '123 Fashion District Blvd,\\nSuite 400, Los Angeles, CA 90015' })}
+            <div class="h-20"></div>
+        `;
+        const editCustomerFooter = `
+            <button onclick="closeSheet('editCustomerSheet')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
+                Update Customer
+            </button>
+        `;
+
+        // Delete Customer Confirmation
+        const deleteCustomerContent = `
+            <div class="flex flex-col items-center text-center gap-3 pt-4">
+                <div class="w-16 h-16 rounded-full bg-error-container/30 text-error flex items-center justify-center mb-2">
+                    <span class="material-symbols-outlined text-[32px]">delete</span>
+                </div>
+                <h3 class="text-[20px] font-bold text-on-surface">Delete Customer?</h3>
+                <p class="text-[15px] text-secondary">Are you sure you want to delete Aethereal Collective? This action cannot be undone.</p>
+                <div class="h-6"></div>
+            </div>
+        `;
+        const deleteCustomerFooter = `
+            <button onclick="closeSheet('deleteCustomerSheet')" class="flex-1 bg-surface-container-high text-on-surface font-bold text-[15px] py-3.5 rounded-2xl active:scale-[0.98] transition-transform">
+                Cancel
+            </button>
+            <button onclick="closeSheet('deleteCustomerSheet')" class="flex-1 bg-error text-on-error font-bold text-[15px] py-3.5 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
+                Delete
+            </button>
+        `;
+
+        // Render Sheets
+        sheetsContainer.innerHTML = [
+            BottomSheet({ id: 'addCustomerSheet', title: 'New Customer', content: addCustomerContent, footerContent: addCustomerFooter }),
+            BottomSheet({ id: 'customerDetailsSheet', customHeader: customerDetailsHeader, content: customerDetailsContent, footerContent: customerDetailsFooter, height: '90vh' }),
+            BottomSheet({ id: 'editCustomerSheet', title: 'Edit Customer', content: editCustomerContent, footerContent: editCustomerFooter }),
+            BottomSheet({ id: 'deleteCustomerSheet', customHeader: '<div class="sheet-handle"></div>', content: deleteCustomerContent, footerContent: deleteCustomerFooter, height: 'auto' })
+        ].join('');
+    </script>
+
+    <script src="../js/utils/sheet.js"></script>
+    <script src="../js/app.js"></script>
+</body>
+</html>

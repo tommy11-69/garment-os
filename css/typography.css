@@ -1,0 +1,9 @@
+/* Typography utilities */
+.text-display { font-family: 'Inter', sans-serif; font-size: 48px; line-height: 56px; letter-spacing: -0.02em; font-weight: 600; }
+.text-page-title { font-family: 'Inter', sans-serif; font-size: 34px; line-height: 41px; letter-spacing: -0.01em; font-weight: 600; }
+.text-section-title { font-family: 'Inter', sans-serif; font-size: 24px; line-height: 30px; font-weight: 600; }
+.text-card-title { font-family: 'Inter', sans-serif; font-size: 18px; line-height: 24px; font-weight: 600; }
+.text-numeric-data { font-family: 'Inter', sans-serif; font-size: 16px; line-height: 24px; font-weight: 700; }
+.text-body-bold { font-family: 'Inter', sans-serif; font-size: 16px; line-height: 24px; font-weight: 600; }
+.text-body { font-family: 'Inter', sans-serif; font-size: 16px; line-height: 24px; font-weight: 400; }
+.text-caption { font-family: 'Inter', sans-serif; font-size: 13px; line-height: 18px; font-weight: 500; }

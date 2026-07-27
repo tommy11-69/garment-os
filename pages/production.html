@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Garment OS - Production</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com" rel="preconnect"/>
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+    
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="../js/tailwind.config.js"></script>
+    
+    <link rel="stylesheet" href="../css/layout.css">
+    <link rel="stylesheet" href="../css/typography.css">
+    <link rel="stylesheet" href="../css/utilities.css">
+</head>
+<body class="font-body text-body antialiased bg-background">
+
+    <div id="topbar-container"></div>
+
+    <div class="mobile-wrapper">
+        <main id="main-content-area" class="flex-1 p-md flex flex-col gap-lg">
+            
+            <div class="px-xs pt-sm">
+                <h2 class="text-[28px] leading-tight font-semibold tracking-tight text-on-surface mb-1">Production</h2>
+                <div class="flex items-center gap-2">
+                    <span class="px-2 py-0.5 rounded-md text-[12px] font-bold bg-surface-container-high text-on-surface">Batch #B-8092</span>
+                    <p class="text-[14px] text-secondary">Organic Tees • 5k units</p>
+                </div>
+            </div>
+            
+            <!-- Overall Progress -->
+            <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant p-lg shadow-sm">
+                <div class="flex justify-between items-end mb-2">
+                    <span class="text-[14px] font-bold text-on-surface">Overall Completion</span>
+                    <span class="text-[18px] font-bold text-primary">65%</span>
+                </div>
+                <div class="w-full bg-surface-container h-2 rounded-full overflow-hidden mb-3">
+                    <div class="bg-primary h-full rounded-full transition-all duration-500" style="width: 65%;"></div>
+                </div>
+                <p class="text-[13px] text-secondary">Expected completion on Oct 22</p>
+            </div>
+
+            <!-- Workflow Timeline -->
+            <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant p-md shadow-sm">
+                <h3 class="font-section-title text-[18px] text-on-surface mb-4 px-2">Workflow Stages</h3>
+                
+                <div class="relative border-l-2 border-[#E5E5EA] ml-4 space-y-6 pb-2">
+                    
+                    <!-- Knitting -->
+                    <div class="relative pl-6">
+                        <div class="absolute -left-[9px] top-0.5 w-4 h-4 rounded-full bg-[#008A00] ring-4 ring-white"></div>
+                        <div class="flex justify-between items-start mb-1">
+                            <h4 class="text-[16px] font-bold text-on-surface">Knitting</h4>
+                            <span class="text-[12px] font-medium text-[#008A00]">100%</span>
+                        </div>
+                        <p class="text-[13px] text-secondary mb-2">Completed Oct 15</p>
+                        <div class="flex items-center gap-2">
+                            <div class="w-6 h-6 rounded-full bg-surface-variant flex items-center justify-center text-[10px] font-bold text-secondary">AM</div>
+                            <span class="text-[12px] text-on-surface-variant">Arjun Mills</span>
+                        </div>
+                    </div>
+
+                    <!-- Dyeing -->
+                    <div class="relative pl-6">
+                        <div class="absolute -left-[9px] top-0.5 w-4 h-4 rounded-full bg-[#008A00] ring-4 ring-white"></div>
+                        <div class="flex justify-between items-start mb-1">
+                            <h4 class="text-[16px] font-bold text-on-surface">Dyeing & Compacting</h4>
+                            <span class="text-[12px] font-medium text-[#008A00]">100%</span>
+                        </div>
+                        <p class="text-[13px] text-secondary mb-2">Completed Oct 17</p>
+                        <div class="flex items-center gap-2">
+                            <div class="w-6 h-6 rounded-full bg-surface-variant flex items-center justify-center text-[10px] font-bold text-secondary">CV</div>
+                            <span class="text-[12px] text-on-surface-variant">ColorVat Dyeing</span>
+                        </div>
+                    </div>
+
+                    <!-- Cutting -->
+                    <div class="relative pl-6">
+                        <div class="absolute -left-[9px] top-0.5 w-4 h-4 rounded-full bg-[#008A00] ring-4 ring-white"></div>
+                        <div class="flex justify-between items-start mb-1">
+                            <h4 class="text-[16px] font-bold text-on-surface">Cutting</h4>
+                            <span class="text-[12px] font-medium text-[#008A00]">100%</span>
+                        </div>
+                        <p class="text-[13px] text-secondary mb-2">Completed Yesterday</p>
+                    </div>
+
+                    <!-- Printing -->
+                    <div class="relative pl-6">
+                        <div class="absolute -left-[9px] top-0.5 w-4 h-4 rounded-full bg-primary ring-4 ring-white shadow-[0_0_0_2px_rgba(0,113,227,0.2)]"></div>
+                        <div class="flex justify-between items-start mb-1">
+                            <h4 class="text-[16px] font-bold text-primary">Printing / Embroidery</h4>
+                            <span class="text-[12px] font-bold text-primary">45%</span>
+                        </div>
+                        <div class="w-full bg-surface-container h-1.5 rounded-full overflow-hidden mb-2 mt-1">
+                            <div class="bg-primary h-full rounded-full" style="width: 45%;"></div>
+                        </div>
+                        <p class="text-[13px] text-secondary mb-2">In Progress - Screen printing front logo</p>
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuDnM486kZM-lpNWk2IlqpzF64WxPwyZNAGRmmwbnl1hZ-4jogabI--2ibQdvzPZRfGgcdsRhOwmJc4blIdV_dfrApDpiQ-m6C8uPLmMUb6vUjeCvEyruI55DlXQUPPUz4Wbk722E-G5pUrRRZHOpe912RqyxaxQseAPz4miWYpvNJHYJShsMaEi7ViP2m5_Hc5EXSnMakPPbSQ45nQQTAYQ5l5gwT6clchpVQxqZCiAOfsBJ5hzqwoaHDLdD-YRAA1JFY8S7YOnN_ON" class="w-6 h-6 rounded-full object-cover">
+                                <span class="text-[12px] text-on-surface-variant font-medium">Raj Kumar</span>
+                            </div>
+                            <button onclick="openSheet('updateProgressSheet')" class="text-[11px] font-bold text-primary px-3 py-1 rounded-full bg-primary/10 active:scale-95 transition-transform">Update</button>
+                        </div>
+                    </div>
+
+                    <!-- Stitching -->
+                    <div class="relative pl-6">
+                        <div class="absolute -left-[9px] top-0.5 w-4 h-4 rounded-full bg-surface-container ring-4 ring-white border border-[#D2D2D7]"></div>
+                        <div class="flex justify-between items-start mb-1">
+                            <h4 class="text-[16px] font-bold text-secondary">Stitching</h4>
+                            <span class="text-[12px] font-medium text-secondary">0%</span>
+                        </div>
+                        <p class="text-[13px] text-secondary">Scheduled for Oct 20</p>
+                    </div>
+
+                    <!-- Quality Check -->
+                    <div class="relative pl-6">
+                        <div class="absolute -left-[9px] top-0.5 w-4 h-4 rounded-full bg-surface-container ring-4 ring-white border border-[#D2D2D7]"></div>
+                        <div class="flex justify-between items-start mb-1">
+                            <h4 class="text-[16px] font-bold text-secondary">Quality Check</h4>
+                        </div>
+                    </div>
+
+                    <!-- Packing -->
+                    <div class="relative pl-6">
+                        <div class="absolute -left-[9px] top-0.5 w-4 h-4 rounded-full bg-surface-container ring-4 ring-white border border-[#D2D2D7]"></div>
+                        <div class="flex justify-between items-start mb-1">
+                            <h4 class="text-[16px] font-bold text-secondary">Packing & Dispatch</h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="h-6"></div>
+        </main>
+    </div>
+    
+    <div id="bottom-nav-container"></div>
+    
+    <div id="sheets-container"></div>
+    
+    <script type="module">
+        import { BottomSheet, TimelineEvent } from '../js/components/index.js';
+        import { TextInput, SelectInput, TextareaInput } from '../js/components/inputs.js';
+
+        const sheetsContainer = document.getElementById('sheets-container');
+
+        // Update Progress
+        const updateProgressContent = `
+            ${SelectInput({ label: 'Stage', id: 'upd-stage', options: [{label: 'Printing'}] })}
+            <div class="flex gap-4">
+                <div class="flex-1">
+                    ${TextInput({ label: 'Progress (%)', id: 'upd-prog', type: 'number', value: '45' })}
+                </div>
+                <div class="flex-1 flex items-end mb-[8px]">
+                    <button class="w-full bg-surface-variant text-on-surface font-semibold py-3 rounded-xl border border-outline-variant active:scale-[0.98] transition-transform flex items-center justify-center gap-2">
+                        <span class="material-symbols-outlined text-[18px]">add_photo_alternate</span>
+                        Upload
+                    </button>
+                </div>
+            </div>
+            ${SelectInput({ label: 'Status', id: 'upd-status', options: [{label: 'In Progress'}, {label: 'Completed'}, {label: 'Delayed'}, {label: 'On Hold'}] })}
+            ${SelectInput({ label: 'Assign To Worker', id: 'upd-worker', options: [{label: 'Raj Kumar'}] })}
+            ${TextareaInput({ label: 'Notes', id: 'upd-notes', value: 'Screen printing front logo.', rows: 2 })}
+            
+            <div class="mt-2 flex gap-2">
+                <div class="w-16 h-16 rounded-lg bg-surface-variant overflow-hidden relative">
+                    <img src="https://images.unsplash.com/photo-1596558450255-7c0b7be9d56a?auto=format&fit=crop&w=150" class="w-full h-full object-cover">
+                    <button class="absolute -top-1 -right-1 w-5 h-5 bg-error text-white rounded-full flex items-center justify-center text-[12px]"><span class="material-symbols-outlined text-[12px]">close</span></button>
+                </div>
+            </div>
+            
+            <div class="h-10"></div>
+        `;
+        const updateProgressFooter = `
+            <button onclick="closeSheet('updateProgressSheet')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
+                Save Update
+            </button>
+        `;
+
+        // Render Sheets
+        sheetsContainer.innerHTML = [
+            BottomSheet({ id: 'updateProgressSheet', title: 'Update Progress', content: updateProgressContent, footerContent: updateProgressFooter })
+        ].join('');
+    </script>
+    
+    <script src="../js/utils/sheet.js"></script>
+    <script src="../js/app.js"></script>
+</body>
+</html>
