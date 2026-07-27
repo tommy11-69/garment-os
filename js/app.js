@@ -53,6 +53,11 @@ function initApp() {
                     text.classList.remove('text-secondary', 'group-hover:text-primary');
                     text.classList.add('text-primary', 'font-semibold');
                 }
+                
+                // Add ARIA current page attribute
+                tab.setAttribute('aria-current', 'page');
+            } else {
+                tab.removeAttribute('aria-current');
             }
         });
     });
@@ -84,4 +89,15 @@ document.addEventListener('DOMContentLoaded', () => {
     import('./utils/devtools.js').then(module => {
         module.initDevTools();
     }).catch(e => console.log('DevTools not loaded', e));
+    
+    // Global keyboard support for elements with role="button"
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+            const activeEl = document.activeElement;
+            if (activeEl && (activeEl.getAttribute('role') === 'button' || activeEl.hasAttribute('tabindex'))) {
+                e.preventDefault();
+                activeEl.click();
+            }
+        }
+    });
 });

@@ -52,7 +52,7 @@
 
                 // Order Cards (Demo replacing two hardcoded cards)
                 const ordersHtml = `
-                    <div onclick="openSheet('orderDetailsSheet')" class="bg-surface-container-lowest rounded-[24px] border border-outline-variant p-lg shadow-sm active:bg-surface-variant transition-colors cursor-pointer">
+                    <div role="button" tabindex="0" onclick="openSheet('orderDetailsSheet')" class="bg-surface-container-lowest rounded-[24px] border border-outline-variant p-lg shadow-sm active-bg transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary">
                         <div class="flex items-start justify-between mb-4">
                             <div>
                                 <span class="text-[13px] font-semibold text-primary mb-1 block">ORD-992</span>
@@ -79,7 +79,7 @@
                         ${ProgressBar({ label: '65% Complete', secondaryLabel: 'Cutting Phase', percentage: 65, color: 'primary' })}
                     </div>
 
-                    <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant p-lg shadow-sm active:bg-surface-variant transition-colors cursor-pointer">
+                    <div role="button" tabindex="0" class="bg-surface-container-lowest rounded-[24px] border border-outline-variant p-lg shadow-sm active-bg transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary">
                         <div class="flex items-start justify-between mb-4">
                             <div>
                                 <span class="text-[13px] font-semibold text-primary mb-1 block">ORD-995</span>
