@@ -35,7 +35,7 @@
             <div class="flex gap-2 w-full">
                 <div class="relative flex-1">
                     <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
-                    <input class="w-full bg-surface-container-lowest border border-outline-variant rounded-2xl py-3 pl-12 pr-4 font-body text-[16px] text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm" placeholder="Search..." type="text"/>
+                    <input class="w-full bg-surface-container-lowest border border-outline-variant rounded-2xl py-3 pl-12 pr-4 font-body text-[16px] text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary/20 transition-apple shadow-sm" placeholder="Search..." type="text"/>
                 </div>
                 <button class="w-[50px] h-[50px] rounded-2xl bg-surface-container-lowest border border-outline-variant shadow-sm flex items-center justify-center text-secondary active:bg-surface-variant transition-colors">
                     <span class="material-symbols-outlined">tune</span>
@@ -165,7 +165,7 @@
             <div class="h-20"></div>
         `;
         const addCustomerFooter = `
-            <button id="add-customer-submit" onclick="closeSheet('addCustomerSheet'); window.showToast('Customer saved', 'success')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
+            <button id="add-customer-submit" onclick="closeSheet('addCustomerSheet'); window.showToast('Customer saved', 'success')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active-scale transition-apple shadow-sm">
                 Save Customer
             </button>
         `;
@@ -183,13 +183,13 @@
                 </div>
             </div>
             <div class="flex gap-2">
-                <button onclick="window.showConfirmation({title: 'Delete Customer', message: 'Are you sure you want to delete this customer? This action cannot be undone.', confirmText: 'Delete', onConfirm: () => closeSheet('customerDetailsSheet')})" class="w-8 h-8 rounded-full bg-error-container/30 flex items-center justify-center text-error active:scale-95 transition-transform">
+                <button onclick="window.showConfirmation({title: 'Delete Customer', message: 'Are you sure you want to delete this customer? This action cannot be undone.', confirmText: 'Delete', onConfirm: () => closeSheet('customerDetailsSheet')})" class="w-8 h-8 rounded-full bg-error-container/30 flex items-center justify-center text-error active-scale transition-apple">
                     <span class="material-symbols-outlined text-[18px]">delete</span>
                 </button>
-                <button onclick="openSheet('editCustomerSheet')" class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary active:scale-95 transition-transform">
+                <button onclick="openSheet('editCustomerSheet')" class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary active-scale transition-apple">
                     <span class="material-symbols-outlined text-[18px]">edit</span>
                 </button>
-                <button onclick="closeSheet('customerDetailsSheet')" class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-secondary active:scale-95 transition-transform">
+                <button onclick="closeSheet('customerDetailsSheet')" class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-secondary active-scale transition-apple">
                     <span class="material-symbols-outlined text-[20px]">close</span>
                 </button>
             </div>
@@ -238,10 +238,10 @@
             <div class="h-10"></div>
         `;
         const customerDetailsFooter = `
-            <button class="flex-1 bg-surface-container-high text-on-surface font-bold text-[15px] py-3.5 rounded-2xl active:scale-[0.98] transition-transform">
+            <button class="flex-1 bg-surface-container-high text-on-surface font-bold text-[15px] py-3.5 rounded-2xl active-scale transition-apple">
                 Statement
             </button>
-            <button class="flex-1 bg-primary text-on-primary font-bold text-[15px] py-3.5 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
+            <button class="flex-1 bg-primary text-on-primary font-bold text-[15px] py-3.5 rounded-2xl active-scale transition-apple shadow-sm">
                 New Order
             </button>
         `;
@@ -257,7 +257,7 @@
             <div class="h-20"></div>
         `;
         const editCustomerFooter = `
-            <button id="edit-customer-submit" onclick="closeSheet('editCustomerSheet'); window.showToast('Customer updated', 'success')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
+            <button id="edit-customer-submit" onclick="closeSheet('editCustomerSheet'); window.showToast('Customer updated', 'success')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active-scale transition-apple shadow-sm">
                 Update Customer
             </button>
         `;

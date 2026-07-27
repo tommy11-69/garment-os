@@ -44,7 +44,7 @@
                             </div>
                             <h3 class="text-[17px] font-semibold text-on-surface">Fabric Costs</h3>
                         </div>
-                        <span class="material-symbols-outlined text-secondary expand-icon transition-transform duration-200">expand_more</span>
+                        <span class="material-symbols-outlined text-secondary expand-icon transition-apple duration-200">expand_more</span>
                     </summary>
                     <div class="p-md pt-0 border-t border-outline-variant/30 flex flex-col gap-4 mt-2">
                         <div>
@@ -81,7 +81,7 @@
                             </div>
                             <h3 class="text-[17px] font-semibold text-on-surface">Printing & Treatments</h3>
                         </div>
-                        <span class="material-symbols-outlined text-secondary expand-icon transition-transform duration-200">expand_more</span>
+                        <span class="material-symbols-outlined text-secondary expand-icon transition-apple duration-200">expand_more</span>
                     </summary>
                     <div class="p-md pt-0 border-t border-outline-variant/30 flex flex-col gap-4 mt-2">
                         <div>
@@ -110,7 +110,7 @@
                             </div>
                             <h3 class="text-[17px] font-semibold text-on-surface">Labour (CMT)</h3>
                         </div>
-                        <span class="material-symbols-outlined text-secondary expand-icon transition-transform duration-200">expand_more</span>
+                        <span class="material-symbols-outlined text-secondary expand-icon transition-apple duration-200">expand_more</span>
                     </summary>
                     <div class="p-md pt-0 border-t border-outline-variant/30 flex flex-col gap-4 mt-2">
                         <div>
@@ -139,7 +139,7 @@
                             </div>
                             <h3 class="text-[17px] font-semibold text-on-surface">Packaging & Trims</h3>
                         </div>
-                        <span class="material-symbols-outlined text-secondary expand-icon transition-transform duration-200">expand_more</span>
+                        <span class="material-symbols-outlined text-secondary expand-icon transition-apple duration-200">expand_more</span>
                     </summary>
                     <div class="p-md pt-0 border-t border-outline-variant/30 flex flex-col gap-4 mt-2">
                         <div>
@@ -171,7 +171,7 @@
                 <button onclick="openSheet('saveCostSheet')" class="flex-1 bg-surface-container-high text-on-surface font-semibold py-3.5 rounded-2xl active:bg-surface-variant transition-colors">
                     Save Draft
                 </button>
-                <button class="flex-1 bg-primary text-on-primary font-semibold py-3.5 rounded-2xl active:scale-95 transition-transform shadow-sm flex items-center justify-center gap-2">
+                <button class="flex-1 bg-primary text-on-primary font-semibold py-3.5 rounded-2xl active-scale transition-apple shadow-sm flex items-center justify-center gap-2">
                     <span class="material-symbols-outlined text-[20px]">calculate</span>
                     Calculate
                 </button>
@@ -198,7 +198,7 @@
             <div class="h-10"></div>
         `;
         const saveCostFooter = `
-            <button id="save-cost-submit" onclick="closeSheet('saveCostSheet'); window.showToast('Costing saved', 'success')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
+            <button id="save-cost-submit" onclick="closeSheet('saveCostSheet'); window.showToast('Costing saved', 'success')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active-scale transition-apple shadow-sm">
                 Save Costing
             </button>
         `;
@@ -209,7 +209,7 @@
             <div class="h-10"></div>
         `;
         const loadCostFooter = `
-            <button id="load-cost-submit" onclick="closeSheet('loadCostSheet'); window.showToast('Costing loaded', 'success')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
+            <button id="load-cost-submit" onclick="closeSheet('loadCostSheet'); window.showToast('Costing loaded', 'success')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active-scale transition-apple shadow-sm">
                 Load Data
             </button>
         `;

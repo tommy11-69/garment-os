@@ -41,7 +41,7 @@
                     <span class="text-[18px] font-bold text-primary">65%</span>
                 </div>
                 <div class="w-full bg-surface-container h-2 rounded-full overflow-hidden mb-3">
-                    <div class="bg-primary h-full rounded-full transition-all duration-500" style="width: 65%;"></div>
+                    <div class="bg-primary h-full rounded-full transition-apple duration-500" style="width: 65%;"></div>
                 </div>
                 <p class="text-[13px] text-secondary">Expected completion on Oct 22</p>
             </div>
@@ -106,7 +106,7 @@
                                 <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuDnM486kZM-lpNWk2IlqpzF64WxPwyZNAGRmmwbnl1hZ-4jogabI--2ibQdvzPZRfGgcdsRhOwmJc4blIdV_dfrApDpiQ-m6C8uPLmMUb6vUjeCvEyruI55DlXQUPPUz4Wbk722E-G5pUrRRZHOpe912RqyxaxQseAPz4miWYpvNJHYJShsMaEi7ViP2m5_Hc5EXSnMakPPbSQ45nQQTAYQ5l5gwT6clchpVQxqZCiAOfsBJ5hzqwoaHDLdD-YRAA1JFY8S7YOnN_ON" class="w-6 h-6 rounded-full object-cover">
                                 <span class="text-[12px] text-on-surface-variant font-medium">Raj Kumar</span>
                             </div>
-                            <button onclick="openSheet('updateProgressSheet')" class="text-[11px] font-bold text-primary px-3 py-1 rounded-full bg-primary/10 active:scale-95 transition-transform">Update</button>
+                            <button onclick="openSheet('updateProgressSheet')" class="text-[11px] font-bold text-primary px-3 py-1 rounded-full bg-primary/10 active-scale transition-apple">Update</button>
                         </div>
                     </div>
 
@@ -160,7 +160,7 @@
                     ${TextInput({ label: 'Progress (%)', id: 'upd-prog', type: 'number', value: '45' })}
                 </div>
                 <div class="flex-1 flex items-end mb-[8px]">
-                    <button class="w-full bg-surface-variant text-on-surface font-semibold py-3 rounded-xl border border-outline-variant active:scale-[0.98] transition-transform flex items-center justify-center gap-2">
+                    <button class="w-full bg-surface-variant text-on-surface font-semibold py-3 rounded-xl border border-outline-variant active-scale transition-apple flex items-center justify-center gap-2">
                         <span class="material-symbols-outlined text-[18px]">add_photo_alternate</span>
                         Upload
                     </button>
@@ -180,7 +180,7 @@
             <div class="h-10"></div>
         `;
         const updateProgressFooter = `
-            <button onclick="closeSheet('updateProgressSheet')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
+            <button onclick="closeSheet('updateProgressSheet')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active-scale transition-apple shadow-sm">
                 Save Update
             </button>
         `;

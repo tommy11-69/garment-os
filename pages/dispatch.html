@@ -70,7 +70,7 @@
                         </div>
                     </div>
 
-                    <button class="w-full bg-surface-container-high text-on-surface font-bold text-[14px] py-3 rounded-xl active:scale-[0.98] transition-transform">
+                    <button class="w-full bg-surface-container-high text-on-surface font-bold text-[14px] py-3 rounded-xl active-scale transition-apple">
                         Track Shipment
                     </button>
                 </div>
@@ -102,10 +102,10 @@
                     </div>
 
                     <div class="flex gap-2">
-                        <button class="flex-1 bg-surface-container-high text-on-surface font-bold text-[14px] py-3 rounded-xl active:scale-[0.98] transition-transform">
+                        <button class="flex-1 bg-surface-container-high text-on-surface font-bold text-[14px] py-3 rounded-xl active-scale transition-apple">
                             Print Labels
                         </button>
-                        <button onclick="openSheet('dispatchOrderSheet')" class="flex-1 bg-primary text-white font-bold text-[14px] py-3 rounded-xl active:scale-[0.98] transition-transform shadow-sm">
+                        <button onclick="openSheet('dispatchOrderSheet')" class="flex-1 bg-primary text-white font-bold text-[14px] py-3 rounded-xl active-scale transition-apple shadow-sm">
                             Mark Dispatched
                         </button>
                     </div>
@@ -144,7 +144,7 @@
             
             <div class="mt-2 flex gap-4 items-center">
                 <div class="flex-1">
-                    <button class="w-full bg-surface-variant text-on-surface font-semibold py-3 rounded-xl border border-outline-variant active:scale-[0.98] transition-transform flex items-center justify-center gap-2">
+                    <button class="w-full bg-surface-variant text-on-surface font-semibold py-3 rounded-xl border border-outline-variant active-scale transition-apple flex items-center justify-center gap-2">
                         <span class="material-symbols-outlined text-[18px]">upload_file</span>
                         Attach LR Copy
                     </button>
@@ -155,7 +155,7 @@
             <div class="h-10"></div>
         `;
         const dispatchOrderFooter = `
-            <button onclick="closeSheet('dispatchOrderSheet')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
+            <button onclick="closeSheet('dispatchOrderSheet')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active-scale transition-apple shadow-sm">
                 Confirm Dispatch
             </button>
         `;

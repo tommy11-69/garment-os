@@ -104,3 +104,44 @@
     border-radius: 3px;
     margin: 12px auto 24px;
 }
+
+/* Transitions & Touch States */
+.transition-apple {
+    transition-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+    transition-duration: 300ms;
+}
+
+.active-scale:active {
+    transform: scale(0.98);
+    transition: transform 100ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.active-bg:active {
+    background-color: rgba(0, 0, 0, 0.05);
+    transition: background-color 100ms ease;
+}
+
+/* Skeleton Loaders */
+@keyframes shimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.skeleton-block {
+    background: linear-gradient(90deg, 
+        rgba(0,0,0,0.06) 25%, 
+        rgba(0,0,0,0.12) 50%, 
+        rgba(0,0,0,0.06) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite linear;
+    border-radius: 12px;
+}
+.dark .skeleton-block {
+    background: linear-gradient(90deg, 
+        rgba(255,255,255,0.06) 25%, 
+        rgba(255,255,255,0.12) 50%, 
+        rgba(255,255,255,0.06) 75%
+    );
+    background-size: 200% 100%;
+}

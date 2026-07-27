@@ -135,9 +135,9 @@
             <div class="flex flex-col gap-2">
                 <label class="text-[14px] font-semibold text-on-surface">Order Priority</label>
                 <div class="flex bg-surface-variant p-1 rounded-xl w-full">
-                    <button type="button" class="flex-1 py-1.5 text-[13px] font-semibold rounded-lg transition-all ${active === 'Normal' ? 'bg-surface-container-lowest shadow-sm text-on-surface' : 'text-secondary'}">Normal</button>
-                    <button type="button" class="flex-1 py-1.5 text-[13px] font-semibold rounded-lg transition-all ${active === 'High' ? 'bg-surface-container-lowest shadow-sm text-on-surface' : 'text-secondary'}">High</button>
-                    <button type="button" class="flex-1 py-1.5 text-[13px] font-semibold rounded-lg transition-all ${active === 'Urgent' ? 'bg-surface-container-lowest shadow-sm text-error' : 'text-secondary hover:text-error'}">Urgent</button>
+                    <button type="button" class="flex-1 py-1.5 text-[13px] font-semibold rounded-lg transition-apple ${active === 'Normal' ? 'bg-surface-container-lowest shadow-sm text-on-surface' : 'text-secondary'}">Normal</button>
+                    <button type="button" class="flex-1 py-1.5 text-[13px] font-semibold rounded-lg transition-apple ${active === 'High' ? 'bg-surface-container-lowest shadow-sm text-on-surface' : 'text-secondary'}">High</button>
+                    <button type="button" class="flex-1 py-1.5 text-[13px] font-semibold rounded-lg transition-apple ${active === 'Urgent' ? 'bg-surface-container-lowest shadow-sm text-error' : 'text-secondary hover:text-error'}">Urgent</button>
                 </div>
             </div>
         `;
@@ -160,7 +160,7 @@
             <div class="h-10"></div>
         `;
         const createOrderFooter = `
-            <button id="create-order-submit" onclick="closeSheet('createOrderSheet'); window.showToast('Order created', 'success')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
+            <button id="create-order-submit" onclick="closeSheet('createOrderSheet'); window.showToast('Order created', 'success')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active-scale transition-apple shadow-sm">
                 Create Order
             </button>
         `;
@@ -183,7 +183,7 @@
             <div class="h-10"></div>
         `;
         const editOrderFooter = `
-            <button id="edit-order-submit" onclick="closeSheet('editOrderSheet'); window.showToast('Order updated', 'success')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
+            <button id="edit-order-submit" onclick="closeSheet('editOrderSheet'); window.showToast('Order updated', 'success')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active-scale transition-apple shadow-sm">
                 Save Changes
             </button>
         `;
@@ -197,13 +197,13 @@
                 <span class="inline-block mt-2 px-3 py-1 rounded-full text-[12px] font-medium bg-success-container/30 text-success">On Track</span>
             </div>
             <div class="flex gap-2">
-                <button onclick="openSheet('editOrderSheet')" class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary active:scale-95 transition-transform">
+                <button onclick="openSheet('editOrderSheet')" class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary active-scale transition-apple">
                     <span class="material-symbols-outlined text-[18px]">edit</span>
                 </button>
-                <button onclick="window.showConfirmation({title: 'Delete Order ORD-992?', message: 'Are you sure you want to delete this order? This action cannot be undone.', confirmText: 'Delete', onConfirm: () => closeSheet('orderDetailsSheet')})" class="w-8 h-8 rounded-full bg-error-container/30 flex items-center justify-center text-error active:scale-95 transition-transform">
+                <button onclick="window.showConfirmation({title: 'Delete Order ORD-992?', message: 'Are you sure you want to delete this order? This action cannot be undone.', confirmText: 'Delete', onConfirm: () => closeSheet('orderDetailsSheet')})" class="w-8 h-8 rounded-full bg-error-container/30 flex items-center justify-center text-error active-scale transition-apple">
                     <span class="material-symbols-outlined text-[18px]">delete</span>
                 </button>
-                <button onclick="closeSheet('orderDetailsSheet')" class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-secondary active:scale-95 transition-transform">
+                <button onclick="closeSheet('orderDetailsSheet')" class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-secondary active-scale transition-apple">
                     <span class="material-symbols-outlined text-[20px]">close</span>
                 </button>
             </div>
@@ -232,10 +232,10 @@
             <div class="h-10"></div>
         `;
         const orderDetailsFooter = `
-            <button onclick="closeSheet('orderDetailsSheet')" class="flex-1 bg-surface-container-high text-on-surface font-bold text-[15px] py-3.5 rounded-2xl active:scale-[0.98] transition-transform">
+            <button onclick="closeSheet('orderDetailsSheet')" class="flex-1 bg-surface-container-high text-on-surface font-bold text-[15px] py-3.5 rounded-2xl active-scale transition-apple">
                 Close
             </button>
-            <button class="flex-1 bg-success text-on-primary font-bold text-[15px] py-3.5 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
+            <button class="flex-1 bg-success text-on-primary font-bold text-[15px] py-3.5 rounded-2xl active-scale transition-apple shadow-sm">
                 Update Status
             </button>
         `;

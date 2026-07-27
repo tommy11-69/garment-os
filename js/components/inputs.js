@@ -3,7 +3,7 @@ export function SearchBar({ placeholder = 'Search...', id = 'search-input' }) {
     <div class="relative">
         <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-[20px]">search</span>
         <input type="text" id="${id}" placeholder="${placeholder}" 
-               class="w-full bg-surface border border-outline-variant rounded-xl pl-10 pr-4 py-2.5 text-[15px] text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all placeholder:text-secondary"/>
+               class="w-full bg-surface border border-outline-variant rounded-xl pl-10 pr-4 py-2.5 text-[15px] text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-apple placeholder:text-secondary"/>
     </div>`;
 }
 
@@ -34,7 +34,7 @@ export function SegmentedControl({ options = [], activeOption = '', id = '' }) {
         const activeClasses = 'bg-surface-container-lowest shadow-sm text-on-surface';
         const inactiveClasses = 'text-secondary hover:text-on-surface';
         
-        return `<button class="flex-1 py-1.5 text-[13px] font-semibold rounded-lg transition-all ${isActive ? activeClasses : inactiveClasses}" data-option="${opt.id}">
+        return `<button class="flex-1 py-1.5 text-[13px] font-semibold rounded-lg transition-apple ${isActive ? activeClasses : inactiveClasses}" data-option="${opt.id}">
             ${opt.label}
         </button>`;
     }).join('');
@@ -60,7 +60,7 @@ export function TextInput({ label, id, placeholder = '', type = 'text', value = 
         <div class="relative">
             ${icon ? `<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-secondary transition-colors" id="${id}-icon">${icon}</span>` : ''}
             <input type="${type}" id="${id}" name="${id}" placeholder="${placeholder}" value="${value}" ${required ? 'required' : ''} ${minAttr} ${maxAttr} ${patternAttr} ${valAttr}
-                   class="w-full bg-surface border border-outline-variant rounded-xl ${icon ? 'pl-11' : 'px-4'} pr-4 py-3 text-[16px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all placeholder:text-secondary group-[.is-invalid]:border-error group-[.is-invalid]:focus:ring-error/20 group-[.is-invalid]:focus:border-error">
+                   class="w-full bg-surface border border-outline-variant rounded-xl ${icon ? 'pl-11' : 'px-4'} pr-4 py-3 text-[16px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple placeholder:text-secondary group-[.is-invalid]:border-error group-[.is-invalid]:focus:ring-error/20 group-[.is-invalid]:focus:border-error">
         </div>
         ${helperText ? `<p class="text-[12px] text-secondary pl-1" id="${id}-helper">${helperText}</p>` : ''}
     </div>`;
@@ -77,7 +77,7 @@ export function SelectInput({ label, id, options = [], required = false, helperT
             <span class="text-[12px] text-error font-medium opacity-0 transition-opacity" id="${id}-error"></span>
         </label>
         <select id="${id}" name="${id}" ${required ? 'required' : ''} ${valAttr}
-                class="w-full bg-surface border border-outline-variant rounded-xl px-4 py-3 text-[16px] text-on-surface focus:ring-2 focus:ring-primary/20 outline-none appearance-none cursor-pointer transition-all group-[.is-invalid]:border-error group-[.is-invalid]:focus:ring-error/20 group-[.is-invalid]:focus:border-error">
+                class="w-full bg-surface border border-outline-variant rounded-xl px-4 py-3 text-[16px] text-on-surface focus:ring-2 focus:ring-primary/20 outline-none appearance-none cursor-pointer transition-apple group-[.is-invalid]:border-error group-[.is-invalid]:focus:ring-error/20 group-[.is-invalid]:focus:border-error">
             ${opts}
         </select>
         ${helperText ? `<p class="text-[12px] text-secondary pl-1" id="${id}-helper">${helperText}</p>` : ''}
@@ -94,7 +94,7 @@ export function TextareaInput({ label, id, placeholder = '', rows = 3, value = '
             <span class="text-[12px] text-error font-medium opacity-0 transition-opacity" id="${id}-error"></span>
         </label>
         <textarea id="${id}" name="${id}" rows="${rows}" placeholder="${placeholder}" ${required ? 'required' : ''} ${valAttr}
-                  class="w-full bg-surface border border-outline-variant rounded-xl px-4 py-3 text-[16px] focus:ring-2 focus:ring-primary/20 outline-none resize-none transition-all group-[.is-invalid]:border-error group-[.is-invalid]:focus:ring-error/20 group-[.is-invalid]:focus:border-error">${value}</textarea>
+                  class="w-full bg-surface border border-outline-variant rounded-xl px-4 py-3 text-[16px] focus:ring-2 focus:ring-primary/20 outline-none resize-none transition-apple group-[.is-invalid]:border-error group-[.is-invalid]:focus:ring-error/20 group-[.is-invalid]:focus:border-error">${value}</textarea>
         ${helperText ? `<p class="text-[12px] text-secondary pl-1" id="${id}-helper">${helperText}</p>` : ''}
     </div>`;
 }

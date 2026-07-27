@@ -23,7 +23,7 @@ export function showToast(message, type = 'success') {
 
     const toast = document.createElement('div');
     toast.id = 'global-toast';
-    toast.className = `fixed bottom-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg transform transition-all duration-300 translate-y-8 opacity-0 ${color}`;
+    toast.className = `fixed bottom-20 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg transform transition-apple duration-300 translate-y-8 opacity-0 ${color}`;
     
     toast.innerHTML = `
         <span class="material-symbols-outlined text-[20px]" style="font-variation-settings:'FILL' 1;">${icon}</span>

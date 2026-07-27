@@ -49,10 +49,10 @@ export function showConfirmation({ title, message, confirmText = 'Confirm', canc
                 <p class="text-[15px] text-secondary">${message}</p>
             </div>
             <div class="p-4 border-t border-outline-variant/30 bg-surface-container-lowest safe-bottom flex gap-3">
-                <button onclick="closeConfirmation('${id}')" class="flex-1 ${cancelClass} font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform">
+                <button onclick="closeConfirmation('${id}')" class="flex-1 ${cancelClass} font-bold text-[16px] py-4 rounded-2xl active-scale transition-apple">
                     ${cancelText}
                 </button>
-                <button id="${id}-confirm-btn" class="flex-1 ${confirmClass} font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
+                <button id="${id}-confirm-btn" class="flex-1 ${confirmClass} font-bold text-[16px] py-4 rounded-2xl active-scale transition-apple shadow-sm">
                     ${confirmText}
                 </button>
             </div>

@@ -37,7 +37,7 @@
             <div class="flex gap-2 w-full">
                 <div class="relative flex-1">
                     <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
-                    <input class="w-full bg-surface-container-lowest border border-outline-variant rounded-2xl py-3 pl-12 pr-4 font-body text-[16px] text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all shadow-sm" placeholder="Search materials..." type="text"/>
+                    <input class="w-full bg-surface-container-lowest border border-outline-variant rounded-2xl py-3 pl-12 pr-4 font-body text-[16px] text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary/20 transition-apple shadow-sm" placeholder="Search materials..." type="text"/>
                 </div>
                 <button class="w-[50px] h-[50px] rounded-2xl bg-surface-container-lowest border border-outline-variant shadow-sm flex items-center justify-center text-secondary active:bg-surface-variant transition-colors">
                     <span class="material-symbols-outlined">filter_list</span>
@@ -78,13 +78,13 @@
                             <span class="text-[14px] font-semibold text-on-surface">150 kgs</span>
                         </div>
                     </div>
-                    <button class="w-full mt-3 py-2.5 rounded-xl bg-error text-white font-bold text-[14px] active:scale-[0.98] transition-transform">
+                    <button class="w-full mt-3 py-2.5 rounded-xl bg-error text-white font-bold text-[14px] active-scale transition-apple">
                         Order Now
                     </button>
                 </div>
 
                 <!-- Normal Item 1 -->
-                <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant p-md shadow-sm active:scale-[0.99] transition-transform cursor-pointer" onclick="openSheet('itemDetailsSheet')">
+                <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant p-md shadow-sm active-scale transition-apple cursor-pointer" onclick="openSheet('itemDetailsSheet')">
                     <div class="flex justify-between items-start mb-3">
                         <div class="flex gap-3 items-center">
                             <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
@@ -113,7 +113,7 @@
                 </div>
 
                 <!-- Normal Item 2 -->
-                <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant p-md shadow-sm active:scale-[0.99] transition-transform cursor-pointer" onclick="openSheet('itemDetailsSheet')">
+                <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant p-md shadow-sm active-scale transition-apple cursor-pointer" onclick="openSheet('itemDetailsSheet')">
                     <div class="flex justify-between items-start mb-3">
                         <div class="flex gap-3 items-center">
                             <div class="w-10 h-10 rounded-full bg-[#5E5CE6]/10 text-[#5E5CE6] flex items-center justify-center">
@@ -182,7 +182,7 @@
             <div class="h-10"></div>
         `;
         const stockInFooter = `
-            <button id="in-submit" onclick="closeSheet('stockInSheet'); window.showToast('Stock recorded', 'success')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
+            <button id="in-submit" onclick="closeSheet('stockInSheet'); window.showToast('Stock recorded', 'success')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active-scale transition-apple shadow-sm">
                 Confirm Stock In
             </button>
         `;
@@ -203,7 +203,7 @@
             <div class="h-10"></div>
         `;
         const stockOutFooter = `
-            <button id="out-submit" onclick="closeSheet('stockOutSheet'); window.showToast('Stock reduced', 'success')" class="w-full bg-warning text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
+            <button id="out-submit" onclick="closeSheet('stockOutSheet'); window.showToast('Stock reduced', 'success')" class="w-full bg-warning text-on-primary font-bold text-[16px] py-4 rounded-2xl active-scale transition-apple shadow-sm">
                 Record Stock Out
             </button>
         `;
@@ -224,7 +224,7 @@
             <div class="h-10"></div>
         `;
         const adjustStockFooter = `
-            <button id="adj-submit" onclick="closeSheet('adjustStockSheet'); window.showToast('Stock adjusted', 'success')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
+            <button id="adj-submit" onclick="closeSheet('adjustStockSheet'); window.showToast('Stock adjusted', 'success')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active-scale transition-apple shadow-sm">
                 Update Stock Level
             </button>
         `;
@@ -244,7 +244,7 @@
             <div class="h-10"></div>
         `;
         const transferStockFooter = `
-            <button id="tr-submit" onclick="closeSheet('transferStockSheet'); window.showToast('Stock transferred', 'success')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
+            <button id="tr-submit" onclick="closeSheet('transferStockSheet'); window.showToast('Stock transferred', 'success')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active-scale transition-apple shadow-sm">
                 Transfer
             </button>
         `;
@@ -260,7 +260,7 @@
                 </div>
             </div>
             <div class="flex gap-2">
-                <button onclick="closeSheet('itemDetailsSheet')" class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-secondary active:scale-95 transition-transform">
+                <button onclick="closeSheet('itemDetailsSheet')" class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-secondary active-scale transition-apple">
                     <span class="material-symbols-outlined text-[20px]">close</span>
                 </button>
             </div>
@@ -287,13 +287,13 @@
             <div class="h-10"></div>
         `;
         const itemDetailsFooter = `
-            <button onclick="openSheet('stockOutSheet')" class="flex-1 bg-surface-container-high text-on-surface font-bold text-[15px] py-3.5 rounded-2xl active:scale-[0.98] transition-transform">
+            <button onclick="openSheet('stockOutSheet')" class="flex-1 bg-surface-container-high text-on-surface font-bold text-[15px] py-3.5 rounded-2xl active-scale transition-apple">
                 Stock Out
             </button>
-            <button onclick="openSheet('adjustStockSheet')" class="flex-1 bg-surface-container-high text-on-surface font-bold text-[15px] py-3.5 rounded-2xl active:scale-[0.98] transition-transform">
+            <button onclick="openSheet('adjustStockSheet')" class="flex-1 bg-surface-container-high text-on-surface font-bold text-[15px] py-3.5 rounded-2xl active-scale transition-apple">
                 Adjust
             </button>
-            <button onclick="openSheet('stockInSheet')" class="flex-1 bg-primary text-on-primary font-bold text-[15px] py-3.5 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
+            <button onclick="openSheet('stockInSheet')" class="flex-1 bg-primary text-on-primary font-bold text-[15px] py-3.5 rounded-2xl active-scale transition-apple shadow-sm">
                 Stock In
             </button>
         `;

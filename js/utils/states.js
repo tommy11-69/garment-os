@@ -1,4 +1,4 @@
-import { SkeletonList, EmptyState } from '../components/layout.js';
+import { SkeletonList, EmptyState, PageSkeleton } from '../components/index.js';
 
 /**
  * Sets a container's content to a loading skeleton.
@@ -14,7 +14,11 @@ export function setLoading(containerId, rows = 3) {
         container.dataset.originalContent = container.innerHTML;
     }
     
-    container.innerHTML = SkeletonList({ rows });
+    if (containerId === 'main-content-area') {
+        container.innerHTML = PageSkeleton();
+    } else {
+        container.innerHTML = SkeletonList({ rows });
+    }
 }
 
 /**

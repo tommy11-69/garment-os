@@ -9,7 +9,7 @@ export function Accordion({ title, icon, content, isOpen = false }) {
                 </div>` : ''}
                 <h3 class="text-[17px] font-semibold text-on-surface">${title}</h3>
             </div>
-            <span class="material-symbols-outlined text-secondary expand-icon transition-transform duration-200">expand_more</span>
+            <span class="material-symbols-outlined text-secondary expand-icon transition-apple duration-200">expand_more</span>
         </summary>
         <div class="px-md pb-md border-t border-outline-variant/30 pt-md">
             ${content}
@@ -31,10 +31,14 @@ export function EmptyState({ icon = 'inbox', title = 'No data found', descriptio
         <h3 class="text-[17px] font-semibold ${titleClass} mb-1">${title}</h3>
         ${description ? `<p class="text-[14px] text-secondary mb-6 max-w-[260px]">${description}</p>` : ''}
         ${actionText ? `
-        <button ${actionId ? `id="${actionId}"` : ''} class="px-6 py-2.5 ${actionBgClass} font-semibold rounded-xl text-[14px] active:scale-95 transition-transform">
+        <button ${actionId ? `id="${actionId}"` : ''} class="px-6 py-2.5 ${actionBgClass} font-semibold rounded-xl text-[14px] active-scale transition-apple">
             ${actionText}
         </button>` : ''}
     </div>`;
+}
+
+export function SkeletonBlock({ height = 'h-4', width = 'w-full', round = 'rounded' }) {
+    return `<div class="${height} ${width} ${round} skeleton-block"></div>`;
 }
 
 export function SkeletonList({ rows = 3 }) {
@@ -42,14 +46,30 @@ export function SkeletonList({ rows = 3 }) {
     for (let i = 0; i < rows; i++) {
         items += `
         <div class="flex items-center gap-3 p-4 border-b border-outline-variant/30">
-            <div class="w-10 h-10 rounded-full bg-surface-variant animate-pulse shrink-0"></div>
+            ${SkeletonBlock({ width: 'w-10', height: 'h-10', round: 'rounded-full shrink-0' })}
             <div class="flex-1">
-                <div class="h-4 bg-surface-variant rounded animate-pulse w-3/4 mb-2"></div>
-                <div class="h-3 bg-surface-variant rounded animate-pulse w-1/2"></div>
+                ${SkeletonBlock({ width: 'w-3/4', height: 'h-4', round: 'rounded mb-2' })}
+                ${SkeletonBlock({ width: 'w-1/2', height: 'h-3', round: 'rounded' })}
             </div>
         </div>`;
     }
     return `<div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant overflow-hidden">${items}</div>`;
+}
+
+export function PageSkeleton() {
+    return `
+    <div class="flex flex-col gap-lg">
+        <div class="px-xs pt-sm">
+            ${SkeletonBlock({ width: 'w-48', height: 'h-8', round: 'rounded-lg mb-2' })}
+            ${SkeletonBlock({ width: 'w-32', height: 'h-4', round: 'rounded' })}
+        </div>
+        <div class="flex gap-4 px-xs">
+            ${SkeletonBlock({ width: 'flex-1', height: 'h-24', round: 'rounded-2xl' })}
+            ${SkeletonBlock({ width: 'flex-1', height: 'h-24', round: 'rounded-2xl' })}
+        </div>
+        ${SkeletonList({ rows: 4 })}
+    </div>
+    `;
 }
 
 export function Pagination({ currentPage = 1, totalPages = 1 }) {
@@ -71,7 +91,7 @@ export function BottomSheet({ id, title = '', customHeader = '', content, footer
         headerHtml = `
         <div class="px-lg pb-md flex justify-between items-center border-b border-outline-variant/30">
             <h2 class="text-[20px] font-bold text-on-surface">${title}</h2>
-            <button type="button" onclick="closeSheet('${id}')" class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-secondary active:scale-95 transition-transform">
+            <button type="button" onclick="closeSheet('${id}')" class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-secondary active-scale transition-apple">
                 <span class="material-symbols-outlined text-[20px]">close</span>
             </button>
         </div>`;
