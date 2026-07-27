@@ -46,6 +46,18 @@
                 <p class="text-[13px] text-secondary">Expected completion on Oct 22</p>
             </div>
 
+            <!-- Action Buttons -->
+            <div class="flex gap-3 px-xs">
+                <button onclick="openSheet('logExpenseSheet')" class="flex-1 bg-surface-container-high text-on-surface font-semibold py-3 rounded-2xl active-scale transition-apple shadow-sm flex items-center justify-center gap-2 border border-outline-variant/30">
+                    <span class="material-symbols-outlined text-[18px]">receipt_long</span>
+                    Log Expense
+                </button>
+                <button onclick="openSheet('logConsumptionSheet')" class="flex-1 bg-surface-container-high text-on-surface font-semibold py-3 rounded-2xl active-scale transition-apple shadow-sm flex items-center justify-center gap-2 border border-outline-variant/30">
+                    <span class="material-symbols-outlined text-[18px]">inventory_2</span>
+                    Log Material
+                </button>
+            </div>
+
             <!-- Workflow Timeline -->
             <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant p-md shadow-sm">
                 <h3 class="font-section-title text-[18px] text-on-surface mb-4 px-2">Workflow Stages</h3>
@@ -146,51 +158,7 @@
     
     <div id="sheets-container"></div>
     
-    <script type="module">
-        import { BottomSheet, TimelineEvent } from '../js/components/index.js';
-        import { TextInput, SelectInput, TextareaInput } from '../js/components/inputs.js';
-
-        const sheetsContainer = document.getElementById('sheets-container');
-
-        // Update Progress
-        const updateProgressContent = `
-            ${SelectInput({ label: 'Stage', id: 'upd-stage', options: [{label: 'Printing'}] })}
-            <div class="flex gap-4">
-                <div class="flex-1">
-                    ${TextInput({ label: 'Progress (%)', id: 'upd-prog', type: 'number', value: '45' })}
-                </div>
-                <div class="flex-1 flex items-end mb-[8px]">
-                    <button class="w-full bg-surface-variant text-on-surface font-semibold py-3 rounded-xl border border-outline-variant active-scale transition-apple flex items-center justify-center gap-2">
-                        <span class="material-symbols-outlined text-[18px]">add_photo_alternate</span>
-                        Upload
-                    </button>
-                </div>
-            </div>
-            ${SelectInput({ label: 'Status', id: 'upd-status', options: [{label: 'In Progress'}, {label: 'Completed'}, {label: 'Delayed'}, {label: 'On Hold'}] })}
-            ${SelectInput({ label: 'Assign To Worker', id: 'upd-worker', options: [{label: 'Raj Kumar'}] })}
-            ${TextareaInput({ label: 'Notes', id: 'upd-notes', value: 'Screen printing front logo.', rows: 2 })}
-            
-            <div class="mt-2 flex gap-2">
-                <div class="w-16 h-16 rounded-lg bg-surface-variant overflow-hidden relative">
-                    <img src="https://images.unsplash.com/photo-1596558450255-7c0b7be9d56a?auto=format&fit=crop&w=150" class="w-full h-full object-cover">
-                    <button class="absolute -top-1 -right-1 w-5 h-5 bg-error text-white rounded-full flex items-center justify-center text-[12px]"><span class="material-symbols-outlined text-[12px]">close</span></button>
-                </div>
-            </div>
-            
-            <div class="h-10"></div>
-        `;
-        const updateProgressFooter = `
-            <button onclick="closeSheet('updateProgressSheet')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active-scale transition-apple shadow-sm">
-                Save Update
-            </button>
-        `;
-
-        // Render Sheets
-        sheetsContainer.innerHTML = [
-            BottomSheet({ id: 'updateProgressSheet', title: 'Update Progress', content: updateProgressContent, footerContent: updateProgressFooter })
-        ].join('');
-    </script>
-    
+    <script type="module" src="../js/production/index.js"></script>
     <script src="../js/utils/sheet.js"></script>
     <script src="../js/app.js"></script>
 </body>

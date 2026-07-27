@@ -61,6 +61,7 @@
                                 <input type="number" min="0" oninput="if(this.value < 0) this.value = 0;" value="1.2" class="w-full h-12 bg-surface pl-4 pr-12 rounded-xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary text-[16px] text-on-surface font-semibold">
                                 <span class="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-[14px]">yds</span>
                             </div>
+                            <p class="mt-2 text-[12px] text-primary font-medium flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">lightbulb</span> Historical avg for Organic Tees: 1.25 yds</p>
                         </div>
                         <div>
                             <label class="block text-[14px] font-medium text-on-surface-variant mb-1.5">Wastage Buffer</label>
@@ -183,47 +184,7 @@
     
     <div id="sheets-container"></div>
     
-    <script type="module">
-        import { BottomSheet } from '../js/components/index.js';
-        import { TextInput, SelectInput, TextareaInput } from '../js/components/inputs.js';
-        import { bindFormValidation } from '../js/utils/formHandler.js';
-
-        const sheetsContainer = document.getElementById('sheets-container');
-
-        // Save Cost Sheet
-        const saveCostContent = `
-            ${TextInput({ label: 'Style Name / Reference', id: 'save-style', placeholder: 'e.g. SS24-TS-01', required: true })}
-            ${SelectInput({ label: 'Client / Brand (Optional)', id: 'save-client', options: [{label: 'Select Client...'}, {label: 'Everlane Corp.'}] })}
-            ${TextareaInput({ label: 'Notes', id: 'save-notes', rows: 2 })}
-            <div class="h-10"></div>
-        `;
-        const saveCostFooter = `
-            <button id="save-cost-submit" onclick="closeSheet('saveCostSheet'); window.showToast('Costing saved', 'success')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active-scale transition-apple shadow-sm">
-                Save Costing
-            </button>
-        `;
-        
-        // Load Cost Sheet
-        const loadCostContent = `
-            ${SelectInput({ label: 'Saved Costings', id: 'load-style', options: [{label: 'SS24-TS-01 (Everlane Corp.)'}, {label: 'AW25-JK-02 (Patagonia)'}], required: true })}
-            <div class="h-10"></div>
-        `;
-        const loadCostFooter = `
-            <button id="load-cost-submit" onclick="closeSheet('loadCostSheet'); window.showToast('Costing loaded', 'success')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active-scale transition-apple shadow-sm">
-                Load Data
-            </button>
-        `;
-
-        // Render Sheets
-        sheetsContainer.innerHTML = [
-            BottomSheet({ id: 'saveCostSheet', title: 'Save Costing Draft', content: saveCostContent, footerContent: saveCostFooter, isForm: true }),
-            BottomSheet({ id: 'loadCostSheet', title: 'Load Saved Costing', content: loadCostContent, footerContent: loadCostFooter, isForm: true })
-        ].join('');
-
-        // Bind validation
-        bindFormValidation('saveCostSheet-content', 'save-cost-submit');
-        bindFormValidation('loadCostSheet-content', 'load-cost-submit');
-    </script>
+    <script type="module" src="../js/calculator/index.js"></script>
     
     <script src="../js/utils/sheet.js"></script>
     <script src="../js/app.js"></script>

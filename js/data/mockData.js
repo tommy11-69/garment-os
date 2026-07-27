@@ -1,7 +1,7 @@
 // Mock Data for Garment OS
 // Centralized data to simulate a backend database
 
-export const customers = [
+export let customers = [
     {
         id: "c-001",
         name: "Eleanor Vance",
@@ -23,24 +23,30 @@ export const customers = [
         phone: "+1 (555) 018-9273",
         status: "Inactive",
         statusColor: "bg-surface-variant text-secondary"
-    },
-    {
-        id: "c-003",
-        name: "Sarah Jenkins",
-        company: "Nike Custom",
-        initials: "SJ",
-        avatar: null, // Test fallback to initials
-        email: "s.jenkins@nike.com",
-        phone: "+1 (555) 012-3456",
-        status: "Active",
-        statusColor: "bg-[#008A00]/10 text-[#008A00]"
     }
 ];
 
-export const orders = [
+export let costings = [
+    {
+        id: "cost-001",
+        styleRef: "SS24-TS-01",
+        clientId: "c-001",
+        totalUnitCost: 22.10,
+        retailPrice: 34.50,
+        status: "Draft", // Draft, Quoted, Accepted
+        date: "2026-07-15",
+        materials: [
+            { invId: "inv-001", estimatedConsumption: 1.2 }
+        ]
+    }
+];
+
+export let orders = [
     {
         id: "ORD-992",
         customerName: "Everlane Corp.",
+        customerId: "c-001",
+        costingId: "cost-001",
         value: 12400,
         status: "On Track",
         statusColor: "bg-[#008A00]/10 text-[#008A00]",
@@ -48,99 +54,83 @@ export const orders = [
         dateDay: "24",
         progressPercentage: 65,
         progressLabel: "Cutting Phase",
-        progressColor: "bg-primary"
-    },
-    {
-        id: "ORD-995",
-        customerName: "Patagonia",
-        value: 8950,
-        status: "Delayed",
-        statusColor: "bg-[#FF9F0A]/10 text-[#FF9F0A]",
-        dateMonth: "Oct",
-        dateDay: "26",
-        progressPercentage: 15,
-        progressLabel: "Material Sourcing",
-        progressColor: "bg-[#FF9F0A]"
+        progressColor: "bg-primary",
+        incurredCost: 4500 // Will be calculated from batch expenses
     }
 ];
 
-export const inventory = [
+export let inventory = [
     {
         id: "inv-001",
         name: "Organic Cotton Jersey",
         sku: "FAB-OC-001",
-        quantity: "4,500",
+        quantity: 4500, // Numeric for easier math
         unit: "Meters",
         status: "In Stock",
         statusColor: "bg-[#008A00]/10 text-[#008A00]",
         icon: "inventory_2",
-        iconColor: "bg-primary/10 text-primary"
+        iconColor: "bg-primary/10 text-primary",
+        historicalAvgConsumption: 1.25
     },
     {
         id: "inv-002",
         name: "Navy Blue Thread",
         sku: "THR-NB-024",
-        quantity: "12",
+        quantity: 12,
         unit: "Cones",
         status: "Low Stock",
         statusColor: "bg-error/10 text-error",
         icon: "linear_scale",
-        iconColor: "bg-[#5E5CE6]/10 text-[#5E5CE6]"
+        iconColor: "bg-[#5E5CE6]/10 text-[#5E5CE6]",
+        historicalAvgConsumption: 0.05
     }
 ];
 
-export const activeBatches = [
+export let activeBatches = [
     {
         id: "B-8092",
+        orderId: "ORD-992",
         description: "Organic Tees • 5k units",
         phase: "Cutting",
         progress: 45,
-        progressColor: "bg-primary"
-    },
-    {
-        id: "B-8093",
-        description: "Denim Jackets • 1.2k units",
-        phase: "Sewing",
-        progress: 70,
-        progressColor: "bg-[#FF9F0A]"
+        progressColor: "bg-primary",
+        expenses: ["txn-004"], // Array of transaction IDs
+        consumptions: [
+            { invId: "inv-001", actualConsumption: 150, date: "2026-10-15" }
+        ]
     }
 ];
 
-export const transactions = [
+export let transactions = [
     {
         id: "txn-001",
         type: "expense",
         title: "Fabric Supplier (TexCorp)",
         category: "Raw Materials",
         amount: 4200.00,
-        amountColor: "text-on-surface", // negative visually but standard color in design
+        amountColor: "text-on-surface",
         isNegative: true,
         icon: "store",
         iconBg: "bg-error/10",
         iconColor: "text-error"
     },
     {
-        id: "txn-002",
-        type: "income",
-        title: "Everlane Corp.",
-        category: "Invoice #INV-2049",
-        amount: 25000.00,
-        amountColor: "text-[#008A00]",
-        isNegative: false,
-        icon: "account_balance_wallet",
-        iconBg: "bg-[#008A00]/10",
-        iconColor: "text-[#008A00]"
-    },
-    {
-        id: "txn-003",
+        id: "txn-004",
         type: "expense",
-        title: "Electricity Board",
-        category: "Utilities",
-        amount: 850.50,
+        title: "Dyeing Chemicals",
+        category: "Production",
+        amount: 500.00,
         amountColor: "text-on-surface",
         isNegative: true,
-        icon: "electric_bolt",
+        icon: "science",
         iconBg: "bg-error/10",
-        iconColor: "text-error"
+        iconColor: "text-error",
+        linkedBatchId: "B-8092"
     }
 ];
+
+// Utility to export mutable data
+export const setInventory = (newInv) => { inventory = newInv; };
+export const setTransactions = (newTxns) => { transactions = newTxns; };
+export const setActiveBatches = (newBatches) => { activeBatches = newBatches; };
+export const setCostings = (newCostings) => { costings = newCostings; };

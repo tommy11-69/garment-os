@@ -112,6 +112,50 @@
                         </div>
                     </div>
                 </div>
+            <!-- Variance Report (Estimated vs Actual) -->
+            <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant p-lg shadow-sm">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-[16px] font-bold text-on-surface">Material Variance</h3>
+                    <span class="text-[12px] font-bold text-error bg-error-container/30 px-2 py-1 rounded-md">Over Budget</span>
+                </div>
+                
+                <div class="flex flex-col gap-5">
+                    <!-- Item 1 -->
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-[14px] font-semibold text-on-surface">Organic Cotton Jersey</span>
+                            <span class="text-[13px] font-bold text-error">+4.2%</span>
+                        </div>
+                        <div class="flex justify-between items-center text-[12px] text-secondary mb-2">
+                            <span>Est: 1.2 yds/unit</span>
+                            <span>Act: 1.25 yds/unit</span>
+                        </div>
+                        <div class="w-full bg-surface-container h-2 rounded-full overflow-hidden relative">
+                            <!-- Budget line -->
+                            <div class="absolute top-0 bottom-0 left-[95%] w-0.5 bg-on-surface z-10"></div>
+                            <!-- Actual bar -->
+                            <div class="bg-error h-full rounded-full" style="width: 100%;"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Item 2 -->
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-[14px] font-semibold text-on-surface">Navy Blue Thread</span>
+                            <span class="text-[13px] font-bold text-success">-1.5%</span>
+                        </div>
+                        <div class="flex justify-between items-center text-[12px] text-secondary mb-2">
+                            <span>Est: 0.05 cones/unit</span>
+                            <span>Act: 0.049 cones/unit</span>
+                        </div>
+                        <div class="w-full bg-surface-container h-2 rounded-full overflow-hidden relative">
+                            <!-- Budget line -->
+                            <div class="absolute top-0 bottom-0 left-[100%] w-0.5 bg-on-surface z-10"></div>
+                            <!-- Actual bar -->
+                            <div class="bg-success h-full rounded-full" style="width: 98.5%;"></div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Export Options List -->
