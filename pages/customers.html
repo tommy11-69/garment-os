@@ -150,6 +150,7 @@
     <script type="module">
         import { BottomSheet } from '../js/components/index.js';
         import { TextInput, TextareaInput } from '../js/components/inputs.js';
+        import { bindFormValidation } from '../js/utils/formHandler.js';
 
         const sheetsContainer = document.getElementById('sheets-container');
         
@@ -157,14 +158,14 @@
         const addCustomerContent = `
             ${TextInput({ label: 'Company Name', id: 'add-company', placeholder: 'e.g. Everlane Corp.', required: true })}
             ${TextInput({ label: 'Contact Person', id: 'add-contact', placeholder: 'Full Name', required: true })}
-            ${TextInput({ label: 'Email Address', id: 'add-email', placeholder: 'email@company.com', type: 'email' })}
-            ${TextInput({ label: 'Phone Number', id: 'add-phone', placeholder: '+1 (555) 000-0000', type: 'tel' })}
-            ${TextInput({ label: 'GST / Tax ID', id: 'add-gst', placeholder: 'Optional' })}
+            ${TextInput({ label: 'Email Address', id: 'add-email', placeholder: 'email@company.com', type: 'email', validationType: 'email' })}
+            ${TextInput({ label: 'Phone Number', id: 'add-phone', placeholder: '+1 (555) 000-0000', type: 'tel', validationType: 'phone', required: true })}
+            ${TextInput({ label: 'GST / Tax ID', id: 'add-gst', placeholder: 'Optional', validationType: 'gst' })}
             ${TextareaInput({ label: 'Billing Address', id: 'add-address', placeholder: 'Full address...' })}
             <div class="h-20"></div>
         `;
         const addCustomerFooter = `
-            <button onclick="closeSheet('addCustomerSheet')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
+            <button id="add-customer-submit" onclick="closeSheet('addCustomerSheet'); window.showToast('Customer saved', 'success')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
                 Save Customer
             </button>
         `;
@@ -182,7 +183,7 @@
                 </div>
             </div>
             <div class="flex gap-2">
-                <button onclick="openSheet('deleteCustomerSheet')" class="w-8 h-8 rounded-full bg-error-container/30 flex items-center justify-center text-error active:scale-95 transition-transform">
+                <button onclick="window.showConfirmation({title: 'Delete Customer', message: 'Are you sure you want to delete this customer? This action cannot be undone.', confirmText: 'Delete', onConfirm: () => closeSheet('customerDetailsSheet')})" class="w-8 h-8 rounded-full bg-error-container/30 flex items-center justify-center text-error active:scale-95 transition-transform">
                     <span class="material-symbols-outlined text-[18px]">delete</span>
                 </button>
                 <button onclick="openSheet('editCustomerSheet')" class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary active:scale-95 transition-transform">
@@ -249,45 +250,28 @@
         const editCustomerContent = `
             ${TextInput({ label: 'Company Name', id: 'edit-company', value: 'Aethereal Collective', required: true })}
             ${TextInput({ label: 'Contact Person', id: 'edit-contact', value: 'Eleanor Vance', required: true })}
-            ${TextInput({ label: 'Email Address', id: 'edit-email', value: 'eleanor@aethereal.co', type: 'email' })}
-            ${TextInput({ label: 'Phone Number', id: 'edit-phone', value: '+1 (555) 123-4567', type: 'tel' })}
-            ${TextInput({ label: 'GST / Tax ID', id: 'edit-gst', value: '99-1234567' })}
+            ${TextInput({ label: 'Email Address', id: 'edit-email', value: 'eleanor@aethereal.co', type: 'email', validationType: 'email' })}
+            ${TextInput({ label: 'Phone Number', id: 'edit-phone', value: '+1 (555) 123-4567', type: 'tel', validationType: 'phone', required: true })}
+            ${TextInput({ label: 'GST / Tax ID', id: 'edit-gst', value: '99-1234567', validationType: 'gst' })}
             ${TextareaInput({ label: 'Billing Address', id: 'edit-address', value: '123 Fashion District Blvd,\\nSuite 400, Los Angeles, CA 90015' })}
             <div class="h-20"></div>
         `;
         const editCustomerFooter = `
-            <button onclick="closeSheet('editCustomerSheet')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
+            <button id="edit-customer-submit" onclick="closeSheet('editCustomerSheet'); window.showToast('Customer updated', 'success')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
                 Update Customer
-            </button>
-        `;
-
-        // Delete Customer Confirmation
-        const deleteCustomerContent = `
-            <div class="flex flex-col items-center text-center gap-3 pt-4">
-                <div class="w-16 h-16 rounded-full bg-error-container/30 text-error flex items-center justify-center mb-2">
-                    <span class="material-symbols-outlined text-[32px]">delete</span>
-                </div>
-                <h3 class="text-[20px] font-bold text-on-surface">Delete Customer?</h3>
-                <p class="text-[15px] text-secondary">Are you sure you want to delete Aethereal Collective? This action cannot be undone.</p>
-                <div class="h-6"></div>
-            </div>
-        `;
-        const deleteCustomerFooter = `
-            <button onclick="closeSheet('deleteCustomerSheet')" class="flex-1 bg-surface-container-high text-on-surface font-bold text-[15px] py-3.5 rounded-2xl active:scale-[0.98] transition-transform">
-                Cancel
-            </button>
-            <button onclick="closeSheet('deleteCustomerSheet')" class="flex-1 bg-error text-on-error font-bold text-[15px] py-3.5 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
-                Delete
             </button>
         `;
 
         // Render Sheets
         sheetsContainer.innerHTML = [
-            BottomSheet({ id: 'addCustomerSheet', title: 'New Customer', content: addCustomerContent, footerContent: addCustomerFooter }),
+            BottomSheet({ id: 'addCustomerSheet', title: 'New Customer', content: addCustomerContent, footerContent: addCustomerFooter, isForm: true }),
             BottomSheet({ id: 'customerDetailsSheet', customHeader: customerDetailsHeader, content: customerDetailsContent, footerContent: customerDetailsFooter, height: '90vh' }),
-            BottomSheet({ id: 'editCustomerSheet', title: 'Edit Customer', content: editCustomerContent, footerContent: editCustomerFooter }),
-            BottomSheet({ id: 'deleteCustomerSheet', customHeader: '<div class="sheet-handle"></div>', content: deleteCustomerContent, footerContent: deleteCustomerFooter, height: 'auto' })
+            BottomSheet({ id: 'editCustomerSheet', title: 'Edit Customer', content: editCustomerContent, footerContent: editCustomerFooter, isForm: true })
         ].join('');
+
+        // Bind validation
+        bindFormValidation('addCustomerSheet-content', 'add-customer-submit');
+        bindFormValidation('editCustomerSheet-content', 'edit-customer-submit');
     </script>
 
     <script src="../js/utils/sheet.js"></script>

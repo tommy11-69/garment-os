@@ -65,13 +65,13 @@ export function Pagination({ currentPage = 1, totalPages = 1 }) {
     </div>`;
 }
 
-export function BottomSheet({ id, title = '', customHeader = '', content, footerContent = '', height = '85vh' }) {
+export function BottomSheet({ id, title = '', customHeader = '', content, footerContent = '', height = '85vh', isForm = false }) {
     let headerHtml = customHeader;
     if (!customHeader) {
         headerHtml = `
         <div class="px-lg pb-md flex justify-between items-center border-b border-outline-variant/30">
             <h2 class="text-[20px] font-bold text-on-surface">${title}</h2>
-            <button onclick="closeSheet('${id}')" class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-secondary active:scale-95 transition-transform">
+            <button type="button" onclick="closeSheet('${id}')" class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-secondary active:scale-95 transition-transform">
                 <span class="material-symbols-outlined text-[20px]">close</span>
             </button>
         </div>`;
@@ -85,14 +85,18 @@ export function BottomSheet({ id, title = '', customHeader = '', content, footer
         </div>`;
     }
 
+    const tag = isForm ? 'form' : 'div';
+    const formAttr = isForm ? 'novalidate onsubmit="event.preventDefault();"' : '';
+
     return `
     <div id="${id}-overlay" class="bottom-sheet-overlay" onclick="closeSheet('${id}')"></div>
-    <div id="${id}-content" class="bottom-sheet-content flex flex-col h-[${height}]">
+    <${tag} id="${id}-content" class="bottom-sheet-content flex flex-col h-[${height}]" ${formAttr}>
         <div class="sheet-handle"></div>
         ${headerHtml}
         <div class="flex-1 overflow-y-auto p-lg flex flex-col gap-lg bg-background">
             ${content}
         </div>
         ${footerHtml}
-    </div>`;
+    </${tag}>`;
 }
+

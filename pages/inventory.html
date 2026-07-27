@@ -152,18 +152,18 @@
     
     <div id="sheets-container"></div>
     
-    <script type="module">
         import { BottomSheet, TimelineEvent } from '../js/components/index.js';
         import { TextInput, SelectInput, TextareaInput } from '../js/components/inputs.js';
+        import { bindFormValidation } from '../js/utils/formHandler.js';
 
         const sheetsContainer = document.getElementById('sheets-container');
         
         // Add Stock (Stock In)
         const stockInContent = `
-            ${SelectInput({ label: 'Item / Material', id: 'in-item', options: [{label: 'Select Item...'}, {label: 'Cotton Jersey 180GSM'}, {label: 'YKK Zippers 6"'}, {label: 'New Item...'}] })}
+            ${SelectInput({ label: 'Item / Material', id: 'in-item', options: [{label: '', value: ''}, {label: 'Cotton Jersey 180GSM'}, {label: 'YKK Zippers 6"'}, {label: 'New Item...'}], required: true })}
             <div class="flex gap-4">
                 <div class="flex-1">
-                    ${TextInput({ label: 'Quantity', id: 'in-qty', type: 'number', placeholder: '0' })}
+                    ${TextInput({ label: 'Quantity', id: 'in-qty', type: 'number', placeholder: '0', required: true, validationType: 'positive', min: '1' })}
                 </div>
                 <div class="flex-1">
                     ${SelectInput({ label: 'Unit', id: 'in-unit', options: [{label: 'kgs'}, {label: 'meters'}, {label: 'pcs'}, {label: 'boxes'}] })}
@@ -172,27 +172,27 @@
             ${SelectInput({ label: 'Supplier', id: 'in-supplier', options: [{label: 'Select Supplier...'}, {label: 'Raj Textiles'}, {label: 'YKK India'}] })}
             <div class="flex gap-4">
                 <div class="flex-1">
-                    ${TextInput({ label: 'Purchase Price', id: 'in-price', type: 'number', placeholder: '$' })}
+                    ${TextInput({ label: 'Purchase Price', id: 'in-price', type: 'number', placeholder: '$', required: true, validationType: 'non-negative', min: '0', step: '0.01' })}
                 </div>
                 <div class="flex-1">
-                    ${TextInput({ label: 'Location', id: 'in-loc', placeholder: 'e.g. A-12' })}
+                    ${TextInput({ label: 'Location', id: 'in-loc', placeholder: 'e.g. A-12', required: true })}
                 </div>
             </div>
             ${TextareaInput({ label: 'Notes / LR Number', id: 'in-notes', rows: 2 })}
             <div class="h-10"></div>
         `;
         const stockInFooter = `
-            <button onclick="closeSheet('stockInSheet')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
+            <button id="in-submit" onclick="closeSheet('stockInSheet'); window.showToast('Stock recorded', 'success')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
                 Confirm Stock In
             </button>
         `;
 
         // Stock Out
         const stockOutContent = `
-            ${SelectInput({ label: 'Item / Material', id: 'out-item', options: [{label: 'Select Item...'}, {label: 'Cotton Jersey 180GSM'}, {label: 'YKK Zippers 6"'}] })}
+            ${SelectInput({ label: 'Item / Material', id: 'out-item', options: [{label: '', value: ''}, {label: 'Cotton Jersey 180GSM'}, {label: 'YKK Zippers 6"'}], required: true })}
             <div class="flex gap-4">
                 <div class="flex-1">
-                    ${TextInput({ label: 'Quantity', id: 'out-qty', type: 'number', placeholder: '0' })}
+                    ${TextInput({ label: 'Quantity', id: 'out-qty', type: 'number', placeholder: '0', required: true, validationType: 'positive', min: '1', max: '1250' })}
                 </div>
                 <div class="flex-1">
                     ${TextInput({ label: 'Current Stock', id: 'out-current', value: '1,250 kgs', disabled: true })}
@@ -203,20 +203,20 @@
             <div class="h-10"></div>
         `;
         const stockOutFooter = `
-            <button onclick="closeSheet('stockOutSheet')" class="w-full bg-warning text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
+            <button id="out-submit" onclick="closeSheet('stockOutSheet'); window.showToast('Stock reduced', 'success')" class="w-full bg-warning text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
                 Record Stock Out
             </button>
         `;
 
         // Adjust Stock
         const adjustStockContent = `
-            ${SelectInput({ label: 'Item / Material', id: 'adj-item', options: [{label: 'Cotton Jersey 180GSM', value: '1'}] })}
+            ${SelectInput({ label: 'Item / Material', id: 'adj-item', options: [{label: 'Cotton Jersey 180GSM', value: '1'}], required: true })}
             <div class="flex gap-4">
                 <div class="flex-1">
                     ${TextInput({ label: 'System Stock', id: 'adj-sys', value: '1250', disabled: true })}
                 </div>
                 <div class="flex-1">
-                    ${TextInput({ label: 'Actual Stock', id: 'adj-actual', type: 'number', placeholder: '0' })}
+                    ${TextInput({ label: 'Actual Stock', id: 'adj-actual', type: 'number', placeholder: '0', required: true, validationType: 'non-negative', min: '0' })}
                 </div>
             </div>
             ${SelectInput({ label: 'Reason', id: 'adj-reason', options: [{label: 'Audit / Stocktake'}, {label: 'Damaged / Wastage'}, {label: 'Data Error'}] })}
@@ -224,27 +224,27 @@
             <div class="h-10"></div>
         `;
         const adjustStockFooter = `
-            <button onclick="closeSheet('adjustStockSheet')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
+            <button id="adj-submit" onclick="closeSheet('adjustStockSheet'); window.showToast('Stock adjusted', 'success')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
                 Update Stock Level
             </button>
         `;
 
         // Transfer Stock
         const transferStockContent = `
-            ${SelectInput({ label: 'Item / Material', id: 'tr-item', options: [{label: 'Cotton Jersey 180GSM'}] })}
-            ${TextInput({ label: 'Quantity to Transfer', id: 'tr-qty', type: 'number', placeholder: '0' })}
+            ${SelectInput({ label: 'Item / Material', id: 'tr-item', options: [{label: 'Cotton Jersey 180GSM'}], required: true })}
+            ${TextInput({ label: 'Quantity to Transfer', id: 'tr-qty', type: 'number', placeholder: '0', required: true, validationType: 'positive', min: '1', max: '1250' })}
             <div class="flex gap-4">
                 <div class="flex-1">
                     ${TextInput({ label: 'From Location', id: 'tr-from', value: 'A-12', disabled: true })}
                 </div>
                 <div class="flex-1">
-                    ${TextInput({ label: 'To Location', id: 'tr-to', placeholder: 'e.g. B-04' })}
+                    ${TextInput({ label: 'To Location', id: 'tr-to', placeholder: 'e.g. B-04', required: true })}
                 </div>
             </div>
             <div class="h-10"></div>
         `;
         const transferStockFooter = `
-            <button onclick="closeSheet('transferStockSheet')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
+            <button id="tr-submit" onclick="closeSheet('transferStockSheet'); window.showToast('Stock transferred', 'success')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
                 Transfer
             </button>
         `;
@@ -300,12 +300,18 @@
 
         // Render Sheets
         sheetsContainer.innerHTML = [
-            BottomSheet({ id: 'stockInSheet', title: 'Stock In', content: stockInContent, footerContent: stockInFooter }),
-            BottomSheet({ id: 'stockOutSheet', title: 'Stock Out', content: stockOutContent, footerContent: stockOutFooter }),
-            BottomSheet({ id: 'adjustStockSheet', title: 'Adjust Stock Level', content: adjustStockContent, footerContent: adjustStockFooter }),
-            BottomSheet({ id: 'transferStockSheet', title: 'Transfer Location', content: transferStockContent, footerContent: transferStockFooter }),
+            BottomSheet({ id: 'stockInSheet', title: 'Stock In', content: stockInContent, footerContent: stockInFooter, isForm: true }),
+            BottomSheet({ id: 'stockOutSheet', title: 'Stock Out', content: stockOutContent, footerContent: stockOutFooter, isForm: true }),
+            BottomSheet({ id: 'adjustStockSheet', title: 'Adjust Stock Level', content: adjustStockContent, footerContent: adjustStockFooter, isForm: true }),
+            BottomSheet({ id: 'transferStockSheet', title: 'Transfer Location', content: transferStockContent, footerContent: transferStockFooter, isForm: true }),
             BottomSheet({ id: 'itemDetailsSheet', customHeader: itemDetailsHeader, content: itemDetailsContent, footerContent: itemDetailsFooter, height: '90vh' })
         ].join('');
+
+        // Bind validation
+        bindFormValidation('stockInSheet-content', 'in-submit');
+        bindFormValidation('stockOutSheet-content', 'out-submit');
+        bindFormValidation('adjustStockSheet-content', 'adj-submit');
+        bindFormValidation('transferStockSheet-content', 'tr-submit');
     </script>
 
     <script src="../js/utils/sheet.js"></script>

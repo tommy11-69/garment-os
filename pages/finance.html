@@ -155,6 +155,7 @@
     <script type="module">
         import { BottomSheet } from '../js/components/index.js';
         import { TextInput, SelectInput, TextareaInput, SegmentedControl } from '../js/components/inputs.js';
+        import { bindFormValidation } from '../js/utils/formHandler.js';
 
         const sheetsContainer = document.getElementById('sheets-container');
         
@@ -165,7 +166,7 @@
             </div>
             <div class="flex gap-4">
                 <div class="flex-1">
-                    ${TextInput({ label: 'Amount', id: 'trans-amount', type: 'number', placeholder: '$0.00', required: true })}
+                    ${TextInput({ label: 'Amount', id: 'trans-amount', type: 'number', placeholder: '$0.00', required: true, validationType: 'positive', min: '0.01', step: '0.01' })}
                 </div>
                 <div class="flex-1">
                     ${TextInput({ label: 'Date', id: 'trans-date', type: 'date', required: true })}
@@ -178,7 +179,7 @@
             <div class="h-10"></div>
         `;
         const addTransactionFooter = `
-            <button onclick="closeSheet('addTransactionSheet')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
+            <button id="add-trans-submit" onclick="closeSheet('addTransactionSheet'); window.showToast('Transaction saved', 'success')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
                 Save Transaction
             </button>
         `;
@@ -193,13 +194,13 @@
                     ${SelectInput({ label: 'To Account', id: 'tr-to', options: [{label: 'Petty Cash'}] })}
                 </div>
             </div>
-            ${TextInput({ label: 'Amount', id: 'tr-amount', type: 'number', placeholder: '$0.00', required: true })}
+            ${TextInput({ label: 'Amount', id: 'tr-amount', type: 'number', placeholder: '$0.00', required: true, validationType: 'positive', min: '0.01', step: '0.01' })}
             ${TextInput({ label: 'Date', id: 'tr-date', type: 'date', required: true })}
             ${TextareaInput({ label: 'Notes', id: 'tr-notes', rows: 2 })}
             <div class="h-10"></div>
         `;
         const transferFundsFooter = `
-            <button onclick="closeSheet('transferFundsSheet')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
+            <button id="tr-funds-submit" onclick="closeSheet('transferFundsSheet'); window.showToast('Funds transferred', 'success')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
                 Transfer
             </button>
         `;
@@ -253,10 +254,14 @@
 
         // Render Sheets
         sheetsContainer.innerHTML = [
-            BottomSheet({ id: 'addTransactionSheet', title: 'New Transaction', content: addTransactionContent, footerContent: addTransactionFooter }),
-            BottomSheet({ id: 'transferFundsSheet', title: 'Transfer Funds', content: transferFundsContent, footerContent: transferFundsFooter }),
+            BottomSheet({ id: 'addTransactionSheet', title: 'New Transaction', content: addTransactionContent, footerContent: addTransactionFooter, isForm: true }),
+            BottomSheet({ id: 'transferFundsSheet', title: 'Transfer Funds', content: transferFundsContent, footerContent: transferFundsFooter, isForm: true }),
             BottomSheet({ id: 'transactionDetailsSheet', customHeader: transactionDetailsHeader, content: transactionDetailsContent, footerContent: transactionDetailsFooter, height: '90vh' })
         ].join('');
+
+        // Bind validation
+        bindFormValidation('addTransactionSheet-content', 'add-trans-submit');
+        bindFormValidation('transferFundsSheet-content', 'tr-funds-submit');
     </script>
 
     <script src="../js/app.js"></script>

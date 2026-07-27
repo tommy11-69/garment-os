@@ -45,34 +45,56 @@ export function SegmentedControl({ options = [], activeOption = '', id = '' }) {
     </div>`;
 }
 
-export function TextInput({ label, id, placeholder = '', type = 'text', value = '', required = false, icon = '' }) {
+export function TextInput({ label, id, placeholder = '', type = 'text', value = '', required = false, icon = '', min = '', max = '', pattern = '', helperText = '', validationType = '' }) {
+    const minAttr = min !== '' ? `min="${min}"` : '';
+    const maxAttr = max !== '' ? `max="${max}"` : '';
+    const patternAttr = pattern ? `pattern="${pattern}"` : '';
+    const valAttr = validationType ? `data-validation="${validationType}"` : '';
+    
     return `
-    <div class="flex flex-col gap-2">
-        <label class="text-[14px] font-semibold text-on-surface" for="${id}">${label}${required ? ' <span class="text-error">*</span>' : ''}</label>
+    <div class="flex flex-col gap-2 relative group">
+        <label class="text-[14px] font-semibold text-on-surface flex justify-between" for="${id}">
+            <span>${label}${required ? ' <span class="text-error">*</span>' : ''}</span>
+            <span class="text-[12px] text-error font-medium opacity-0 transition-opacity" id="${id}-error"></span>
+        </label>
         <div class="relative">
-            ${icon ? `<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-secondary">${icon}</span>` : ''}
-            <input type="${type}" id="${id}" placeholder="${placeholder}" value="${value}" ${required ? 'required' : ''}
-                   class="w-full bg-surface border border-outline-variant rounded-xl ${icon ? 'pl-11' : 'px-4'} pr-4 py-3 text-[16px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all placeholder:text-secondary">
+            ${icon ? `<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-secondary transition-colors" id="${id}-icon">${icon}</span>` : ''}
+            <input type="${type}" id="${id}" name="${id}" placeholder="${placeholder}" value="${value}" ${required ? 'required' : ''} ${minAttr} ${maxAttr} ${patternAttr} ${valAttr}
+                   class="w-full bg-surface border border-outline-variant rounded-xl ${icon ? 'pl-11' : 'px-4'} pr-4 py-3 text-[16px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all placeholder:text-secondary group-[.is-invalid]:border-error group-[.is-invalid]:focus:ring-error/20 group-[.is-invalid]:focus:border-error">
         </div>
+        ${helperText ? `<p class="text-[12px] text-secondary pl-1" id="${id}-helper">${helperText}</p>` : ''}
     </div>`;
 }
 
-export function SelectInput({ label, id, options = [], required = false }) {
+export function SelectInput({ label, id, options = [], required = false, helperText = '', validationType = '' }) {
     const opts = options.map(opt => `<option value="${opt.value || opt.label}">${opt.label}</option>`).join('');
+    const valAttr = validationType ? `data-validation="${validationType}"` : '';
+    
     return `
-    <div class="flex flex-col gap-2">
-        <label class="text-[14px] font-semibold text-on-surface" for="${id}">${label}${required ? ' <span class="text-error">*</span>' : ''}</label>
-        <select id="${id}" ${required ? 'required' : ''} class="w-full bg-surface border border-outline-variant rounded-xl px-4 py-3 text-[16px] text-on-surface focus:ring-2 focus:ring-primary/20 outline-none appearance-none cursor-pointer">
+    <div class="flex flex-col gap-2 relative group">
+        <label class="text-[14px] font-semibold text-on-surface flex justify-between" for="${id}">
+            <span>${label}${required ? ' <span class="text-error">*</span>' : ''}</span>
+            <span class="text-[12px] text-error font-medium opacity-0 transition-opacity" id="${id}-error"></span>
+        </label>
+        <select id="${id}" name="${id}" ${required ? 'required' : ''} ${valAttr}
+                class="w-full bg-surface border border-outline-variant rounded-xl px-4 py-3 text-[16px] text-on-surface focus:ring-2 focus:ring-primary/20 outline-none appearance-none cursor-pointer transition-all group-[.is-invalid]:border-error group-[.is-invalid]:focus:ring-error/20 group-[.is-invalid]:focus:border-error">
             ${opts}
         </select>
+        ${helperText ? `<p class="text-[12px] text-secondary pl-1" id="${id}-helper">${helperText}</p>` : ''}
     </div>`;
 }
 
-export function TextareaInput({ label, id, placeholder = '', rows = 3, value = '', required = false }) {
+export function TextareaInput({ label, id, placeholder = '', rows = 3, value = '', required = false, helperText = '', validationType = '' }) {
+    const valAttr = validationType ? `data-validation="${validationType}"` : '';
+    
     return `
-    <div class="flex flex-col gap-2">
-        <label class="text-[14px] font-semibold text-on-surface" for="${id}">${label}${required ? ' <span class="text-error">*</span>' : ''}</label>
-        <textarea id="${id}" rows="${rows}" placeholder="${placeholder}" ${required ? 'required' : ''}
-                  class="w-full bg-surface border border-outline-variant rounded-xl px-4 py-3 text-[16px] focus:ring-2 focus:ring-primary/20 outline-none resize-none transition-all">${value}</textarea>
+    <div class="flex flex-col gap-2 relative group">
+        <label class="text-[14px] font-semibold text-on-surface flex justify-between" for="${id}">
+            <span>${label}${required ? ' <span class="text-error">*</span>' : ''}</span>
+            <span class="text-[12px] text-error font-medium opacity-0 transition-opacity" id="${id}-error"></span>
+        </label>
+        <textarea id="${id}" name="${id}" rows="${rows}" placeholder="${placeholder}" ${required ? 'required' : ''} ${valAttr}
+                  class="w-full bg-surface border border-outline-variant rounded-xl px-4 py-3 text-[16px] focus:ring-2 focus:ring-primary/20 outline-none resize-none transition-all group-[.is-invalid]:border-error group-[.is-invalid]:focus:ring-error/20 group-[.is-invalid]:focus:border-error">${value}</textarea>
+        ${helperText ? `<p class="text-[12px] text-secondary pl-1" id="${id}-helper">${helperText}</p>` : ''}
     </div>`;
 }

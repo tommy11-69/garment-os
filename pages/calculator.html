@@ -51,21 +51,21 @@
                             <label class="block text-[14px] font-medium text-on-surface-variant mb-1.5">Main Body (Cotton Jersey)</label>
                             <div class="relative">
                                 <span class="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">$</span>
-                                <input type="number" value="4.50" class="w-full h-12 bg-surface pl-8 pr-12 rounded-xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary text-[16px] text-on-surface font-semibold">
+                                <input type="number" min="0" oninput="if(this.value < 0) this.value = 0;" value="4.50" class="w-full h-12 bg-surface pl-8 pr-12 rounded-xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary text-[16px] text-on-surface font-semibold">
                                 <span class="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-[14px]">/ yd</span>
                             </div>
                         </div>
                         <div>
                             <label class="block text-[14px] font-medium text-on-surface-variant mb-1.5">Consumption</label>
                             <div class="relative">
-                                <input type="number" value="1.2" class="w-full h-12 bg-surface pl-4 pr-12 rounded-xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary text-[16px] text-on-surface font-semibold">
+                                <input type="number" min="0" oninput="if(this.value < 0) this.value = 0;" value="1.2" class="w-full h-12 bg-surface pl-4 pr-12 rounded-xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary text-[16px] text-on-surface font-semibold">
                                 <span class="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-[14px]">yds</span>
                             </div>
                         </div>
                         <div>
                             <label class="block text-[14px] font-medium text-on-surface-variant mb-1.5">Wastage Buffer</label>
                             <div class="relative">
-                                <input type="number" value="5" class="w-full h-12 bg-surface pl-4 pr-12 rounded-xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary text-[16px] text-on-surface font-semibold">
+                                <input type="number" min="0" oninput="if(this.value < 0) this.value = 0;" value="5" class="w-full h-12 bg-surface pl-4 pr-12 rounded-xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary text-[16px] text-on-surface font-semibold">
                                 <span class="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-[14px]">%</span>
                             </div>
                         </div>
@@ -88,14 +88,14 @@
                             <label class="block text-[14px] font-medium text-on-surface-variant mb-1.5">Screen Print (Front)</label>
                             <div class="relative">
                                 <span class="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">$</span>
-                                <input type="number" value="2.50" class="w-full h-12 bg-surface pl-8 pr-4 rounded-xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary text-[16px] text-on-surface font-semibold">
+                                <input type="number" min="0" oninput="if(this.value < 0) this.value = 0;" value="2.50" class="w-full h-12 bg-surface pl-8 pr-4 rounded-xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary text-[16px] text-on-surface font-semibold">
                             </div>
                         </div>
                         <div>
                             <label class="block text-[14px] font-medium text-on-surface-variant mb-1.5">Setup Amortization</label>
                             <div class="relative">
                                 <span class="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">$</span>
-                                <input type="number" value="0.50" class="w-full h-12 bg-surface pl-8 pr-4 rounded-xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary text-[16px] text-on-surface font-semibold">
+                                <input type="number" min="0" oninput="if(this.value < 0) this.value = 0;" value="0.50" class="w-full h-12 bg-surface pl-8 pr-4 rounded-xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary text-[16px] text-on-surface font-semibold">
                             </div>
                         </div>
                     </div>
@@ -117,14 +117,14 @@
                             <label class="block text-[14px] font-medium text-on-surface-variant mb-1.5">Cut & Sew Cost</label>
                             <div class="relative">
                                 <span class="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">$</span>
-                                <input type="number" value="8.00" class="w-full h-12 bg-surface pl-8 pr-4 rounded-xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary text-[16px] text-on-surface font-semibold">
+                                <input type="number" min="0" oninput="if(this.value < 0) this.value = 0;" value="8.00" class="w-full h-12 bg-surface pl-8 pr-4 rounded-xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary text-[16px] text-on-surface font-semibold">
                             </div>
                         </div>
                         <div>
                             <label class="block text-[14px] font-medium text-on-surface-variant mb-1.5">Quality Control</label>
                             <div class="relative">
                                 <span class="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">$</span>
-                                <input type="number" value="1.25" class="w-full h-12 bg-surface pl-8 pr-4 rounded-xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary text-[16px] text-on-surface font-semibold">
+                                <input type="number" min="0" oninput="if(this.value < 0) this.value = 0;" value="1.25" class="w-full h-12 bg-surface pl-8 pr-4 rounded-xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary text-[16px] text-on-surface font-semibold">
                             </div>
                         </div>
                     </div>
@@ -146,7 +146,7 @@
                             <label class="block text-[14px] font-medium text-on-surface-variant mb-1.5">Labels & Hangtags</label>
                             <div class="relative">
                                 <span class="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">$</span>
-                                <input type="number" value="0.85" class="w-full h-12 bg-surface pl-8 pr-4 rounded-xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary text-[16px] text-on-surface font-semibold">
+                                <input type="number" min="0" oninput="if(this.value < 0) this.value = 0;" value="0.85" class="w-full h-12 bg-surface pl-8 pr-4 rounded-xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary text-[16px] text-on-surface font-semibold">
                             </div>
                         </div>
                     </div>
@@ -186,38 +186,43 @@
     <script type="module">
         import { BottomSheet } from '../js/components/index.js';
         import { TextInput, SelectInput, TextareaInput } from '../js/components/inputs.js';
+        import { bindFormValidation } from '../js/utils/formHandler.js';
 
         const sheetsContainer = document.getElementById('sheets-container');
 
         // Save Cost Sheet
         const saveCostContent = `
-            ${TextInput({ label: 'Style Name / Reference', id: 'save-style', placeholder: 'e.g. SS24-TS-01' })}
+            ${TextInput({ label: 'Style Name / Reference', id: 'save-style', placeholder: 'e.g. SS24-TS-01', required: true })}
             ${SelectInput({ label: 'Client / Brand (Optional)', id: 'save-client', options: [{label: 'Select Client...'}, {label: 'Everlane Corp.'}] })}
             ${TextareaInput({ label: 'Notes', id: 'save-notes', rows: 2 })}
             <div class="h-10"></div>
         `;
         const saveCostFooter = `
-            <button onclick="closeSheet('saveCostSheet')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
+            <button id="save-cost-submit" onclick="closeSheet('saveCostSheet'); window.showToast('Costing saved', 'success')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
                 Save Costing
             </button>
         `;
         
         // Load Cost Sheet
         const loadCostContent = `
-            ${SelectInput({ label: 'Saved Costings', id: 'load-style', options: [{label: 'SS24-TS-01 (Everlane Corp.)'}, {label: 'AW25-JK-02 (Patagonia)'}] })}
+            ${SelectInput({ label: 'Saved Costings', id: 'load-style', options: [{label: 'SS24-TS-01 (Everlane Corp.)'}, {label: 'AW25-JK-02 (Patagonia)'}], required: true })}
             <div class="h-10"></div>
         `;
         const loadCostFooter = `
-            <button onclick="closeSheet('loadCostSheet')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
+            <button id="load-cost-submit" onclick="closeSheet('loadCostSheet'); window.showToast('Costing loaded', 'success')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
                 Load Data
             </button>
         `;
 
         // Render Sheets
         sheetsContainer.innerHTML = [
-            BottomSheet({ id: 'saveCostSheet', title: 'Save Costing Draft', content: saveCostContent, footerContent: saveCostFooter }),
-            BottomSheet({ id: 'loadCostSheet', title: 'Load Saved Costing', content: loadCostContent, footerContent: loadCostFooter })
+            BottomSheet({ id: 'saveCostSheet', title: 'Save Costing Draft', content: saveCostContent, footerContent: saveCostFooter, isForm: true }),
+            BottomSheet({ id: 'loadCostSheet', title: 'Load Saved Costing', content: loadCostContent, footerContent: loadCostFooter, isForm: true })
         ].join('');
+
+        // Bind validation
+        bindFormValidation('saveCostSheet-content', 'save-cost-submit');
+        bindFormValidation('loadCostSheet-content', 'load-cost-submit');
     </script>
     
     <script src="../js/utils/sheet.js"></script>

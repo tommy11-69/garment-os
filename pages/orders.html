@@ -126,6 +126,7 @@
     <script type="module">
         import { BottomSheet, TimelineEvent } from '../js/components/index.js';
         import { TextInput, SelectInput, TextareaInput } from '../js/components/inputs.js';
+        import { bindFormValidation } from '../js/utils/formHandler.js';
 
         const sheetsContainer = document.getElementById('sheets-container');
         
@@ -134,55 +135,55 @@
             <div class="flex flex-col gap-2">
                 <label class="text-[14px] font-semibold text-on-surface">Order Priority</label>
                 <div class="flex bg-surface-variant p-1 rounded-xl w-full">
-                    <button class="flex-1 py-1.5 text-[13px] font-semibold rounded-lg transition-all ${active === 'Normal' ? 'bg-surface-container-lowest shadow-sm text-on-surface' : 'text-secondary'}">Normal</button>
-                    <button class="flex-1 py-1.5 text-[13px] font-semibold rounded-lg transition-all ${active === 'High' ? 'bg-surface-container-lowest shadow-sm text-on-surface' : 'text-secondary'}">High</button>
-                    <button class="flex-1 py-1.5 text-[13px] font-semibold rounded-lg transition-all ${active === 'Urgent' ? 'bg-surface-container-lowest shadow-sm text-error' : 'text-secondary hover:text-error'}">Urgent</button>
+                    <button type="button" class="flex-1 py-1.5 text-[13px] font-semibold rounded-lg transition-all ${active === 'Normal' ? 'bg-surface-container-lowest shadow-sm text-on-surface' : 'text-secondary'}">Normal</button>
+                    <button type="button" class="flex-1 py-1.5 text-[13px] font-semibold rounded-lg transition-all ${active === 'High' ? 'bg-surface-container-lowest shadow-sm text-on-surface' : 'text-secondary'}">High</button>
+                    <button type="button" class="flex-1 py-1.5 text-[13px] font-semibold rounded-lg transition-all ${active === 'Urgent' ? 'bg-surface-container-lowest shadow-sm text-error' : 'text-secondary hover:text-error'}">Urgent</button>
                 </div>
             </div>
         `;
 
         // Create Order Content
         const createOrderContent = `
-            ${SelectInput({ label: 'Customer', id: 'create-customer', options: [{label: 'Select Customer...'}, {label: 'Everlane Corp.'}, {label: 'Patagonia'}, {label: 'Aethereal Collective'}] })}
-            ${SelectInput({ label: 'Product Selection', id: 'create-product', options: [{label: 'Select Product Template...'}, {label: 'SS24-TS-01 (Cotton Jersey)'}, {label: 'AW25-JK-02 (Denim Jacket)'}] })}
+            ${SelectInput({ label: 'Customer', id: 'create-customer', options: [{label: '', value: ''}, {label: 'Everlane Corp.'}, {label: 'Patagonia'}, {label: 'Aethereal Collective'}], required: true })}
+            ${SelectInput({ label: 'Product Selection', id: 'create-product', options: [{label: '', value: ''}, {label: 'SS24-TS-01 (Cotton Jersey)'}, {label: 'AW25-JK-02 (Denim Jacket)'}], required: true })}
             <div class="flex gap-4">
                 <div class="flex-1">
-                    ${TextInput({ label: 'Quantity', id: 'create-qty', type: 'number', placeholder: '1000' })}
+                    ${TextInput({ label: 'Quantity', id: 'create-qty', type: 'number', placeholder: '1000', required: true, validationType: 'positive', min: '1' })}
                 </div>
                 <div class="flex-1">
-                    ${TextInput({ label: 'Unit Price', id: 'create-price', type: 'number', placeholder: '$' })}
+                    ${TextInput({ label: 'Unit Price', id: 'create-price', type: 'number', placeholder: '$', required: true, validationType: 'non-negative', min: '0', step: '0.01' })}
                 </div>
             </div>
-            ${TextInput({ label: 'Delivery Date', id: 'create-date', type: 'date' })}
+            ${TextInput({ label: 'Delivery Date', id: 'create-date', type: 'date', required: true, validationType: 'future-date' })}
             ${priorityControl('Normal')}
             ${TextareaInput({ label: 'Notes', id: 'create-notes', placeholder: 'Any special instructions...', rows: 2 })}
             <div class="h-10"></div>
         `;
         const createOrderFooter = `
-            <button onclick="closeSheet('createOrderSheet')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
+            <button id="create-order-submit" onclick="closeSheet('createOrderSheet'); window.showToast('Order created', 'success')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
                 Create Order
             </button>
         `;
 
         // Edit Order Content
         const editOrderContent = `
-            ${SelectInput({ label: 'Customer', id: 'edit-customer', options: [{label: 'Everlane Corp.', value: 'Everlane Corp.'}] })}
-            ${SelectInput({ label: 'Product Selection', id: 'edit-product', options: [{label: 'SS24-TS-01 (Cotton Jersey)'}] })}
+            ${SelectInput({ label: 'Customer', id: 'edit-customer', options: [{label: 'Everlane Corp.', value: 'Everlane Corp.'}], required: true })}
+            ${SelectInput({ label: 'Product Selection', id: 'edit-product', options: [{label: 'SS24-TS-01 (Cotton Jersey)'}], required: true })}
             <div class="flex gap-4">
                 <div class="flex-1">
-                    ${TextInput({ label: 'Quantity', id: 'edit-qty', type: 'number', value: '1200' })}
+                    ${TextInput({ label: 'Quantity', id: 'edit-qty', type: 'number', value: '1200', required: true, validationType: 'positive', min: '1' })}
                 </div>
                 <div class="flex-1">
-                    ${TextInput({ label: 'Unit Price', id: 'edit-price', type: 'number', value: '10.33' })}
+                    ${TextInput({ label: 'Unit Price', id: 'edit-price', type: 'number', value: '10.33', required: true, validationType: 'non-negative', min: '0', step: '0.01' })}
                 </div>
             </div>
-            ${TextInput({ label: 'Delivery Date', id: 'edit-date', type: 'date', value: '2026-10-24' })}
+            ${TextInput({ label: 'Delivery Date', id: 'edit-date', type: 'date', value: '2026-10-24', required: true, validationType: 'future-date' })}
             ${priorityControl('High')}
             ${TextareaInput({ label: 'Notes', id: 'edit-notes', value: 'Expedited shipping requested.', rows: 2 })}
             <div class="h-10"></div>
         `;
         const editOrderFooter = `
-            <button onclick="closeSheet('editOrderSheet')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
+            <button id="edit-order-submit" onclick="closeSheet('editOrderSheet'); window.showToast('Order updated', 'success')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
                 Save Changes
             </button>
         `;
@@ -199,7 +200,7 @@
                 <button onclick="openSheet('editOrderSheet')" class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary active:scale-95 transition-transform">
                     <span class="material-symbols-outlined text-[18px]">edit</span>
                 </button>
-                <button onclick="openSheet('deleteOrderSheet')" class="w-8 h-8 rounded-full bg-error-container/30 flex items-center justify-center text-error active:scale-95 transition-transform">
+                <button onclick="window.showConfirmation({title: 'Delete Order ORD-992?', message: 'Are you sure you want to delete this order? This action cannot be undone.', confirmText: 'Delete', onConfirm: () => closeSheet('orderDetailsSheet')})" class="w-8 h-8 rounded-full bg-error-container/30 flex items-center justify-center text-error active:scale-95 transition-transform">
                     <span class="material-symbols-outlined text-[18px]">delete</span>
                 </button>
                 <button onclick="closeSheet('orderDetailsSheet')" class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-secondary active:scale-95 transition-transform">
@@ -239,33 +240,16 @@
             </button>
         `;
 
-        // Delete Order Confirmation
-        const deleteOrderContent = `
-            <div class="flex flex-col items-center text-center gap-3 pt-4">
-                <div class="w-16 h-16 rounded-full bg-error-container/30 text-error flex items-center justify-center mb-2">
-                    <span class="material-symbols-outlined text-[32px]">delete</span>
-                </div>
-                <h3 class="text-[20px] font-bold text-on-surface">Delete Order ORD-992?</h3>
-                <p class="text-[15px] text-secondary">Are you sure you want to delete this order? This action cannot be undone.</p>
-                <div class="h-6"></div>
-            </div>
-        `;
-        const deleteOrderFooter = `
-            <button onclick="closeSheet('deleteOrderSheet')" class="flex-1 bg-surface-container-high text-on-surface font-bold text-[15px] py-3.5 rounded-2xl active:scale-[0.98] transition-transform">
-                Cancel
-            </button>
-            <button onclick="closeSheet('deleteOrderSheet')" class="flex-1 bg-error text-on-error font-bold text-[15px] py-3.5 rounded-2xl active:scale-[0.98] transition-transform shadow-sm">
-                Delete
-            </button>
-        `;
-
         // Render Sheets
         sheetsContainer.innerHTML = [
-            BottomSheet({ id: 'createOrderSheet', title: 'Create Order', content: createOrderContent, footerContent: createOrderFooter }),
-            BottomSheet({ id: 'editOrderSheet', title: 'Edit Order', content: editOrderContent, footerContent: editOrderFooter }),
-            BottomSheet({ id: 'orderDetailsSheet', customHeader: orderDetailsHeader, content: orderDetailsContent, footerContent: orderDetailsFooter, height: '90vh' }),
-            BottomSheet({ id: 'deleteOrderSheet', customHeader: '<div class="sheet-handle"></div>', content: deleteOrderContent, footerContent: deleteOrderFooter, height: 'auto' })
+            BottomSheet({ id: 'createOrderSheet', title: 'Create Order', content: createOrderContent, footerContent: createOrderFooter, isForm: true }),
+            BottomSheet({ id: 'editOrderSheet', title: 'Edit Order', content: editOrderContent, footerContent: editOrderFooter, isForm: true }),
+            BottomSheet({ id: 'orderDetailsSheet', customHeader: orderDetailsHeader, content: orderDetailsContent, footerContent: orderDetailsFooter, height: '90vh' })
         ].join('');
+
+        // Bind validation
+        bindFormValidation('createOrderSheet-content', 'create-order-submit');
+        bindFormValidation('editOrderSheet-content', 'edit-order-submit');
     </script>
 
     <script src="../js/utils/sheet.js"></script>
