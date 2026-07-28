@@ -18,174 +18,494 @@
     <link rel="stylesheet" href="../css/layout.css">
     <link rel="stylesheet" href="../css/typography.css">
     <link rel="stylesheet" href="../css/utilities.css">
-
     <link rel="stylesheet" href="../css/calculator.css">
+
+    <style>
+        .calc-tab-btn.active {
+            background: var(--color-on-surface, #1C1B1F);
+            color: var(--color-surface, #FFFBFE);
+        }
+        .calc-tab-panel { display: none; }
+        .calc-tab-panel.active { display: block; }
+
+        .result-chip {
+            animation: popIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        @keyframes popIn {
+            from { transform: scale(0.85); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .currency-btn.active {
+            background: var(--color-primary, #0071E3);
+            color: white;
+        }
+
+        /* Input with auto-calc indicator */
+        .auto-field input { background: rgba(0,113,227,0.04); border-color: rgba(0,113,227,0.3); }
+        .auto-badge {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--color-primary, #0071E3);
+            background: rgba(0,113,227,0.1);
+            padding: 2px 6px;
+            border-radius: 6px;
+            letter-spacing: 0.5px;
+        }
+
+        .profit-bar-fill {
+            transition: width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .profit-positive { color: #008A00; }
+        .profit-negative { color: #FF3B30; }
+
+        /* Glow on result card */
+        .result-card-glow {
+            box-shadow: 0 8px 32px rgba(0,113,227,0.12), 0 2px 8px rgba(0,0,0,0.06);
+        }
+
+        /* Number input arrow hide */
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
+
+        .section-divider { border-color: rgba(0,0,0,0.06); }
+    </style>
 </head>
-<body class="font-body text-body antialiased pb-[120px] bg-background"> <!-- extra padding for floating results -->
+<body class="font-body text-body antialiased bg-background" style="padding-bottom: 280px;">
 
     <div id="topbar-container"></div>
 
-    <div class="mobile-wrapper" style="padding-bottom: 240px;">
+    <div class="mobile-wrapper">
         <main id="main-content-area" class="flex-1 p-md flex flex-col gap-lg">
-            
-            <div class="px-xs pt-sm">
-                <h2 class="text-[28px] leading-tight font-semibold tracking-tight text-on-surface mb-1">Costing</h2>
-                <p class="text-[15px] text-secondary">Style #SS24-TS-01</p>
+
+            <!-- ── Header ── -->
+            <div class="px-xs pt-sm flex justify-between items-start">
+                <div>
+                    <h2 class="text-[28px] leading-tight font-semibold tracking-tight text-on-surface mb-1">Costing</h2>
+                    <p class="text-[14px] text-secondary" id="calc-subtitle">Per-piece cost calculator</p>
+                </div>
+                <!-- Currency Toggle -->
+                <div class="flex items-center bg-surface-container-high border border-outline-variant rounded-2xl p-1 gap-1">
+                    <button id="currency-inr" class="currency-btn active text-[13px] font-bold px-3 py-1.5 rounded-xl transition-all duration-200" onclick="setCurrency('₹')">₹</button>
+                    <button id="currency-usd" class="currency-btn text-[13px] font-bold px-3 py-1.5 rounded-xl transition-all duration-200 text-secondary" onclick="setCurrency('$')">$</button>
+                </div>
             </div>
-            
-            <div class="flex flex-col gap-sm">
-                
-                <!-- Fabric Section (Expanded by default) -->
-                <details class="bg-surface-container-lowest border border-outline-variant rounded-[24px] shadow-sm overflow-hidden" open>
-                    <summary class="flex justify-between items-center p-md cursor-pointer outline-none select-none">
+
+            <!-- ── Tab Switcher ── -->
+            <div class="flex bg-surface-container-high border border-outline-variant rounded-[20px] p-1.5 gap-1">
+                <button id="tab-pp-btn" class="calc-tab-btn active flex-1 text-[14px] font-semibold py-2.5 rounded-[14px] transition-all duration-200 flex items-center justify-center gap-1.5" onclick="switchTab('pp')">
+                    <span class="material-symbols-outlined text-[17px]">straighten</span>
+                    Per Piece
+                </button>
+                <button id="tab-order-btn" class="calc-tab-btn flex-1 text-[14px] font-semibold py-2.5 rounded-[14px] transition-all duration-200 text-secondary flex items-center justify-center gap-1.5" onclick="switchTab('order')">
+                    <span class="material-symbols-outlined text-[17px]">inventory</span>
+                    Order Costing
+                </button>
+            </div>
+
+            <!-- ═══════════════════════════════════════════ -->
+            <!-- TAB 1: PER PIECE COSTING (File 2 logic)    -->
+            <!-- ═══════════════════════════════════════════ -->
+            <div id="tab-pp" class="calc-tab-panel active flex flex-col gap-sm">
+
+                <!-- Order Info -->
+                <div class="bg-surface-container-lowest border border-outline-variant rounded-[24px] shadow-sm p-md flex flex-col gap-4">
+                    <h3 class="text-[15px] font-bold text-on-surface flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[18px] text-secondary">info</span>
+                        Order Info
+                    </h3>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="col-span-2">
+                            <label class="field-label">Client / Style Name</label>
+                            <input id="pp-client" type="text" placeholder="e.g. Everlane Corp." class="calc-input w-full">
+                        </div>
+                        <div>
+                            <label class="field-label">Total Quantity (pcs)</label>
+                            <input id="pp-qty" type="number" min="0" placeholder="200" class="calc-input w-full" oninput="calcPP()">
+                        </div>
+                        <div>
+                            <label class="field-label">Pcs per Kg</label>
+                            <input id="pp-pcs-per-kg" type="number" min="0" step="0.1" placeholder="2.5" class="calc-input w-full" oninput="calcPP()">
+                        </div>
+                    </div>
+                    <!-- Auto kg display -->
+                    <div id="pp-kg-info" class="hidden bg-primary/5 border border-primary/20 rounded-xl px-4 py-2.5 flex justify-between items-center">
+                        <span class="text-[13px] text-secondary font-medium">Total Fabric Required</span>
+                        <span id="pp-kg-val" class="text-[15px] font-bold text-primary">— kg</span>
+                    </div>
+                </div>
+
+                <!-- Fabric Cost -->
+                <div class="bg-surface-container-lowest border border-outline-variant rounded-[24px] shadow-sm overflow-hidden">
+                    <button class="section-toggle w-full flex justify-between items-center p-md" onclick="toggleSection(this)">
                         <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-full bg-surface-variant text-on-surface flex items-center justify-center">
+                            <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
                                 <span class="material-symbols-outlined text-[20px]">layers</span>
                             </div>
-                            <h3 class="text-[17px] font-semibold text-on-surface">Fabric Costs</h3>
-                        </div>
-                        <span class="material-symbols-outlined text-secondary expand-icon transition-apple duration-200">expand_more</span>
-                    </summary>
-                    <div class="p-md pt-0 border-t border-outline-variant/30 flex flex-col gap-4 mt-2">
-                        <div>
-                            <label class="block text-[14px] font-medium text-on-surface-variant mb-1.5">Main Body (Cotton Jersey)</label>
-                            <div class="relative">
-                                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">$</span>
-                                <input type="number" min="0" oninput="if(this.value < 0) this.value = 0;" value="4.50" class="w-full h-12 bg-surface pl-8 pr-12 rounded-xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary text-[16px] text-on-surface font-semibold">
-                                <span class="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-[14px]">/ yd</span>
+                            <div class="text-left">
+                                <h3 class="text-[16px] font-semibold text-on-surface">Fabric</h3>
+                                <p class="text-[12px] text-secondary">Fabric cost/pc auto-calculated</p>
                             </div>
                         </div>
-                        <div>
-                            <label class="block text-[14px] font-medium text-on-surface-variant mb-1.5">Consumption</label>
-                            <div class="relative">
-                                <input type="number" min="0" oninput="if(this.value < 0) this.value = 0;" value="1.2" class="w-full h-12 bg-surface pl-4 pr-12 rounded-xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary text-[16px] text-on-surface font-semibold">
-                                <span class="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-[14px]">yds</span>
-                            </div>
-                            <p class="mt-2 text-[12px] text-primary font-medium flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">lightbulb</span> Historical avg for Organic Tees: 1.25 yds</p>
-                        </div>
-                        <div>
-                            <label class="block text-[14px] font-medium text-on-surface-variant mb-1.5">Wastage Buffer</label>
-                            <div class="relative">
-                                <input type="number" min="0" oninput="if(this.value < 0) this.value = 0;" value="5" class="w-full h-12 bg-surface pl-4 pr-12 rounded-xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary text-[16px] text-on-surface font-semibold">
-                                <span class="absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-[14px]">%</span>
-                            </div>
-                        </div>
-                    </div>
-                </details>
-
-                <!-- Printing Section -->
-                <details class="bg-surface-container-lowest border border-outline-variant rounded-[24px] shadow-sm overflow-hidden">
-                    <summary class="flex justify-between items-center p-md cursor-pointer outline-none select-none">
                         <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-full bg-surface-variant text-on-surface flex items-center justify-center">
-                                <span class="material-symbols-outlined text-[20px]">format_paint</span>
-                            </div>
-                            <h3 class="text-[17px] font-semibold text-on-surface">Printing & Treatments</h3>
+                            <span id="pp-fabric-badge" class="text-[14px] font-bold text-primary hidden">—</span>
+                            <span class="material-symbols-outlined text-secondary expand-icon transition-apple duration-200">expand_more</span>
                         </div>
-                        <span class="material-symbols-outlined text-secondary expand-icon transition-apple duration-200">expand_more</span>
-                    </summary>
-                    <div class="p-md pt-0 border-t border-outline-variant/30 flex flex-col gap-4 mt-2">
-                        <div>
-                            <label class="block text-[14px] font-medium text-on-surface-variant mb-1.5">Screen Print (Front)</label>
-                            <div class="relative">
-                                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">$</span>
-                                <input type="number" min="0" oninput="if(this.value < 0) this.value = 0;" value="2.50" class="w-full h-12 bg-surface pl-8 pr-4 rounded-xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary text-[16px] text-on-surface font-semibold">
+                    </button>
+                    <div class="section-body p-md pt-0 border-t border-outline-variant/30 flex flex-col gap-4 mt-2">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="field-label">Fabric Price / Kg</label>
+                                <div class="relative">
+                                    <span class="curr-sym absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">₹</span>
+                                    <input id="pp-fabric-price-kg" type="number" min="0" step="0.01" placeholder="225" class="calc-input w-full pl-8" oninput="calcPP()">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="field-label">Pcs per Kg</label>
+                                <input id="pp-pcs-per-kg-2" type="number" min="0" step="0.1" placeholder="2.5" class="calc-input w-full" oninput="calcPP()" disabled>
+                                <p class="text-[11px] text-secondary mt-1">Synced from above</p>
                             </div>
                         </div>
-                        <div>
-                            <label class="block text-[14px] font-medium text-on-surface-variant mb-1.5">Setup Amortization</label>
+                        <!-- Auto-calc fabric cost/pc -->
+                        <div class="auto-field relative">
+                            <label class="field-label">Fabric Cost / Pc <span class="text-primary text-[11px]">(Auto)</span></label>
                             <div class="relative">
-                                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">$</span>
-                                <input type="number" min="0" oninput="if(this.value < 0) this.value = 0;" value="0.50" class="w-full h-12 bg-surface pl-8 pr-4 rounded-xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary text-[16px] text-on-surface font-semibold">
+                                <span class="curr-sym absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">₹</span>
+                                <input id="pp-fabric-cost-pc" type="number" class="calc-input w-full pl-8" placeholder="90.00" readonly>
+                                <span class="auto-badge">AUTO</span>
                             </div>
+                            <p class="text-[11px] text-secondary mt-1">= Fabric Price ÷ Pcs per Kg</p>
                         </div>
                     </div>
-                </details>
+                </div>
 
-                <!-- Labour Section -->
-                <details class="bg-surface-container-lowest border border-outline-variant rounded-[24px] shadow-sm overflow-hidden">
-                    <summary class="flex justify-between items-center p-md cursor-pointer outline-none select-none">
+                <!-- Per-piece costs -->
+                <div class="bg-surface-container-lowest border border-outline-variant rounded-[24px] shadow-sm overflow-hidden">
+                    <button class="section-toggle w-full flex justify-between items-center p-md" onclick="toggleSection(this)">
                         <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-full bg-surface-variant text-on-surface flex items-center justify-center">
-                                <span class="material-symbols-outlined text-[20px]">engineering</span>
+                            <div class="w-10 h-10 rounded-full bg-[#FF9F0A]/10 text-[#FF9F0A] flex items-center justify-center">
+                                <span class="material-symbols-outlined text-[20px]">receipt_long</span>
                             </div>
-                            <h3 class="text-[17px] font-semibold text-on-surface">Labour (CMT)</h3>
-                        </div>
-                        <span class="material-symbols-outlined text-secondary expand-icon transition-apple duration-200">expand_more</span>
-                    </summary>
-                    <div class="p-md pt-0 border-t border-outline-variant/30 flex flex-col gap-4 mt-2">
-                        <div>
-                            <label class="block text-[14px] font-medium text-on-surface-variant mb-1.5">Cut & Sew Cost</label>
-                            <div class="relative">
-                                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">$</span>
-                                <input type="number" min="0" oninput="if(this.value < 0) this.value = 0;" value="8.00" class="w-full h-12 bg-surface pl-8 pr-4 rounded-xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary text-[16px] text-on-surface font-semibold">
+                            <div class="text-left">
+                                <h3 class="text-[16px] font-semibold text-on-surface">Per-Piece Costs</h3>
+                                <p class="text-[12px] text-secondary">Printing, wages, packing &amp; more</p>
                             </div>
                         </div>
-                        <div>
-                            <label class="block text-[14px] font-medium text-on-surface-variant mb-1.5">Quality Control</label>
-                            <div class="relative">
-                                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">$</span>
-                                <input type="number" min="0" oninput="if(this.value < 0) this.value = 0;" value="1.25" class="w-full h-12 bg-surface pl-8 pr-4 rounded-xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary text-[16px] text-on-surface font-semibold">
+                        <div class="flex items-center gap-3">
+                            <span id="pp-othercosts-badge" class="text-[14px] font-bold text-[#FF9F0A] hidden">—</span>
+                            <span class="material-symbols-outlined text-secondary expand-icon transition-apple duration-200">expand_more</span>
+                        </div>
+                    </button>
+                    <div class="section-body p-md pt-0 border-t border-outline-variant/30 flex flex-col gap-4 mt-2">
+                        
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="field-label">Printing / pc</label>
+                                <div class="relative">
+                                    <span class="curr-sym absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">₹</span>
+                                    <input id="pp-printing" type="number" min="0" step="0.01" placeholder="90" class="calc-input w-full pl-8" oninput="calcPP()">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="field-label">Stitching / Wages / pc</label>
+                                <div class="relative">
+                                    <span class="curr-sym absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">₹</span>
+                                    <input id="pp-wages" type="number" min="0" step="0.01" placeholder="30" class="calc-input w-full pl-8" oninput="calcPP()">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="field-label">Packaging / pc</label>
+                                <div class="relative">
+                                    <span class="curr-sym absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">₹</span>
+                                    <input id="pp-packaging" type="number" min="0" step="0.01" placeholder="5" class="calc-input w-full pl-8" oninput="calcPP()">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="field-label">Allowances / pc</label>
+                                <div class="relative">
+                                    <span class="curr-sym absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">₹</span>
+                                    <input id="pp-allowances" type="number" min="0" step="0.01" placeholder="10" class="calc-input w-full pl-8" oninput="calcPP()">
+                                </div>
+                            </div>
+                            <div class="col-span-2">
+                                <label class="field-label">Overheads / pc</label>
+                                <div class="relative">
+                                    <span class="curr-sym absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">₹</span>
+                                    <input id="pp-overheads" type="number" min="0" step="0.01" placeholder="10" class="calc-input w-full pl-8" oninput="calcPP()">
+                                </div>
                             </div>
                         </div>
                     </div>
-                </details>
+                </div>
 
-                <!-- Packaging Section -->
-                <details class="bg-surface-container-lowest border border-outline-variant rounded-[24px] shadow-sm overflow-hidden">
-                    <summary class="flex justify-between items-center p-md cursor-pointer outline-none select-none">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-full bg-surface-variant text-on-surface flex items-center justify-center">
-                                <span class="material-symbols-outlined text-[20px]">inventory_2</span>
-                            </div>
-                            <h3 class="text-[17px] font-semibold text-on-surface">Packaging & Trims</h3>
-                        </div>
-                        <span class="material-symbols-outlined text-secondary expand-icon transition-apple duration-200">expand_more</span>
-                    </summary>
-                    <div class="p-md pt-0 border-t border-outline-variant/30 flex flex-col gap-4 mt-2">
+                <!-- Profit & Selling Price -->
+                <div class="bg-surface-container-lowest border border-outline-variant rounded-[24px] shadow-sm p-md flex flex-col gap-4">
+                    <h3 class="text-[15px] font-bold text-on-surface flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[18px] text-[#34C759]">trending_up</span>
+                        Selling Price & Profit
+                    </h3>
+
+                    <div class="grid grid-cols-2 gap-3">
                         <div>
-                            <label class="block text-[14px] font-medium text-on-surface-variant mb-1.5">Labels & Hangtags</label>
+                            <label class="field-label">Enter SP / pc <span class="text-secondary text-[11px]">(optional)</span></label>
                             <div class="relative">
-                                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">$</span>
-                                <input type="number" min="0" oninput="if(this.value < 0) this.value = 0;" value="0.85" class="w-full h-12 bg-surface pl-8 pr-4 rounded-xl border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary text-[16px] text-on-surface font-semibold">
+                                <span class="curr-sym absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">₹</span>
+                                <input id="pp-sp" type="number" min="0" step="0.01" placeholder="auto" class="calc-input w-full pl-8" oninput="onPPSpChange()">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="field-label">Target Profit %</label>
+                            <div class="relative">
+                                <input id="pp-profit-pct" type="number" min="0" max="999" step="0.5" placeholder="33" class="calc-input w-full pr-8" oninput="onPPProfitPctChange()">
+                                <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">%</span>
                             </div>
                         </div>
                     </div>
-                </details>
-            </div>
-            
+
+                    <!-- Profit bar -->
+                    <div>
+                        <div class="flex justify-between text-[12px] text-secondary font-medium mb-1.5">
+                            <span>Profit Margin</span>
+                            <span id="pp-margin-label" class="font-bold text-secondary">—</span>
+                        </div>
+                        <div class="w-full bg-surface-container h-2.5 rounded-full overflow-hidden">
+                            <div id="pp-profit-bar" class="profit-bar-fill h-full rounded-full bg-primary" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                </div>
+
+            </div><!-- /tab-pp -->
+
+            <!-- ═══════════════════════════════════════════ -->
+            <!-- TAB 2: ORDER COSTING (File 1 logic)        -->
+            <!-- ═══════════════════════════════════════════ -->
+            <div id="tab-order" class="calc-tab-panel flex flex-col gap-sm">
+
+                <!-- Order Info -->
+                <div class="bg-surface-container-lowest border border-outline-variant rounded-[24px] shadow-sm p-md flex flex-col gap-4">
+                    <h3 class="text-[15px] font-bold text-on-surface flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[18px] text-secondary">info</span>
+                        Order Info
+                    </h3>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="col-span-2">
+                            <label class="field-label">Client / Style Name</label>
+                            <input id="oc-client" type="text" placeholder="e.g. Everlane Corp." class="calc-input w-full">
+                        </div>
+                        <div class="col-span-2">
+                            <label class="field-label">Order Quantity (pcs)</label>
+                            <input id="oc-qty" type="number" min="1" placeholder="4268" class="calc-input w-full" oninput="calcOrder()">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Costs (Lump Sum) -->
+                <div class="bg-surface-container-lowest border border-outline-variant rounded-[24px] shadow-sm overflow-hidden">
+                    <button class="section-toggle w-full flex justify-between items-center p-md" onclick="toggleSection(this)">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+                                <span class="material-symbols-outlined text-[20px]">account_balance_wallet</span>
+                            </div>
+                            <div class="text-left">
+                                <h3 class="text-[16px] font-semibold text-on-surface">Total Costs</h3>
+                                <p class="text-[12px] text-secondary">Enter all costs as full order totals</p>
+                            </div>
+                        </div>
+                        <span class="material-symbols-outlined text-secondary expand-icon transition-apple duration-200">expand_more</span>
+                    </button>
+                    <div class="section-body p-md pt-0 border-t border-outline-variant/30 flex flex-col gap-4 mt-2">
+
+                        <div>
+                            <label class="field-label">Fabric (Total)</label>
+                            <div class="relative">
+                                <span class="curr-sym absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">₹</span>
+                                <input id="oc-fabric" type="number" min="0" placeholder="221082" class="calc-input w-full pl-8" oninput="calcOrder()">
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="field-label">Accessories 1 (Total)</label>
+                                <div class="relative">
+                                    <span class="curr-sym absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">₹</span>
+                                    <input id="oc-acc1" type="number" min="0" placeholder="8000" class="calc-input w-full pl-8" oninput="calcOrder()">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="field-label">Accessories 2</label>
+                                <div class="relative">
+                                    <span class="curr-sym absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">₹</span>
+                                    <input id="oc-acc2" type="number" min="0" placeholder="0" class="calc-input w-full pl-8" oninput="calcOrder()">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="field-label">Accessories 3</label>
+                                <div class="relative">
+                                    <span class="curr-sym absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">₹</span>
+                                    <input id="oc-acc3" type="number" min="0" placeholder="0" class="calc-input w-full pl-8" oninput="calcOrder()">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="field-label">Pattern (Total)</label>
+                                <div class="relative">
+                                    <span class="curr-sym absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">₹</span>
+                                    <input id="oc-pattern" type="number" min="0" placeholder="3000" class="calc-input w-full pl-8" oninput="calcOrder()">
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="section-divider">
+
+                        <!-- Stitching - auto suggested -->
+                        <div>
+                            <div class="flex justify-between items-center mb-1.5">
+                                <label class="field-label mb-0">Stitching (Total)</label>
+                                <button id="oc-stitch-auto-btn" class="text-[11px] font-bold text-primary bg-primary/10 px-2 py-1 rounded-lg hidden" onclick="applyStitchDefault()">Auto: ₹25 × qty</button>
+                            </div>
+                            <div class="relative">
+                                <span class="curr-sym absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">₹</span>
+                                <input id="oc-stitch" type="number" min="0" placeholder="106700" class="calc-input w-full pl-8" oninput="calcOrder()">
+                            </div>
+                            <p id="oc-stitch-hint" class="text-[11px] text-secondary mt-1 hidden">Suggested: ₹25 × qty. Tap "Auto" to apply.</p>
+                        </div>
+
+                        <div>
+                            <label class="field-label">Sublimation (Total)</label>
+                            <div class="relative">
+                                <span class="curr-sym absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">₹</span>
+                                <input id="oc-sublimation" type="number" min="0" placeholder="0" class="calc-input w-full pl-8" oninput="calcOrder()">
+                            </div>
+                        </div>
+
+                        <!-- Overheads - auto suggested -->
+                        <div>
+                            <div class="flex justify-between items-center mb-1.5">
+                                <label class="field-label mb-0">Overheads (Total)</label>
+                                <button id="oc-oh-auto-btn" class="text-[11px] font-bold text-primary bg-primary/10 px-2 py-1 rounded-lg hidden" onclick="applyOverheadsDefault()">Auto: ₹2 × qty</button>
+                            </div>
+                            <div class="relative">
+                                <span class="curr-sym absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">₹</span>
+                                <input id="oc-overheads" type="number" min="0" placeholder="8536" class="calc-input w-full pl-8" oninput="calcOrder()">
+                            </div>
+                            <p id="oc-oh-hint" class="text-[11px] text-secondary mt-1 hidden">Suggested: ₹2 × qty. Tap "Auto" to apply.</p>
+                        </div>
+
+                        <div>
+                            <label class="field-label">Printing (Total)</label>
+                            <div class="relative">
+                                <span class="curr-sym absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">₹</span>
+                                <input id="oc-printing" type="number" min="0" placeholder="0" class="calc-input w-full pl-8" oninput="calcOrder()">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Selling Price -->
+                <div class="bg-surface-container-lowest border border-outline-variant rounded-[24px] shadow-sm p-md flex flex-col gap-4">
+                    <h3 class="text-[15px] font-bold text-on-surface flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[18px] text-[#34C759]">sell</span>
+                        Selling Price
+                    </h3>
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="field-label">SP / pc</label>
+                            <div class="relative">
+                                <span class="curr-sym absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">₹</span>
+                                <input id="oc-sp" type="number" min="0" step="0.01" placeholder="180" class="calc-input w-full pl-8" oninput="onOCSPChange()">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="field-label">Target Profit %</label>
+                            <div class="relative">
+                                <input id="oc-profit-pct" type="number" min="0" step="0.5" placeholder="30" class="calc-input w-full pr-8" oninput="onOCProfitPctChange()">
+                                <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Profit bar -->
+                    <div>
+                        <div class="flex justify-between text-[12px] text-secondary font-medium mb-1.5">
+                            <span>Profit Margin</span>
+                            <span id="oc-margin-label" class="font-bold text-secondary">—</span>
+                        </div>
+                        <div class="w-full bg-surface-container h-2.5 rounded-full overflow-hidden">
+                            <div id="oc-profit-bar" class="profit-bar-fill h-full rounded-full bg-primary" style="width: 0%;"></div>
+                        </div>
+                    </div>
+                </div>
+
+            </div><!-- /tab-order -->
+
         </main>
     </div>
-    
-    <!-- Sticky Results Card -->
-    <div class="floating-results p-sm">
-        <div class="bg-surface/90 backdrop-blur-xl border border-outline-variant rounded-[28px] shadow-lg p-md">
-            <div class="flex justify-between items-center mb-3">
-                <span class="text-[15px] font-medium text-secondary">Total Unit Cost</span>
-                <span class="text-[24px] font-bold text-on-surface">$22.10</span>
+
+    <!-- ══════════════════════════════════════ -->
+    <!-- FLOATING RESULT CARD                  -->
+    <!-- ══════════════════════════════════════ -->
+    <div class="floating-results px-md pb-2">
+        <div class="result-card-glow bg-surface/95 backdrop-blur-2xl border border-outline-variant rounded-[28px] overflow-hidden">
+            
+            <!-- Main metrics row -->
+            <div class="flex divide-x divide-outline-variant/40">
+                <div class="flex-1 px-4 py-3 text-center">
+                    <p class="text-[11px] font-semibold text-secondary uppercase tracking-wider mb-0.5">CP / pc</p>
+                    <p id="result-cp" class="text-[20px] font-bold text-on-surface transition-all duration-300">—</p>
+                </div>
+                <div class="flex-1 px-4 py-3 text-center">
+                    <p class="text-[11px] font-semibold text-secondary uppercase tracking-wider mb-0.5">SP / pc</p>
+                    <p id="result-sp" class="text-[20px] font-bold text-primary transition-all duration-300">—</p>
+                </div>
+                <div class="flex-1 px-4 py-3 text-center">
+                    <p class="text-[11px] font-semibold text-secondary uppercase tracking-wider mb-0.5">Profit %</p>
+                    <p id="result-profit-pct" class="text-[20px] font-bold transition-all duration-300">—</p>
+                </div>
             </div>
-            <div class="flex justify-between items-center mb-4">
-                <span class="text-[15px] font-medium text-secondary">Retail Price</span>
-                <span class="text-[20px] font-bold text-primary">$34.50</span>
+
+            <!-- Expanded metrics (order level) -->
+            <div id="result-order-row" class="hidden border-t border-outline-variant/40">
+                <div class="flex divide-x divide-outline-variant/40">
+                    <div class="flex-1 px-4 py-2.5 text-center">
+                        <p class="text-[10px] font-semibold text-secondary uppercase tracking-wider mb-0.5">Total Cost</p>
+                        <p id="result-total-cost" class="text-[15px] font-bold text-on-surface">—</p>
+                    </div>
+                    <div class="flex-1 px-4 py-2.5 text-center">
+                        <p class="text-[10px] font-semibold text-secondary uppercase tracking-wider mb-0.5">Total Sales</p>
+                        <p id="result-total-sales" class="text-[15px] font-bold text-on-surface">—</p>
+                    </div>
+                    <div class="flex-1 px-4 py-2.5 text-center">
+                        <p class="text-[10px] font-semibold text-secondary uppercase tracking-wider mb-0.5">Profit Done</p>
+                        <p id="result-profit-done" class="text-[15px] font-bold text-[#008A00]">—</p>
+                    </div>
+                </div>
             </div>
-            <div class="flex gap-3">
-                <button onclick="openSheet('saveCostSheet')" class="flex-1 bg-surface-container-high text-on-surface font-semibold py-3.5 rounded-2xl active:bg-surface-variant transition-colors">
+
+            <!-- Action buttons -->
+            <div class="flex gap-2 p-3 border-t border-outline-variant/40">
+                <button onclick="resetCalc()" class="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-secondary active-scale transition-apple flex-shrink-0">
+                    <span class="material-symbols-outlined text-[20px]">restart_alt</span>
+                </button>
+                <button onclick="openSheet('saveCostSheet')" class="flex-1 bg-surface-container-high text-on-surface font-semibold py-2.5 rounded-xl active-scale transition-apple text-[14px]">
                     Save Draft
                 </button>
-                <button class="flex-1 bg-primary text-on-primary font-semibold py-3.5 rounded-2xl active-scale transition-apple shadow-sm flex items-center justify-center gap-2">
-                    <span class="material-symbols-outlined text-[20px]">calculate</span>
-                    Calculate
+                <button onclick="openSheet('saveCostSheet')" class="flex-1 bg-primary text-on-primary font-semibold py-2.5 rounded-xl active-scale transition-apple shadow-sm text-[14px] flex items-center justify-center gap-1.5">
+                    <span class="material-symbols-outlined text-[18px]">send</span>
+                    Generate Quote
                 </button>
             </div>
         </div>
     </div>
-    
+
     <div id="bottom-nav-container"></div>
-    
     <div id="sheets-container"></div>
-    
+
     <script type="module" src="../js/calculator/index.js"></script>
-    
     <script src="../js/utils/sheet.js"></script>
     <script src="../js/app.js"></script>
 </body>

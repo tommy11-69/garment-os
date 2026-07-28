@@ -11,7 +11,7 @@ details[open] summary .material-symbols-outlined.expand-icon {
 
 .floating-results {
     position: fixed;
-    bottom: 80px; /* above bottom nav */
+    bottom: 72px; /* above bottom nav */
     left: 0;
     width: 100%;
     z-index: 35;
@@ -22,4 +22,55 @@ details[open] summary .material-symbols-outlined.expand-icon {
         transform: translateX(-50%);
         max-width: 480px;
     }
+}
+
+/* ── Calculator Redesign ── */
+.field-label {
+    display: block;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--color-on-surface-variant, #49454F);
+    margin-bottom: 6px;
+}
+
+.calc-input {
+    height: 48px;
+    background: var(--color-surface, #FFFBFE);
+    border: 1.5px solid var(--color-outline-variant, #CAC4D0);
+    border-radius: 14px;
+    padding: 0 14px;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--color-on-surface, #1C1B1F);
+    transition: border-color 0.15s, box-shadow 0.15s;
+    outline: none;
+    width: 100%;
+}
+.calc-input:focus {
+    border-color: var(--color-primary, #0071E3);
+    box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.12);
+}
+.calc-input[readonly] {
+    background: rgba(0,113,227,0.04);
+    border-color: rgba(0,113,227,0.25);
+    color: var(--color-primary, #0071E3);
+    cursor: default;
+}
+.calc-input:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+.calc-input.pl-8 {
+    padding-left: 32px;
+}
+.calc-input.pr-8 {
+    padding-right: 32px;
+}
+
+.section-toggle {
+    outline: none;
+    -webkit-tap-highlight-color: transparent;
+}
+.section-toggle:active {
+    background: rgba(0,0,0,0.02);
 }
