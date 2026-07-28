@@ -35,10 +35,31 @@ export const api = {
         
         if (orderData.id) {
             // Update
-            const updated = orders.map(o => o.id === orderData.id ? newOrder : o);
+            const updated = orders.map(o => {
+                if (o.id === orderData.id) {
+                    if (!newOrder.timeline) newOrder.timeline = [];
+                    newOrder.timeline.unshift({
+                        id: `t-${Date.now()}`,
+                        date: new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date()),
+                        title: 'Order Details Edited',
+                        user: 'System',
+                        type: 'action'
+                    });
+                    return newOrder;
+                }
+                return o;
+            });
             setOrders(updated);
         } else {
             // Create
+            if (!newOrder.timeline) newOrder.timeline = [];
+            newOrder.timeline.unshift({
+                id: `t-${Date.now()}`,
+                date: new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date()),
+                title: 'Order Created',
+                user: 'System',
+                type: 'action'
+            });
             setOrders([newOrder, ...orders]);
         }
         return newOrder;
@@ -53,7 +74,18 @@ export const api = {
     async archiveOrder(orderId) {
         await delay();
         const updated = orders.map(o => {
-            if (o.id === orderId) return { ...o, status: "Archived", statusColor: "bg-surface-variant text-secondary" };
+            if (o.id === orderId) {
+                const newO = { ...o, status: "Archived", statusColor: "bg-surface-variant text-secondary" };
+                if (!newO.timeline) newO.timeline = [];
+                newO.timeline.unshift({
+                    id: `t-${Date.now()}`,
+                    date: new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date()),
+                    title: 'Order Archived',
+                    user: 'System',
+                    type: 'action'
+                });
+                return newO;
+            }
             return o;
         });
         setOrders(updated);
@@ -92,20 +124,60 @@ export const api = {
         order.status = newStatus;
         // Mock timeline event
         if (!order.timeline) order.timeline = [];
+        const formatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+        
         order.timeline.unshift({
             id: `t-${Date.now()}`,
-            date: timestamp,
+            date: formatter.format(new Date()),
             title: `Status: ${newStatus}`,
-            user: "Current User",
+            user: "System Workflow",
             type: "status"
         });
         
         // Mock auto task generation based on status
         if (!order.tasks) order.tasks = [];
-        if (newStatus === "Approved") {
-            order.tasks.push({ id: `tsk-${Date.now()}`, title: "Reserve Material", status: "Pending", assignee: "Inventory Mgr" });
-        } else if (newStatus === "Material Reserved") {
-            order.tasks.push({ id: `tsk-${Date.now()}`, title: "Commence Cutting", status: "Pending", assignee: "Cutting Dept" });
+        
+        const generateTask = (title, assignee) => {
+            order.tasks.unshift({ id: `tsk-${Date.now()}-${Math.random()}`, title, status: "Pending", assignee });
+        };
+
+        switch (newStatus) {
+            case "Quotation Sent":
+                generateTask("Follow up with client for approval", "Sales");
+                break;
+            case "Approved":
+                generateTask("Reserve Material", "Inventory Mgr");
+                generateTask("Generate Proforma Invoice", "Finance");
+                break;
+            case "Material Reserved":
+                generateTask("Assign Production Line", "Prod Mgr");
+                break;
+            case "Knitting":
+                generateTask("Monitor Yarn Consumption", "Floor Spv");
+                break;
+            case "Dyeing":
+                generateTask("Check color matching vs lap dip", "QC Team");
+                break;
+            case "Cutting":
+                generateTask("Approve Cut Plan", "Floor Spv");
+                break;
+            case "Stitching":
+                generateTask("First Piece Approval (FPA)", "QC Team");
+                break;
+            case "Quality Check":
+                generateTask("100% Inline Inspection", "QC Team");
+                generateTask("AQL Final Audit", "QA Mgr");
+                break;
+            case "Packing":
+                generateTask("Source Packing Trims (Polybag, Labels)", "Purchasing");
+                break;
+            case "Dispatch Ready":
+                generateTask("Book Logistics/Truck", "Logistics");
+                generateTask("Generate Commercial Invoice", "Finance");
+                break;
+            case "Dispatched":
+                generateTask("Share tracking details with client", "Sales");
+                break;
         }
         
         return order;

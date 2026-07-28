@@ -1,14 +1,23 @@
 import { api } from '../services/api.js';
 import { renderers } from '../renderers.js';
-import { SegmentedControl, BottomSheet, TimelineEvent } from '../components/index.js';
-import { TextInput, SelectInput, TextareaInput } from '../components/inputs.js';
+import { SegmentedControl, BottomSheet, TimelineEvent, TaskCard } from '../components/index.js';
 import { bindFormValidation } from '../utils/formHandler.js';
+import { getOrderSheetsHTML, getOrderDetailsHTML } from './templates.js';
 
 let currentOrders = [];
 let activeOrder = null;
 let currentFilter = 'all';
+let currentSearch = '';
+let currentAdvFilters = {
+    status: '',
+    priority: '',
+    dateFrom: '',
+    dateTo: ''
+};
+let isBulkMode = false;
+let selectedOrders = new Set();
 
-document.addEventListener('DOMContentLoaded', async () => {
+async function initModule() {
     const segControl = document.getElementById('orders-segmented-control');
     if (segControl) {
         const options = [
@@ -36,8 +45,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderSegControl();
     }
 
+    // Bind Search
+    const searchInput = document.getElementById('order-search-input');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            currentSearch = e.target.value.toLowerCase();
+            renderOrders();
+        });
+    }
+
     // 2. Load Data
     await loadOrders();
+    
+    // 3. Render Sheets
     await renderSheets();
 
     // If URL has orderId, open it
@@ -46,7 +66,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (orderId) {
         window.openOrderDetails(orderId);
     }
-});
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initModule);
+} else {
+    initModule();
+}
 
 async function loadOrders() {
     const container = document.getElementById('orders-list');
@@ -65,12 +91,54 @@ function renderOrders() {
     if (!container) return;
 
     let filtered = currentOrders;
+    
+    // 1. Segmented Control Filter
     if (currentFilter === 'active') {
-        filtered = currentOrders.filter(o => ['Draft', 'Approved', 'Production', 'QC', 'Dispatch'].includes(o.status));
+        filtered = filtered.filter(o => !['Delivered', 'Closed', 'Archived'].includes(o.status));
     } else if (currentFilter === 'completed') {
-        filtered = currentOrders.filter(o => ['Delivered', 'Archived'].includes(o.status));
+        filtered = filtered.filter(o => ['Delivered', 'Closed', 'Archived'].includes(o.status));
     } else {
-        filtered = currentOrders.filter(o => o.status !== 'Archived');
+        filtered = filtered.filter(o => o.status !== 'Archived');
+    }
+
+    // 2. Search Query (Customer, ID, Product/Style)
+    if (currentSearch) {
+        filtered = filtered.filter(o => {
+            const matchId = o.id.toLowerCase().includes(currentSearch);
+            const matchCust = (o.customerName || '').toLowerCase().includes(currentSearch);
+            const matchProd = (o.product || '').toLowerCase().includes(currentSearch);
+            const matchStyle = (o.styleRef || '').toLowerCase().includes(currentSearch);
+            const matchFabric = (o.fabric || '').toLowerCase().includes(currentSearch);
+            const matchColours = (o.colours || []).join(' ').toLowerCase().includes(currentSearch);
+            const matchStatus = (o.status || '').toLowerCase().includes(currentSearch);
+            return matchId || matchCust || matchProd || matchStyle || matchFabric || matchColours || matchStatus;
+        });
+    }
+
+    // 3. Advanced Filters
+    if (currentAdvFilters.status) {
+        filtered = filtered.filter(o => o.status === currentAdvFilters.status);
+    }
+    if (currentAdvFilters.priority) {
+        filtered = filtered.filter(o => o.priority === currentAdvFilters.priority);
+    }
+    if (currentAdvFilters.customer) {
+        filtered = filtered.filter(o => o.customerId === currentAdvFilters.customer);
+    }
+    if (currentAdvFilters.department) {
+        filtered = filtered.filter(o => (o.department || '') === currentAdvFilters.department);
+    }
+    if (currentAdvFilters.dispatchDate) {
+        filtered = filtered.filter(o => o.dispatchDate === currentAdvFilters.dispatchDate);
+    }
+    if (currentAdvFilters.paymentStatus) {
+        filtered = filtered.filter(o => (o.paymentStatus || '') === currentAdvFilters.paymentStatus);
+    }
+    if (currentAdvFilters.dateFrom) {
+        filtered = filtered.filter(o => new Date(o.deliveryDate) >= new Date(currentAdvFilters.dateFrom));
+    }
+    if (currentAdvFilters.dateTo) {
+        filtered = filtered.filter(o => new Date(o.deliveryDate) <= new Date(currentAdvFilters.dateTo));
     }
 
     if (filtered.length === 0) {
@@ -79,10 +147,156 @@ function renderOrders() {
         if (countEl) countEl.textContent = '0 Orders';
         return;
     }
-    container.innerHTML = filtered.map(o => renderers.orderCard(o)).join('');
+    container.innerHTML = filtered.map(o => renderers.orderCard(o, isBulkMode, selectedOrders.has(o.id))).join('');
     const countEl = document.getElementById('orders-count');
     if (countEl) countEl.textContent = `${filtered.length} ${currentFilter === 'active' ? 'Active ' : currentFilter === 'completed' ? 'Completed ' : ''}Orders`;
 }
+
+window.toggleBulkMode = function() {
+    isBulkMode = !isBulkMode;
+    selectedOrders.clear();
+    const toolbar = document.getElementById('bulk-actions-toolbar');
+    const fab = document.getElementById('fab-container');
+    const bottomNav = document.getElementById('bottom-nav-container');
+    
+    if (isBulkMode) {
+        toolbar?.classList.remove('translate-y-full');
+        fab?.classList.add('hidden');
+        bottomNav?.classList.add('hidden');
+    } else {
+        toolbar?.classList.add('translate-y-full');
+        fab?.classList.remove('hidden');
+        bottomNav?.classList.remove('hidden');
+    }
+    
+    updateBulkToolbar();
+    renderOrders();
+};
+
+window.toggleOrderSelection = function(orderId) {
+    if (selectedOrders.has(orderId)) {
+        selectedOrders.delete(orderId);
+    } else {
+        selectedOrders.add(orderId);
+    }
+    updateBulkToolbar();
+    renderOrders(); // Re-render to show checkbox state
+};
+
+window.selectAllOrders = function() {
+    // Only select currently filtered items
+    const container = document.getElementById('orders-list');
+    if (!container) return;
+    
+    let filtered = currentOrders;
+    if (currentFilter === 'active') filtered = filtered.filter(o => !['Delivered', 'Closed', 'Archived'].includes(o.status));
+    else if (currentFilter === 'completed') filtered = filtered.filter(o => ['Delivered', 'Closed', 'Archived'].includes(o.status));
+    else filtered = filtered.filter(o => o.status !== 'Archived');
+    
+    if (currentSearch) filtered = filtered.filter(o => o.id.toLowerCase().includes(currentSearch) || (o.customerName || '').toLowerCase().includes(currentSearch) || (o.product || '').toLowerCase().includes(currentSearch));
+    
+    if (selectedOrders.size === filtered.length && filtered.length > 0) {
+        selectedOrders.clear(); // Deselect all
+    } else {
+        filtered.forEach(o => selectedOrders.add(o.id)); // Select all
+    }
+    updateBulkToolbar();
+    renderOrders();
+};
+
+function updateBulkToolbar() {
+    const countEl = document.getElementById('bulk-selected-count');
+    if (countEl) countEl.textContent = `${selectedOrders.size} Selected`;
+}
+
+window.bulkArchive = async function() {
+    if (selectedOrders.size === 0) return;
+    window.showToast?.(`Archiving ${selectedOrders.size} orders...`, 'info');
+    if (window.setLoading) window.setLoading('orders-list');
+    
+    try {
+        for (const orderId of selectedOrders) {
+            await api.archiveOrder(orderId);
+        }
+        window.showToast?.('Orders archived', 'success');
+        window.toggleBulkMode(); // Exit bulk mode
+        await loadOrders();
+    } catch (e) {
+        window.showToast?.('Failed to bulk archive', 'error');
+    }
+};
+
+window.bulkDelete = async function() {
+    if (selectedOrders.size === 0) return;
+    window.showConfirmation({
+        title: 'Bulk Delete',
+        message: `Are you sure you want to permanently delete ${selectedOrders.size} orders?`,
+        confirmText: 'Delete',
+        onConfirm: async () => {
+            window.showToast?.(`Deleting ${selectedOrders.size} orders...`, 'info');
+            if (window.setLoading) window.setLoading('orders-list');
+            try {
+                for (const orderId of selectedOrders) {
+                    await api.deleteOrder(orderId);
+                }
+                window.showToast?.('Orders deleted', 'success');
+                window.toggleBulkMode();
+                await loadOrders();
+            } catch (e) {
+                window.showToast?.('Failed to bulk delete', 'error');
+            }
+        }
+    });
+};
+
+window.bulkExport = function() {
+    if (selectedOrders.size === 0) return;
+    window.showToast?.(`Exporting ${selectedOrders.size} orders to CSV...`, 'info');
+    setTimeout(() => {
+        window.showToast?.('Export complete', 'success');
+        window.toggleBulkMode();
+    }, 1000);
+};
+
+window.bulkPrint = function() {
+    if (selectedOrders.size === 0) return;
+    window.showToast?.(`Generating PDFs for ${selectedOrders.size} orders...`, 'info');
+    setTimeout(() => {
+        window.showToast?.('Ready for printing', 'success');
+        window.toggleBulkMode();
+        window.print();
+    }, 1000);
+};
+
+window.bulkAssign = function() {
+    if (selectedOrders.size === 0) return;
+    // Simulate assigning to production
+    window.showToast?.(`Assigning ${selectedOrders.size} orders to production...`, 'info');
+    setTimeout(() => {
+        window.showToast?.('Orders assigned', 'success');
+        window.toggleBulkMode();
+    }, 1000);
+};
+
+window.bulkApprove = async function() {
+    if (selectedOrders.size === 0) return;
+    window.showToast?.(`Approving ${selectedOrders.size} orders...`, 'info');
+    if (window.setLoading) window.setLoading('orders-list');
+    
+    try {
+        for (const orderId of selectedOrders) {
+            const o = currentOrders.find(ord => ord.id === orderId);
+            if (o && (o.status === 'Draft' || o.status === 'Quotation Sent' || o.status === 'Awaiting Approval')) {
+                await api.updateOrderStatus(orderId, 'Approved');
+            }
+        }
+        window.showToast?.('Orders approved', 'success');
+        window.toggleBulkMode(); // Exit bulk mode
+        await loadOrders();
+    } catch (e) {
+        window.showToast?.('Failed to bulk approve', 'error');
+    }
+};
 
 window.openOrderDetails = async function(orderId) {
     activeOrder = currentOrders.find(o => o.id === orderId);
@@ -101,30 +315,77 @@ window.openOrderDetails = async function(orderId) {
     document.getElementById('od-delivery').textContent = activeOrder.deliveryDate || '—';
     document.getElementById('od-notes').textContent = activeOrder.notes || 'No notes.';
 
-    // Financials
-    const quoted = activeOrder.quotedCost || 0;
-    const incurred = activeOrder.incurredCost || 0;
-    const revenue = activeOrder.value || 0;
+    // Financial calculations (Phase 9)
+    const orderValue = activeOrder.value || 0;
+    const incurredCost = activeOrder.incurredCost || 0;
+    const currentProfit = orderValue - incurredCost;
+    const profitPct = orderValue > 0 ? ((currentProfit / orderValue) * 100).toFixed(1) : 0;
     
-    document.getElementById('od-quoted').textContent = '$' + quoted.toLocaleString();
-    document.getElementById('od-incurred').textContent = '$' + incurred.toLocaleString();
-    
-    // Profit margin bar
-    const profit = revenue - incurred;
-    const profitPct = revenue > 0 ? (profit / revenue) * 100 : 0;
-    document.getElementById('od-profit-val').textContent = '$' + profit.toLocaleString();
-    const pBar = document.getElementById('od-profit-bar');
-    if (pBar) {
-        pBar.style.width = Math.max(0, Math.min(100, profitPct)) + '%';
-        pBar.className = `h-full rounded-full transition-all duration-500 ${profitPct >= 20 ? 'bg-[#008A00]' : profitPct >= 0 ? 'bg-primary' : 'bg-error'}`;
+    document.getElementById('od-incurred').textContent = `$${incurredCost.toLocaleString()}`;
+    document.getElementById('od-profit-val').textContent = `$${currentProfit.toLocaleString()} (${profitPct}%)`;
+    const quotedCost = activeOrder.quotedCost || 0;
+    const odQuoted = document.getElementById('od-quoted');
+    if (odQuoted) odQuoted.textContent = `$${quotedCost.toLocaleString()}`;
+    const profitBar = document.getElementById('od-profit-bar');
+    if (profitBar) {
+        profitBar.style.width = `${Math.max(0, profitPct)}%`;
+        if (profitPct < 15) {
+            profitBar.className = 'h-full rounded-full transition-all duration-500 bg-error';
+        } else if (profitPct < 30) {
+            profitBar.className = 'h-full rounded-full transition-all duration-500 bg-warning';
+        } else {
+            profitBar.className = 'h-full rounded-full transition-all duration-500 bg-success';
+        }
     }
+
+    // Toggle Archive / Restore
+    const archiveBtn = document.getElementById('od-btn-archive');
+    const archiveIcon = document.getElementById('od-icon-archive');
+    if (archiveBtn && archiveIcon) {
+        if (activeOrder.status === 'Archived') {
+            archiveBtn.setAttribute('onclick', 'window.restoreOrder()');
+            archiveBtn.title = 'Restore Order';
+            archiveIcon.textContent = 'unarchive';
+        } else {
+            archiveBtn.setAttribute('onclick', 'window.archiveOrder()');
+            archiveBtn.title = 'Archive Order';
+            archiveIcon.textContent = 'archive';
+        }
+    }
+
+
+
+    // Order Metrics
+    const today = new Date();
+    const deliveryDate = new Date(activeOrder.deliveryDate);
+    const diffTime = deliveryDate - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    document.getElementById('od-days-remaining').textContent = diffDays > 0 ? `${diffDays} days` : '0 days';
+    
+    let delayStr = 'On Track';
+    if (diffDays < 0 && activeOrder.status !== 'Delivered' && activeOrder.status !== 'Closed') {
+        delayStr = `${Math.abs(diffDays)} days delayed`;
+        document.getElementById('od-delay').className = 'text-[16px] font-bold text-error';
+    } else {
+        document.getElementById('od-delay').className = 'text-[16px] font-bold text-[#008A00]';
+    }
+    document.getElementById('od-delay').textContent = delayStr;
+
+    const outstanding = activeOrder.value ? (activeOrder.value - (activeOrder.amountPaid || 0)) : 0;
+    document.getElementById('od-outstanding').textContent = outstanding > 0 ? `$${outstanding.toLocaleString()}` : '$0';
+    
+    const remainingQty = activeOrder.qty ? (activeOrder.qty - (activeOrder.qtyCompleted || 0)) : 0;
+    document.getElementById('od-remaining-qty').textContent = remainingQty > 0 ? remainingQty.toLocaleString() : '0';
 
     // Production Progress Stepper
     const progressMap = {
-        'Draft': 0, 'Approved': 10, 'Material Reserved': 20, 
-        'Knitting': 30, 'Dyeing': 40, 'Compacting': 50, 
-        'Cutting': 60, 'Printing': 70, 'Stitching': 80, 
-        'Quality Check': 90, 'Packing': 95, 'Dispatched': 100, 'Delivered': 100
+        'Draft': 0, 'Quotation Sent': 5, 'Awaiting Approval': 10, 'Approved': 15,
+        'Material Reserved': 20, 'Production Assigned': 25,
+        'Knitting': 30, 'Dyeing': 35, 'Compacting': 40, 
+        'Cutting': 45, 'Printing': 50, 'Embroidery': 55, 'Stitching': 65, 
+        'Quality Check': 75, 'Packing': 85, 'Ready For Dispatch': 90, 
+        'Dispatched': 95, 'Delivered': 100, 'Closed': 100
     };
     const currentProgress = progressMap[activeOrder.status] || 0;
     
@@ -132,19 +393,77 @@ window.openOrderDetails = async function(orderId) {
     document.getElementById('od-progress-pct').textContent = currentProgress + '%';
     document.getElementById('od-progress-bar').style.width = currentProgress + '%';
 
-    // Render Timeline
+    // Dynamic Workflow Engine
+    const workflowTransitions = {
+        'Draft': ['Quotation Sent', 'Approved'],
+        'Quotation Sent': ['Awaiting Approval', 'Approved'],
+        'Awaiting Approval': ['Approved', 'Draft'],
+        'Approved': ['Material Reserved'],
+        'Material Reserved': ['Production Assigned'],
+        'Production Assigned': ['Knitting', 'Cutting'], // Branching
+        'Knitting': ['Dyeing'],
+        'Dyeing': ['Compacting'],
+        'Compacting': ['Cutting'],
+        'Cutting': ['Printing', 'Embroidery', 'Stitching'], // Branching
+        'Printing': ['Stitching'],
+        'Embroidery': ['Stitching'],
+        'Stitching': ['Quality Check'],
+        'Quality Check': ['Packing', 'Stitching'], // Allow send back to stitching
+        'Packing': ['Ready For Dispatch'],
+        'Ready For Dispatch': ['Dispatched'],
+        'Dispatched': ['Delivered'],
+        'Delivered': ['Closed']
+    };
+    
+    const nextStatuses = workflowTransitions[activeOrder.status] || [];
+    const actionsContainer = document.getElementById('od-status-actions');
+    if (actionsContainer) {
+        if (nextStatuses.length > 0) {
+            actionsContainer.innerHTML = nextStatuses.map(status => `
+                <button onclick="window.handleStatusTransition('${status}')" class="shrink-0 px-3 py-1.5 rounded-lg border border-outline-variant text-[12px] font-medium text-secondary active-bg whitespace-nowrap shadow-sm hover:bg-surface-container transition-colors">
+                    Move to ${status}
+                </button>
+            `).join('');
+        } else {
+            actionsContainer.innerHTML = '<span class="text-[12px] text-secondary italic px-1">Workflow Completed</span>';
+        }
+    }
+
+    // Render Timeline & Activity
     const timelineContainer = document.getElementById('od-timeline-container');
-    if (timelineContainer && activeOrder.timeline) {
-        timelineContainer.innerHTML = activeOrder.timeline.map((evt, idx) => 
-            TimelineEvent({
-                title: evt.title,
-                timestamp: evt.date,
-                user: evt.user,
-                type: evt.type,
-                status: 'completed',
-                isLast: idx === activeOrder.timeline.length - 1
-            })
-        ).join('');
+    const activityContainer = document.getElementById('od-activity-container');
+    
+    if (activeOrder.timeline) {
+        const prodEvents = activeOrder.timeline.filter(e => e.type === 'status' || !e.type);
+        const sysEvents = activeOrder.timeline.filter(e => e.type === 'system' || e.type === 'action');
+        
+        if (timelineContainer) {
+            timelineContainer.innerHTML = prodEvents.map((evt, idx) => 
+                TimelineEvent({
+                    title: evt.title,
+                    timestamp: evt.date,
+                    user: evt.user,
+                    type: evt.type,
+                    status: 'completed',
+                    isLast: idx === prodEvents.length - 1
+                })
+            ).join('');
+            if (prodEvents.length === 0) timelineContainer.innerHTML = '<p class="text-secondary text-[13px] text-center p-4">No production timeline events.</p>';
+        }
+        
+        if (activityContainer) {
+            activityContainer.innerHTML = sysEvents.map((evt, idx) => 
+                TimelineEvent({
+                    title: evt.title,
+                    timestamp: evt.date,
+                    user: evt.user,
+                    type: evt.type,
+                    status: 'completed',
+                    isLast: idx === sysEvents.length - 1
+                })
+            ).join('');
+            if (sysEvents.length === 0) activityContainer.innerHTML = '<p class="text-secondary text-[13px] text-center p-4">No activity logged.</p>';
+        }
     }
 
     // Render Tasks
@@ -200,10 +519,10 @@ window.switchOrderTab = function(tabName) {
     // Hide all tabs
     document.querySelectorAll('.od-tab-content').forEach(el => el.classList.add('hidden'));
     // Reset all buttons
-    ['overview', 'timeline', 'tasks'].forEach(t => {
+    ['overview', 'timeline', 'tasks', 'activity'].forEach(t => {
         const btn = document.getElementById(`od-tab-btn-${t}`);
         if (btn) {
-            btn.className = `flex-1 pb-3 text-[14px] font-medium border-b-2 ${t === tabName ? 'text-primary border-primary font-bold' : 'text-secondary border-transparent'}`;
+            btn.className = `flex-1 pb-3 px-2 whitespace-nowrap text-[14px] font-medium border-b-2 ${t === tabName ? 'text-primary border-primary font-bold' : 'text-secondary border-transparent'}`;
         }
     });
     // Show active tab
@@ -211,14 +530,45 @@ window.switchOrderTab = function(tabName) {
     if (activeTab) activeTab.classList.remove('hidden');
 };
 
-window.toggleTaskStatus = function(taskId) {
-    if (!activeOrder || !activeOrder.tasks) return;
-    const task = activeOrder.tasks.find(t => t.id === taskId);
+window.toggleTaskStatus = async function(taskId) {
+    if (!activeOrder) return;
+    const task = activeOrder.tasks?.find(t => t.id === taskId);
     if (!task) return;
-    
+
     task.status = task.status === 'Completed' ? 'Pending' : 'Completed';
-    window.showToast?.(`Task marked as ${task.status}`, 'success');
-    window.openOrderDetails(activeOrder.id); // Re-render to update UI
+    // Log timeline event for task
+    if (!activeOrder.timeline) activeOrder.timeline = [];
+    activeOrder.timeline.unshift({
+        id: `t-${Date.now()}`,
+        date: new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date()),
+        title: `Task "${task.title}" marked as ${task.status}`,
+        user: 'Current User',
+        type: 'system'
+    });
+    
+    await loadOrders(); // Saves silently
+    if (currentOrderTab === 'tasks') {
+        renderTasksTab();
+    }
+    if (currentOrderTab === 'timeline') {
+        renderTimelineTab();
+    }
+};
+
+window.promptNewTask = async function() {
+    if (!activeOrder) return;
+    const title = prompt("Enter task title:");
+    if (!title) return;
+    const assignee = prompt("Assign to (e.g. Sales, QC):") || 'Unassigned';
+    
+    try {
+        await api.addOrderTask(activeOrder.id, { title, assignee });
+        window.showToast?.('Task added', 'success');
+        await loadOrders();
+        renderTasksTab();
+    } catch (e) {
+        window.showToast?.('Error adding task', 'error');
+    }
 };
 
 window.handleStatusTransition = async function(newStatus) {
@@ -257,6 +607,20 @@ window.archiveOrder = async function() {
         await loadOrders();
     } catch (e) {
         window.showToast?.('Failed to archive', 'error');
+    }
+};
+
+window.restoreOrder = async function() {
+    if (!activeOrder) return;
+    window.closeSheet('orderDetailsSheet');
+    if (window.setLoading) window.setLoading('orders-list');
+    try {
+        const payload = { ...activeOrder, status: 'Draft' };
+        await api.saveOrder(payload);
+        window.showToast?.('Order restored', 'success');
+        await loadOrders();
+    } catch (e) {
+        window.showToast?.('Failed to restore', 'error');
     }
 };
 
@@ -351,312 +715,130 @@ window.handleOrderAction = function(action) {
     // Implementation for PDF, Invoice generation would go here
 };
 
+window.editOrder = function() {
+    if (!activeOrder) return;
+    
+    // Populate form fields
+    document.getElementById('edit-customer').value = activeOrder.customerId || '';
+    document.getElementById('edit-product').value = activeOrder.product || '';
+    document.getElementById('edit-fabric').value = activeOrder.fabric || '';
+    document.getElementById('edit-sizes').value = (activeOrder.sizes || []).join(', ');
+    document.getElementById('edit-colours').value = (activeOrder.colours || []).join(', ');
+    document.getElementById('edit-qty').value = activeOrder.qty || '';
+    document.getElementById('edit-price').value = activeOrder.unitPrice || '';
+    document.getElementById('edit-discount').value = activeOrder.discount || '';
+    
+    // Calculate back tax percentage if not saved explicitly (mock data setup doesn't have tax %)
+    const taxPct = activeOrder.tax && activeOrder.subtotal ? (activeOrder.tax / activeOrder.subtotal) * 100 : 5;
+    document.getElementById('edit-tax').value = taxPct;
+    
+    document.getElementById('edit-date').value = activeOrder.deliveryDate || '';
+    document.getElementById('edit-priority').value = activeOrder.priority || 'Normal';
+    document.getElementById('edit-factory').value = activeOrder.factory || '';
+    document.getElementById('edit-notes').value = activeOrder.notes || '';
+    
+    window.closeSheet('orderDetailsSheet');
+    window.openSheet('editOrderSheet');
+};
+
+function bindOrderSubmissions() {
+    // Create Submission
+    const createSubmit = document.getElementById('create-order-submit');
+    if (createSubmit) {
+        createSubmit.addEventListener('click', async () => {
+            const btn = createSubmit;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>';
+            
+            try {
+                const subtotal = (parseFloat(document.getElementById('create-qty').value) || 0) * (parseFloat(document.getElementById('create-price').value) || 0);
+                const tax = subtotal * ((parseFloat(document.getElementById('create-tax').value) || 0) / 100);
+                
+                const payload = {
+                    customerId: document.getElementById('create-customer').value,
+                    customerName: document.getElementById('create-customer').options[document.getElementById('create-customer').selectedIndex]?.text,
+                    costingId: document.getElementById('create-quote').value,
+                    product: document.getElementById('create-product').value,
+                    fabric: document.getElementById('create-fabric').value,
+                    sizes: document.getElementById('create-sizes').value.split(',').map(s => s.trim()).filter(Boolean),
+                    colours: document.getElementById('create-colours').value.split(',').map(s => s.trim()).filter(Boolean),
+                    qty: parseFloat(document.getElementById('create-qty').value) || 0,
+                    unitPrice: parseFloat(document.getElementById('create-price').value) || 0,
+                    discount: parseFloat(document.getElementById('create-discount').value) || 0,
+                    subtotal,
+                    tax,
+                    grandTotal: subtotal + tax,
+                    deliveryDate: document.getElementById('create-date').value,
+                    status: document.getElementById('create-status').value || 'Draft',
+                    priority: document.getElementById('create-priority').value,
+                    notes: document.getElementById('create-notes').value
+                };
+                
+                await api.saveOrder(payload);
+                window.closeSheet('createOrderSheet');
+                window.showToast?.('Order created successfully', 'success');
+                await loadOrders();
+            } catch (e) {
+                window.showToast?.('Failed to save order', 'error');
+                btn.innerHTML = originalText;
+            }
+        });
+    }
+
+    // Edit Submission
+    const editSubmit = document.getElementById('edit-order-submit');
+    if (editSubmit) {
+        editSubmit.addEventListener('click', async () => {
+            if (!activeOrder) return;
+            const btn = editSubmit;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>';
+            
+            try {
+                const subtotal = (parseFloat(document.getElementById('edit-qty').value) || 0) * (parseFloat(document.getElementById('edit-price').value) || 0);
+                const tax = subtotal * ((parseFloat(document.getElementById('edit-tax').value) || 0) / 100);
+                const discount = parseFloat(document.getElementById('edit-discount').value) || 0;
+                
+                const payload = {
+                    ...activeOrder, // Keep existing timeline, tasks, statuses
+                    customerId: document.getElementById('edit-customer').value,
+                    customerName: document.getElementById('edit-customer').options[document.getElementById('edit-customer').selectedIndex]?.text,
+                    product: document.getElementById('edit-product').value,
+                    fabric: document.getElementById('edit-fabric').value,
+                    sizes: document.getElementById('edit-sizes').value.split(',').map(s => s.trim()).filter(Boolean),
+                    colours: document.getElementById('edit-colours').value.split(',').map(s => s.trim()).filter(Boolean),
+                    qty: parseFloat(document.getElementById('edit-qty').value) || 0,
+                    unitPrice: parseFloat(document.getElementById('edit-price').value) || 0,
+                    discount: discount,
+                    subtotal,
+                    tax,
+                    grandTotal: subtotal + tax - discount,
+                    deliveryDate: document.getElementById('edit-date').value,
+                    priority: document.getElementById('edit-priority').value,
+                    factory: document.getElementById('edit-factory').value,
+                    notes: document.getElementById('edit-notes').value
+                };
+                
+                await api.saveOrder(payload);
+                window.closeSheet('editOrderSheet');
+                window.showToast?.('Order updated successfully', 'success');
+                await loadOrders();
+            } catch (e) {
+                window.showToast?.('Failed to update order', 'error');
+                btn.innerHTML = originalText;
+            }
+        });
+    }
+}
+
 async function renderSheets() {
     const sheetsContainer = document.getElementById('sheets-container');
     if (!sheetsContainer) return;
 
-    // Fetch dynamic data for dropdowns
-    const [customers, costings] = await Promise.all([
-        api.getCustomers(),
-        api.getCostings()
-    ]);
+    const sheetsHTML = await getOrderSheetsHTML();
+    const detailsHTML = getOrderDetailsHTML();
 
-    const customerOptions = [{label: 'Select Customer', value: ''}, ...customers.map(c => ({label: c.name, value: c.id}))];
-    const costingOptions = [{label: 'None (Manual Entry)', value: ''}, ...costings.map(c => ({label: `${c.styleRef} ($${c.retailPrice}/pc)`, value: c.id}))];
 
-    // Create Order Content - Guided Wizard
-    const createOrderContent = `
-        <!-- Wizard Progress Tracker -->
-        <div class="flex items-center justify-between mb-6 relative">
-            <div class="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-surface-variant z-0 rounded-full"></div>
-            <div id="wizard-progress-bar" class="absolute left-0 top-1/2 -translate-y-1/2 w-1/4 h-1 bg-primary z-0 rounded-full transition-all duration-300"></div>
-            
-            <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center z-10 font-bold text-[13px] shadow-sm transition-colors" id="wizard-dot-1">1</div>
-            <div class="w-8 h-8 rounded-full bg-surface-container-highest text-secondary flex items-center justify-center z-10 font-bold text-[13px] transition-colors" id="wizard-dot-2">2</div>
-            <div class="w-8 h-8 rounded-full bg-surface-container-highest text-secondary flex items-center justify-center z-10 font-bold text-[13px] transition-colors" id="wizard-dot-3">3</div>
-            <div class="w-8 h-8 rounded-full bg-surface-container-highest text-secondary flex items-center justify-center z-10 font-bold text-[13px] transition-colors" id="wizard-dot-4">4</div>
-        </div>
-
-        <!-- Step 1: Customer & Quote -->
-        <div id="order-step-1" class="wizard-step">
-            <h3 class="text-[18px] font-bold text-on-surface mb-4">Customer & Product</h3>
-            ${SelectInput({ label: 'Link Saved Quote', id: 'create-quote', options: costingOptions, helpText: 'Optional: Inherit pricing from a quotation' })}
-            ${SelectInput({ label: 'Customer', id: 'create-customer', options: customerOptions, required: true })}
-            ${TextInput({ label: 'Product Name', id: 'create-product', placeholder: 'e.g. Organic Cotton Tees', required: true })}
-        </div>
-
-        <!-- Step 2: Variants & Specs -->
-        <div id="order-step-2" class="wizard-step hidden">
-            <h3 class="text-[18px] font-bold text-on-surface mb-4">Variants & Quantity</h3>
-            <div class="grid grid-cols-2 gap-4">
-                ${TextInput({ label: 'Sizes', id: 'create-sizes', placeholder: 'S, M, L', helpText: 'Comma separated' })}
-                ${TextInput({ label: 'Colours', id: 'create-colours', placeholder: 'Navy, White', helpText: 'Comma separated' })}
-            </div>
-            ${TextInput({ label: 'Total Quantity', id: 'create-qty', type: 'number', placeholder: '1000', required: true })}
-        </div>
-        
-        <!-- Step 3: Finance & Logistics -->
-        <div id="order-step-3" class="wizard-step hidden">
-            <h3 class="text-[18px] font-bold text-on-surface mb-4">Finance & Delivery</h3>
-            <div class="grid grid-cols-2 gap-4">
-                ${TextInput({ label: 'Unit Price ($)', id: 'create-price', type: 'number', placeholder: '0.00', required: true })}
-                ${TextInput({ label: 'Tax Amount ($)', id: 'create-tax', type: 'number', placeholder: '0.00' })}
-            </div>
-            
-            <!-- Live Calc Display -->
-            <div class="bg-surface-variant/30 p-3 rounded-xl mb-4 border border-outline-variant/50">
-                <div class="flex justify-between text-[13px] mb-1">
-                    <span class="text-secondary">Subtotal</span>
-                    <span class="font-medium" id="calc-subtotal">$0.00</span>
-                </div>
-                <div class="flex justify-between text-[14px] font-bold">
-                    <span class="text-on-surface">Grand Total</span>
-                    <span class="text-primary" id="calc-grandtotal">$0.00</span>
-                </div>
-            </div>
-
-            ${TextInput({ label: 'Delivery Date', id: 'create-date', type: 'date', required: true })}
-        </div>
-        
-        <!-- Step 4: Routing & Notes -->
-        <div id="order-step-4" class="wizard-step hidden">
-            <h3 class="text-[18px] font-bold text-on-surface mb-4">Routing & Setup</h3>
-            <div class="grid grid-cols-2 gap-4">
-                ${SelectInput({ label: 'Status', id: 'create-status', options: Object.values(api.ORDER_STATUSES || {}).map(s => ({label: s, value: s})) })}
-                ${SelectInput({ label: 'Priority', id: 'create-priority', options: [
-                    {label: 'Normal', value: 'Normal'}, {label: 'High', value: 'High'}, {label: 'Urgent', value: 'Urgent'}
-                ] })}
-            </div>
-            ${TextareaInput({ label: 'Notes & Instructions', id: 'create-notes', placeholder: 'Special requirements for production...', rows: 3 })}
-        </div>
-        <div class="h-10"></div>
-    `;
-    
-    const createOrderFooter = `
-        <button id="wizard-prev-btn" type="button" onclick="window.goToOrderStep(-1)" class="hidden flex-1 bg-surface-container-high text-on-surface font-bold text-[16px] py-4 rounded-2xl active-scale transition-apple">
-            Back
-        </button>
-        <button id="wizard-next-btn" type="button" onclick="window.goToOrderStep(1)" class="flex-1 bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active-scale transition-apple shadow-sm">
-            Next Step
-        </button>
-        <button id="create-order-submit" type="button" class="hidden flex-1 bg-[#008A00] text-white font-bold text-[16px] py-4 rounded-2xl active-scale transition-apple shadow-sm">
-            Save Order
-        </button>
-    `;
-
-    // Order Details Content
-    const orderDetailsHeader = `
-    <div class="px-lg pb-md flex justify-between items-start border-b border-outline-variant/30">
-        <div>
-            <span id="od-id" class="text-[13px] font-bold text-primary mb-1 block"></span>
-            <h2 id="od-customer" class="text-[22px] font-bold text-on-surface leading-tight"></h2>
-            <span id="od-status" class="inline-block mt-2 px-3 py-1 rounded-full text-[12px] font-medium bg-surface-variant text-secondary"></span>
-        </div>
-        <div class="flex gap-2">
-            <button onclick="window.duplicateOrder()" class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-on-surface active-scale transition-apple" title="Duplicate">
-                <span class="material-symbols-outlined text-[18px]">content_copy</span>
-            </button>
-            <button onclick="window.archiveOrder()" class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-on-surface active-scale transition-apple" title="Archive">
-                <span class="material-symbols-outlined text-[18px]">archive</span>
-            </button>
-            <button onclick="window.showConfirmation({title: 'Delete Order?', message: 'Are you sure you want to delete this order? This action cannot be undone.', confirmText: 'Delete', onConfirm: window.deleteOrder})" class="w-8 h-8 rounded-full bg-error-container/30 flex items-center justify-center text-error active-scale transition-apple" title="Delete">
-                <span class="material-symbols-outlined text-[18px]">delete</span>
-            </button>
-            <button onclick="closeSheet('orderDetailsSheet')" class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-secondary active-scale transition-apple">
-                <span class="material-symbols-outlined text-[20px]">close</span>
-            </button>
-        </div>
-        </div>
-    </div>`;
-    const orderDetailsContent = `
-        <!-- Sticky Tabs -->
-        <div class="sticky top-0 bg-surface z-20 pb-4 mb-4 border-b border-outline-variant/30 flex justify-between">
-            <button onclick="window.switchOrderTab('overview')" id="od-tab-btn-overview" class="flex-1 pb-3 text-[14px] font-bold text-primary border-b-2 border-primary">Overview</button>
-            <button onclick="window.switchOrderTab('timeline')" id="od-tab-btn-timeline" class="flex-1 pb-3 text-[14px] font-medium text-secondary border-b-2 border-transparent">Timeline</button>
-            <button onclick="window.switchOrderTab('tasks')" id="od-tab-btn-tasks" class="flex-1 pb-3 text-[14px] font-medium text-secondary border-b-2 border-transparent">Tasks</button>
-        </div>
-
-        <!-- OVERVIEW TAB -->
-        <div id="od-tab-overview" class="od-tab-content">
-            <!-- Financial Overview Dashboard -->
-            <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-sm p-lg mb-6">
-                <h3 class="text-[14px] font-semibold text-secondary uppercase tracking-wider mb-4">Financial Overview</h3>
-                <div class="grid grid-cols-2 gap-4 mb-4">
-                    <div class="flex flex-col">
-                        <span class="text-[12px] font-medium text-secondary mb-1">Estimated Cost (Quote)</span>
-                        <span id="od-quoted" class="text-[18px] font-bold text-on-surface"></span>
-                    </div>
-                    <div class="flex flex-col">
-                        <span class="text-[12px] font-medium text-secondary mb-1">Actual Incurred Cost</span>
-                        <span id="od-incurred" class="text-[18px] font-bold text-error"></span>
-                    </div>
-                </div>
-                
-                <div>
-                    <div class="flex justify-between text-[12px] font-medium mb-1">
-                        <span class="text-secondary">Current Profit</span>
-                        <span id="od-profit-val" class="font-bold text-on-surface"></span>
-                    </div>
-                    <div class="w-full h-2 bg-surface-container rounded-full overflow-hidden mb-4">
-                        <div id="od-profit-bar" class="h-full rounded-full transition-all duration-500" style="width: 0%"></div>
-                    </div>
-                    <button onclick="window.openSheet('addExpenseSheet')" class="w-full py-2 rounded-xl bg-surface-variant text-[13px] font-semibold text-on-surface active-scale transition-apple flex items-center justify-center gap-2">
-                        <span class="material-symbols-outlined text-[16px]">receipt_long</span>
-                        Log Production Expense
-                    </button>
-                </div>
-            </div>
-
-            <!-- Production Pipeline Stepper -->
-            <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-sm p-lg mb-6">
-                <h3 class="text-[14px] font-semibold text-secondary uppercase tracking-wider mb-4">Production Status</h3>
-                <div class="flex items-center justify-between mb-2">
-                    <span class="text-[14px] font-medium text-on-surface" id="od-progress-label"></span>
-                    <span class="text-[14px] font-bold text-primary" id="od-progress-pct"></span>
-                </div>
-                <div class="w-full h-2 bg-surface-variant rounded-full overflow-hidden mb-4">
-                    <div id="od-progress-bar" class="h-full bg-primary rounded-full transition-all duration-500" style="width: 0%"></div>
-                </div>
-                
-                <div class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                    <button onclick="handleStatusTransition('Approved')" class="shrink-0 px-3 py-1.5 rounded-lg border border-outline-variant text-[12px] font-medium text-secondary active-bg">Approve</button>
-                    <button onclick="handleStatusTransition('Material Reserved')" class="shrink-0 px-3 py-1.5 rounded-lg border border-outline-variant text-[12px] font-medium text-secondary active-bg">Reserve Mat.</button>
-                    <button onclick="handleStatusTransition('Cutting')" class="shrink-0 px-3 py-1.5 rounded-lg border border-outline-variant text-[12px] font-medium text-secondary active-bg">Cutting</button>
-                    <button onclick="handleStatusTransition('Stitching')" class="shrink-0 px-3 py-1.5 rounded-lg border border-outline-variant text-[12px] font-medium text-secondary active-bg">Stitching</button>
-                    <button onclick="handleStatusTransition('Quality Check')" class="shrink-0 px-3 py-1.5 rounded-lg border border-outline-variant text-[12px] font-medium text-secondary active-bg">QC</button>
-                    <button onclick="handleStatusTransition('Dispatched')" class="shrink-0 px-3 py-1.5 rounded-lg border border-outline-variant text-[12px] font-medium text-secondary active-bg">Dispatch</button>
-                </div>
-            </div>
-
-            <!-- Order Info -->
-            <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-sm p-lg mb-6">
-                <h3 class="text-[14px] font-semibold text-secondary uppercase tracking-wider mb-4">Order Details</h3>
-                <div class="grid grid-cols-2 gap-y-4">
-                    <div>
-                        <p class="text-[11px] text-secondary">Product</p>
-                        <p id="od-product" class="text-[14px] font-medium text-on-surface"></p>
-                    </div>
-                    <div>
-                        <p class="text-[11px] text-secondary">Quantity</p>
-                        <p id="od-qty" class="text-[14px] font-medium text-on-surface"></p>
-                    </div>
-                    <div>
-                        <p class="text-[11px] text-secondary">Sizes</p>
-                        <p id="od-sizes" class="text-[14px] font-medium text-on-surface"></p>
-                    </div>
-                    <div>
-                        <p class="text-[11px] text-secondary">Colours</p>
-                        <p id="od-colours" class="text-[14px] font-medium text-on-surface"></p>
-                    </div>
-                    <div>
-                        <p class="text-[11px] text-secondary">Delivery Date</p>
-                        <p id="od-delivery" class="text-[14px] font-medium text-on-surface"></p>
-                    </div>
-                </div>
-                <div class="mt-4">
-                    <p class="text-[11px] text-secondary">Notes</p>
-                    <p id="od-notes" class="text-[13px] text-on-surface mt-1"></p>
-                </div>
-            </div>
-
-            <!-- Action Grid -->
-            <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-sm p-lg">
-                <h3 class="text-[14px] font-semibold text-secondary uppercase tracking-wider mb-4">Quick Actions</h3>
-                <div class="grid grid-cols-3 gap-3">
-                    <button onclick="handleOrderAction('Print Quote')" class="flex flex-col items-center justify-center p-3 rounded-xl bg-surface-variant active-scale transition-apple">
-                        <span class="material-symbols-outlined text-secondary mb-1">picture_as_pdf</span>
-                        <span class="text-[11px] font-medium text-on-surface">Print Quote</span>
-                    </button>
-                    <button onclick="handleOrderAction('Generate Invoice')" class="flex flex-col items-center justify-center p-3 rounded-xl bg-surface-variant active-scale transition-apple">
-                        <span class="material-symbols-outlined text-secondary mb-1">receipt_long</span>
-                        <span class="text-[11px] font-medium text-on-surface">Invoice</span>
-                    </button>
-                    <button onclick="handleOrderAction('Generate PO')" class="flex flex-col items-center justify-center p-3 rounded-xl bg-surface-variant active-scale transition-apple">
-                        <span class="material-symbols-outlined text-secondary mb-1">shopping_cart_checkout</span>
-                        <span class="text-[11px] font-medium text-on-surface">Purch. Order</span>
-                    </button>
-                    <button onclick="handleOrderAction('Assign Production')" class="flex flex-col items-center justify-center p-3 rounded-xl bg-primary/10 active-scale transition-apple text-primary">
-                        <span class="material-symbols-outlined mb-1">precision_manufacturing</span>
-                        <span class="text-[11px] font-medium">Assign Prod.</span>
-                    </button>
-                    <button onclick="handleOrderAction('View Timeline')" class="flex flex-col items-center justify-center p-3 rounded-xl bg-surface-variant active-scale transition-apple">
-                        <span class="material-symbols-outlined text-secondary mb-1">history</span>
-                        <span class="text-[11px] font-medium text-on-surface">Timeline</span>
-                    </button>
-                    <button onclick="handleOrderAction('View Dispatch')" class="flex flex-col items-center justify-center p-3 rounded-xl bg-surface-variant active-scale transition-apple">
-                        <span class="material-symbols-outlined text-secondary mb-1">local_shipping</span>
-                        <span class="text-[11px] font-medium text-on-surface">Dispatch</span>
-                    </button>
-                </div>
-            </div>
-        </div>
-
-        <!-- TIMELINE TAB -->
-        <div id="od-tab-timeline" class="od-tab-content hidden">
-            <div id="od-timeline-container" class="pt-4"></div>
-        </div>
-
-        <!-- TASKS TAB -->
-        <div id="od-tab-tasks" class="od-tab-content hidden">
-            <div class="flex justify-between items-center mb-4 mt-2">
-                <h3 class="text-[16px] font-bold text-on-surface">Auto-Generated Tasks</h3>
-                <button class="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center">
-                    <span class="material-symbols-outlined text-[18px]">add</span>
-                </button>
-            </div>
-            <div id="od-tasks-container"></div>
-        </div>
-
-        <div class="h-10"></div>
-    `;
-    const orderDetailsFooter = `
-        <button onclick="closeSheet('orderDetailsSheet')" class="flex-1 bg-surface-container-high text-on-surface font-bold text-[15px] py-3.5 rounded-2xl active-scale transition-apple">
-            Close
-        </button>
-    `;
-
-    // FAB Action Sheet Content
-    const fabActionContent = `
-        <div class="flex flex-col gap-2">
-            <button onclick="closeSheet('fabActionSheet'); openSheet('createOrderSheet');" class="flex items-center gap-4 p-4 rounded-xl bg-surface-container-lowest border border-outline-variant active-bg transition-colors text-left w-full">
-                <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
-                    <span class="material-symbols-outlined">add</span>
-                </div>
-                <div>
-                    <h4 class="text-[16px] font-semibold text-on-surface mb-0.5">New Order</h4>
-                    <p class="text-[13px] text-secondary">Start a new guided order wizard</p>
-                </div>
-            </button>
-            <button onclick="window.showToast?.('Duplicate workflow coming soon', 'info'); closeSheet('fabActionSheet');" class="flex items-center gap-4 p-4 rounded-xl bg-surface-container-lowest border border-outline-variant active-bg transition-colors text-left w-full">
-                <div class="w-10 h-10 rounded-full bg-surface-variant text-on-surface-variant flex items-center justify-center">
-                    <span class="material-symbols-outlined">content_copy</span>
-                </div>
-                <div>
-                    <h4 class="text-[16px] font-semibold text-on-surface mb-0.5">Duplicate Existing</h4>
-                    <p class="text-[13px] text-secondary">Clone a previous order</p>
-                </div>
-            </button>
-            <button onclick="window.showToast?.('Import workflow coming soon', 'info'); closeSheet('fabActionSheet');" class="flex items-center gap-4 p-4 rounded-xl bg-surface-container-lowest border border-outline-variant active-bg transition-colors text-left w-full">
-                <div class="w-10 h-10 rounded-full bg-surface-variant text-on-surface-variant flex items-center justify-center">
-                    <span class="material-symbols-outlined">upload_file</span>
-                </div>
-                <div>
-                    <h4 class="text-[16px] font-semibold text-on-surface mb-0.5">Import Orders</h4>
-                    <p class="text-[13px] text-secondary">Upload CSV or Excel</p>
-                </div>
-            </button>
-            <button onclick="window.showToast?.('Sample workflow coming soon', 'info'); closeSheet('fabActionSheet');" class="flex items-center gap-4 p-4 rounded-xl bg-surface-container-lowest border border-outline-variant active-bg transition-colors text-left w-full">
-                <div class="w-10 h-10 rounded-full bg-surface-variant text-on-surface-variant flex items-center justify-center">
-                    <span class="material-symbols-outlined">science</span>
-                </div>
-                <div>
-                    <h4 class="text-[16px] font-semibold text-on-surface mb-0.5">Sample Order</h4>
-                    <p class="text-[13px] text-secondary">Create a rapid R&D sample</p>
-                </div>
-            </button>
-        </div>
-        <div class="h-4"></div>
-    `;
 
     const addExpenseContent = `
         <div class="flex flex-col gap-4">
@@ -688,10 +870,13 @@ async function renderSheets() {
 
     // Render Sheets
     sheetsContainer.innerHTML = [
-        BottomSheet({ id: 'fabActionSheet', title: 'Order Actions', content: fabActionContent, height: 'auto' }),
-        BottomSheet({ id: 'createOrderSheet', title: 'Create Order', content: createOrderContent, footerContent: createOrderFooter, isForm: true }),
-        BottomSheet({ id: 'orderDetailsSheet', customHeader: orderDetailsHeader, content: orderDetailsContent, footerContent: orderDetailsFooter, height: '90vh' }),
-        BottomSheet({ id: 'addExpenseSheet', title: 'Log Expense', content: addExpenseContent, footerContent: addExpenseFooter, height: 'auto' })
+        BottomSheet({ id: 'fabActionSheet', title: 'Order Actions', content: sheetsHTML.fabActionContent, height: 'auto' }),
+        BottomSheet({ id: 'createOrderSheet', title: 'Create Order', content: sheetsHTML.createOrderContent, footerContent: sheetsHTML.createOrderFooter, isForm: true }),
+        BottomSheet({ id: 'orderDetailsSheet', customHeader: detailsHTML.orderDetailsHeader, content: detailsHTML.orderDetailsContent, footerContent: detailsHTML.orderDetailsFooter, height: '90vh' }),
+        BottomSheet({ id: 'editOrderSheet', title: 'Edit Order', content: sheetsHTML.editOrderContent, footerContent: sheetsHTML.editOrderFooter, height: '90vh', isForm: true }),
+        BottomSheet({ id: 'addExpenseSheet', title: 'Log Expense', content: addExpenseContent, footerContent: addExpenseFooter, height: 'auto' }),
+        BottomSheet({ id: 'filterOrderSheet', customHeader: sheetsHTML.filterOrderHeader, content: sheetsHTML.filterOrderContent, footerContent: sheetsHTML.filterOrderFooter, height: 'auto' }),
+        BottomSheet({ id: 'importOrderSheet', title: 'Import Orders', content: sheetsHTML.importOrderContent, footerContent: sheetsHTML.importOrderFooter, height: 'auto' })
     ].join('');
     
     // Bind logic for Submit Expense
@@ -720,14 +905,15 @@ async function renderSheets() {
         }
     });
 
-    // Bind form validation for the create order sheet
     if (window.bindFormValidation) {
         window.bindFormValidation('createOrderSheet', 'create-order-submit');
+        window.bindFormValidation('editOrderSheet', 'edit-order-submit');
     }
-    
+
     // Bind live wizard calculations
     bindWizardCalculations();
-
+    bindOrderSubmissions();
+    
     // Bind Auto-Fill for Quote Linking
     const quoteSelect = document.getElementById('create-quote');
     if (quoteSelect) {
@@ -754,36 +940,152 @@ async function renderSheets() {
         });
     }
 
-    // Bind validation for Create
-    bindFormValidation('createOrderSheet-content', 'create-order-submit');
-    document.getElementById('create-order-submit')?.addEventListener('click', async () => {
-        const payload = {
-            costingId: document.getElementById('create-quote').value,
-            customerId: document.getElementById('create-customer').value,
-            customerName: document.getElementById('create-customer').options[document.getElementById('create-customer').selectedIndex].text,
-            product: document.getElementById('create-product').value,
-            sizes: document.getElementById('create-sizes').value.split(',').map(s => s.trim()).filter(Boolean),
-            colours: document.getElementById('create-colours').value.split(',').map(s => s.trim()).filter(Boolean),
-            qty: parseInt(document.getElementById('create-qty').value) || 0,
-            value: parseFloat(document.getElementById('create-price').value) || 0,
-            status: document.getElementById('create-status').value,
-            priority: document.getElementById('create-priority').value,
-            deliveryDate: document.getElementById('create-date').value,
-            notes: document.getElementById('create-notes').value,
-            progressPercentage: 0,
-            progressLabel: 'Initiated',
-            progressColor: 'bg-primary'
-        };
-
-        window.closeSheet('createOrderSheet');
-        if (window.setLoading) window.setLoading('orders-list');
-        try {
-            await api.saveOrder(payload);
-            window.showToast?.('Order created successfully', 'success');
-            await loadOrders();
-        } catch (err) {
-            console.error(err);
-            window.showToast?.('Failed to create order', 'error');
-        }
-    });
 }
+
+window.applyOrderFilters = function() {
+    currentAdvFilters = {
+        status: document.getElementById('filter-status').value,
+        priority: document.getElementById('filter-priority').value,
+        customer: document.getElementById('filter-customer')?.value || '',
+        department: document.getElementById('filter-department')?.value || '',
+        dispatchDate: document.getElementById('filter-dispatch-date')?.value || '',
+        paymentStatus: document.getElementById('filter-payment-status')?.value || '',
+        dateFrom: document.getElementById('filter-date-from').value,
+        dateTo: document.getElementById('filter-date-to').value
+    };
+    renderOrders();
+    window.closeSheet('filterOrderSheet');
+    window.showToast?.('Filters applied', 'success');
+};
+
+window.resetOrderFilters = function() {
+    currentAdvFilters = {
+        status: '',
+        priority: '',
+        customer: '',
+        department: '',
+        dispatchDate: '',
+        paymentStatus: '',
+        dateFrom: '',
+        dateTo: ''
+    };
+    
+    document.getElementById('filter-status').value = '';
+    document.getElementById('filter-priority').value = '';
+    if (document.getElementById('filter-customer')) document.getElementById('filter-customer').value = '';
+    if (document.getElementById('filter-department')) document.getElementById('filter-department').value = '';
+    if (document.getElementById('filter-dispatch-date')) document.getElementById('filter-dispatch-date').value = '';
+    if (document.getElementById('filter-payment-status')) document.getElementById('filter-payment-status').value = '';
+    document.getElementById('filter-date-from').value = '';
+    document.getElementById('filter-date-to').value = '';
+    renderOrders();
+    window.closeSheet('filterOrderSheet');
+    window.showToast?.('Filters reset', 'info');
+};
+
+window.duplicateFlow = function() {
+    let orderToDup = null;
+    if (selectedOrders.size > 0) {
+        const idToDup = Array.from(selectedOrders)[0];
+        orderToDup = currentOrders.find(o => o.id === idToDup);
+    } else if (activeOrder) {
+        orderToDup = activeOrder;
+    }
+    
+    if (orderToDup) {
+        document.getElementById('create-customer').value = orderToDup.customerId || '';
+        document.getElementById('create-product').value = orderToDup.product + ' (Copy)' || '';
+        document.getElementById('create-fabric').value = orderToDup.fabric || '';
+        document.getElementById('create-sizes').value = (orderToDup.sizes || []).join(', ');
+        document.getElementById('create-colours').value = (orderToDup.colours || []).join(', ');
+        document.getElementById('create-qty').value = orderToDup.qty || '';
+        document.getElementById('create-price').value = orderToDup.value ? (orderToDup.value / orderToDup.qty) : '';
+        document.getElementById('create-discount').value = '';
+        document.getElementById('create-tax').value = '';
+        document.getElementById('create-date').value = orderToDup.deliveryDate || '';
+        document.getElementById('create-status').value = 'Draft';
+        document.getElementById('create-priority').value = orderToDup.priority || 'Normal';
+        document.getElementById('create-notes').value = orderToDup.notes || '';
+        
+        window.openCreateWizard();
+        window.openSheet('createOrderSheet');
+    } else {
+        window.showToast?.('Please select an order to duplicate', 'error');
+    }
+};
+
+window.createSampleOrder = function() {
+    document.getElementById('create-customer').value = '';
+    document.getElementById('create-product').value = 'Sample - ';
+    document.getElementById('create-fabric').value = '';
+    document.getElementById('create-sizes').value = '';
+    document.getElementById('create-colours').value = '';
+    document.getElementById('create-qty').value = '1';
+    document.getElementById('create-price').value = '0';
+    document.getElementById('create-discount').value = '0';
+    document.getElementById('create-tax').value = '0';
+    document.getElementById('create-date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('create-status').value = 'Draft';
+    document.getElementById('create-priority').value = 'Normal';
+    document.getElementById('create-notes').value = 'Pre-production sample request.';
+    
+    window.openCreateWizard();
+    window.openSheet('createOrderSheet');
+};
+
+window.createDraftOrder = async function() {
+    if (window.setLoading) window.setLoading('orders-list');
+    try {
+        const newOrder = {
+            id: 'ORD-' + Math.floor(1000 + Math.random() * 9000),
+            customerId: 'cust-001',
+            customerName: 'Acme Corp',
+            product: 'Quick Draft',
+            qty: 0,
+            value: 0,
+            status: 'Draft',
+            deliveryDate: new Date().toISOString().split('T')[0]
+        };
+        await api.createOrder(newOrder);
+        window.showToast?.('Draft order created', 'success');
+        await loadOrders();
+    } catch (e) {
+        window.showToast?.('Failed to create draft', 'error');
+    }
+};
+
+window.importOrders = function() {
+    const fileInput = document.getElementById('import-file-upload');
+    if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+        window.showToast?.('Please select a file to import', 'error');
+        return;
+    }
+    
+    const importBtn = document.getElementById('import-submit-btn');
+    if (importBtn) {
+        importBtn.textContent = 'Importing...';
+        importBtn.disabled = true;
+    }
+    
+    setTimeout(async () => {
+        const newOrder = {
+            id: 'ORD-' + Math.floor(1000 + Math.random() * 9000),
+            customerId: 'cust-002',
+            customerName: 'Globex Inc',
+            product: 'Imported Garments',
+            qty: 500,
+            value: 12500,
+            status: 'Draft',
+            deliveryDate: new Date().toISOString().split('T')[0]
+        };
+        await api.createOrder(newOrder);
+        
+        window.showToast?.('1 Order successfully imported!', 'success');
+        window.closeSheet('importOrderSheet');
+        if (importBtn) {
+            importBtn.textContent = 'Import Orders';
+            importBtn.disabled = false;
+        }
+        await loadOrders();
+    }, 1500);
+};

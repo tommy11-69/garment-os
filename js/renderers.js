@@ -34,18 +34,29 @@ export const renderers = {
         `;
     },
 
-    orderCard(order) {
-        return `
-            <div role="button" tabindex="0" onclick="window.openOrderDetails('${order.id}')" class="bg-surface-container-lowest rounded-[24px] border border-outline-variant p-lg shadow-sm active-bg transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary">
-                <div class="flex items-start justify-between mb-4">
-                    <div>
-                        <span class="text-[13px] font-semibold text-primary mb-1 block">${order.id}</span>
-                        <h4 class="text-[18px] font-bold text-on-surface mb-0.5">${order.customerName}</h4>
-                        <span class="text-body text-secondary">$${order.value.toLocaleString()}</span>
-                    </div>
-                    <span class="px-2.5 py-1 rounded-full text-[11px] font-medium ${order.statusColor}">${order.status}</span>
+    orderCard(order, isBulkMode = false, isSelected = false) {
+        const checkboxHtml = isBulkMode ? `
+            <div class="mr-3 flex items-center h-full">
+                <div class="w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors ${isSelected ? 'bg-primary border-primary' : 'border-outline-variant'}" onclick="event.stopPropagation(); window.toggleOrderSelection('${order.id}')">
+                    ${isSelected ? '<span class="material-symbols-outlined text-white text-[16px] font-bold">check</span>' : ''}
                 </div>
-                ${ProgressBar({ label: `${order.progressPercentage}% Complete`, secondaryLabel: order.progressLabel, percentage: order.progressPercentage, colorClass: order.progressColor })}
+            </div>
+        ` : '';
+
+        return `
+            <div role="button" tabindex="0" onclick="${isBulkMode ? `window.toggleOrderSelection('${order.id}')` : `window.openOrderDetails('${order.id}')`}" class="bg-surface-container-lowest rounded-[24px] border ${isSelected ? 'border-primary ring-1 ring-primary' : 'border-outline-variant'} p-lg shadow-sm active-bg transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary flex items-center">
+                ${checkboxHtml}
+                <div class="flex-1 w-full min-w-0">
+                    <div class="flex items-start justify-between mb-4">
+                        <div>
+                            <span class="text-[13px] font-semibold text-primary mb-1 block">${order.id}</span>
+                            <h4 class="text-[18px] font-bold text-on-surface mb-0.5">${order.customerName}</h4>
+                            <span class="text-body text-secondary">$${(order.value || 0).toLocaleString()}</span>
+                        </div>
+                        <span class="px-2.5 py-1 rounded-full text-[11px] font-medium shrink-0 ml-2 ${order.statusColor}">${order.status}</span>
+                    </div>
+                    ${ProgressBar({ label: `${order.progressPercentage}% Complete`, secondaryLabel: order.progressLabel, percentage: order.progressPercentage, colorClass: order.progressColor })}
+                </div>
             </div>
         `;
     },
@@ -60,7 +71,7 @@ export const renderers = {
                     </div>
                     <div>
                         <h4 class="text-[16px] font-semibold text-on-surface leading-tight mb-0.5">${order.customerName}</h4>
-                        <p class="text-caption text-secondary">${order.id} • $${order.value.toLocaleString()}</p>
+                        <p class="text-caption text-secondary">${order.id} • $${(order.value || 0).toLocaleString()}</p>
                     </div>
                 </div>
                 <span class="px-2.5 py-1 rounded-full text-[11px] font-medium ${order.statusColor}">${order.status}</span>

@@ -3,7 +3,7 @@ import { BottomSheet, TimelineEvent } from '../components/index.js';
 import { TextInput, SelectInput, TextareaInput } from '../components/inputs.js';
 import { bindFormValidation } from '../utils/formHandler.js';
 
-document.addEventListener('DOMContentLoaded', async () => {
+async function initModule() {
     const sheetsContainer = document.getElementById('sheets-container');
     
     // Create Sheets content
@@ -89,4 +89,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.closeSheet('logConsumptionSheet');
         window.showToast('Consumption logged', 'success');
     });
-});
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initModule);
+} else {
+    initModule();
+}

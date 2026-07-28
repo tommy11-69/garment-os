@@ -78,32 +78,36 @@
                     }
                 }
 
-                document.addEventListener('DOMContentLoaded', loadDashboardData);
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', loadDashboardData);
+                } else {
+                    loadDashboardData();
+                }
             </script>
 
             <!-- Quick Actions -->
             <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant p-md shadow-sm">
                 <h3 class="font-section-title text-[18px] text-on-surface mb-md">Quick Actions</h3>
                 <div class="flex gap-md overflow-x-auto pb-2 snap-x hide-scrollbar">
-                    <button class="snap-start flex flex-col items-center justify-center min-w-[80px] gap-2 active-scale transition-apple">
+                    <button onclick="window.location.href='orders.html'" class="snap-start flex flex-col items-center justify-center min-w-[80px] gap-2 active-scale transition-apple">
                         <div class="w-14 h-14 rounded-full bg-primary/10 text-primary flex items-center justify-center">
                             <span class="material-symbols-outlined text-[24px]">add_circle</span>
                         </div>
                         <span class="text-caption font-medium text-on-surface text-center">New<br>Order</span>
                     </button>
-                    <button class="snap-start flex flex-col items-center justify-center min-w-[80px] gap-2 active-scale transition-apple">
+                    <button onclick="window.location.href='calculator.html'" class="snap-start flex flex-col items-center justify-center min-w-[80px] gap-2 active-scale transition-apple">
                         <div class="w-14 h-14 rounded-full bg-[#008A00]/10 text-[#008A00] flex items-center justify-center">
                             <span class="material-symbols-outlined text-[24px]">calculate</span>
                         </div>
                         <span class="text-caption font-medium text-on-surface text-center">Cost<br>Calc</span>
                     </button>
-                    <button class="snap-start flex flex-col items-center justify-center min-w-[80px] gap-2 active-scale transition-apple">
+                    <button onclick="window.location.href='customers.html'" class="snap-start flex flex-col items-center justify-center min-w-[80px] gap-2 active-scale transition-apple">
                         <div class="w-14 h-14 rounded-full bg-[#FF9F0A]/10 text-[#FF9F0A] flex items-center justify-center">
                             <span class="material-symbols-outlined text-[24px]">person_add</span>
                         </div>
                         <span class="text-caption font-medium text-on-surface text-center">Add<br>Client</span>
                     </button>
-                    <button class="snap-start flex flex-col items-center justify-center min-w-[80px] gap-2 active-scale transition-apple">
+                    <button onclick="window.location.href='inventory.html'" class="snap-start flex flex-col items-center justify-center min-w-[80px] gap-2 active-scale transition-apple">
                         <div class="w-14 h-14 rounded-full bg-[#5E5CE6]/10 text-[#5E5CE6] flex items-center justify-center">
                             <span class="material-symbols-outlined text-[24px]">inventory_2</span>
                         </div>
@@ -116,7 +120,7 @@
             <div class="flex flex-col gap-sm">
                 <div class="flex items-center justify-between px-xs">
                     <h3 class="font-section-title text-[20px] text-on-surface">Recent Orders</h3>
-                    <button class="text-primary text-body font-medium active:opacity-70">See All</button>
+                    <button onclick="window.location.href='orders.html'" class="text-primary text-body font-medium active:opacity-70">See All</button>
                 </div>
                 
                 <div id="dashboard-recent-orders" class="bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-sm overflow-hidden flex flex-col divide-y divide-outline-variant/50">

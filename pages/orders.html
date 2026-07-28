@@ -26,9 +26,26 @@
     <div class="mobile-wrapper">
         <main id="main-content-area" class="flex-1 p-md flex flex-col gap-lg">
             
-            <div class="px-xs pt-sm">
-                <h2 class="text-[28px] leading-tight font-semibold tracking-tight text-on-surface mb-1">Orders</h2>
-                <p id="orders-count" class="text-body text-secondary">Loading...</p>
+            <div class="px-xs pt-sm flex justify-between items-end">
+                <div>
+                    <h2 class="text-[28px] leading-tight font-semibold tracking-tight text-on-surface mb-1">Orders</h2>
+                    <p id="orders-count" class="text-body text-secondary">Loading...</p>
+                </div>
+                <button onclick="window.toggleBulkMode()" id="bulk-toggle-btn" class="px-3 py-1.5 rounded-lg border border-outline-variant text-[13px] font-medium text-secondary active-bg flex items-center gap-1">
+                    <span class="material-symbols-outlined text-[16px]">checklist</span>
+                    Bulk
+                </button>
+            </div>
+
+            <!-- Search & Filter Bar -->
+            <div class="flex gap-2">
+                <div class="relative flex-1">
+                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-[20px]">search</span>
+                    <input type="text" id="order-search-input" placeholder="Search customer, ID, or style..." class="w-full pl-10 pr-4 py-2.5 bg-surface-container-lowest border border-outline-variant rounded-xl text-[14px] focus:ring-2 focus:ring-primary focus:border-transparent outline-none transition-all placeholder:text-secondary/70">
+                </div>
+                <button onclick="window.openSheet('filterOrderSheet')" class="w-[46px] shrink-0 bg-surface-container-lowest border border-outline-variant rounded-xl flex items-center justify-center text-on-surface active-scale transition-apple">
+                    <span class="material-symbols-outlined text-[20px]">tune</span>
+                </button>
             </div>
             
             <!-- Mobile Segmented Control -->
@@ -43,8 +60,22 @@
         </main>
     </div>
     
-    <div id="fab-container" data-icon="add" data-action="openSheet('fabActionSheet')"></div>
+    <div id="fab-container" data-icon="add" data-action="window.openSheet('fabActionSheet')"></div>
     <div id="bottom-nav-container"></div>
+
+    <!-- Bulk Actions Toolbar -->
+    <div id="bulk-actions-toolbar" class="hidden fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-surface border-t border-outline-variant/30 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-[100] pb-6 pt-3 px-4 flex justify-between items-center transition-transform translate-y-full">
+        <div class="flex items-center gap-2">
+            <button onclick="window.selectAllOrders()" class="w-10 h-10 rounded-full flex items-center justify-center text-secondary active-bg">
+                <span class="material-symbols-outlined text-[20px]">done_all</span>
+            </button>
+            <span id="bulk-selected-count" class="text-[14px] font-bold text-on-surface">0 Selected</span>
+        </div>
+        <div class="flex gap-2">
+            <button onclick="window.bulkArchive()" class="px-4 py-2 rounded-xl border border-outline-variant text-[14px] font-medium text-secondary active-bg shadow-sm">Archive</button>
+            <button onclick="window.bulkApprove()" class="px-4 py-2 rounded-xl bg-primary text-white text-[14px] font-bold shadow-sm active-scale">Approve</button>
+        </div>
+    </div>
 
 
     <!-- ========================================== -->

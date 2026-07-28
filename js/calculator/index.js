@@ -726,7 +726,7 @@ window.saveRates = function() {
 // ══════════════════════════════════════════════════════
 //  INIT
 // ══════════════════════════════════════════════════════
-document.addEventListener('DOMContentLoaded', async () => {
+async function initModule() {
     loadPrefs();
 
     const sheetsContainer = $('sheets-container');
@@ -810,4 +810,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         window.closeSheet('saveCostSheet');
         window.showToast?.(`Costing saved as ${status}`, 'success');
     });
-});
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initModule);
+} else {
+    initModule();
+}

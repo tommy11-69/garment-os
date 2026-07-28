@@ -3,19 +3,25 @@
 
 export const ORDER_STATUSES = {
     DRAFT: 'Draft',
+    QUOTATION_SENT: 'Quotation Sent',
+    AWAITING_APPROVAL: 'Awaiting Approval',
     APPROVED: 'Approved',
     MATERIAL_RESERVED: 'Material Reserved',
+    PRODUCTION_ASSIGNED: 'Production Assigned',
     KNITTING: 'Knitting',
     DYEING: 'Dyeing',
     COMPACTING: 'Compacting',
     CUTTING: 'Cutting',
     PRINTING: 'Printing',
+    EMBROIDERY: 'Embroidery',
     STITCHING: 'Stitching',
     QC: 'Quality Check',
     PACKING: 'Packing',
+    READY_FOR_DISPATCH: 'Dispatch Ready',
     DISPATCHED: 'Dispatched',
     DELIVERED: 'Delivered',
-    CANCELLED: 'Cancelled'
+    CLOSED: 'Closed',
+    ARCHIVED: 'Archived'
 };
 export let customers = [
     {

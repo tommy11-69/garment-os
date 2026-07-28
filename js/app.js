@@ -89,6 +89,11 @@ document.addEventListener('DOMContentLoaded', () => {
     import('./utils/devtools.js').then(module => {
         module.initDevTools();
     }).catch(e => console.log('DevTools not loaded', e));
+
+    import('./utils/states.js').catch(e => console.log('States not loaded', e));
+    import('./utils/toast.js').then(module => {
+        window.showToast = module.showToast;
+    }).catch(e => console.log('Toast not loaded', e));
     
     // Global keyboard support for elements with role="button"
     document.addEventListener('keydown', (e) => {

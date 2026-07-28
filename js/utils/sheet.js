@@ -30,7 +30,7 @@ window.closeSheet = closeSheet;
  * Dynamically creates and shows a confirmation bottom sheet.
  * @param {Object} options - Configuration options
  */
-export function showConfirmation({ title, message, confirmText = 'Confirm', cancelText = 'Cancel', type = 'danger', onConfirm }) {
+function showConfirmation({ title, message, confirmText = 'Confirm', cancelText = 'Cancel', type = 'danger', onConfirm }) {
     // Generate unique ID
     const id = 'confirm-' + Math.random().toString(36).substr(2, 9);
     
