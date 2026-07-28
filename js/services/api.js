@@ -1,6 +1,6 @@
 import { 
     customers, orders, inventory, activeBatches, transactions, costings,
-    setInventory, setTransactions, setActiveBatches, setCostings
+    setInventory, setTransactions, setActiveBatches, setCostings, setOrders
 } from '../data/mockData.js';
 
 /**
@@ -17,6 +17,70 @@ export const api = {
     async getActiveBatches() { await delay(); return activeBatches; },
     async getTransactions() { await delay(); return transactions; },
     async getCostings() { await delay(); return costings; },
+    async getCostingById(id) { await delay(); return costings.find(c => c.id === id); },
+    
+    // -- ORDERS --
+    
+    async saveOrder(orderData) {
+        await delay();
+        const newOrder = {
+            id: orderData.id || `ORD-${Math.floor(1000 + Math.random() * 9000)}`,
+            ...orderData,
+            status: orderData.status || "Draft",
+            statusColor: "bg-surface-variant text-secondary", // default
+            dateMonth: new Date().toLocaleString('default', { month: 'short' }),
+            dateDay: new Date().getDate().toString(),
+            incurredCost: 0
+        };
+        
+        if (orderData.id) {
+            // Update
+            const updated = orders.map(o => o.id === orderData.id ? newOrder : o);
+            setOrders(updated);
+        } else {
+            // Create
+            setOrders([newOrder, ...orders]);
+        }
+        return newOrder;
+    },
+
+    async deleteOrder(orderId) {
+        await delay();
+        setOrders(orders.filter(o => o.id !== orderId));
+        return { success: true };
+    },
+
+    async archiveOrder(orderId) {
+        await delay();
+        const updated = orders.map(o => {
+            if (o.id === orderId) return { ...o, status: "Archived", statusColor: "bg-surface-variant text-secondary" };
+            return o;
+        });
+        setOrders(updated);
+        return { success: true };
+    },
+
+    async duplicateOrder(orderId) {
+        await delay();
+        const original = orders.find(o => o.id === orderId);
+        if (!original) throw new Error("Order not found");
+        
+        const duplicate = {
+            ...original,
+            id: `ORD-${Math.floor(1000 + Math.random() * 9000)}`,
+            status: "Draft",
+            statusColor: "bg-surface-variant text-secondary",
+            progressPercentage: 0,
+            progressLabel: "Draft",
+            progressColor: "bg-surface-variant",
+            incurredCost: 0,
+            dateMonth: new Date().toLocaleString('default', { month: 'short' }),
+            dateDay: new Date().getDate().toString(),
+        };
+        
+        setOrders([duplicate, ...orders]);
+        return duplicate;
+    },
 
     /**
      * Logs an expense against a specific production batch.

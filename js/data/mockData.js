@@ -47,15 +47,23 @@ export let orders = [
         customerName: "Everlane Corp.",
         customerId: "c-001",
         costingId: "cost-001",
-        value: 12400,
-        status: "On Track",
+        product: "Organic Cotton Tees (SS24)",
+        sizes: ["S", "M", "L", "XL"],
+        colours: ["Navy", "White", "Heather Grey"],
+        qty: 5000,
+        value: 172500, // 5000 * 34.50
+        status: "Production",
         statusColor: "bg-[#008A00]/10 text-[#008A00]",
         dateMonth: "Oct",
         dateDay: "24",
+        deliveryDate: "2026-10-24",
+        priority: "High",
         progressPercentage: 65,
         progressLabel: "Cutting Phase",
         progressColor: "bg-primary",
-        incurredCost: 4500 // Will be calculated from batch expenses
+        incurredCost: 4500, // Will be calculated from batch expenses
+        quotedCost: 110500, // 5000 * 22.10
+        notes: "Strict QC needed on Navy colorway."
     }
 ];
 
@@ -134,3 +142,4 @@ export const setInventory = (newInv) => { inventory = newInv; };
 export const setTransactions = (newTxns) => { transactions = newTxns; };
 export const setActiveBatches = (newBatches) => { activeBatches = newBatches; };
 export const setCostings = (newCostings) => { costings = newCostings; };
+export const setOrders = (newOrders) => { orders = newOrders; };

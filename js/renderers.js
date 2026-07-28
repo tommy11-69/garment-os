@@ -36,7 +36,7 @@ export const renderers = {
 
     orderCard(order) {
         return `
-            <div role="button" tabindex="0" onclick="openSheet('orderDetailsSheet')" class="bg-surface-container-lowest rounded-[24px] border border-outline-variant p-lg shadow-sm active-bg transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary">
+            <div role="button" tabindex="0" onclick="window.openOrderDetails('${order.id}')" class="bg-surface-container-lowest rounded-[24px] border border-outline-variant p-lg shadow-sm active-bg transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary">
                 <div class="flex items-start justify-between mb-4">
                     <div>
                         <span class="text-[13px] font-semibold text-primary mb-1 block">${order.id}</span>
@@ -52,7 +52,7 @@ export const renderers = {
     
     dashboardOrderCard(order) {
         return `
-            <div role="button" tabindex="0" onclick="window.location.href='orders.html'" class="p-md flex items-center justify-between active-bg transition-colors cursor-pointer outline-none focus-visible:bg-surface-variant focus-visible:ring-2 focus-visible:ring-primary inset-0">
+            <div role="button" tabindex="0" onclick="window.location.href='orders.html?orderId=${order.id}'" class="p-md flex items-center justify-between active-bg transition-colors cursor-pointer outline-none focus-visible:bg-surface-variant focus-visible:ring-2 focus-visible:ring-primary inset-0">
                 <div class="flex items-center gap-md">
                     <div class="w-12 h-12 rounded-[14px] bg-[#F5F5F7] flex flex-col items-center justify-center border border-outline-variant/30">
                         <span class="text-[10px] text-secondary font-medium uppercase">${order.dateMonth}</span>
