@@ -65,9 +65,13 @@ function renderOrders() {
 
     if (filtered.length === 0) {
         container.innerHTML = '<div class="p-md text-center text-secondary">No orders found</div>';
+        const countEl = document.getElementById('orders-count');
+        if (countEl) countEl.textContent = '0 Orders';
         return;
     }
     container.innerHTML = filtered.map(o => renderers.orderCard(o)).join('');
+    const countEl = document.getElementById('orders-count');
+    if (countEl) countEl.textContent = `${filtered.length} ${currentFilter === 'active' ? 'Active ' : currentFilter === 'completed' ? 'Completed ' : ''}Orders`;
 }
 
 window.openOrderDetails = async function(orderId) {
