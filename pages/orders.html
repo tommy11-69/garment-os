@@ -63,41 +63,7 @@
     <div id="fab-container" data-icon="add" data-action="window.openSheet('fabActionSheet')"></div>
     <div id="bottom-nav-container"></div>
 
-    <!-- Bulk Actions Toolbar -->
-    <div id="bulk-actions-toolbar" class="hidden fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-surface border-t border-outline-variant/30 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-[100] pb-6 pt-3 px-4 flex justify-between items-center transition-transform translate-y-full">
-        <div class="flex items-center gap-2">
-            <button onclick="window.selectAllOrders()" class="w-10 h-10 rounded-full flex items-center justify-center text-secondary active-bg">
-                <span class="material-symbols-outlined text-[20px]">done_all</span>
-            </button>
-            <span id="bulk-selected-count" class="text-[14px] font-bold text-on-surface">0 Selected</span>
-        </div>
-        <div class="flex gap-1">
-            <button onclick="window.bulkArchive()" title="Archive" class="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl text-secondary active-bg transition-colors">
-                <span class="material-symbols-outlined text-[18px]">archive</span>
-                <span class="text-[10px] font-medium">Archive</span>
-            </button>
-            <button onclick="window.bulkDelete()" title="Delete" class="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl text-error active-bg transition-colors">
-                <span class="material-symbols-outlined text-[18px]">delete</span>
-                <span class="text-[10px] font-medium">Delete</span>
-            </button>
-            <button onclick="window.bulkExport()" title="Export CSV" class="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl text-secondary active-bg transition-colors">
-                <span class="material-symbols-outlined text-[18px]">download</span>
-                <span class="text-[10px] font-medium">Export</span>
-            </button>
-            <button onclick="window.bulkPrint()" title="Print" class="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl text-secondary active-bg transition-colors">
-                <span class="material-symbols-outlined text-[18px]">print</span>
-                <span class="text-[10px] font-medium">Print</span>
-            </button>
-            <button onclick="window.bulkAssign()" title="Assign Production" class="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl text-secondary active-bg transition-colors">
-                <span class="material-symbols-outlined text-[18px]">precision_manufacturing</span>
-                <span class="text-[10px] font-medium">Assign</span>
-            </button>
-            <button onclick="window.bulkApprove()" title="Approve" class="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl bg-primary text-on-primary active-scale transition-apple shadow-sm rounded-xl">
-                <span class="material-symbols-outlined text-[18px]">check_circle</span>
-                <span class="text-[10px] font-bold">Approve</span>
-            </button>
-        </div>
-    </div>
+
 
 
     <!-- ========================================== -->

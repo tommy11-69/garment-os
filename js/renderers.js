@@ -147,7 +147,8 @@ export const renderers = {
                 <span class="text-[15px] font-bold ${txn.amountColor}">${sign}$${txn.amount.toFixed(2).toLocaleString()}</span>
             </div>
         `;
-    }
+    },
+    
     shipmentCard(s) {
         const isTransit = s.status === 'In Transit';
         const statusColor = isTransit ? 'bg-[#FF9F0A]/10 text-[#FF9F0A]' : 'bg-primary/10 text-primary';
@@ -211,6 +212,46 @@ export const renderers = {
                 ${actionBtn}
             </div>
         `;
+    },
+    
+    dashboardOrderCard(o) {
+        const isExpedited = o.isExpedited;
+        const color = isExpedited ? 'text-[#FF9F0A]' : 'text-on-surface';
+        const bg = isExpedited ? 'bg-[#FF9F0A]/10' : 'bg-surface-variant';
+        return `
+            <div class="p-md flex items-center justify-between active:bg-surface-variant/50 transition-colors cursor-pointer" onclick="window.location.href='orders.html'">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full ${bg} flex items-center justify-center">
+                        <span class="material-symbols-outlined text-[20px] ${color}">local_shipping</span>
+                    </div>
+                    <div>
+                        <h4 class="text-[15px] font-bold text-on-surface leading-tight">${o.customerName}</h4>
+                        <span class="text-[12px] text-secondary">${o.id} • ${o.totalValue}</span>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <span class="block text-[13px] font-bold text-on-surface mb-0.5">${o.status}</span>
+                    <span class="text-[11px] font-medium text-secondary">Due ${o.deliveryDate}</span>
+                </div>
+            </div>
+        `;
+    },
+
+    dashboardBatchCard(b) {
+        return `
+            <div class="cursor-pointer active:opacity-70 transition-opacity" onclick="window.location.href='production.html'">
+                <div class="flex justify-between items-start mb-2">
+                    <div>
+                        <h4 class="text-[15px] font-bold text-on-surface mb-0.5">Batch #${b.id}</h4>
+                        <span class="text-[12px] text-secondary">${b.description}</span>
+                    </div>
+                    <span class="text-[13px] font-bold text-primary">${b.progress}%</span>
+                </div>
+                <div class="w-full bg-surface-container h-1.5 rounded-full overflow-hidden mb-1">
+                    <div class="bg-primary h-full rounded-full transition-apple duration-500" style="width: ${b.progress}%;"></div>
+                </div>
+                <span class="text-[11px] font-medium text-primary">Current Phase: ${b.phase}</span>
+            </div>
+        `;
     }
 };
-

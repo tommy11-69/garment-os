@@ -35,6 +35,23 @@ let currentAdvFilters = {
 
 
 
+async function renderSheets() {
+    const container = document.getElementById('sheets-container');
+    if (container) {
+        let html = '';
+        if (typeof getOrderSheetsHTML === 'function') {
+            html += await getOrderSheetsHTML();
+        }
+        if (typeof getCreateCustomerSheetHTML === 'function') {
+            html += getCreateCustomerSheetHTML();
+        }
+        container.innerHTML = html;
+        if (typeof bindFormValidation === 'function') {
+            bindFormValidation(document);
+        }
+    }
+}
+
 async function initModule() {
     // 1. Subscribe to Store
     orderStore.subscribe(renderUI);
@@ -159,85 +176,69 @@ function updateActiveEntitySheets(entity) {
     const sheet = document.getElementById('orderDetailsSheet');
     if (sheet && !sheet.classList.contains('translate-y-full')) {
         const bodyContent = sheet.querySelector('.overflow-y-auto');
-        if (bodyContent && window.getOrderDetailsContent) {
-            bodyContent.innerHTML = window.getOrderDetailsContent(entity);
+        if (bodyContent && getOrderDetailsContent) {
+            bodyContent.innerHTML = getOrderDetailsContent(entity);
         }
         const header = sheet.querySelector('.bg-surface-container-lowest.sticky');
-        if (header && window.getOrderDetailsHeader) {
-            header.innerHTML = window.getOrderDetailsHeader(entity);
+        if (header && getOrderDetailsHeader) {
+            header.innerHTML = getOrderDetailsHeader(entity);
         }
     }
 }
 
 window.toggleOrderSelection = function(orderId) {
-    if (selectedOrders.has(orderId)) {
-        selectedOrders.delete(orderId);
-    } else {
-        selectedOrders.add(orderId);
-    }
-    updateBulkToolbar();
-    renderOrders(); // Re-render to show checkbox state
+    orderStore.toggleSelection(orderId);
 };
 
 window.selectAllOrders = function() {
-    // Only select currently filtered items
-    const container = document.getElementById('orders-list');
-    if (!container) return;
-    
-    let filtered = currentOrders;
-    if (currentFilter === 'active') filtered = filtered.filter(o => !['Delivered', 'Closed', 'Archived'].includes(o.status));
-    else if (currentFilter === 'completed') filtered = filtered.filter(o => ['Delivered', 'Closed', 'Archived'].includes(o.status));
-    else filtered = filtered.filter(o => o.status !== 'Archived');
-    
-    if (currentSearch) filtered = filtered.filter(o => o.id.toLowerCase().includes(currentSearch) || (o.customerName || '').toLowerCase().includes(currentSearch) || (o.product || '').toLowerCase().includes(currentSearch));
-    
-    if (selectedOrders.size === filtered.length && filtered.length > 0) {
-        selectedOrders.clear(); // Deselect all
+    const state = orderStore.getState();
+    const allSelected = state.entities.length > 0 && state.selectedIds.size === state.entities.length;
+    if (allSelected) {
+        orderStore.clearSelection();
     } else {
-        filtered.forEach(o => selectedOrders.add(o.id)); // Select all
+        orderStore.selectAll(state.entities.map(e => e.id));
     }
-    updateBulkToolbar();
-    renderOrders();
 };
 
-function updateBulkToolbar() {
-    const countEl = document.getElementById('bulk-selected-count');
-    if (countEl) countEl.textContent = `${selectedOrders.size} Selected`;
-}
+window.cancelBulkSelection = function() {
+    orderStore.clearSelection();
+};
+
+
 
 window.bulkArchive = async function() {
-    if (selectedOrders.size === 0) return;
-    window.showToast?.(`Archiving ${selectedOrders.size} orders...`, 'info');
+    if (orderStore.getState().selectedIds.size === 0) return;
+    window.showToast?.(`Archiving ${orderStore.getState().selectedIds.size} orders...`, 'info');
     if (window.setLoading) window.setLoading('orders-list');
     
     try {
-        for (const orderId of selectedOrders) {
+        for (const orderId of orderStore.getState().selectedIds) {
             await api.archiveOrder(orderId);
         }
         window.showToast?.('Orders archived', 'success');
-        window.toggleBulkMode(); // Exit bulk mode
-        await loadOrders();
+        orderStore.clearSelection(); // Exit bulk mode
+        await orderStore.loadOrders();
     } catch (e) {
         window.showToast?.('Failed to bulk archive', 'error');
     }
 };
 
 window.bulkDelete = async function() {
-    if (selectedOrders.size === 0) return;
+    if (orderStore.getState().selectedIds.size === 0) return;
     window.showConfirmation({
         title: 'Bulk Delete',
-        message: `Are you sure you want to permanently delete ${selectedOrders.size} orders?`,
+        message: `Are you sure you want to permanently delete ${orderStore.getState().selectedIds.size} orders?`,
         confirmText: 'Delete',
         onConfirm: async () => {
-            window.showToast?.(`Deleting ${selectedOrders.size} orders...`, 'info');
+            window.showToast?.(`Deleting ${orderStore.getState().selectedIds.size} orders...`, 'info');
             if (window.setLoading) window.setLoading('orders-list');
             try {
-                for (const orderId of selectedOrders) {
+                for (const orderId of orderStore.getState().selectedIds) {
                     await api.deleteOrder(orderId);
                 }
                 window.showToast?.('Orders deleted', 'success');
-                window.toggleBulkMode();
-                await loadOrders();
+                orderStore.clearSelection();
+                await orderStore.loadOrders();
             } catch (e) {
                 window.showToast?.('Failed to bulk delete', 'error');
             }
@@ -246,49 +247,49 @@ window.bulkDelete = async function() {
 };
 
 window.bulkExport = function() {
-    if (selectedOrders.size === 0) return;
-    window.showToast?.(`Exporting ${selectedOrders.size} orders to CSV...`, 'info');
+    if (orderStore.getState().selectedIds.size === 0) return;
+    window.showToast?.(`Exporting ${orderStore.getState().selectedIds.size} orders to CSV...`, 'info');
     setTimeout(() => {
         window.showToast?.('Export complete', 'success');
-        window.toggleBulkMode();
+        orderStore.clearSelection();
     }, 1000);
 };
 
 window.bulkPrint = function() {
-    if (selectedOrders.size === 0) return;
-    window.showToast?.(`Generating PDFs for ${selectedOrders.size} orders...`, 'info');
+    if (orderStore.getState().selectedIds.size === 0) return;
+    window.showToast?.(`Generating PDFs for ${orderStore.getState().selectedIds.size} orders...`, 'info');
     setTimeout(() => {
         window.showToast?.('Ready for printing', 'success');
-        window.toggleBulkMode();
+        orderStore.clearSelection();
         window.print();
     }, 1000);
 };
 
 window.bulkAssign = function() {
-    if (selectedOrders.size === 0) return;
+    if (orderStore.getState().selectedIds.size === 0) return;
     // Simulate assigning to production
-    window.showToast?.(`Assigning ${selectedOrders.size} orders to production...`, 'info');
+    window.showToast?.(`Assigning ${orderStore.getState().selectedIds.size} orders to production...`, 'info');
     setTimeout(() => {
         window.showToast?.('Orders assigned', 'success');
-        window.toggleBulkMode();
+        orderStore.clearSelection();
     }, 1000);
 };
 
 window.bulkApprove = async function() {
-    if (selectedOrders.size === 0) return;
-    window.showToast?.(`Approving ${selectedOrders.size} orders...`, 'info');
+    if (orderStore.getState().selectedIds.size === 0) return;
+    window.showToast?.(`Approving ${orderStore.getState().selectedIds.size} orders...`, 'info');
     if (window.setLoading) window.setLoading('orders-list');
     
     try {
-        for (const orderId of selectedOrders) {
-            const o = currentOrders.find(ord => ord.id === orderId);
+        for (const orderId of orderStore.getState().selectedIds) {
+            const o = orderStore.getState().entities.find(ord => ord.id === orderId);
             if (o && (o.status === 'Draft' || o.status === 'Quotation Sent' || o.status === 'Awaiting Approval')) {
                 await api.updateOrderStatus(orderId, 'Approved');
             }
         }
         window.showToast?.('Orders approved', 'success');
-        window.toggleBulkMode(); // Exit bulk mode
-        await loadOrders();
+        orderStore.clearSelection(); // Exit bulk mode
+        await orderStore.loadOrders();
     } catch (e) {
         window.showToast?.('Failed to bulk approve', 'error');
     }
@@ -314,8 +315,8 @@ window.openOrderDetails = async function(orderId) {
 
     const sheetHTML = BottomSheet({
         id: 'orderDetailsSheet',
-        customHeader: window.getOrderDetailsHeader ? window.getOrderDetailsHeader(order) : '<div class="p-4">Loading Header...</div>',
-        content: window.getOrderDetailsContent ? window.getOrderDetailsContent(order) : '<div class="p-4">Loading Content...</div>',
+        customHeader: getOrderDetailsHeader ? getOrderDetailsHeader(order) : '<div class="p-4">Loading Header...</div>',
+        content: getOrderDetailsContent ? getOrderDetailsContent(order) : '<div class="p-4">Loading Content...</div>',
         height: '90vh'
     });
 
