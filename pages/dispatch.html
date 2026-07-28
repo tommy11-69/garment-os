@@ -38,20 +38,7 @@
             </div>
 
             <!-- Dispatch Cards -->
-            <div class="flex flex-col gap-md">
-                
-                <!-- Shipment 1 -->
-                <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant p-lg shadow-sm">
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="flex items-center gap-3">
-                            <div class="w-12 h-12 rounded-full bg-surface-variant flex items-center justify-center">
-                                <span class="material-symbols-outlined text-[24px] text-primary">local_shipping</span>
-                            </div>
-                            <div>
-                                <h3 class="text-[17px] font-bold text-on-surface leading-tight">Chennai Silks</h3>
-                                <span class="text-[13px] text-secondary">INV-2026-140</span>
-                            </div>
-                        </div>
+            <div id="dispatch-list" class="flex flex-col gap-md"></div>
                         <span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#FF9F0A]/10 text-[#FF9F0A] uppercase tracking-wider">In Transit</span>
                     </div>
                     
@@ -121,50 +108,7 @@
     
     <div id="sheets-container"></div>
     
-    <script type="module">
-        import { BottomSheet } from '../js/components/index.js';
-        import { TextInput, SelectInput, TextareaInput } from '../js/components/inputs.js';
-
-        const sheetsContainer = document.getElementById('sheets-container');
-
-        // Dispatch Order
-        const dispatchOrderContent = `
-            ${SelectInput({ label: 'Select Order', id: 'disp-order', options: [{label: 'Select Order...'}, {label: 'ORD-992 (Chennai Silks)'}, {label: 'ORD-993 (Arvind Fashions)'}] })}
-            ${SelectInput({ label: 'Courier Service', id: 'disp-courier', options: [{label: 'Select Courier...'}, {label: 'BlueDart'}, {label: 'Delhivery'}, {label: 'DHL Express'}] })}
-            ${TextInput({ label: 'LR Number / Tracking ID', id: 'disp-lr', placeholder: 'Enter tracking number' })}
-            <div class="flex gap-4">
-                <div class="flex-1">
-                    ${TextInput({ label: 'Number of Boxes', id: 'disp-boxes', type: 'number', placeholder: '0' })}
-                </div>
-                <div class="flex-1">
-                    ${TextInput({ label: 'Total Weight', id: 'disp-weight', type: 'number', placeholder: 'kg' })}
-                </div>
-            </div>
-            ${TextInput({ label: 'Invoice Number', id: 'disp-invoice', placeholder: 'INV-...' })}
-            
-            <div class="mt-2 flex gap-4 items-center">
-                <div class="flex-1">
-                    <button class="w-full bg-surface-variant text-on-surface font-semibold py-3 rounded-xl border border-outline-variant active-scale transition-apple flex items-center justify-center gap-2">
-                        <span class="material-symbols-outlined text-[18px]">upload_file</span>
-                        Attach LR Copy
-                    </button>
-                </div>
-            </div>
-            
-            ${TextareaInput({ label: 'Notes', id: 'disp-notes', rows: 2 })}
-            <div class="h-10"></div>
-        `;
-        const dispatchOrderFooter = `
-            <button onclick="closeSheet('dispatchOrderSheet')" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active-scale transition-apple shadow-sm">
-                Confirm Dispatch
-            </button>
-        `;
-
-        // Render Sheets
-        sheetsContainer.innerHTML = [
-            BottomSheet({ id: 'dispatchOrderSheet', title: 'Dispatch Order', content: dispatchOrderContent, footerContent: dispatchOrderFooter })
-        ].join('');
-    </script>
+    <script type="module" src="../js/dispatch/index.js"></script>
     
     <script src="../js/utils/sheet.js"></script>
     <script src="../js/app.js"></script>

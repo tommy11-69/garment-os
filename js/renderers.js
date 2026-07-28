@@ -148,4 +148,69 @@ export const renderers = {
             </div>
         `;
     }
+    shipmentCard(s) {
+        const isTransit = s.status === 'In Transit';
+        const statusColor = isTransit ? 'bg-[#FF9F0A]/10 text-[#FF9F0A]' : 'bg-primary/10 text-primary';
+        const icon = isTransit ? 'local_shipping' : 'inventory_2';
+        
+        let detailsHtml = '';
+        if (isTransit) {
+            detailsHtml = `
+                <div class="flex justify-between items-center">
+                    <span class="text-[13px] text-secondary">Courier</span>
+                    <span class="text-[14px] font-semibold text-on-surface">${s.courier}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-[13px] text-secondary">Tracking No.</span>
+                    <span class="text-[14px] font-semibold text-primary">${s.trackingNo}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-[13px] text-secondary">Expected</span>
+                    <span class="text-[14px] font-semibold text-on-surface">${s.expectedDate}</span>
+                </div>
+            `;
+        } else {
+            detailsHtml = `
+                <div class="flex justify-between items-center">
+                    <span class="text-[13px] text-secondary">Courier</span>
+                    <span class="text-[14px] font-semibold text-on-surface">${s.courier}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-[13px] text-secondary">Boxes</span>
+                    <span class="text-[14px] font-semibold text-on-surface">${s.boxes} Cartons</span>
+                </div>
+            `;
+        }
+        
+        const actionBtn = isTransit 
+            ? `<button class="w-full bg-surface-container-high text-on-surface font-bold text-[14px] py-3 rounded-xl active-scale transition-apple">Track Shipment</button>`
+            : `<div class="flex gap-2">
+                <button class="flex-1 bg-surface-container-high text-on-surface font-bold text-[14px] py-3 rounded-xl active-scale transition-apple">Print Labels</button>
+                <button onclick="window.openSheet('dispatchOrderSheet')" class="flex-1 bg-primary text-white font-bold text-[14px] py-3 rounded-xl active-scale transition-apple shadow-sm">Mark Dispatched</button>
+               </div>`;
+        
+        return `
+            <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant p-lg shadow-sm mb-4">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 rounded-full bg-surface-variant flex items-center justify-center">
+                            <span class="material-symbols-outlined text-[24px] text-primary">${icon}</span>
+                        </div>
+                        <div>
+                            <h3 class="text-[17px] font-bold text-on-surface leading-tight">${s.customerName}</h3>
+                            <span class="text-[13px] text-secondary">${s.invoiceNo}</span>
+                        </div>
+                    </div>
+                    <span class="px-2.5 py-1 rounded-full text-[11px] font-bold ${statusColor} uppercase tracking-wider">${s.status}</span>
+                </div>
+                
+                <div class="bg-surface-variant/50 rounded-xl p-3 flex flex-col gap-2 mb-4">
+                    ${detailsHtml}
+                </div>
+                
+                ${actionBtn}
+            </div>
+        `;
+    }
 };
+

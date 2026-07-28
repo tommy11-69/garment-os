@@ -10,7 +10,26 @@ class Database {
             inventory: [...inventory],
             batches: [...activeBatches],
             transactions: [...transactions],
-            costings: [...costings]
+            costings: [...costings],
+            shipments: [
+                {
+                    id: 'SHP-001',
+                    customerName: 'Chennai Silks',
+                    invoiceNo: 'INV-2026-140',
+                    status: 'In Transit',
+                    courier: 'FedEx Express',
+                    trackingNo: 'FX-99827361',
+                    expectedDate: 'Oct 28, 2026'
+                },
+                {
+                    id: 'SHP-002',
+                    customerName: 'Arvind Fashions',
+                    invoiceNo: 'INV-2026-141',
+                    status: 'Ready',
+                    courier: 'DHL Freight',
+                    boxes: 12
+                }
+            ]
         };
     }
 
