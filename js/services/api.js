@@ -82,6 +82,68 @@ export const api = {
         return duplicate;
     },
 
+    async updateOrderStatus(orderId, newStatus) {
+        await delay();
+        const order = orders.find(o => o.id === orderId);
+        if (!order) throw new Error("Order not found");
+        
+        const timestamp = new Date().toISOString().split('T')[0];
+        
+        order.status = newStatus;
+        // Mock timeline event
+        if (!order.timeline) order.timeline = [];
+        order.timeline.unshift({
+            id: `t-${Date.now()}`,
+            date: timestamp,
+            title: `Status: ${newStatus}`,
+            user: "Current User",
+            type: "status"
+        });
+        
+        // Mock auto task generation based on status
+        if (!order.tasks) order.tasks = [];
+        if (newStatus === "Approved") {
+            order.tasks.push({ id: `tsk-${Date.now()}`, title: "Reserve Material", status: "Pending", assignee: "Inventory Mgr" });
+        } else if (newStatus === "Material Reserved") {
+            order.tasks.push({ id: `tsk-${Date.now()}`, title: "Commence Cutting", status: "Pending", assignee: "Cutting Dept" });
+        }
+        
+        return order;
+    },
+
+    async addOrderTask(orderId, taskData) {
+        await delay();
+        const order = orders.find(o => o.id === orderId);
+        if (!order) throw new Error("Order not found");
+        
+        if (!order.tasks) order.tasks = [];
+        const newTask = {
+            id: `tsk-${Date.now()}`,
+            title: taskData.title,
+            status: taskData.status || "Pending",
+            assignee: taskData.assignee || "Unassigned"
+        };
+        order.tasks.unshift(newTask);
+        return newTask;
+    },
+
+    async logOrderActivity(orderId, activityData) {
+        // Will be used for internal audit logging
+        await delay();
+        const order = orders.find(o => o.id === orderId);
+        if (!order) return;
+        
+        if (!order.timeline) order.timeline = [];
+        order.timeline.unshift({
+            id: `t-${Date.now()}`,
+            date: new Date().toISOString().split('T')[0],
+            title: activityData.title,
+            user: "Current User",
+            type: "system"
+        });
+        return { success: true };
+    },
+
     /**
      * Logs an expense against a specific production batch.
      */

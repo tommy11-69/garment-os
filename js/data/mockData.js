@@ -1,6 +1,22 @@
 // Mock Data for Garment OS
 // Centralized data to simulate a backend database
 
+export const ORDER_STATUSES = {
+    DRAFT: 'Draft',
+    APPROVED: 'Approved',
+    MATERIAL_RESERVED: 'Material Reserved',
+    KNITTING: 'Knitting',
+    DYEING: 'Dyeing',
+    COMPACTING: 'Compacting',
+    CUTTING: 'Cutting',
+    PRINTING: 'Printing',
+    STITCHING: 'Stitching',
+    QC: 'Quality Check',
+    PACKING: 'Packing',
+    DISPATCHED: 'Dispatched',
+    DELIVERED: 'Delivered',
+    CANCELLED: 'Cancelled'
+};
 export let customers = [
     {
         id: "c-001",
@@ -51,19 +67,45 @@ export let orders = [
         sizes: ["S", "M", "L", "XL"],
         colours: ["Navy", "White", "Heather Grey"],
         qty: 5000,
-        value: 172500, // 5000 * 34.50
-        status: "Production",
-        statusColor: "bg-[#008A00]/10 text-[#008A00]",
+        
+        // Financials (Master Spec)
+        unitPrice: 34.50,
+        subtotal: 172500,
+        discount: 0,
+        tax: 8625, // 5% example
+        shipping: 500,
+        grandTotal: 181625,
+        value: 181625, // For legacy backward compatibility
+        incurredCost: 4500,
+        quotedCost: 110500,
+        
+        status: ORDER_STATUSES.CUTTING,
+        statusColor: "bg-orange-500/10 text-orange-600",
         dateMonth: "Oct",
         dateDay: "24",
         deliveryDate: "2026-10-24",
         priority: "High",
-        progressPercentage: 65,
-        progressLabel: "Cutting Phase",
-        progressColor: "bg-primary",
-        incurredCost: 4500, // Will be calculated from batch expenses
-        quotedCost: 110500, // 5000 * 22.10
-        notes: "Strict QC needed on Navy colorway."
+        
+        // Production Tracking
+        factory: "Unit A - South Wing",
+        productionManager: "Sarah Jenkins",
+        merchandiser: "Tom Hardy",
+        progressPercentage: 45,
+        progressLabel: "Cutting Patterns",
+        progressColor: "bg-orange-500",
+        
+        notes: "Strict QC needed on Navy colorway.",
+        
+        // Timeline & Tasks
+        timeline: [
+            { id: "t1", date: "2026-10-10", title: "Order Created", user: "Sales User", type: "system" },
+            { id: "t2", date: "2026-10-11", title: "Status: Approved", user: "Admin", type: "status" },
+            { id: "t3", date: "2026-10-12", title: "Fabric Allocated", user: "Inventory Mgr", type: "inventory" }
+        ],
+        tasks: [
+            { id: "task1", title: "Issue Fabric to Cutting Dept", status: "Completed", assignee: "Inventory Mgr" },
+            { id: "task2", title: "Cut 5000 units", status: "In Progress", assignee: "Cutting Dept" }
+        ]
     }
 ];
 

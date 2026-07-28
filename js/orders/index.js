@@ -114,10 +114,38 @@ window.openOrderDetails = async function(orderId) {
     const profitPct = revenue > 0 ? (profit / revenue) * 100 : 0;
     document.getElementById('od-profit-val').textContent = '$' + profit.toLocaleString();
     const pBar = document.getElementById('od-profit-bar');
-    pBar.style.width = Math.max(0, Math.min(100, profitPct)) + '%';
-    pBar.className = `h-full rounded-full transition-all duration-500 ${profitPct >= 20 ? 'bg-[#008A00]' : profitPct >= 0 ? 'bg-primary' : 'bg-error'}`;
+    if (pBar) {
+        pBar.style.width = Math.max(0, Math.min(100, profitPct)) + '%';
+        pBar.className = `h-full rounded-full transition-all duration-500 ${profitPct >= 20 ? 'bg-[#008A00]' : profitPct >= 0 ? 'bg-primary' : 'bg-error'}`;
+    }
+
+    // Production Progress Stepper
+    const progressMap = {
+        'Draft': 0, 'Approved': 10, 'Material Reserved': 20, 
+        'Knitting': 30, 'Dyeing': 40, 'Compacting': 50, 
+        'Cutting': 60, 'Printing': 70, 'Stitching': 80, 
+        'Quality Check': 90, 'Packing': 95, 'Dispatched': 100, 'Delivered': 100
+    };
+    const currentProgress = progressMap[activeOrder.status] || 0;
+    
+    document.getElementById('od-progress-label').textContent = activeOrder.status;
+    document.getElementById('od-progress-pct').textContent = currentProgress + '%';
+    document.getElementById('od-progress-bar').style.width = currentProgress + '%';
 
     window.openSheet('orderDetailsSheet');
+};
+
+window.handleStatusTransition = async function(newStatus) {
+    if (!activeOrder) return;
+    try {
+        window.showToast?.(`Moving to ${newStatus}...`, 'info');
+        await api.updateOrderStatus(activeOrder.id, newStatus);
+        await loadOrders(); // Refresh lists
+        window.openOrderDetails(activeOrder.id); // Re-render sheet
+        window.showToast?.(`Status updated to ${newStatus}`, 'success');
+    } catch (e) {
+        window.showToast?.('Failed to update status', 'error');
+    }
 };
 
 window.duplicateOrder = async function() {
@@ -159,6 +187,79 @@ window.deleteOrder = async function() {
     }
 };
 
+// ==========================================
+// WIZARD LOGIC & CALCULATIONS
+// ==========================================
+let currentWizardStep = 1;
+const TOTAL_WIZARD_STEPS = 4;
+
+window.goToOrderStep = function(dir) {
+    const nextStep = currentWizardStep + dir;
+    if (nextStep < 1 || nextStep > TOTAL_WIZARD_STEPS) return;
+
+    // Hide all steps
+    for (let i = 1; i <= TOTAL_WIZARD_STEPS; i++) {
+        const stepEl = document.getElementById(`order-step-${i}`);
+        const dotEl = document.getElementById(`wizard-dot-${i}`);
+        if (stepEl) stepEl.classList.add('hidden');
+        if (dotEl) {
+            dotEl.className = i <= nextStep
+                ? 'w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center z-10 font-bold text-[13px] shadow-sm transition-colors'
+                : 'w-8 h-8 rounded-full bg-surface-container-highest text-secondary flex items-center justify-center z-10 font-bold text-[13px] transition-colors';
+        }
+    }
+
+    // Show current step
+    document.getElementById(`order-step-${nextStep}`).classList.remove('hidden');
+    
+    // Update progress bar
+    const progressWidth = ((nextStep - 1) / (TOTAL_WIZARD_STEPS - 1)) * 100;
+    document.getElementById('wizard-progress-bar').style.width = `${progressWidth}%`;
+
+    // Update Footer Buttons
+    document.getElementById('wizard-prev-btn').classList.toggle('hidden', nextStep === 1);
+    document.getElementById('wizard-next-btn').classList.toggle('hidden', nextStep === TOTAL_WIZARD_STEPS);
+    document.getElementById('create-order-submit').classList.toggle('hidden', nextStep !== TOTAL_WIZARD_STEPS);
+    
+    currentWizardStep = nextStep;
+};
+
+// Open wizard normally starts at step 1
+window.openCreateWizard = function() {
+    currentWizardStep = 1;
+    // reset visual state
+    window.goToOrderStep(0); 
+    // Clear inputs (can use formHandler.resetForm if available, but manual is fine for mock)
+    document.getElementById('createOrderSheet-content').querySelector('form').reset();
+    document.getElementById('calc-subtotal').textContent = '$0.00';
+    document.getElementById('calc-grandtotal').textContent = '$0.00';
+    closeSheet('fabActionSheet'); 
+    openSheet('createOrderSheet');
+}
+
+// Live Calculations listener setup (needs to be called after renderSheets)
+function bindWizardCalculations() {
+    const qtyInput = document.getElementById('create-qty');
+    const priceInput = document.getElementById('create-price');
+    const taxInput = document.getElementById('create-tax');
+    
+    const updateCalculations = () => {
+        const qty = parseFloat(qtyInput.value) || 0;
+        const price = parseFloat(priceInput.value) || 0;
+        const tax = parseFloat(taxInput.value) || 0;
+        
+        const subtotal = qty * price;
+        const grandTotal = subtotal + tax;
+        
+        document.getElementById('calc-subtotal').textContent = `$${subtotal.toFixed(2)}`;
+        document.getElementById('calc-grandtotal').textContent = `$${grandTotal.toFixed(2)}`;
+    };
+
+    if (qtyInput) qtyInput.addEventListener('input', updateCalculations);
+    if (priceInput) priceInput.addEventListener('input', updateCalculations);
+    if (taxInput) taxInput.addEventListener('input', updateCalculations);
+}
+
 window.handleOrderAction = function(action) {
     window.showToast?.(`Action: ${action}`, 'info');
     // Implementation for PDF, Invoice generation would go here
@@ -177,40 +278,82 @@ async function renderSheets() {
     const customerOptions = [{label: 'Select Customer', value: ''}, ...customers.map(c => ({label: c.name, value: c.id}))];
     const costingOptions = [{label: 'None (Manual Entry)', value: ''}, ...costings.map(c => ({label: `${c.styleRef} ($${c.retailPrice}/pc)`, value: c.id}))];
 
-    // Create Order Content
+    // Create Order Content - Guided Wizard
     const createOrderContent = `
-        ${SelectInput({ label: 'Link Saved Quote', id: 'create-quote', options: costingOptions })}
-        ${SelectInput({ label: 'Customer', id: 'create-customer', options: customerOptions, required: true })}
-        ${TextInput({ label: 'Product Name', id: 'create-product', placeholder: 'e.g. Organic Cotton Tees', required: true })}
-        
-        <div class="grid grid-cols-2 gap-4">
-            ${TextInput({ label: 'Sizes', id: 'create-sizes', placeholder: 'S, M, L', helpText: 'Comma separated' })}
-            ${TextInput({ label: 'Colours', id: 'create-colours', placeholder: 'Navy, White', helpText: 'Comma separated' })}
+        <!-- Wizard Progress Tracker -->
+        <div class="flex items-center justify-between mb-6 relative">
+            <div class="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-surface-variant z-0 rounded-full"></div>
+            <div id="wizard-progress-bar" class="absolute left-0 top-1/2 -translate-y-1/2 w-1/4 h-1 bg-primary z-0 rounded-full transition-all duration-300"></div>
+            
+            <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center z-10 font-bold text-[13px] shadow-sm transition-colors" id="wizard-dot-1">1</div>
+            <div class="w-8 h-8 rounded-full bg-surface-container-highest text-secondary flex items-center justify-center z-10 font-bold text-[13px] transition-colors" id="wizard-dot-2">2</div>
+            <div class="w-8 h-8 rounded-full bg-surface-container-highest text-secondary flex items-center justify-center z-10 font-bold text-[13px] transition-colors" id="wizard-dot-3">3</div>
+            <div class="w-8 h-8 rounded-full bg-surface-container-highest text-secondary flex items-center justify-center z-10 font-bold text-[13px] transition-colors" id="wizard-dot-4">4</div>
         </div>
-        
-        <div class="grid grid-cols-2 gap-4">
+
+        <!-- Step 1: Customer & Quote -->
+        <div id="order-step-1" class="wizard-step">
+            <h3 class="text-[18px] font-bold text-on-surface mb-4">Customer & Product</h3>
+            ${SelectInput({ label: 'Link Saved Quote', id: 'create-quote', options: costingOptions, helpText: 'Optional: Inherit pricing from a quotation' })}
+            ${SelectInput({ label: 'Customer', id: 'create-customer', options: customerOptions, required: true })}
+            ${TextInput({ label: 'Product Name', id: 'create-product', placeholder: 'e.g. Organic Cotton Tees', required: true })}
+        </div>
+
+        <!-- Step 2: Variants & Specs -->
+        <div id="order-step-2" class="wizard-step hidden">
+            <h3 class="text-[18px] font-bold text-on-surface mb-4">Variants & Quantity</h3>
+            <div class="grid grid-cols-2 gap-4">
+                ${TextInput({ label: 'Sizes', id: 'create-sizes', placeholder: 'S, M, L', helpText: 'Comma separated' })}
+                ${TextInput({ label: 'Colours', id: 'create-colours', placeholder: 'Navy, White', helpText: 'Comma separated' })}
+            </div>
             ${TextInput({ label: 'Total Quantity', id: 'create-qty', type: 'number', placeholder: '1000', required: true })}
-            ${TextInput({ label: 'Total Value ($)', id: 'create-price', type: 'number', placeholder: '0.00', required: true })}
         </div>
         
-        <div class="grid grid-cols-2 gap-4">
-            ${SelectInput({ label: 'Status', id: 'create-status', options: [
-                {label: 'Draft', value: 'Draft'}, {label: 'Approved', value: 'Approved'}, 
-                {label: 'Production', value: 'Production'}, {label: 'QC', value: 'QC'}, 
-                {label: 'Dispatch', value: 'Dispatch'}, {label: 'Delivered', value: 'Delivered'},
-                {label: 'Cancelled', value: 'Cancelled'}
-            ] })}
-            ${SelectInput({ label: 'Priority', id: 'create-priority', options: [
-                {label: 'Normal', value: 'Normal'}, {label: 'High', value: 'High'}, {label: 'Urgent', value: 'Urgent'}
-            ] })}
+        <!-- Step 3: Finance & Logistics -->
+        <div id="order-step-3" class="wizard-step hidden">
+            <h3 class="text-[18px] font-bold text-on-surface mb-4">Finance & Delivery</h3>
+            <div class="grid grid-cols-2 gap-4">
+                ${TextInput({ label: 'Unit Price ($)', id: 'create-price', type: 'number', placeholder: '0.00', required: true })}
+                ${TextInput({ label: 'Tax Amount ($)', id: 'create-tax', type: 'number', placeholder: '0.00' })}
+            </div>
+            
+            <!-- Live Calc Display -->
+            <div class="bg-surface-variant/30 p-3 rounded-xl mb-4 border border-outline-variant/50">
+                <div class="flex justify-between text-[13px] mb-1">
+                    <span class="text-secondary">Subtotal</span>
+                    <span class="font-medium" id="calc-subtotal">$0.00</span>
+                </div>
+                <div class="flex justify-between text-[14px] font-bold">
+                    <span class="text-on-surface">Grand Total</span>
+                    <span class="text-primary" id="calc-grandtotal">$0.00</span>
+                </div>
+            </div>
+
+            ${TextInput({ label: 'Delivery Date', id: 'create-date', type: 'date', required: true })}
         </div>
         
-        ${TextInput({ label: 'Delivery Date', id: 'create-date', type: 'date', required: true })}
-        ${TextareaInput({ label: 'Notes', id: 'create-notes', placeholder: 'Any special instructions...', rows: 2 })}
+        <!-- Step 4: Routing & Notes -->
+        <div id="order-step-4" class="wizard-step hidden">
+            <h3 class="text-[18px] font-bold text-on-surface mb-4">Routing & Setup</h3>
+            <div class="grid grid-cols-2 gap-4">
+                ${SelectInput({ label: 'Status', id: 'create-status', options: Object.values(api.ORDER_STATUSES || {}).map(s => ({label: s, value: s})) })}
+                ${SelectInput({ label: 'Priority', id: 'create-priority', options: [
+                    {label: 'Normal', value: 'Normal'}, {label: 'High', value: 'High'}, {label: 'Urgent', value: 'Urgent'}
+                ] })}
+            </div>
+            ${TextareaInput({ label: 'Notes & Instructions', id: 'create-notes', placeholder: 'Special requirements for production...', rows: 3 })}
+        </div>
         <div class="h-10"></div>
     `;
+    
     const createOrderFooter = `
-        <button id="create-order-submit" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active-scale transition-apple shadow-sm">
+        <button id="wizard-prev-btn" type="button" onclick="window.goToOrderStep(-1)" class="hidden flex-1 bg-surface-container-high text-on-surface font-bold text-[16px] py-4 rounded-2xl active-scale transition-apple">
+            Back
+        </button>
+        <button id="wizard-next-btn" type="button" onclick="window.goToOrderStep(1)" class="flex-1 bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active-scale transition-apple shadow-sm">
+            Next Step
+        </button>
+        <button id="create-order-submit" type="button" class="hidden flex-1 bg-[#008A00] text-white font-bold text-[16px] py-4 rounded-2xl active-scale transition-apple shadow-sm">
             Save Order
         </button>
     `;
@@ -261,6 +404,27 @@ async function renderSheets() {
                 <div class="w-full h-2 bg-surface-container rounded-full overflow-hidden">
                     <div id="od-profit-bar" class="h-full rounded-full transition-all duration-500" style="width: 0%"></div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Production Pipeline Stepper -->
+        <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-sm p-lg mb-6">
+            <h3 class="text-[14px] font-semibold text-secondary uppercase tracking-wider mb-4">Production Status</h3>
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-[14px] font-medium text-on-surface" id="od-progress-label"></span>
+                <span class="text-[14px] font-bold text-primary" id="od-progress-pct"></span>
+            </div>
+            <div class="w-full h-2 bg-surface-variant rounded-full overflow-hidden mb-4">
+                <div id="od-progress-bar" class="h-full bg-primary rounded-full transition-all duration-500" style="width: 0%"></div>
+            </div>
+            
+            <div class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                <button onclick="handleStatusTransition('Approved')" class="shrink-0 px-3 py-1.5 rounded-lg border border-outline-variant text-[12px] font-medium text-secondary active-bg">Approve</button>
+                <button onclick="handleStatusTransition('Material Reserved')" class="shrink-0 px-3 py-1.5 rounded-lg border border-outline-variant text-[12px] font-medium text-secondary active-bg">Reserve Mat.</button>
+                <button onclick="handleStatusTransition('Cutting')" class="shrink-0 px-3 py-1.5 rounded-lg border border-outline-variant text-[12px] font-medium text-secondary active-bg">Cutting</button>
+                <button onclick="handleStatusTransition('Stitching')" class="shrink-0 px-3 py-1.5 rounded-lg border border-outline-variant text-[12px] font-medium text-secondary active-bg">Stitching</button>
+                <button onclick="handleStatusTransition('Quality Check')" class="shrink-0 px-3 py-1.5 rounded-lg border border-outline-variant text-[12px] font-medium text-secondary active-bg">QC</button>
+                <button onclick="handleStatusTransition('Dispatched')" class="shrink-0 px-3 py-1.5 rounded-lg border border-outline-variant text-[12px] font-medium text-secondary active-bg">Dispatch</button>
             </div>
         </div>
 
@@ -333,11 +497,63 @@ async function renderSheets() {
         </button>
     `;
 
+    // FAB Action Sheet Content
+    const fabActionContent = `
+        <div class="flex flex-col gap-2">
+            <button onclick="closeSheet('fabActionSheet'); openSheet('createOrderSheet');" class="flex items-center gap-4 p-4 rounded-xl bg-surface-container-lowest border border-outline-variant active-bg transition-colors text-left w-full">
+                <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+                    <span class="material-symbols-outlined">add</span>
+                </div>
+                <div>
+                    <h4 class="text-[16px] font-semibold text-on-surface mb-0.5">New Order</h4>
+                    <p class="text-[13px] text-secondary">Start a new guided order wizard</p>
+                </div>
+            </button>
+            <button onclick="window.showToast?.('Duplicate workflow coming soon', 'info'); closeSheet('fabActionSheet');" class="flex items-center gap-4 p-4 rounded-xl bg-surface-container-lowest border border-outline-variant active-bg transition-colors text-left w-full">
+                <div class="w-10 h-10 rounded-full bg-surface-variant text-on-surface-variant flex items-center justify-center">
+                    <span class="material-symbols-outlined">content_copy</span>
+                </div>
+                <div>
+                    <h4 class="text-[16px] font-semibold text-on-surface mb-0.5">Duplicate Existing</h4>
+                    <p class="text-[13px] text-secondary">Clone a previous order</p>
+                </div>
+            </button>
+            <button onclick="window.showToast?.('Import workflow coming soon', 'info'); closeSheet('fabActionSheet');" class="flex items-center gap-4 p-4 rounded-xl bg-surface-container-lowest border border-outline-variant active-bg transition-colors text-left w-full">
+                <div class="w-10 h-10 rounded-full bg-surface-variant text-on-surface-variant flex items-center justify-center">
+                    <span class="material-symbols-outlined">upload_file</span>
+                </div>
+                <div>
+                    <h4 class="text-[16px] font-semibold text-on-surface mb-0.5">Import Orders</h4>
+                    <p class="text-[13px] text-secondary">Upload CSV or Excel</p>
+                </div>
+            </button>
+            <button onclick="window.showToast?.('Sample workflow coming soon', 'info'); closeSheet('fabActionSheet');" class="flex items-center gap-4 p-4 rounded-xl bg-surface-container-lowest border border-outline-variant active-bg transition-colors text-left w-full">
+                <div class="w-10 h-10 rounded-full bg-surface-variant text-on-surface-variant flex items-center justify-center">
+                    <span class="material-symbols-outlined">science</span>
+                </div>
+                <div>
+                    <h4 class="text-[16px] font-semibold text-on-surface mb-0.5">Sample Order</h4>
+                    <p class="text-[13px] text-secondary">Create a rapid R&D sample</p>
+                </div>
+            </button>
+        </div>
+        <div class="h-4"></div>
+    `;
+
     // Render Sheets
     sheetsContainer.innerHTML = [
+        BottomSheet({ id: 'fabActionSheet', title: 'Order Actions', content: fabActionContent, height: 'auto' }),
         BottomSheet({ id: 'createOrderSheet', title: 'Create Order', content: createOrderContent, footerContent: createOrderFooter, isForm: true }),
         BottomSheet({ id: 'orderDetailsSheet', customHeader: orderDetailsHeader, content: orderDetailsContent, footerContent: orderDetailsFooter, height: '90vh' })
     ].join('');
+    
+    // Bind form validation for the create order sheet
+    if (window.bindFormValidation) {
+        window.bindFormValidation('createOrderSheet', 'create-order-submit');
+    }
+    
+    // Bind live wizard calculations
+    bindWizardCalculations();
 
     // Bind Auto-Fill for Quote Linking
     const quoteSelect = document.getElementById('create-quote');
