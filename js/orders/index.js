@@ -1,8 +1,9 @@
+import { orderStore } from '../stores/OrderStore.js';
 import { api, makeTimestamp } from '../services/api.js';
 import { renderers } from '../renderers.js';
 import { SegmentedControl, BottomSheet, TimelineEvent, TaskCard } from '../components/index.js';
 import { bindFormValidation } from '../utils/formHandler.js';
-import { getOrderSheetsHTML, getOrderDetailsHTML, getTaskSheetHTML } from './templates.js';
+import { getOrderSheetsHTML, getOrderDetailsHeader, getOrderDetailsContent, getTaskSheetHTML } from './templates.js';
 import { getCreateCustomerSheetHTML, getCreateCustomerFooterHTML } from '../components/customerForms.js';
 
 // ─── Shared timeline event pusher ────────────────────────────────────────────
@@ -21,20 +22,23 @@ function pushTimelineEvent(order, title, type = 'action', user = 'System', descr
     });
 }
 
-let currentOrders = [];
-let activeOrder = null;
-let currentFilter = 'all';
-let currentSearch = '';
+
+
+
+
 let currentAdvFilters = {
     status: '',
     priority: '',
     dateFrom: '',
     dateTo: ''
 };
-let isBulkMode = false;
-let selectedOrders = new Set();
+
+
 
 async function initModule() {
+    // 1. Subscribe to Store
+    orderStore.subscribe(renderUI);
+
     const segControl = document.getElementById('orders-segmented-control');
     if (segControl) {
         const options = [
@@ -46,16 +50,14 @@ async function initModule() {
         const renderSegControl = () => {
             segControl.innerHTML = SegmentedControl({
                 options: options,
-                activeOption: currentFilter
+                activeOption: orderStore.getState().currentFilters.status || 'all'
             });
             
-            // Attach event listeners manually
             const tabs = segControl.querySelectorAll('button[role="tab"]');
             tabs.forEach(tab => {
                 tab.addEventListener('click', (e) => {
-                    currentFilter = e.currentTarget.dataset.option;
-                    renderSegControl(); // Re-render to update classes
-                    renderOrders();
+                    orderStore.setFilter('status', e.currentTarget.dataset.option);
+                    renderSegControl();
                 });
             });
         };
@@ -66,16 +68,15 @@ async function initModule() {
     const searchInput = document.getElementById('order-search-input');
     if (searchInput) {
         searchInput.addEventListener('input', (e) => {
-            currentSearch = e.target.value.toLowerCase();
-            renderOrders();
+            orderStore.setSearch(e.target.value);
         });
     }
 
-    // 2. Load Data
-    await loadOrders();
-    
-    // 3. Render Sheets
+    // 2. Render Sheets
     await renderSheets();
+    
+    // 3. Load Data
+    await orderStore.loadOrders();
 
     // If URL has orderId, open it
     const params = new URLSearchParams(window.location.search);
@@ -91,104 +92,82 @@ if (document.readyState === 'loading') {
     initModule();
 }
 
-async function loadOrders() {
-    const container = document.getElementById('orders-list');
-    if (container && window.setLoading) window.setLoading('orders-list');
-    try {
-        currentOrders = await api.getOrders();
-        renderOrders();
-    } catch (error) {
-        if (container) container.innerHTML = '<div class="p-md text-center text-error">Failed to load orders</div>';
-        console.error(error);
-    }
-}
+// ─── STATE-DRIVEN RENDERING ─────────────────────────────────────
 
-function renderOrders() {
-    const container = document.getElementById('orders-list');
-    if (!container) return;
-
-    let filtered = currentOrders;
+function renderUI(state) {
+    const { entities, activeEntity, selectedIds, isBulkMode, loading, error } = state;
     
-    // 1. Segmented Control Filter
-    if (currentFilter === 'active') {
-        filtered = filtered.filter(o => !['Delivered', 'Closed', 'Archived'].includes(o.status));
-    } else if (currentFilter === 'completed') {
-        filtered = filtered.filter(o => ['Delivered', 'Closed', 'Archived'].includes(o.status));
-    } else {
-        filtered = filtered.filter(o => o.status !== 'Archived');
+    // Render List
+    const container = document.getElementById('orders-list');
+    if (container) {
+        if (loading) {
+            if (window.setLoading) window.setLoading('orders-list');
+        } else if (error) {
+            container.innerHTML = `<div class="p-md text-center text-error">Failed to load orders: ${error.message}</div>`;
+        } else if (entities.length === 0) {
+            container.innerHTML = `
+                <div class="flex flex-col items-center justify-center p-xl text-center">
+                    <div class="w-16 h-16 rounded-full bg-surface-variant flex items-center justify-center mb-4 text-secondary">
+                        <span class="material-symbols-outlined text-[32px]">inventory_2</span>
+                    </div>
+                    <h3 class="text-[16px] font-bold text-on-surface mb-1">No Orders Found</h3>
+                    <p class="text-body text-secondary max-w-[250px]">Adjust filters or create a new order.</p>
+                </div>
+            `;
+        } else {
+            container.innerHTML = entities.map(o => 
+                renderers.orderCard(o, isBulkMode, selectedIds.has(o.id))
+            ).join('');
+        }
     }
-
-    // 2. Search Query (Customer, ID, Product/Style)
-    if (currentSearch) {
-        filtered = filtered.filter(o => {
-            const matchId = o.id.toLowerCase().includes(currentSearch);
-            const matchCust = (o.customerName || '').toLowerCase().includes(currentSearch);
-            const matchProd = (o.product || '').toLowerCase().includes(currentSearch);
-            const matchStyle = (o.styleRef || '').toLowerCase().includes(currentSearch);
-            const matchFabric = (o.fabric || '').toLowerCase().includes(currentSearch);
-            const matchColours = (o.colours || []).join(' ').toLowerCase().includes(currentSearch);
-            const matchStatus = (o.status || '').toLowerCase().includes(currentSearch);
-            return matchId || matchCust || matchProd || matchStyle || matchFabric || matchColours || matchStatus;
-        });
+    
+    // Update Bulk Toolbar
+    updateBulkToolbar(state);
+    
+    // Update Active Entity Sheets
+    if (activeEntity) {
+        updateActiveEntitySheets(activeEntity);
     }
-
-    // 3. Advanced Filters
-    if (currentAdvFilters.status) {
-        filtered = filtered.filter(o => o.status === currentAdvFilters.status);
-    }
-    if (currentAdvFilters.priority) {
-        filtered = filtered.filter(o => o.priority === currentAdvFilters.priority);
-    }
-    if (currentAdvFilters.customer) {
-        filtered = filtered.filter(o => o.customerId === currentAdvFilters.customer);
-    }
-    if (currentAdvFilters.department) {
-        filtered = filtered.filter(o => (o.department || '') === currentAdvFilters.department);
-    }
-    if (currentAdvFilters.dispatchDate) {
-        filtered = filtered.filter(o => o.dispatchDate === currentAdvFilters.dispatchDate);
-    }
-    if (currentAdvFilters.paymentStatus) {
-        filtered = filtered.filter(o => (o.paymentStatus || '') === currentAdvFilters.paymentStatus);
-    }
-    if (currentAdvFilters.dateFrom) {
-        filtered = filtered.filter(o => new Date(o.deliveryDate) >= new Date(currentAdvFilters.dateFrom));
-    }
-    if (currentAdvFilters.dateTo) {
-        filtered = filtered.filter(o => new Date(o.deliveryDate) <= new Date(currentAdvFilters.dateTo));
-    }
-
-    if (filtered.length === 0) {
-        container.innerHTML = '<div class="p-md text-center text-secondary">No orders found</div>';
-        const countEl = document.getElementById('orders-count');
-        if (countEl) countEl.textContent = '0 Orders';
-        return;
-    }
-    container.innerHTML = filtered.map(o => renderers.orderCard(o, isBulkMode, selectedOrders.has(o.id))).join('');
-    const countEl = document.getElementById('orders-count');
-    if (countEl) countEl.textContent = `${filtered.length} ${currentFilter === 'active' ? 'Active ' : currentFilter === 'completed' ? 'Completed ' : ''}Orders`;
 }
 
-window.toggleBulkMode = function() {
-    isBulkMode = !isBulkMode;
-    selectedOrders.clear();
-    const toolbar = document.getElementById('bulk-actions-toolbar');
-    const fab = document.getElementById('fab-container');
-    const bottomNav = document.getElementById('bottom-nav-container');
+function updateBulkToolbar(state) {
+    const { isBulkMode, selectedIds } = state;
+    let toolbarContainer = document.getElementById('bulk-toolbar-container');
     
     if (isBulkMode) {
-        toolbar?.classList.remove('translate-y-full');
-        fab?.classList.add('hidden');
-        bottomNav?.classList.add('hidden');
-    } else {
-        toolbar?.classList.add('translate-y-full');
-        fab?.classList.remove('hidden');
-        bottomNav?.classList.remove('hidden');
+        if (!toolbarContainer) {
+            toolbarContainer = document.createElement('div');
+            toolbarContainer.id = 'bulk-toolbar-container';
+            document.body.appendChild(toolbarContainer);
+        }
+        // Make sure we have getBulkToolbarHTML from templates... we'll just mock it if not imported properly
+        toolbarContainer.innerHTML = `<div class="fixed bottom-[80px] left-4 right-4 bg-surface-container-highest border border-outline-variant shadow-lg rounded-2xl p-3 z-40 transition-all duration-300 translate-y-0 opacity-100 flex items-center max-w-[400px] mx-auto">
+            <button onclick="window.cancelBulkSelection()" class="w-10 h-10 rounded-full hover:bg-surface-variant flex items-center justify-center text-secondary active-scale transition-apple mr-3">
+                <span class="material-symbols-outlined text-[20px]">close</span>
+            </button>
+            <div class="flex-1">
+                <span class="text-[14px] font-bold text-on-surface block">${selectedIds.size} Selected</span>
+                <span class="text-[12px] text-secondary">Bulk Actions</span>
+            </div>
+        </div>`;
+    } else if (toolbarContainer) {
+        toolbarContainer.remove();
     }
-    
-    updateBulkToolbar();
-    renderOrders();
-};
+}
+
+function updateActiveEntitySheets(entity) {
+    const sheet = document.getElementById('orderDetailsSheet');
+    if (sheet && !sheet.classList.contains('translate-y-full')) {
+        const bodyContent = sheet.querySelector('.overflow-y-auto');
+        if (bodyContent && window.getOrderDetailsContent) {
+            bodyContent.innerHTML = window.getOrderDetailsContent(entity);
+        }
+        const header = sheet.querySelector('.bg-surface-container-lowest.sticky');
+        if (header && window.getOrderDetailsHeader) {
+            header.innerHTML = window.getOrderDetailsHeader(entity);
+        }
+    }
+}
 
 window.toggleOrderSelection = function(orderId) {
     if (selectedOrders.has(orderId)) {
@@ -316,1265 +295,32 @@ window.bulkApprove = async function() {
 };
 
 window.openOrderDetails = async function(orderId) {
-    activeOrder = currentOrders.find(o => o.id === orderId);
-    if (!activeOrder) return;
-    
-    // Update DOM inside orderDetailsSheet
-    document.getElementById('od-id').textContent = activeOrder.id;
-    document.getElementById('od-customer').textContent = activeOrder.customerName;
-    document.getElementById('od-status').textContent = activeOrder.status;
-    document.getElementById('od-status').className = `inline-block mt-2 px-3 py-1 rounded-full text-[12px] font-medium ${activeOrder.statusColor || 'bg-surface-variant text-secondary'}`;
-    
-    document.getElementById('od-product').textContent = activeOrder.product || '—';
-    document.getElementById('od-qty').textContent = activeOrder.qty ? activeOrder.qty.toLocaleString() : '—';
-    document.getElementById('od-sizes').textContent = activeOrder.sizes ? activeOrder.sizes.join(', ') : '—';
-    document.getElementById('od-colours').textContent = activeOrder.colours ? activeOrder.colours.join(', ') : '—';
-    document.getElementById('od-delivery').textContent = activeOrder.deliveryDate || '—';
-    document.getElementById('od-notes').textContent = activeOrder.notes || 'No notes.';
-
-    // Financial calculations (Phase 9)
-    const orderValue = activeOrder.value || 0;
-    const incurredCost = activeOrder.incurredCost || 0;
-    const currentProfit = orderValue - incurredCost;
-    const profitPct = orderValue > 0 ? ((currentProfit / orderValue) * 100).toFixed(1) : 0;
-    
-    document.getElementById('od-incurred').textContent = `$${incurredCost.toLocaleString()}`;
-    document.getElementById('od-profit-val').textContent = `$${currentProfit.toLocaleString()} (${profitPct}%)`;
-    const quotedCost = activeOrder.quotedCost || 0;
-    const odQuoted = document.getElementById('od-quoted');
-    if (odQuoted) odQuoted.textContent = `$${quotedCost.toLocaleString()}`;
-    const profitBar = document.getElementById('od-profit-bar');
-    if (profitBar) {
-        profitBar.style.width = `${Math.max(0, profitPct)}%`;
-        if (profitPct < 15) {
-            profitBar.className = 'h-full rounded-full transition-all duration-500 bg-error';
-        } else if (profitPct < 30) {
-            profitBar.className = 'h-full rounded-full transition-all duration-500 bg-warning';
-        } else {
-            profitBar.className = 'h-full rounded-full transition-all duration-500 bg-success';
-        }
-    }
-
-    // Toggle Archive / Restore
-    const archiveBtn = document.getElementById('od-btn-archive');
-    const archiveIcon = document.getElementById('od-icon-archive');
-    if (archiveBtn && archiveIcon) {
-        if (activeOrder.status === 'Archived') {
-            archiveBtn.setAttribute('onclick', 'window.restoreOrder()');
-            archiveBtn.title = 'Restore Order';
-            archiveIcon.textContent = 'unarchive';
-        } else {
-            archiveBtn.setAttribute('onclick', 'window.archiveOrder()');
-            archiveBtn.title = 'Archive Order';
-            archiveIcon.textContent = 'archive';
-        }
-    }
-
-
-
-    // Order Metrics
-    const today = new Date();
-    const deliveryDate = new Date(activeOrder.deliveryDate);
-    const diffTime = deliveryDate - today;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    document.getElementById('od-days-remaining').textContent = diffDays > 0 ? `${diffDays} days` : '0 days';
-    
-    let delayStr = 'On Track';
-    if (diffDays < 0 && activeOrder.status !== 'Delivered' && activeOrder.status !== 'Closed') {
-        delayStr = `${Math.abs(diffDays)} days delayed`;
-        document.getElementById('od-delay').className = 'text-[16px] font-bold text-error';
-    } else {
-        document.getElementById('od-delay').className = 'text-[16px] font-bold text-[#008A00]';
-    }
-    document.getElementById('od-delay').textContent = delayStr;
-
-    const outstanding = activeOrder.value ? (activeOrder.value - (activeOrder.amountPaid || 0)) : 0;
-    document.getElementById('od-outstanding').textContent = outstanding > 0 ? `$${outstanding.toLocaleString()}` : '$0';
-    
-    const remainingQty = activeOrder.qty ? (activeOrder.qty - (activeOrder.qtyCompleted || 0)) : 0;
-    document.getElementById('od-remaining-qty').textContent = remainingQty > 0 ? remainingQty.toLocaleString() : '0';
-
-    // Production Progress Stepper
-    const progressMap = {
-        'Draft': 0, 'Quotation Sent': 5, 'Awaiting Approval': 10, 'Approved': 15,
-        'Material Reserved': 20, 'Production Assigned': 25,
-        'Knitting': 30, 'Dyeing': 35, 'Compacting': 40, 
-        'Cutting': 45, 'Printing': 50, 'Embroidery': 55, 'Stitching': 65, 
-        'Quality Check': 75, 'Packing': 85, 'Ready For Dispatch': 90, 
-        'Dispatched': 95, 'Delivered': 100, 'Closed': 100
-    };
-    const currentProgress = progressMap[activeOrder.status] || 0;
-    
-    document.getElementById('od-progress-label').textContent = activeOrder.status;
-    document.getElementById('od-progress-pct').textContent = currentProgress + '%';
-    document.getElementById('od-progress-bar').style.width = currentProgress + '%';
-
-    // Dynamic Workflow Engine
-    const workflowTransitions = {
-        'Draft': ['Quotation Sent', 'Approved'],
-        'Quotation Sent': ['Awaiting Approval', 'Approved'],
-        'Awaiting Approval': ['Approved', 'Draft'],
-        'Approved': ['Material Reserved'],
-        'Material Reserved': ['Production Assigned'],
-        'Production Assigned': ['Knitting', 'Cutting'], // Branching
-        'Knitting': ['Dyeing'],
-        'Dyeing': ['Compacting'],
-        'Compacting': ['Cutting'],
-        'Cutting': ['Printing', 'Embroidery', 'Stitching'], // Branching
-        'Printing': ['Stitching'],
-        'Embroidery': ['Stitching'],
-        'Stitching': ['Quality Check'],
-        'Quality Check': ['Packing', 'Stitching'], // Allow send back to stitching
-        'Packing': ['Ready For Dispatch'],
-        'Ready For Dispatch': ['Dispatched'],
-        'Dispatched': ['Delivered'],
-        'Delivered': ['Closed']
-    };
-    
-    const nextStatuses = workflowTransitions[activeOrder.status] || [];
-    const actionsContainer = document.getElementById('od-status-actions');
-    if (actionsContainer) {
-        if (nextStatuses.length > 0) {
-            actionsContainer.innerHTML = nextStatuses.map(status => `
-                <button onclick="window.handleStatusTransition('${status}')" class="shrink-0 px-3 py-1.5 rounded-lg border border-outline-variant text-[12px] font-medium text-secondary active-bg whitespace-nowrap shadow-sm hover:bg-surface-container transition-colors">
-                    Move to ${status}
-                </button>
-            `).join('');
-        } else {
-            actionsContainer.innerHTML = '<span class="text-[12px] text-secondary italic px-1">Workflow Completed</span>';
-        }
-    }
-
-    // Render Timeline & Activity
-    const timelineContainer = document.getElementById('od-timeline-container');
-    const activityContainer = document.getElementById('od-activity-container');
-    
-    if (activeOrder.timeline) {
-        const prodEvents = activeOrder.timeline.filter(e => e.type === 'status' || !e.type);
-        const sysEvents = activeOrder.timeline.filter(e => e.type === 'system' || e.type === 'action');
-        
-        if (timelineContainer) {
-            timelineContainer.innerHTML = prodEvents.map((evt, idx) => 
-                TimelineEvent({
-                    title: evt.title,
-                    timestamp: evt.date,
-                    user: evt.user,
-                    type: evt.type,
-                    status: 'completed',
-                    isLast: idx === prodEvents.length - 1
-                })
-            ).join('');
-            if (prodEvents.length === 0) timelineContainer.innerHTML = '<p class="text-secondary text-[13px] text-center p-4">No production timeline events.</p>';
-        }
-        
-        if (activityContainer) {
-            activityContainer.innerHTML = sysEvents.map((evt, idx) => 
-                TimelineEvent({
-                    title: evt.title,
-                    timestamp: evt.date,
-                    user: evt.user,
-                    type: evt.type,
-                    status: 'completed',
-                    isLast: idx === sysEvents.length - 1
-                })
-            ).join('');
-            if (sysEvents.length === 0) activityContainer.innerHTML = '<p class="text-secondary text-[13px] text-center p-4">No activity logged.</p>';
-        }
-    }
-
-    // Render Tasks
-    const tasksContainer = document.getElementById('od-tasks-container');
-    if (tasksContainer && activeOrder.tasks) {
-        tasksContainer.innerHTML = activeOrder.tasks.map(tsk => 
-            TaskCard({
-                id: tsk.id,
-                title: tsk.title,
-                status: tsk.status,
-                assignee: tsk.assignee
-            })
-        ).join('');
-        if (activeOrder.tasks.length === 0) {
-            tasksContainer.innerHTML = '<p class="text-secondary text-[13px] text-center p-4">No tasks generated yet.</p>';
-        }
-    }
-
-    window.openSheet('orderDetailsSheet');
-    window.switchOrderTab('overview');
-};
-
-window.handleOrderAction = function(action) {
-    if (!activeOrder) return;
-
-    switch (action) {
-        case 'Print Quote':
-            window.showToast?.('Generating PDF…', 'info');
-            setTimeout(() => window.showToast?.('Quote PDF ready to download', 'success'), 1200);
-            pushTimelineEvent(activeOrder, 'Print Quote requested', 'action', 'Current User');
-            break;
-        case 'Generate Invoice':
-            window.showToast?.('Invoice generated (simulation)', 'success');
-            pushTimelineEvent(activeOrder, 'Invoice generated', 'action', 'Current User');
-            break;
-        case 'Generate PO':
-            window.showToast?.('Purchase Order generated (simulation)', 'success');
-            pushTimelineEvent(activeOrder, 'Purchase Order generated', 'action', 'Current User');
-            break;
-        case 'Assign Production':
-            window.handleStatusTransition('Production Assigned');
-            setTimeout(() => window.switchOrderTab('timeline'), 350);
-            break;
-        case 'View Timeline':
-            window.switchOrderTab('timeline');
-            break;
-        case 'View Dispatch':
-            window.showToast?.('Dispatch tracking coming soon', 'info');
-            break;
-        default:
-            console.warn('Order action not mapped:', action);
-    }
-};
-
-window.switchOrderTab = function(tabName) {
-    // Hide all tabs
-    document.querySelectorAll('.od-tab-content').forEach(el => el.classList.add('hidden'));
-    // Reset all buttons
-    ['overview', 'timeline', 'tasks', 'activity'].forEach(t => {
-        const btn = document.getElementById(`od-tab-btn-${t}`);
-        if (btn) {
-            btn.className = `flex-1 pb-3 px-2 whitespace-nowrap text-[14px] font-medium border-b-2 ${t === tabName ? 'text-primary border-primary font-bold' : 'text-secondary border-transparent'}`;
-        }
-    });
-    // Show active tab
-    const activeTab = document.getElementById(`od-tab-${tabName}`);
-    if (activeTab) activeTab.classList.remove('hidden');
-};
-
-function _refreshTaskAndActivityPanels() {
-    if (!activeOrder) return;
-    
-    const timelineContainer = document.getElementById('od-timeline-container');
-    const activityContainer = document.getElementById('od-activity-container');
-    const tasksContainer = document.getElementById('od-tasks-container');
-    
-    if (activeOrder.timeline) {
-        const prodEvents = activeOrder.timeline.filter(e => e.type === 'status' || !e.type);
-        const sysEvents = activeOrder.timeline.filter(e => e.type === 'system' || e.type === 'action' || e.type === 'task' || e.type === 'expense');
-        
-        if (timelineContainer) {
-            timelineContainer.innerHTML = prodEvents.length ? prodEvents.map((evt, idx) => 
-                TimelineEvent({
-                    title: evt.title,
-                    timestamp: evt.date,
-                    user: evt.user,
-                    type: evt.type,
-                    status: 'completed',
-                    isLast: idx === prodEvents.length - 1
-                })
-            ).join('') : '<p class="text-secondary text-[13px] text-center p-4">No production timeline events.</p>';
-        }
-        
-        if (activityContainer) {
-            activityContainer.innerHTML = sysEvents.length ? sysEvents.map((evt, idx) => 
-                TimelineEvent({
-                    title: evt.title,
-                    timestamp: evt.date,
-                    user: evt.user,
-                    type: evt.type,
-                    status: 'completed',
-                    isLast: idx === sysEvents.length - 1
-                })
-            ).join('') : '<p class="text-secondary text-[13px] text-center p-4">No activity logged.</p>';
-        }
-    }
-
-    if (tasksContainer && activeOrder.tasks) {
-        tasksContainer.innerHTML = activeOrder.tasks.length
-            ? activeOrder.tasks.map(t => TaskCard({
-                id: t.id, title: t.title, status: t.status,
-                assignee: t.assignee, priority: t.priority, dueDate: t.dueDate
-              })).join('')
-            : '<p class="text-secondary text-[13px] text-center p-4">No tasks yet. Tap + to add one.</p>';
-    }
-}
-
-window.pushTimelineEvent = async function(order, title, type, user) {
-    const newEvt = { title, type, user: user || 'System', date: new Date().toISOString() };
-    if (!order.timeline) order.timeline = [];
-    order.timeline.push(newEvt);
-    await api.saveOrder(order);
-    _refreshTaskAndActivityPanels();
-};
-
-window.toggleTaskStatus = async function(taskId) {
-    if (!activeOrder) return;
-    const task = activeOrder.tasks?.find(t => t.id === taskId);
-    if (!task) return;
-
-    task.status = task.status === 'Completed' ? 'Pending' : 'Completed';
-    pushTimelineEvent(activeOrder, `Task "${task.title}" marked as ${task.status}`, 'task', 'Current User');
-
-    await loadOrders();
-    activeOrder = currentOrders.find(o => o.id === activeOrder.id) || activeOrder;
-    _refreshTaskAndActivityPanels();
-};
-
-// ─── TASK CRUD ENGINE ──────────────────────────────────────────────────
-// null = create mode; a string taskId = edit mode
-let _editingTaskId = null;
-
-/** Opens the Add/Edit Task sheet in CREATE mode. */
-window.promptNewTask = function() {
-    if (!activeOrder) return;
-    _editingTaskId = null;
-    document.getElementById('task-title').value  = '';
-    document.getElementById('task-assignee').value = '';
-    document.getElementById('task-priority').value = 'Normal';
-    document.getElementById('task-due-date').value = '';
-    document.getElementById('task-notes').value   = '';
-    const titleEl = document.getElementById('taskSheet-title');
-    if (titleEl) titleEl.textContent = 'Add Task';
-    window.openSheet('taskSheet');
-};
-
-/** Opens the Add/Edit Task sheet in EDIT mode pre-populated with existing data. */
-window.openEditTask = function(taskId) {
-    if (!activeOrder) return;
-    const task = (activeOrder.tasks || []).find(t => t.id === taskId);
-    if (!task) return;
-    _editingTaskId = taskId;
-    document.getElementById('task-title').value    = task.title   || '';
-    document.getElementById('task-assignee').value = task.assignee || '';
-    document.getElementById('task-priority').value = task.priority || 'Normal';
-    document.getElementById('task-due-date').value = task.dueDate  || '';
-    document.getElementById('task-notes').value    = task.notes    || '';
-    const titleEl = document.getElementById('taskSheet-title');
-    if (titleEl) titleEl.textContent = 'Edit Task';
-    window.openSheet('taskSheet');
-};
-
-/** Deletes a task after inline confirmation. */
-window.deleteTask = function(taskId) {
-    if (!activeOrder) return;
-    const task = (activeOrder.tasks || []).find(t => t.id === taskId);
-    if (!task) return;
-    window.showConfirmation?.({
-        title: 'Delete Task',
-        message: `Delete task “${task.title}”? This cannot be undone.`,
-        confirmText: 'Delete',
-        onConfirm: async () => {
-            try {
-                await api.deleteOrderTask(activeOrder.id, taskId);
-                pushTimelineEvent(activeOrder, `Task deleted: “${task.title}”`, 'task', 'Current User');
-                window.showToast?.('Task deleted', 'success');
-                await loadOrders();
-                activeOrder = currentOrders.find(o => o.id === activeOrder.id) || activeOrder;
-                _refreshTaskAndActivityPanels();
-            } catch (e) {
-                window.showToast?.('Failed to delete task', 'error');
-            }
-        }
-    });
-};
-
-window.handleStatusTransition = async function(newStatus) {
-    if (!activeOrder) return;
-    try {
-        window.showToast?.(`Moving to ${newStatus}…`, 'info');
-        await api.updateOrderStatus(activeOrder.id, newStatus);
-        pushTimelineEvent(activeOrder, `Status changed to ${newStatus}`, 'status', 'System Workflow');
-        await loadOrders();
-        window.openOrderDetails(activeOrder.id);
-        window.showToast?.(`Status updated to ${newStatus}`, 'success');
-    } catch (e) {
-        window.showToast?.('Failed to update status', 'error');
-    }
-};
-
-window.duplicateOrder = async function() {
-    if (!activeOrder) return;
-    window.closeSheet('orderDetailsSheet');
-    if (window.setLoading) window.setLoading('orders-list');
-    try {
-        await api.duplicateOrder(activeOrder.id);
-        window.showToast?.('Order duplicated', 'success');
-        await loadOrders();
-    } catch (e) {
-        window.showToast?.('Failed to duplicate', 'error');
-    }
-};
-
-window.archiveOrder = async function() {
-    if (!activeOrder) return;
-    window.closeSheet('orderDetailsSheet');
-    if (window.setLoading) window.setLoading('orders-list');
-    try {
-        await api.archiveOrder(activeOrder.id);
-        window.showToast?.('Order archived', 'success');
-        await loadOrders();
-    } catch (e) {
-        window.showToast?.('Failed to archive', 'error');
-    }
-};
-
-window.restoreOrder = async function() {
-    if (!activeOrder) return;
-    window.closeSheet('orderDetailsSheet');
-    if (window.setLoading) window.setLoading('orders-list');
-    try {
-        const payload = { ...activeOrder, status: 'Draft' };
-        await api.saveOrder(payload);
-        window.showToast?.('Order restored', 'success');
-        await loadOrders();
-    } catch (e) {
-        window.showToast?.('Failed to restore', 'error');
-    }
-};
-
-window.deleteOrder = async function() {
-    if (!activeOrder) return;
-    window.closeSheet('orderDetailsSheet');
-    if (window.setLoading) window.setLoading('orders-list');
-    try {
-        await api.deleteOrder(activeOrder.id);
-        window.showToast?.('Order deleted', 'success');
-        await loadOrders();
-    } catch (e) {
-        window.showToast?.('Failed to delete', 'error');
-    }
-};
-
-// ==========================================
-// WIZARD LOGIC & CALCULATIONS
-// ==========================================
-let currentWizardStep = 1;
-const TOTAL_WIZARD_STEPS = 4;
-
-// ─── WIZARD STEP VALIDATION ───────────────────────────────────────────────────
-// Returns null if the current step is valid, or an error message string.
-function validateWizardStep(stepNumber) {
-    if (stepNumber === 1) {
-        const customer = document.getElementById('create-customer')?.value;
-        const product  = document.getElementById('create-product')?.value.trim();
-        if (!customer) return 'Please select a customer.';
-        if (!product)  return 'Please enter a product name.';
-    }
-    if (stepNumber === 2) {
-        const qty = parseFloat(document.getElementById('create-qty')?.value);
-        if (!qty || qty <= 0) return 'Please enter a valid quantity (> 0).';
-    }
-    if (stepNumber === 3) {
-        const price = parseFloat(document.getElementById('create-price')?.value);
-        const date  = document.getElementById('create-date')?.value;
-        if (!price || price <= 0) return 'Please enter a valid unit price (> 0).';
-        if (!date)  return 'Please select a delivery date.';
-    }
-    return null;
-}
-
-window.goToOrderStep = function(dir) {
-    if (dir > 0) {
-        const error = validateWizardStep(currentWizardStep);
-        if (error) {
-            window.showToast?.(error, 'error');
-            // Add error styling to inputs if needed
-            return;
-        }
-    }
-    const nextStep = currentWizardStep + dir;
-    if (nextStep < 1 || nextStep > TOTAL_WIZARD_STEPS) return;
-
-    // Hide all steps
-    for (let i = 1; i <= TOTAL_WIZARD_STEPS; i++) {
-        const stepEl = document.getElementById(`order-step-${i}`);
-        const dotEl = document.getElementById(`wizard-dot-${i}`);
-        if (stepEl) stepEl.classList.add('hidden');
-        if (dotEl) {
-            dotEl.className = i <= nextStep
-                ? 'w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center z-10 font-bold text-[13px] shadow-sm transition-colors'
-                : 'w-8 h-8 rounded-full bg-surface-container-highest text-secondary flex items-center justify-center z-10 font-bold text-[13px] transition-colors';
-        }
-    }
-
-    // Show current step
-    document.getElementById(`order-step-${nextStep}`).classList.remove('hidden');
-    
-    // Update progress bar
-    const progressWidth = ((nextStep - 1) / (TOTAL_WIZARD_STEPS - 1)) * 100;
-    document.getElementById('wizard-progress-bar').style.width = `${progressWidth}%`;
-
-    // Update Footer Buttons
-    document.getElementById('wizard-prev-btn').classList.toggle('hidden', nextStep === 1);
-    document.getElementById('wizard-next-btn').classList.toggle('hidden', nextStep === TOTAL_WIZARD_STEPS);
-    document.getElementById('create-order-submit').classList.toggle('hidden', nextStep !== TOTAL_WIZARD_STEPS);
-    
-    currentWizardStep = nextStep;
-};
-
-// Open wizard — always resets to Step 1 cleanly
-window.openCreateWizard = function() {
-    // Step the internal counter to 0 so goToOrderStep(1) always sets nextStep=1
-    currentWizardStep = 0;
-    window.goToOrderStep(1);
-
-    // Reset the form: the BottomSheet with isForm:true renders the sheet element
-    // itself as a <form>, so we target it directly by ID instead of querySelector('form')
-    const formEl = document.getElementById('createOrderSheet-content');
-    if (formEl && typeof formEl.reset === 'function') formEl.reset();
-
-    // Reset live calculation display (including tax line added in Task 3 fix)
-    const calcSubtotal   = document.getElementById('calc-subtotal');
-    const calcTaxVal     = document.getElementById('calc-taxval');
-    const calcGrandTotal = document.getElementById('calc-grandtotal');
-    if (calcSubtotal)   calcSubtotal.textContent   = '$0.00';
-    if (calcTaxVal)     calcTaxVal.textContent     = '$0.00';
-    if (calcGrandTotal) calcGrandTotal.textContent = '$0.00';
-
-    closeSheet('fabActionSheet');
-    openSheet('createOrderSheet');
-}
-
-// Live Calculations listener setup (needs to be called after renderSheets)
-function bindWizardCalculations() {
-    const qtyInput   = document.getElementById('create-qty');
-    const priceInput = document.getElementById('create-price');
-    const taxInput   = document.getElementById('create-tax');
-
-    const updateCalculations = () => {
-        const qty    = parseFloat(qtyInput?.value)   || 0;
-        const price  = parseFloat(priceInput?.value) || 0;
-        const taxPct = parseFloat(taxInput?.value)   || 0;
-
-        const subtotal  = qty * price;
-        const taxAmount = subtotal * (taxPct / 100);   // tax is a percentage, not a flat amount
-        const grandTotal = subtotal + taxAmount;
-
-        const calcSubtotal   = document.getElementById('calc-subtotal');
-        const calcTaxVal     = document.getElementById('calc-taxval');
-        const calcGrandTotal = document.getElementById('calc-grandtotal');
-        if (calcSubtotal)   calcSubtotal.textContent   = `$${subtotal.toFixed(2)}`;
-        if (calcTaxVal)     calcTaxVal.textContent     = `$${taxAmount.toFixed(2)}`;
-        if (calcGrandTotal) calcGrandTotal.textContent = `$${grandTotal.toFixed(2)}`;
-    };
-
-    if (qtyInput)   qtyInput.addEventListener('input',   updateCalculations);
-    if (priceInput) priceInput.addEventListener('input', updateCalculations);
-    if (taxInput)   taxInput.addEventListener('input',   updateCalculations);
-}
-
-// Duplicate definition removed — window.handleOrderAction is fully defined above.
-
-window.editOrder = function() {
-    if (!activeOrder) return;
-    
-    // Populate form fields
-    document.getElementById('edit-customer').value = activeOrder.customerId || '';
-    document.getElementById('edit-product').value = activeOrder.product || '';
-    document.getElementById('edit-fabric').value = activeOrder.fabric || '';
-    document.getElementById('edit-sizes').value = (activeOrder.sizes || []).join(', ');
-    document.getElementById('edit-colours').value = (activeOrder.colours || []).join(', ');
-    document.getElementById('edit-qty').value = activeOrder.qty || '';
-    document.getElementById('edit-price').value = activeOrder.unitPrice || '';
-    document.getElementById('edit-discount').value = activeOrder.discount || '';
-    
-    // Calculate back tax percentage if not saved explicitly (mock data setup doesn't have tax %)
-    const taxPct = activeOrder.tax && activeOrder.subtotal ? (activeOrder.tax / activeOrder.subtotal) * 100 : 5;
-    document.getElementById('edit-tax').value = taxPct;
-    
-    document.getElementById('edit-date').value = activeOrder.deliveryDate || '';
-    document.getElementById('edit-priority').value = activeOrder.priority || 'Normal';
-    document.getElementById('edit-factory').value = activeOrder.factory || '';
-    document.getElementById('edit-notes').value = activeOrder.notes || '';
-    
-    window.closeSheet('orderDetailsSheet');
-    window.openSheet('editOrderSheet');
-};
-
-function bindOrderSubmissions() {
-    // Create Submission
-    const createSubmit = document.getElementById('create-order-submit');
-    if (createSubmit) {
-        createSubmit.addEventListener('click', async () => {
-            const btn = createSubmit;
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>';
-            
-            try {
-                const subtotal = (parseFloat(document.getElementById('create-qty').value) || 0) * (parseFloat(document.getElementById('create-price').value) || 0);
-                const tax = subtotal * ((parseFloat(document.getElementById('create-tax').value) || 0) / 100);
-                
-                const payload = {
-                    customerId: document.getElementById('create-customer').value,
-                    customerName: document.getElementById('create-customer').options[document.getElementById('create-customer').selectedIndex]?.text,
-                    costingId: document.getElementById('create-quote').value,
-                    product: document.getElementById('create-product').value,
-                    fabric: document.getElementById('create-fabric').value,
-                    sizes: document.getElementById('create-sizes').value.split(',').map(s => s.trim()).filter(Boolean),
-                    colours: document.getElementById('create-colours').value.split(',').map(s => s.trim()).filter(Boolean),
-                    qty: parseFloat(document.getElementById('create-qty').value) || 0,
-                    unitPrice: parseFloat(document.getElementById('create-price').value) || 0,
-                    discount: parseFloat(document.getElementById('create-discount').value) || 0,
-                    subtotal,
-                    tax,
-                    grandTotal: subtotal + tax,
-                    deliveryDate: document.getElementById('create-date').value,
-                    status: document.getElementById('create-status').value || 'Draft',
-                    priority: document.getElementById('create-priority').value,
-                    notes: document.getElementById('create-notes').value
-                };
-                
-                await api.saveOrder(payload);
-                window.closeSheet('createOrderSheet');
-                window.showToast?.('Order created successfully', 'success');
-                await loadOrders();
-            } catch (e) {
-                window.showToast?.('Failed to save order', 'error');
-                btn.innerHTML = originalText;
-            }
-        });
-    }
-
-    // Edit Submission
-    const editSubmit = document.getElementById('edit-order-submit');
-    if (editSubmit) {
-        editSubmit.addEventListener('click', async () => {
-            if (!activeOrder) return;
-            const btn = editSubmit;
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-[20px]">progress_activity</span>';
-            
-            try {
-                const subtotal = (parseFloat(document.getElementById('edit-qty').value) || 0) * (parseFloat(document.getElementById('edit-price').value) || 0);
-                const tax = subtotal * ((parseFloat(document.getElementById('edit-tax').value) || 0) / 100);
-                const discount = parseFloat(document.getElementById('edit-discount').value) || 0;
-                
-                const payload = {
-                    ...activeOrder, // Keep existing timeline, tasks, statuses
-                    customerId: document.getElementById('edit-customer').value,
-                    customerName: document.getElementById('edit-customer').options[document.getElementById('edit-customer').selectedIndex]?.text,
-                    product: document.getElementById('edit-product').value,
-                    fabric: document.getElementById('edit-fabric').value,
-                    sizes: document.getElementById('edit-sizes').value.split(',').map(s => s.trim()).filter(Boolean),
-                    colours: document.getElementById('edit-colours').value.split(',').map(s => s.trim()).filter(Boolean),
-                    qty: parseFloat(document.getElementById('edit-qty').value) || 0,
-                    unitPrice: parseFloat(document.getElementById('edit-price').value) || 0,
-                    discount: discount,
-                    subtotal,
-                    tax,
-                    grandTotal: subtotal + tax - discount,
-                    deliveryDate: document.getElementById('edit-date').value,
-                    priority: document.getElementById('edit-priority').value,
-                    factory: document.getElementById('edit-factory').value,
-                    notes: document.getElementById('edit-notes').value
-                };
-                
-                await api.saveOrder(payload);
-                window.closeSheet('editOrderSheet');
-                window.showToast?.('Order updated successfully', 'success');
-                await loadOrders();
-            } catch (e) {
-                window.showToast?.('Failed to update order', 'error');
-                btn.innerHTML = originalText;
-            }
-        });
-    }
-}
-
-async function renderSheets() {
-    const sheetsContainer = document.getElementById('sheets-container');
-    if (!sheetsContainer) return;
-
-    const sheetsHTML = await getOrderSheetsHTML();
-    const detailsHTML = getOrderDetailsHTML();
-
-
-
-    const addExpenseContent = `
-        <div class="flex flex-col gap-4">
-            <div class="flex flex-col gap-1.5">
-                <label class="text-[13px] font-medium text-on-surface ml-1">Expense Type</label>
-                <select id="expense-type" class="w-full h-12 px-4 rounded-xl bg-surface-container-lowest border border-outline-variant text-[15px] focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all">
-                    <option value="Material">Material (Fabric/Yarn)</option>
-                    <option value="Stitching">Stitching Labor</option>
-                    <option value="Printing">Printing / Embroidery</option>
-                    <option value="Overhead">Factory Overhead</option>
-                    <option value="Shipping">Logistics</option>
-                </select>
-            </div>
-            <div class="flex flex-col gap-1.5">
-                <label class="text-[13px] font-medium text-on-surface ml-1">Amount ($)</label>
-                <input type="number" id="expense-amount" class="w-full h-12 px-4 rounded-xl bg-surface-container-lowest border border-outline-variant text-[15px] focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" placeholder="e.g. 500.00" required>
-            </div>
-            <div class="flex flex-col gap-1.5">
-                <label class="text-[13px] font-medium text-on-surface ml-1">Notes</label>
-                <input type="text" id="expense-notes" class="w-full h-12 px-4 rounded-xl bg-surface-container-lowest border border-outline-variant text-[15px] focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" placeholder="Optional details">
-            </div>
-        </div>
-    `;
-    const addExpenseFooter = `
-        <button id="submit-expense-btn" class="w-full bg-primary text-on-primary font-bold text-[15px] py-3.5 rounded-2xl active-scale transition-apple">
-            Save Expense
-        </button>
-    `;
-
-    // Render all bottom sheets
-    const taskHTML = getTaskSheetHTML();
-    const createCustContent = getCreateCustomerSheetHTML();
-    const createCustFooter = getCreateCustomerFooterHTML();
-
-    sheetsContainer.innerHTML = [
-        BottomSheet({ id: 'fabActionSheet',    title: 'Order Actions',  content: sheetsHTML.fabActionContent, height: 'auto' }),
-        BottomSheet({ id: 'createOrderSheet', title: 'Create Order',   content: sheetsHTML.createOrderContent, footerContent: sheetsHTML.createOrderFooter, isForm: true }),
-        BottomSheet({ id: 'orderDetailsSheet', customHeader: detailsHTML.orderDetailsHeader, content: detailsHTML.orderDetailsContent, footerContent: detailsHTML.orderDetailsFooter, height: '90vh' }),
-        BottomSheet({ id: 'editOrderSheet',   title: 'Edit Order',     content: sheetsHTML.editOrderContent, footerContent: sheetsHTML.editOrderFooter, height: '90vh', isForm: true }),
-        BottomSheet({ id: 'addExpenseSheet',  title: 'Log Expense',    content: addExpenseContent, footerContent: addExpenseFooter, height: 'auto' }),
-        BottomSheet({ id: 'filterOrderSheet', customHeader: sheetsHTML.filterOrderHeader, content: sheetsHTML.filterOrderContent, footerContent: sheetsHTML.filterOrderFooter, height: 'auto' }),
-        BottomSheet({ id: 'importOrderSheet', title: 'Import Orders',  content: sheetsHTML.importOrderContent, footerContent: sheetsHTML.importOrderFooter, height: 'auto' }),
-        BottomSheet({ id: 'taskSheet',        title: 'Add Task',       content: taskHTML.taskFormContent, footerContent: taskHTML.taskFormFooter, height: 'auto' }),
-        BottomSheet({ id: 'createCustomerSheet', title: 'New Customer', content: createCustContent, footerContent: createCustFooter, height: '90vh', isForm: true })
-    ].join('');
-    
-    // Bind submit-expense button
-    document.getElementById('submit-expense-btn')?.addEventListener('click', async () => {
-        if (!activeOrder) return;
-        const amt = document.getElementById('expense-amount').value;
-        if (!amt || isNaN(amt) || parseFloat(amt) <= 0) {
-            window.showToast?.('Please enter a valid amount', 'error');
-            return;
-        }
-        window.closeSheet('addExpenseSheet');
-        try {
-            const expType = document.getElementById('expense-type').value;
-            const expNotes = document.getElementById('expense-notes').value;
-            await api.addOrderExpense(activeOrder.id, { type: expType, amount: amt, notes: expNotes });
-            pushTimelineEvent(activeOrder, `Expense logged: $${parseFloat(amt).toFixed(2)} (${expType})`, 'expense', 'Current User', expNotes);
-            window.showToast?.('Expense logged successfully', 'success');
-            await loadOrders();
-            window.openOrderDetails(activeOrder.id);
-            document.getElementById('expense-amount').value = '';
-            document.getElementById('expense-notes').value = '';
-        } catch (e) {
-            window.showToast?.('Failed to log expense', 'error');
-        }
-    });
-
-    if (window.bindFormValidation) {
-        window.bindFormValidation('createOrderSheet', 'create-order-submit');
-        window.bindFormValidation('editOrderSheet', 'edit-order-submit');
-    }
-
-    // Bind task sheet submit
-    document.getElementById('task-sheet-submit')?.addEventListener('click', async () => {
-        const title = document.getElementById('task-title')?.value.trim();
-        if (!title) { window.showToast?.('Task title is required', 'error'); return; }
-        const taskData = {
-            title,
-            assignee: document.getElementById('task-assignee')?.value || '',
-            priority: document.getElementById('task-priority')?.value || 'Normal',
-            dueDate:  document.getElementById('task-due-date')?.value || '',
-            notes:    document.getElementById('task-notes')?.value || ''
-        };
-        try {
-            if (_editingTaskId) {
-                await api.updateOrderTask(activeOrder.id, _editingTaskId, taskData);
-                pushTimelineEvent(activeOrder, `Task edited: "${title}"`, 'task', 'Current User');
-                window.showToast?.('Task updated', 'success');
-            } else {
-                await api.addOrderTask(activeOrder.id, taskData);
-                pushTimelineEvent(activeOrder, `Task added: "${title}"`, 'task', 'Current User');
-                window.showToast?.('Task added', 'success');
-            }
-            window.closeSheet('taskSheet');
-            await loadOrders();
-            activeOrder = currentOrders.find(o => o.id === activeOrder.id) || activeOrder;
-            _refreshTaskAndActivityPanels();
-        } catch (e) {
-            window.showToast?.('Failed to save task', 'error');
-        }
-    });
-    _editingTaskId = null;
-
-    // Bind live wizard calculations
-    bindWizardCalculations();
-    bindOrderSubmissions();
-    bindCustomerSearch();
-    
-    // Bind Auto-Fill for Quote Linking
-    const quoteSelect = document.getElementById('create-quote');
-    if (quoteSelect) {
-        quoteSelect.addEventListener('change', async (e) => {
-            const quoteId = e.target.value;
-            if (!quoteId) return;
-            const quote = await api.getCostingById(quoteId);
-            if (quote) {
-                document.getElementById('create-product').value = quote.styleRef || '';
-                // Auto calculate value based on expected retail price
-                const qtyInput = document.getElementById('create-qty');
-                if (qtyInput && qtyInput.value) {
-                    document.getElementById('create-price').value = (quote.retailPrice * parseInt(qtyInput.value)).toFixed(2);
-                }
-                
-                // If the user types quantity AFTER selecting quote
-                qtyInput.addEventListener('input', (ev) => {
-                    const q = parseInt(ev.target.value);
-                    if (!isNaN(q)) {
-                        document.getElementById('create-price').value = (quote.retailPrice * q).toFixed(2);
-                    }
-                });
-            }
-        });
-    }
-
-}
-
-window.applyOrderFilters = function() {
-    currentAdvFilters = {
-        status: document.getElementById('filter-status').value,
-        priority: document.getElementById('filter-priority').value,
-        customer: document.getElementById('filter-customer')?.value || '',
-        department: document.getElementById('filter-department')?.value || '',
-        dispatchDate: document.getElementById('filter-dispatch-date')?.value || '',
-        paymentStatus: document.getElementById('filter-payment-status')?.value || '',
-        dateFrom: document.getElementById('filter-date-from').value,
-        dateTo: document.getElementById('filter-date-to').value
-    };
-    renderOrders();
-    window.closeSheet('filterOrderSheet');
-    window.showToast?.('Filters applied', 'success');
-};
-
-window.resetOrderFilters = function() {
-    currentAdvFilters = {
-        status: '',
-        priority: '',
-        customer: '',
-        department: '',
-        dispatchDate: '',
-        paymentStatus: '',
-        dateFrom: '',
-        dateTo: ''
-    };
-    
-    document.getElementById('filter-status').value = '';
-    document.getElementById('filter-priority').value = '';
-    if (document.getElementById('filter-customer')) document.getElementById('filter-customer').value = '';
-    if (document.getElementById('filter-department')) document.getElementById('filter-department').value = '';
-    if (document.getElementById('filter-dispatch-date')) document.getElementById('filter-dispatch-date').value = '';
-    if (document.getElementById('filter-payment-status')) document.getElementById('filter-payment-status').value = '';
-    document.getElementById('filter-date-from').value = '';
-    document.getElementById('filter-date-to').value = '';
-    renderOrders();
-    window.closeSheet('filterOrderSheet');
-    window.showToast?.('Filters reset', 'info');
-};
-
-window.duplicateFlow = function() {
-    let orderToDup = null;
-    if (selectedOrders.size > 0) {
-        const idToDup = Array.from(selectedOrders)[0];
-        orderToDup = currentOrders.find(o => o.id === idToDup);
-    } else if (activeOrder) {
-        orderToDup = activeOrder;
-    }
-    
-    if (orderToDup) {
-        document.getElementById('create-customer').value = orderToDup.customerId || '';
-        document.getElementById('create-product').value = orderToDup.product + ' (Copy)' || '';
-        document.getElementById('create-fabric').value = orderToDup.fabric || '';
-        document.getElementById('create-sizes').value = (orderToDup.sizes || []).join(', ');
-        document.getElementById('create-colours').value = (orderToDup.colours || []).join(', ');
-        document.getElementById('create-qty').value = orderToDup.qty || '';
-        document.getElementById('create-price').value = orderToDup.value ? (orderToDup.value / orderToDup.qty) : '';
-        document.getElementById('create-discount').value = '';
-        document.getElementById('create-tax').value = '';
-        document.getElementById('create-date').value = orderToDup.deliveryDate || '';
-        document.getElementById('create-status').value = 'Draft';
-        document.getElementById('create-priority').value = orderToDup.priority || 'Normal';
-        document.getElementById('create-notes').value = orderToDup.notes || '';
-        
-        window.openCreateWizard();
-        window.openSheet('createOrderSheet');
-    } else {
-        window.showToast?.('Please select an order to duplicate', 'error');
-    }
-};
-
-window.createSampleOrder = function() {
-    document.getElementById('create-customer').value = '';
-    document.getElementById('create-product').value = 'Sample - ';
-    document.getElementById('create-fabric').value = '';
-    document.getElementById('create-sizes').value = '';
-    document.getElementById('create-colours').value = '';
-    document.getElementById('create-qty').value = '1';
-    document.getElementById('create-price').value = '0';
-    document.getElementById('create-discount').value = '0';
-    document.getElementById('create-tax').value = '0';
-    document.getElementById('create-date').value = new Date().toISOString().split('T')[0];
-    document.getElementById('create-status').value = 'Draft';
-    document.getElementById('create-priority').value = 'Normal';
-    document.getElementById('create-notes').value = 'Pre-production sample request.';
-    
-    window.openCreateWizard();
-    window.openSheet('createOrderSheet');
-};
-
-window.createDraftOrder = async function() {
-    if (window.setLoading) window.setLoading('orders-list');
-    try {
-        // Omit 'id' so api.saveOrder() takes the create path and auto-generates one
-        const newOrder = {
-            customerId: '',
-            customerName: 'Draft',
-            product: 'Quick Draft',
-            qty: 0,
-            unitPrice: 0,
-            subtotal: 0,
-            tax: 0,
-            grandTotal: 0,
-            value: 0,
-            status: 'Draft',
-            priority: 'Normal',
-            deliveryDate: new Date().toISOString().split('T')[0]
-        };
-        await api.saveOrder(newOrder);
-        window.showToast?.('Draft order created', 'success');
-        await loadOrders();
-    } catch (e) {
-        window.showToast?.('Failed to create draft', 'error');
-    }
-};
-
-window.importOrders = function() {
-    // Confirm previewed rows from handleImportFileSelect
-    const previewPanel = document.getElementById('import-preview-panel');
-    const hasPreview = previewPanel && !previewPanel.classList.contains('hidden');
-    const importBtn = document.getElementById('import-submit-btn');
-
-    if (!hasPreview) {
-        window.showToast?.('Please select a file first', 'error');
-        return;
-    }
-    if (!window._importPreviewRows || window._importPreviewRows.length === 0) {
-        window.showToast?.('No valid rows to import', 'error');
+    if (orderStore.getState().isBulkMode) {
+        window.toggleOrderSelection(orderId);
         return;
     }
 
-    if (importBtn) { importBtn.textContent = 'Importing…'; importBtn.disabled = true; }
+    await orderStore.fetchActiveEntity(orderId);
+    const order = orderStore.getState().activeEntity;
+    if (!order) return;
 
-    setTimeout(async () => {
-        try {
-            for (const row of window._importPreviewRows) {
-                await api.saveOrder({
-                    customerName: row.customer,
-                    product:      row.product,
-                    qty:          row.qty,
-                    unitPrice:    row.unitPrice,
-                    subtotal:     row.qty * row.unitPrice,
-                    tax:          0,
-                    grandTotal:   row.qty * row.unitPrice,
-                    value:        row.qty * row.unitPrice,
-                    status:       'Draft',
-                    priority:     'Normal',
-                    deliveryDate: row.deliveryDate || new Date().toISOString().split('T')[0]
-                });
-            }
-            const count = window._importPreviewRows.length;
-            window._importPreviewRows = [];
-            window.showToast?.(`${count} order${count > 1 ? 's' : ''} imported successfully`, 'success');
-            window.closeSheet('importOrderSheet');
-            await loadOrders();
-        } catch (e) {
-            window.showToast?.('Import failed', 'error');
-        } finally {
-            if (importBtn) { importBtn.textContent = 'Import Orders'; importBtn.disabled = false; }
-        }
-    }, 1200);
-};
-
-// Handles CSV/Excel file selection: simulates parsing and shows a preview table
-window.handleImportFileSelect = function(input) {
-    const file = input?.files?.[0];
-    const previewPanel = document.getElementById('import-preview-panel');
-    const previewRowsEl = document.getElementById('import-preview-rows');
-    const countEl = document.getElementById('import-preview-count');
-    if (!previewPanel || !previewRowsEl) return;
-
-    if (!file) {
-        previewPanel.classList.add('hidden');
-        return;
+    const container = document.getElementById('sheets-container');
+    const existing = document.getElementById('orderDetailsSheet');
+    if (existing) {
+        existing.remove(); 
+        const overlay = document.getElementById('orderDetailsSheet-overlay');
+        if (overlay) overlay.remove();
     }
 
-    // Simulate parsing — in V1 we generate plausible stub rows based on filename
-    const stem = file.name.replace(/\.[^.]+$/, '').replace(/[_-]/g, ' ');
-    window._importPreviewRows = [
-        { customer: 'Chennai Silks',     product: stem + ' - Style A', qty: 200, unitPrice: 350, deliveryDate: '2026-09-15' },
-        { customer: 'Arvind Fashions',   product: stem + ' - Style B', qty: 150, unitPrice: 420, deliveryDate: '2026-09-22' },
-        { customer: 'Sri Kumaran Stores',product: stem + ' - Style C', qty: 300, unitPrice: 280, deliveryDate: '2026-10-01' },
-    ];
-
-    previewRowsEl.innerHTML = window._importPreviewRows.map((r, i) => `
-        <div class="flex items-start gap-3 p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/50">
-            <span class="w-6 h-6 rounded-full bg-primary/10 text-primary text-[11px] font-bold flex items-center justify-center shrink-0">${i + 1}</span>
-            <div class="text-[13px] flex-1">
-                <p class="font-semibold text-on-surface">${r.product}</p>
-                <p class="text-secondary">${r.customer} · Qty: ${r.qty} · ₹${r.unitPrice}/unit</p>
-                <p class="text-secondary/70">₹${(r.qty * r.unitPrice).toLocaleString('en-IN')} · ${r.deliveryDate}</p>
-            </div>
-        </div>
-    `).join('');
-
-    countEl.textContent = `${window._importPreviewRows.length} rows ready to import`;
-    previewPanel.classList.remove('hidden');
-};
-
-// ─── BULK ACTIONS ────────────────────────────────────────────────────────────
-
-window.bulkDelete = async function() {
-    if (selectedOrders.size === 0) return;
-    window.showConfirmation?.({
-        title: 'Delete Selected Orders',
-        message: `Permanently delete ${selectedOrders.size} order(s)? This cannot be undone.`,
-        confirmText: 'Delete All',
-        onConfirm: async () => {
-            try {
-                for (const id of selectedOrders) await api.deleteOrder(id);
-                window.showToast?.(`${selectedOrders.size} order(s) deleted`, 'success');
-                selectedOrders.clear();
-                window.exitBulkMode();
-                await loadOrders();
-            } catch (e) { window.showToast?.('Bulk delete failed', 'error'); }
-        }
+    const sheetHTML = BottomSheet({
+        id: 'orderDetailsSheet',
+        customHeader: window.getOrderDetailsHeader ? window.getOrderDetailsHeader(order) : '<div class="p-4">Loading Header...</div>',
+        content: window.getOrderDetailsContent ? window.getOrderDetailsContent(order) : '<div class="p-4">Loading Content...</div>',
+        height: '90vh'
     });
+
+    container.insertAdjacentHTML('beforeend', sheetHTML);
+    setTimeout(() => window.openSheet('orderDetailsSheet'), 50);
 };
 
-window.bulkExport = function() {
-    if (selectedOrders.size === 0) return;
-    const rows = currentOrders.filter(o => selectedOrders.has(o.id));
-    const header = 'ID,Customer,Product,Qty,Grand Total,Status,Delivery Date';
-    const csv    = rows.map(o => `${o.id},"${o.customerName}","${o.product}",${o.qty},${o.grandTotal},${o.status},${o.deliveryDate}`).join('\n');
-    const blob   = new Blob([header + '\n' + csv], { type: 'text/csv' });
-    const url    = URL.createObjectURL(blob);
-    const a      = document.createElement('a');
-    a.href = url; a.download = `garment-os-export-${Date.now()}.csv`;
-    a.click(); URL.revokeObjectURL(url);
-    window.showToast?.(`${rows.length} order(s) exported as CSV`, 'success');
-};
 
-window.bulkPrint = function() {
-    if (selectedOrders.size === 0) return;
-    window.showToast?.(`Print job queued for ${selectedOrders.size} order(s)`, 'info');
-    setTimeout(() => window.showToast?.('Print simulation complete', 'success'), 1500);
-};
-
-window.bulkAssign = function() {
-    if (selectedOrders.size === 0) return;
-    // For V1 simulation: assign all selected orders to a factory
-    const factory = 'Unit A - South Wing';
-    window.showConfirmation?.({
-        title: 'Assign to Production',
-        message: `Assign ${selectedOrders.size} order(s) to ${factory}?`,
-        confirmText: 'Assign',
-        onConfirm: async () => {
-            try {
-                for (const id of selectedOrders) {
-                    const order = currentOrders.find(o => o.id === id);
-                    if (order) await api.saveOrder({ ...order, factory });
-                }
-                window.showToast?.(`${selectedOrders.size} order(s) assigned to ${factory}`, 'success');
-                selectedOrders.clear();
-                window.exitBulkMode();
-                await loadOrders();
-            } catch (e) { window.showToast?.('Bulk assign failed', 'error'); }
-        }
-    });
-};
-
-// ─── CREATE NEW CUSTOMER & CUSTOMER DROPDOWN ────────────────────────────────
-
-let cachedCustomers = [];
-
-async function bindCustomerSearch() {
-    cachedCustomers = await api.getCustomers();
-    
-    const searchInput = document.getElementById('create-customer-search');
-    const dropdown = document.getElementById('customer-search-dropdown');
-    
-    if (searchInput && dropdown) {
-        // Show dropdown on focus
-        searchInput.addEventListener('focus', () => {
-            dropdown.classList.remove('hidden');
-            window.handleCustomerSearch(searchInput.value); // render initial
-        });
-        
-        // Hide dropdown on blur (delayed to allow clicks)
-        searchInput.addEventListener('blur', () => {
-            setTimeout(() => {
-                dropdown.classList.add('hidden');
-            }, 200);
-        });
-        
-        // Live search on input
-        searchInput.addEventListener('input', (e) => {
-            dropdown.classList.remove('hidden');
-            window.handleCustomerSearch(e.target.value);
-            // Clear hidden input if user changes text
-            document.getElementById('create-customer').value = '';
-        });
-    }
-}
-
-window.openCreateCustomer = function() {
-    const form = document.getElementById('createCustomerSheet-content');
-    if (form) form.reset();
-    
-    // Clear validation errors
-    const errorSpans = document.querySelectorAll('#createCustomerSheet .text-error');
-    errorSpans.forEach(span => {
-        if(span.id && span.id.endsWith('-error')) {
-            span.textContent = '';
-            span.classList.remove('opacity-100');
-            span.classList.add('opacity-0');
-        }
-    });
-    const errorWrappers = document.querySelectorAll('#createCustomerSheet .group.is-invalid');
-    errorWrappers.forEach(w => w.classList.remove('is-invalid'));
-
-    window.openSheet('createCustomerSheet');
-    
-    // Bind validation logic right after opening
-    if (window.bindFormValidation) {
-        window.bindFormValidation('createCustomerSheet-content', 'create-customer-submit');
-    }
-    
-    // Hide the customer search dropdown if it's open
-    const dropdown = document.getElementById('customer-search-dropdown');
-    if(dropdown) dropdown.classList.add('hidden');
-};
-
-window.saveNewCustomer = async function() {
-    const btn = document.getElementById('create-customer-submit');
-    const originalText = btn.innerHTML;
-    
-    // Collect data
-    const customerData = {
-        name: document.getElementById('new-cust-name').value,
-        company: document.getElementById('new-cust-company').value,
-        contactPerson: document.getElementById('new-cust-contact').value,
-        mobile: document.getElementById('new-cust-mobile').value,
-        whatsapp: document.getElementById('new-cust-whatsapp').value,
-        email: document.getElementById('new-cust-email').value,
-        gst: document.getElementById('new-cust-gst').value,
-        customerType: document.getElementById('new-cust-type').value,
-        paymentTerms: document.getElementById('new-cust-terms').value,
-        creditLimit: document.getElementById('new-cust-limit').value,
-        currency: document.getElementById('new-cust-currency').value,
-        address: document.getElementById('new-cust-addr1').value + ' ' + document.getElementById('new-cust-addr2').value,
-        city: document.getElementById('new-cust-city').value,
-        state: document.getElementById('new-cust-state').value,
-        country: document.getElementById('new-cust-country').value,
-        pincode: document.getElementById('new-cust-pincode').value,
-        notes: document.getElementById('new-cust-notes').value,
-        isActive: document.getElementById('new-cust-active').checked,
-    };
-    
-    if(!customerData.name || !customerData.mobile) {
-        window.showToast?.('Please fill required fields', 'error');
-        return;
-    }
-
-    try {
-        btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>';
-        btn.disabled = true;
-        
-        const newCustomer = await api.saveCustomer(customerData);
-        
-        window.showToast?.('Customer created successfully', 'success');
-        
-        // Auto-select in the wizard without closing wizard
-        const searchInput = document.getElementById('create-customer-search');
-        const hiddenInput = document.getElementById('create-customer');
-        if (searchInput && hiddenInput) {
-            searchInput.value = newCustomer.name;
-            hiddenInput.value = newCustomer.id;
-            hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
-            searchInput.closest('.group')?.classList.remove('is-invalid');
-            const errorSpan = document.getElementById('create-customer-search-error');
-            if (errorSpan) {
-                errorSpan.classList.add('opacity-0');
-                errorSpan.classList.remove('opacity-100');
-            }
-        }
-        
-        // Update local cache
-        cachedCustomers = await api.getCustomers();
-        
-        window.closeSheet('createCustomerSheet');
-        
-    } catch (e) {
-        window.showToast?.(e.message || 'Failed to create customer', 'error');
-        // Simple inline error mapping if it was duplicate
-        if (e.message.includes('Duplicate')) {
-            const nameWrapper = document.getElementById('new-cust-name').closest('.group');
-            const nameError = document.getElementById('new-cust-name-error');
-            if (nameWrapper && nameError) {
-                nameWrapper.classList.add('is-invalid');
-                nameError.textContent = 'Possible duplicate';
-                nameError.classList.remove('opacity-0');
-                nameError.classList.add('opacity-100');
-            }
-            document.getElementById('new-cust-name').focus();
-        }
-    } finally {
-        btn.innerHTML = originalText;
-        btn.disabled = false;
-    }
-};
-
-window.handleCustomerSearch = function(query) {
-    const resultsContainer = document.getElementById('customer-search-results');
-    if (!resultsContainer) return;
-    
-    const lowerQuery = query.toLowerCase();
-    const filtered = cachedCustomers.filter(c => {
-        const name = (c.name || '').toLowerCase();
-        const company = (c.company || '').toLowerCase();
-        const phone = (c.phone || '').toLowerCase();
-        const gst = (c.gst || '').toLowerCase();
-        const code = (c.customerCode || '').toLowerCase();
-        return name.includes(lowerQuery) || company.includes(lowerQuery) || 
-               phone.includes(lowerQuery) || gst.includes(lowerQuery) || code.includes(lowerQuery);
-    });
-    
-    if (filtered.length === 0) {
-        resultsContainer.innerHTML = `<div class="p-3 text-center text-[13px] text-secondary">No customer found</div>`;
-    } else {
-        resultsContainer.innerHTML = filtered.map(c => `
-            <button type="button" onmousedown="window.selectCustomer('${c.id}', '${c.name.replace(/'/g, "\\'")}')" class="flex flex-col text-left p-2.5 rounded-lg hover:bg-surface-variant active:bg-surface-variant transition-colors">
-                <span class="text-[14px] font-medium text-on-surface">${c.name}</span>
-                <span class="text-[12px] text-secondary">${c.company || c.phone || c.customerCode || ''}</span>
-            </button>
-        `).join('');
-    }
-};
-
-window.selectCustomer = function(id, name) {
-    const searchInput = document.getElementById('create-customer-search');
-    const hiddenInput = document.getElementById('create-customer');
-    const dropdown = document.getElementById('customer-search-dropdown');
-    
-    if (searchInput && hiddenInput) {
-        searchInput.value = name;
-        hiddenInput.value = id;
-        
-        // Trigger validation check since we programmatically changed it
-        hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
-        searchInput.closest('.group')?.classList.remove('is-invalid'); 
-        
-        const errorSpan = document.getElementById('create-customer-search-error');
-        if (errorSpan) {
-            errorSpan.classList.add('opacity-0');
-            errorSpan.classList.remove('opacity-100');
-        }
-    }
-    if (dropdown) dropdown.classList.add('hidden');
-};
