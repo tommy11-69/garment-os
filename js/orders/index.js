@@ -132,7 +132,64 @@ window.openOrderDetails = async function(orderId) {
     document.getElementById('od-progress-pct').textContent = currentProgress + '%';
     document.getElementById('od-progress-bar').style.width = currentProgress + '%';
 
+    // Render Timeline
+    const timelineContainer = document.getElementById('od-timeline-container');
+    if (timelineContainer && activeOrder.timeline) {
+        timelineContainer.innerHTML = activeOrder.timeline.map((evt, idx) => 
+            TimelineEvent({
+                title: evt.title,
+                timestamp: evt.date,
+                user: evt.user,
+                type: evt.type,
+                status: 'completed',
+                isLast: idx === activeOrder.timeline.length - 1
+            })
+        ).join('');
+    }
+
+    // Render Tasks
+    const tasksContainer = document.getElementById('od-tasks-container');
+    if (tasksContainer && activeOrder.tasks) {
+        tasksContainer.innerHTML = activeOrder.tasks.map(tsk => 
+            TaskCard({
+                id: tsk.id,
+                title: tsk.title,
+                status: tsk.status,
+                assignee: tsk.assignee
+            })
+        ).join('');
+        if (activeOrder.tasks.length === 0) {
+            tasksContainer.innerHTML = '<p class="text-secondary text-[13px] text-center p-4">No tasks generated yet.</p>';
+        }
+    }
+
     window.openSheet('orderDetailsSheet');
+    window.switchOrderTab('overview');
+};
+
+window.switchOrderTab = function(tabName) {
+    // Hide all tabs
+    document.querySelectorAll('.od-tab-content').forEach(el => el.classList.add('hidden'));
+    // Reset all buttons
+    ['overview', 'timeline', 'tasks'].forEach(t => {
+        const btn = document.getElementById(`od-tab-btn-${t}`);
+        if (btn) {
+            btn.className = `flex-1 pb-3 text-[14px] font-medium border-b-2 ${t === tabName ? 'text-primary border-primary font-bold' : 'text-secondary border-transparent'}`;
+        }
+    });
+    // Show active tab
+    const activeTab = document.getElementById(`od-tab-${tabName}`);
+    if (activeTab) activeTab.classList.remove('hidden');
+};
+
+window.toggleTaskStatus = function(taskId) {
+    if (!activeOrder || !activeOrder.tasks) return;
+    const task = activeOrder.tasks.find(t => t.id === taskId);
+    if (!task) return;
+    
+    task.status = task.status === 'Completed' ? 'Pending' : 'Completed';
+    window.showToast?.(`Task marked as ${task.status}`, 'success');
+    window.openOrderDetails(activeOrder.id); // Re-render to update UI
 };
 
 window.handleStatusTransition = async function(newStatus) {
@@ -380,115 +437,143 @@ async function renderSheets() {
                 <span class="material-symbols-outlined text-[20px]">close</span>
             </button>
         </div>
+        </div>
     </div>`;
     const orderDetailsContent = `
-        <!-- Financial Overview Dashboard -->
-        <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-sm p-lg mb-6">
-            <h3 class="text-[14px] font-semibold text-secondary uppercase tracking-wider mb-4">Financial Overview</h3>
-            <div class="grid grid-cols-2 gap-4 mb-4">
-                <div class="flex flex-col">
-                    <span class="text-[12px] font-medium text-secondary mb-1">Estimated Cost (Quote)</span>
-                    <span id="od-quoted" class="text-[18px] font-bold text-on-surface"></span>
+        <!-- Sticky Tabs -->
+        <div class="sticky top-0 bg-surface z-20 pb-4 mb-4 border-b border-outline-variant/30 flex justify-between">
+            <button onclick="window.switchOrderTab('overview')" id="od-tab-btn-overview" class="flex-1 pb-3 text-[14px] font-bold text-primary border-b-2 border-primary">Overview</button>
+            <button onclick="window.switchOrderTab('timeline')" id="od-tab-btn-timeline" class="flex-1 pb-3 text-[14px] font-medium text-secondary border-b-2 border-transparent">Timeline</button>
+            <button onclick="window.switchOrderTab('tasks')" id="od-tab-btn-tasks" class="flex-1 pb-3 text-[14px] font-medium text-secondary border-b-2 border-transparent">Tasks</button>
+        </div>
+
+        <!-- OVERVIEW TAB -->
+        <div id="od-tab-overview" class="od-tab-content">
+            <!-- Financial Overview Dashboard -->
+            <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-sm p-lg mb-6">
+                <h3 class="text-[14px] font-semibold text-secondary uppercase tracking-wider mb-4">Financial Overview</h3>
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div class="flex flex-col">
+                        <span class="text-[12px] font-medium text-secondary mb-1">Estimated Cost (Quote)</span>
+                        <span id="od-quoted" class="text-[18px] font-bold text-on-surface"></span>
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="text-[12px] font-medium text-secondary mb-1">Actual Incurred Cost</span>
+                        <span id="od-incurred" class="text-[18px] font-bold text-error"></span>
+                    </div>
                 </div>
-                <div class="flex flex-col">
-                    <span class="text-[12px] font-medium text-secondary mb-1">Actual Incurred Cost</span>
-                    <span id="od-incurred" class="text-[18px] font-bold text-error"></span>
+                
+                <div>
+                    <div class="flex justify-between text-[12px] font-medium mb-1">
+                        <span class="text-secondary">Current Profit</span>
+                        <span id="od-profit-val" class="font-bold text-on-surface"></span>
+                    </div>
+                    <div class="w-full h-2 bg-surface-container rounded-full overflow-hidden">
+                        <div id="od-profit-bar" class="h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                    </div>
                 </div>
             </div>
-            
-            <div>
-                <div class="flex justify-between text-[12px] font-medium mb-1">
-                    <span class="text-secondary">Current Profit</span>
-                    <span id="od-profit-val" class="font-bold text-on-surface"></span>
+
+            <!-- Production Pipeline Stepper -->
+            <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-sm p-lg mb-6">
+                <h3 class="text-[14px] font-semibold text-secondary uppercase tracking-wider mb-4">Production Status</h3>
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-[14px] font-medium text-on-surface" id="od-progress-label"></span>
+                    <span class="text-[14px] font-bold text-primary" id="od-progress-pct"></span>
                 </div>
-                <div class="w-full h-2 bg-surface-container rounded-full overflow-hidden">
-                    <div id="od-profit-bar" class="h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+                <div class="w-full h-2 bg-surface-variant rounded-full overflow-hidden mb-4">
+                    <div id="od-progress-bar" class="h-full bg-primary rounded-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+                
+                <div class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                    <button onclick="handleStatusTransition('Approved')" class="shrink-0 px-3 py-1.5 rounded-lg border border-outline-variant text-[12px] font-medium text-secondary active-bg">Approve</button>
+                    <button onclick="handleStatusTransition('Material Reserved')" class="shrink-0 px-3 py-1.5 rounded-lg border border-outline-variant text-[12px] font-medium text-secondary active-bg">Reserve Mat.</button>
+                    <button onclick="handleStatusTransition('Cutting')" class="shrink-0 px-3 py-1.5 rounded-lg border border-outline-variant text-[12px] font-medium text-secondary active-bg">Cutting</button>
+                    <button onclick="handleStatusTransition('Stitching')" class="shrink-0 px-3 py-1.5 rounded-lg border border-outline-variant text-[12px] font-medium text-secondary active-bg">Stitching</button>
+                    <button onclick="handleStatusTransition('Quality Check')" class="shrink-0 px-3 py-1.5 rounded-lg border border-outline-variant text-[12px] font-medium text-secondary active-bg">QC</button>
+                    <button onclick="handleStatusTransition('Dispatched')" class="shrink-0 px-3 py-1.5 rounded-lg border border-outline-variant text-[12px] font-medium text-secondary active-bg">Dispatch</button>
+                </div>
+            </div>
+
+            <!-- Order Info -->
+            <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-sm p-lg mb-6">
+                <h3 class="text-[14px] font-semibold text-secondary uppercase tracking-wider mb-4">Order Details</h3>
+                <div class="grid grid-cols-2 gap-y-4">
+                    <div>
+                        <p class="text-[11px] text-secondary">Product</p>
+                        <p id="od-product" class="text-[14px] font-medium text-on-surface"></p>
+                    </div>
+                    <div>
+                        <p class="text-[11px] text-secondary">Quantity</p>
+                        <p id="od-qty" class="text-[14px] font-medium text-on-surface"></p>
+                    </div>
+                    <div>
+                        <p class="text-[11px] text-secondary">Sizes</p>
+                        <p id="od-sizes" class="text-[14px] font-medium text-on-surface"></p>
+                    </div>
+                    <div>
+                        <p class="text-[11px] text-secondary">Colours</p>
+                        <p id="od-colours" class="text-[14px] font-medium text-on-surface"></p>
+                    </div>
+                    <div>
+                        <p class="text-[11px] text-secondary">Delivery Date</p>
+                        <p id="od-delivery" class="text-[14px] font-medium text-on-surface"></p>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <p class="text-[11px] text-secondary">Notes</p>
+                    <p id="od-notes" class="text-[13px] text-on-surface mt-1"></p>
+                </div>
+            </div>
+
+            <!-- Action Grid -->
+            <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-sm p-lg">
+                <h3 class="text-[14px] font-semibold text-secondary uppercase tracking-wider mb-4">Quick Actions</h3>
+                <div class="grid grid-cols-3 gap-3">
+                    <button onclick="handleOrderAction('Print Quote')" class="flex flex-col items-center justify-center p-3 rounded-xl bg-surface-variant active-scale transition-apple">
+                        <span class="material-symbols-outlined text-secondary mb-1">picture_as_pdf</span>
+                        <span class="text-[11px] font-medium text-on-surface">Print Quote</span>
+                    </button>
+                    <button onclick="handleOrderAction('Generate Invoice')" class="flex flex-col items-center justify-center p-3 rounded-xl bg-surface-variant active-scale transition-apple">
+                        <span class="material-symbols-outlined text-secondary mb-1">receipt_long</span>
+                        <span class="text-[11px] font-medium text-on-surface">Invoice</span>
+                    </button>
+                    <button onclick="handleOrderAction('Generate PO')" class="flex flex-col items-center justify-center p-3 rounded-xl bg-surface-variant active-scale transition-apple">
+                        <span class="material-symbols-outlined text-secondary mb-1">shopping_cart_checkout</span>
+                        <span class="text-[11px] font-medium text-on-surface">Purch. Order</span>
+                    </button>
+                    <button onclick="handleOrderAction('Assign Production')" class="flex flex-col items-center justify-center p-3 rounded-xl bg-primary/10 active-scale transition-apple text-primary">
+                        <span class="material-symbols-outlined mb-1">precision_manufacturing</span>
+                        <span class="text-[11px] font-medium">Assign Prod.</span>
+                    </button>
+                    <button onclick="handleOrderAction('View Timeline')" class="flex flex-col items-center justify-center p-3 rounded-xl bg-surface-variant active-scale transition-apple">
+                        <span class="material-symbols-outlined text-secondary mb-1">history</span>
+                        <span class="text-[11px] font-medium text-on-surface">Timeline</span>
+                    </button>
+                    <button onclick="handleOrderAction('View Dispatch')" class="flex flex-col items-center justify-center p-3 rounded-xl bg-surface-variant active-scale transition-apple">
+                        <span class="material-symbols-outlined text-secondary mb-1">local_shipping</span>
+                        <span class="text-[11px] font-medium text-on-surface">Dispatch</span>
+                    </button>
                 </div>
             </div>
         </div>
 
-        <!-- Production Pipeline Stepper -->
-        <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-sm p-lg mb-6">
-            <h3 class="text-[14px] font-semibold text-secondary uppercase tracking-wider mb-4">Production Status</h3>
-            <div class="flex items-center justify-between mb-2">
-                <span class="text-[14px] font-medium text-on-surface" id="od-progress-label"></span>
-                <span class="text-[14px] font-bold text-primary" id="od-progress-pct"></span>
-            </div>
-            <div class="w-full h-2 bg-surface-variant rounded-full overflow-hidden mb-4">
-                <div id="od-progress-bar" class="h-full bg-primary rounded-full transition-all duration-500" style="width: 0%"></div>
-            </div>
-            
-            <div class="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-                <button onclick="handleStatusTransition('Approved')" class="shrink-0 px-3 py-1.5 rounded-lg border border-outline-variant text-[12px] font-medium text-secondary active-bg">Approve</button>
-                <button onclick="handleStatusTransition('Material Reserved')" class="shrink-0 px-3 py-1.5 rounded-lg border border-outline-variant text-[12px] font-medium text-secondary active-bg">Reserve Mat.</button>
-                <button onclick="handleStatusTransition('Cutting')" class="shrink-0 px-3 py-1.5 rounded-lg border border-outline-variant text-[12px] font-medium text-secondary active-bg">Cutting</button>
-                <button onclick="handleStatusTransition('Stitching')" class="shrink-0 px-3 py-1.5 rounded-lg border border-outline-variant text-[12px] font-medium text-secondary active-bg">Stitching</button>
-                <button onclick="handleStatusTransition('Quality Check')" class="shrink-0 px-3 py-1.5 rounded-lg border border-outline-variant text-[12px] font-medium text-secondary active-bg">QC</button>
-                <button onclick="handleStatusTransition('Dispatched')" class="shrink-0 px-3 py-1.5 rounded-lg border border-outline-variant text-[12px] font-medium text-secondary active-bg">Dispatch</button>
-            </div>
+        <!-- TIMELINE TAB -->
+        <div id="od-tab-timeline" class="od-tab-content hidden">
+            <div id="od-timeline-container" class="pt-4"></div>
         </div>
 
-        <!-- Order Info -->
-        <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-sm p-lg mb-6">
-            <h3 class="text-[14px] font-semibold text-secondary uppercase tracking-wider mb-4">Order Details</h3>
-            <div class="grid grid-cols-2 gap-y-4">
-                <div>
-                    <p class="text-[11px] text-secondary">Product</p>
-                    <p id="od-product" class="text-[14px] font-medium text-on-surface"></p>
-                </div>
-                <div>
-                    <p class="text-[11px] text-secondary">Quantity</p>
-                    <p id="od-qty" class="text-[14px] font-medium text-on-surface"></p>
-                </div>
-                <div>
-                    <p class="text-[11px] text-secondary">Sizes</p>
-                    <p id="od-sizes" class="text-[14px] font-medium text-on-surface"></p>
-                </div>
-                <div>
-                    <p class="text-[11px] text-secondary">Colours</p>
-                    <p id="od-colours" class="text-[14px] font-medium text-on-surface"></p>
-                </div>
-                <div>
-                    <p class="text-[11px] text-secondary">Delivery Date</p>
-                    <p id="od-delivery" class="text-[14px] font-medium text-on-surface"></p>
-                </div>
+        <!-- TASKS TAB -->
+        <div id="od-tab-tasks" class="od-tab-content hidden">
+            <div class="flex justify-between items-center mb-4 mt-2">
+                <h3 class="text-[16px] font-bold text-on-surface">Auto-Generated Tasks</h3>
+                <button class="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+                    <span class="material-symbols-outlined text-[18px]">add</span>
+                </button>
             </div>
-            <div class="mt-4">
-                <p class="text-[11px] text-secondary">Notes</p>
-                <p id="od-notes" class="text-[13px] text-on-surface mt-1"></p>
-            </div>
+            <div id="od-tasks-container"></div>
         </div>
 
-        <!-- Action Grid -->
-        <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-sm p-lg">
-            <h3 class="text-[14px] font-semibold text-secondary uppercase tracking-wider mb-4">Quick Actions</h3>
-            <div class="grid grid-cols-3 gap-3">
-                <button onclick="handleOrderAction('Print Quote')" class="flex flex-col items-center justify-center p-3 rounded-xl bg-surface-variant active-scale transition-apple">
-                    <span class="material-symbols-outlined text-secondary mb-1">picture_as_pdf</span>
-                    <span class="text-[11px] font-medium text-on-surface">Print Quote</span>
-                </button>
-                <button onclick="handleOrderAction('Generate Invoice')" class="flex flex-col items-center justify-center p-3 rounded-xl bg-surface-variant active-scale transition-apple">
-                    <span class="material-symbols-outlined text-secondary mb-1">receipt_long</span>
-                    <span class="text-[11px] font-medium text-on-surface">Invoice</span>
-                </button>
-                <button onclick="handleOrderAction('Generate PO')" class="flex flex-col items-center justify-center p-3 rounded-xl bg-surface-variant active-scale transition-apple">
-                    <span class="material-symbols-outlined text-secondary mb-1">shopping_cart_checkout</span>
-                    <span class="text-[11px] font-medium text-on-surface">Purch. Order</span>
-                </button>
-                <button onclick="handleOrderAction('Assign Production')" class="flex flex-col items-center justify-center p-3 rounded-xl bg-primary/10 active-scale transition-apple text-primary">
-                    <span class="material-symbols-outlined mb-1">precision_manufacturing</span>
-                    <span class="text-[11px] font-medium">Assign Prod.</span>
-                </button>
-                <button onclick="handleOrderAction('View Timeline')" class="flex flex-col items-center justify-center p-3 rounded-xl bg-surface-variant active-scale transition-apple">
-                    <span class="material-symbols-outlined text-secondary mb-1">history</span>
-                    <span class="text-[11px] font-medium text-on-surface">Timeline</span>
-                </button>
-                <button onclick="handleOrderAction('View Dispatch')" class="flex flex-col items-center justify-center p-3 rounded-xl bg-surface-variant active-scale transition-apple">
-                    <span class="material-symbols-outlined text-secondary mb-1">local_shipping</span>
-                    <span class="text-[11px] font-medium text-on-surface">Dispatch</span>
-                </button>
-            </div>
-        </div>
         <div class="h-10"></div>
     `;
     const orderDetailsFooter = `
