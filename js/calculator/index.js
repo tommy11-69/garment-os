@@ -735,7 +735,7 @@ async function initModule() {
     // ── Save Draft sheet ──
     const saveCostContent = `
         ${TextInput({ label:'Style Name / Reference', id:'save-style', placeholder:'e.g. SS24-TS-01', required:true })}
-        ${SelectInput({ label:'Client / Brand', id:'save-client', options:[{label:'Select Client...'},{label:'Everlane Corp.',value:'c-001'},{label:'Patagonia',value:'c-002'}] })}
+        ${SelectInput({ label:'Client / Brand', id:'save-client', options:[{label:'Select Client...'},{label:'Chennai Silks',value:'c-001'},{label:'Arvind Fashions',value:'c-002'}] })}
         ${SelectInput({ label:'Save As', id:'save-status', options:[{label:'Draft',value:'Draft'},{label:'Quote (send to client)',value:'Quoted'}] })}
         ${TextareaInput({ label:'Notes', id:'save-notes', rows:2 })}
         <div class="h-10"></div>

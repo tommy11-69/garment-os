@@ -1,8 +1,24 @@
-import { api } from '../services/api.js';
+import { api, makeTimestamp } from '../services/api.js';
 import { renderers } from '../renderers.js';
 import { SegmentedControl, BottomSheet, TimelineEvent, TaskCard } from '../components/index.js';
 import { bindFormValidation } from '../utils/formHandler.js';
-import { getOrderSheetsHTML, getOrderDetailsHTML } from './templates.js';
+import { getOrderSheetsHTML, getOrderDetailsHTML, getTaskSheetHTML } from './templates.js';
+
+// ─── Shared timeline event pusher ────────────────────────────────────────────
+// Pushes a standardised event to an order's timeline array.
+// type: 'system' | 'status' | 'action' | 'task' | 'expense' | 'edit' | 'inventory'
+function pushTimelineEvent(order, title, type = 'action', user = 'System', description = '') {
+    if (!order) return;
+    if (!order.timeline) order.timeline = [];
+    order.timeline.unshift({
+        id: `t-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+        date: makeTimestamp(),
+        title,
+        description,
+        user,
+        type
+    });
+}
 
 let currentOrders = [];
 let activeOrder = null;
@@ -488,21 +504,24 @@ window.openOrderDetails = async function(orderId) {
 
 window.handleOrderAction = function(action) {
     if (!activeOrder) return;
-    
+
     switch (action) {
         case 'Print Quote':
-            window.showToast?.('Generating PDF...', 'info');
-            setTimeout(() => window.showToast?.('Quote PDF downloaded', 'success'), 1000);
+            window.showToast?.('Generating PDF…', 'info');
+            setTimeout(() => window.showToast?.('Quote PDF ready to download', 'success'), 1200);
+            pushTimelineEvent(activeOrder, 'Print Quote requested', 'action', 'Current User');
             break;
         case 'Generate Invoice':
-            window.showToast?.('Invoice generation simulated', 'success');
+            window.showToast?.('Invoice generated (simulation)', 'success');
+            pushTimelineEvent(activeOrder, 'Invoice generated', 'action', 'Current User');
             break;
         case 'Generate PO':
-            window.showToast?.('Purchase Order simulated', 'success');
+            window.showToast?.('Purchase Order generated (simulation)', 'success');
+            pushTimelineEvent(activeOrder, 'Purchase Order generated', 'action', 'Current User');
             break;
         case 'Assign Production':
-            window.handleStatusTransition('Cutting');
-            setTimeout(() => window.switchOrderTab('timeline'), 300); // Switch to timeline to show automation
+            window.handleStatusTransition('Production Assigned');
+            setTimeout(() => window.switchOrderTab('timeline'), 350);
             break;
         case 'View Timeline':
             window.switchOrderTab('timeline');
@@ -511,7 +530,7 @@ window.handleOrderAction = function(action) {
             window.showToast?.('Dispatch tracking coming soon', 'info');
             break;
         default:
-            console.log('Action not mapped:', action);
+            console.warn('Order action not mapped:', action);
     }
 };
 
@@ -530,54 +549,141 @@ window.switchOrderTab = function(tabName) {
     if (activeTab) activeTab.classList.remove('hidden');
 };
 
+function _refreshTaskAndActivityPanels() {
+    if (!activeOrder) return;
+    
+    const timelineContainer = document.getElementById('od-timeline-container');
+    const activityContainer = document.getElementById('od-activity-container');
+    const tasksContainer = document.getElementById('od-tasks-container');
+    
+    if (activeOrder.timeline) {
+        const prodEvents = activeOrder.timeline.filter(e => e.type === 'status' || !e.type);
+        const sysEvents = activeOrder.timeline.filter(e => e.type === 'system' || e.type === 'action' || e.type === 'task' || e.type === 'expense');
+        
+        if (timelineContainer) {
+            timelineContainer.innerHTML = prodEvents.length ? prodEvents.map((evt, idx) => 
+                TimelineEvent({
+                    title: evt.title,
+                    timestamp: evt.date,
+                    user: evt.user,
+                    type: evt.type,
+                    status: 'completed',
+                    isLast: idx === prodEvents.length - 1
+                })
+            ).join('') : '<p class="text-secondary text-[13px] text-center p-4">No production timeline events.</p>';
+        }
+        
+        if (activityContainer) {
+            activityContainer.innerHTML = sysEvents.length ? sysEvents.map((evt, idx) => 
+                TimelineEvent({
+                    title: evt.title,
+                    timestamp: evt.date,
+                    user: evt.user,
+                    type: evt.type,
+                    status: 'completed',
+                    isLast: idx === sysEvents.length - 1
+                })
+            ).join('') : '<p class="text-secondary text-[13px] text-center p-4">No activity logged.</p>';
+        }
+    }
+
+    if (tasksContainer && activeOrder.tasks) {
+        tasksContainer.innerHTML = activeOrder.tasks.length
+            ? activeOrder.tasks.map(t => TaskCard({
+                id: t.id, title: t.title, status: t.status,
+                assignee: t.assignee, priority: t.priority, dueDate: t.dueDate
+              })).join('')
+            : '<p class="text-secondary text-[13px] text-center p-4">No tasks yet. Tap + to add one.</p>';
+    }
+}
+
+window.pushTimelineEvent = async function(order, title, type, user) {
+    const newEvt = { title, type, user: user || 'System', date: new Date().toISOString() };
+    if (!order.timeline) order.timeline = [];
+    order.timeline.push(newEvt);
+    await api.saveOrder(order);
+    _refreshTaskAndActivityPanels();
+};
+
 window.toggleTaskStatus = async function(taskId) {
     if (!activeOrder) return;
     const task = activeOrder.tasks?.find(t => t.id === taskId);
     if (!task) return;
 
     task.status = task.status === 'Completed' ? 'Pending' : 'Completed';
-    // Log timeline event for task
-    if (!activeOrder.timeline) activeOrder.timeline = [];
-    activeOrder.timeline.unshift({
-        id: `t-${Date.now()}`,
-        date: new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date()),
-        title: `Task "${task.title}" marked as ${task.status}`,
-        user: 'Current User',
-        type: 'system'
-    });
-    
-    await loadOrders(); // Saves silently
-    if (currentOrderTab === 'tasks') {
-        renderTasksTab();
-    }
-    if (currentOrderTab === 'timeline') {
-        renderTimelineTab();
-    }
+    pushTimelineEvent(activeOrder, `Task "${task.title}" marked as ${task.status}`, 'task', 'Current User');
+
+    await loadOrders();
+    activeOrder = currentOrders.find(o => o.id === activeOrder.id) || activeOrder;
+    _refreshTaskAndActivityPanels();
 };
 
-window.promptNewTask = async function() {
+// ─── TASK CRUD ENGINE ──────────────────────────────────────────────────
+// null = create mode; a string taskId = edit mode
+let _editingTaskId = null;
+
+/** Opens the Add/Edit Task sheet in CREATE mode. */
+window.promptNewTask = function() {
     if (!activeOrder) return;
-    const title = prompt("Enter task title:");
-    if (!title) return;
-    const assignee = prompt("Assign to (e.g. Sales, QC):") || 'Unassigned';
-    
-    try {
-        await api.addOrderTask(activeOrder.id, { title, assignee });
-        window.showToast?.('Task added', 'success');
-        await loadOrders();
-        renderTasksTab();
-    } catch (e) {
-        window.showToast?.('Error adding task', 'error');
-    }
+    _editingTaskId = null;
+    document.getElementById('task-title').value  = '';
+    document.getElementById('task-assignee').value = '';
+    document.getElementById('task-priority').value = 'Normal';
+    document.getElementById('task-due-date').value = '';
+    document.getElementById('task-notes').value   = '';
+    const titleEl = document.getElementById('taskSheet-title');
+    if (titleEl) titleEl.textContent = 'Add Task';
+    window.openSheet('taskSheet');
+};
+
+/** Opens the Add/Edit Task sheet in EDIT mode pre-populated with existing data. */
+window.openEditTask = function(taskId) {
+    if (!activeOrder) return;
+    const task = (activeOrder.tasks || []).find(t => t.id === taskId);
+    if (!task) return;
+    _editingTaskId = taskId;
+    document.getElementById('task-title').value    = task.title   || '';
+    document.getElementById('task-assignee').value = task.assignee || '';
+    document.getElementById('task-priority').value = task.priority || 'Normal';
+    document.getElementById('task-due-date').value = task.dueDate  || '';
+    document.getElementById('task-notes').value    = task.notes    || '';
+    const titleEl = document.getElementById('taskSheet-title');
+    if (titleEl) titleEl.textContent = 'Edit Task';
+    window.openSheet('taskSheet');
+};
+
+/** Deletes a task after inline confirmation. */
+window.deleteTask = function(taskId) {
+    if (!activeOrder) return;
+    const task = (activeOrder.tasks || []).find(t => t.id === taskId);
+    if (!task) return;
+    window.showConfirmation?.({
+        title: 'Delete Task',
+        message: `Delete task “${task.title}”? This cannot be undone.`,
+        confirmText: 'Delete',
+        onConfirm: async () => {
+            try {
+                await api.deleteOrderTask(activeOrder.id, taskId);
+                pushTimelineEvent(activeOrder, `Task deleted: “${task.title}”`, 'task', 'Current User');
+                window.showToast?.('Task deleted', 'success');
+                await loadOrders();
+                activeOrder = currentOrders.find(o => o.id === activeOrder.id) || activeOrder;
+                _refreshTaskAndActivityPanels();
+            } catch (e) {
+                window.showToast?.('Failed to delete task', 'error');
+            }
+        }
+    });
 };
 
 window.handleStatusTransition = async function(newStatus) {
     if (!activeOrder) return;
     try {
-        window.showToast?.(`Moving to ${newStatus}...`, 'info');
+        window.showToast?.(`Moving to ${newStatus}…`, 'info');
         await api.updateOrderStatus(activeOrder.id, newStatus);
-        await loadOrders(); // Refresh lists
-        window.openOrderDetails(activeOrder.id); // Re-render sheet
+        pushTimelineEvent(activeOrder, `Status changed to ${newStatus}`, 'status', 'System Workflow');
+        await loadOrders();
+        window.openOrderDetails(activeOrder.id);
         window.showToast?.(`Status updated to ${newStatus}`, 'success');
     } catch (e) {
         window.showToast?.('Failed to update status', 'error');
@@ -643,6 +749,28 @@ window.deleteOrder = async function() {
 let currentWizardStep = 1;
 const TOTAL_WIZARD_STEPS = 4;
 
+// ─── WIZARD STEP VALIDATION ───────────────────────────────────────────────────
+// Returns null if the current step is valid, or an error message string.
+function validateWizardStep(stepNumber) {
+    if (stepNumber === 1) {
+        const customer = document.getElementById('create-customer')?.value;
+        const product  = document.getElementById('create-product')?.value.trim();
+        if (!customer) return 'Please select a customer.';
+        if (!product)  return 'Please enter a product name.';
+    }
+    if (stepNumber === 2) {
+        const qty = parseFloat(document.getElementById('create-qty')?.value);
+        if (!qty || qty <= 0) return 'Please enter a valid quantity (> 0).';
+    }
+    if (stepNumber === 3) {
+        const price = parseFloat(document.getElementById('create-price')?.value);
+        const date  = document.getElementById('create-date')?.value;
+        if (!price || price <= 0) return 'Please enter a valid unit price (> 0).';
+        if (!date)  return 'Please select a delivery date.';
+    }
+    return null;
+}
+
 window.goToOrderStep = function(dir) {
     const nextStep = currentWizardStep + dir;
     if (nextStep < 1 || nextStep > TOTAL_WIZARD_STEPS) return;
@@ -674,46 +802,58 @@ window.goToOrderStep = function(dir) {
     currentWizardStep = nextStep;
 };
 
-// Open wizard normally starts at step 1
+// Open wizard — always resets to Step 1 cleanly
 window.openCreateWizard = function() {
-    currentWizardStep = 1;
-    // reset visual state
-    window.goToOrderStep(0); 
-    // Clear inputs (can use formHandler.resetForm if available, but manual is fine for mock)
-    document.getElementById('createOrderSheet-content').querySelector('form').reset();
-    document.getElementById('calc-subtotal').textContent = '$0.00';
-    document.getElementById('calc-grandtotal').textContent = '$0.00';
-    closeSheet('fabActionSheet'); 
+    // Step the internal counter to 0 so goToOrderStep(1) always sets nextStep=1
+    currentWizardStep = 0;
+    window.goToOrderStep(1);
+
+    // Reset the form: the BottomSheet with isForm:true renders the sheet element
+    // itself as a <form>, so we target it directly by ID instead of querySelector('form')
+    const formEl = document.getElementById('createOrderSheet-content');
+    if (formEl && typeof formEl.reset === 'function') formEl.reset();
+
+    // Reset live calculation display (including tax line added in Task 3 fix)
+    const calcSubtotal   = document.getElementById('calc-subtotal');
+    const calcTaxVal     = document.getElementById('calc-taxval');
+    const calcGrandTotal = document.getElementById('calc-grandtotal');
+    if (calcSubtotal)   calcSubtotal.textContent   = '$0.00';
+    if (calcTaxVal)     calcTaxVal.textContent     = '$0.00';
+    if (calcGrandTotal) calcGrandTotal.textContent = '$0.00';
+
+    closeSheet('fabActionSheet');
     openSheet('createOrderSheet');
 }
 
 // Live Calculations listener setup (needs to be called after renderSheets)
 function bindWizardCalculations() {
-    const qtyInput = document.getElementById('create-qty');
+    const qtyInput   = document.getElementById('create-qty');
     const priceInput = document.getElementById('create-price');
-    const taxInput = document.getElementById('create-tax');
-    
+    const taxInput   = document.getElementById('create-tax');
+
     const updateCalculations = () => {
-        const qty = parseFloat(qtyInput.value) || 0;
-        const price = parseFloat(priceInput.value) || 0;
-        const tax = parseFloat(taxInput.value) || 0;
-        
-        const subtotal = qty * price;
-        const grandTotal = subtotal + tax;
-        
-        document.getElementById('calc-subtotal').textContent = `$${subtotal.toFixed(2)}`;
-        document.getElementById('calc-grandtotal').textContent = `$${grandTotal.toFixed(2)}`;
+        const qty    = parseFloat(qtyInput?.value)   || 0;
+        const price  = parseFloat(priceInput?.value) || 0;
+        const taxPct = parseFloat(taxInput?.value)   || 0;
+
+        const subtotal  = qty * price;
+        const taxAmount = subtotal * (taxPct / 100);   // tax is a percentage, not a flat amount
+        const grandTotal = subtotal + taxAmount;
+
+        const calcSubtotal   = document.getElementById('calc-subtotal');
+        const calcTaxVal     = document.getElementById('calc-taxval');
+        const calcGrandTotal = document.getElementById('calc-grandtotal');
+        if (calcSubtotal)   calcSubtotal.textContent   = `$${subtotal.toFixed(2)}`;
+        if (calcTaxVal)     calcTaxVal.textContent     = `$${taxAmount.toFixed(2)}`;
+        if (calcGrandTotal) calcGrandTotal.textContent = `$${grandTotal.toFixed(2)}`;
     };
 
-    if (qtyInput) qtyInput.addEventListener('input', updateCalculations);
+    if (qtyInput)   qtyInput.addEventListener('input',   updateCalculations);
     if (priceInput) priceInput.addEventListener('input', updateCalculations);
-    if (taxInput) taxInput.addEventListener('input', updateCalculations);
+    if (taxInput)   taxInput.addEventListener('input',   updateCalculations);
 }
 
-window.handleOrderAction = function(action) {
-    window.showToast?.(`Action: ${action}`, 'info');
-    // Implementation for PDF, Invoice generation would go here
-};
+// Duplicate definition removed — window.handleOrderAction is fully defined above.
 
 window.editOrder = function() {
     if (!activeOrder) return;
@@ -868,34 +1008,34 @@ async function renderSheets() {
         </button>
     `;
 
-    // Render Sheets
+    // Render all bottom sheets
+    const taskHTML = getTaskSheetHTML();
     sheetsContainer.innerHTML = [
-        BottomSheet({ id: 'fabActionSheet', title: 'Order Actions', content: sheetsHTML.fabActionContent, height: 'auto' }),
-        BottomSheet({ id: 'createOrderSheet', title: 'Create Order', content: sheetsHTML.createOrderContent, footerContent: sheetsHTML.createOrderFooter, isForm: true }),
+        BottomSheet({ id: 'fabActionSheet',    title: 'Order Actions',  content: sheetsHTML.fabActionContent, height: 'auto' }),
+        BottomSheet({ id: 'createOrderSheet', title: 'Create Order',   content: sheetsHTML.createOrderContent, footerContent: sheetsHTML.createOrderFooter, isForm: true }),
         BottomSheet({ id: 'orderDetailsSheet', customHeader: detailsHTML.orderDetailsHeader, content: detailsHTML.orderDetailsContent, footerContent: detailsHTML.orderDetailsFooter, height: '90vh' }),
-        BottomSheet({ id: 'editOrderSheet', title: 'Edit Order', content: sheetsHTML.editOrderContent, footerContent: sheetsHTML.editOrderFooter, height: '90vh', isForm: true }),
-        BottomSheet({ id: 'addExpenseSheet', title: 'Log Expense', content: addExpenseContent, footerContent: addExpenseFooter, height: 'auto' }),
+        BottomSheet({ id: 'editOrderSheet',   title: 'Edit Order',     content: sheetsHTML.editOrderContent, footerContent: sheetsHTML.editOrderFooter, height: '90vh', isForm: true }),
+        BottomSheet({ id: 'addExpenseSheet',  title: 'Log Expense',    content: addExpenseContent, footerContent: addExpenseFooter, height: 'auto' }),
         BottomSheet({ id: 'filterOrderSheet', customHeader: sheetsHTML.filterOrderHeader, content: sheetsHTML.filterOrderContent, footerContent: sheetsHTML.filterOrderFooter, height: 'auto' }),
-        BottomSheet({ id: 'importOrderSheet', title: 'Import Orders', content: sheetsHTML.importOrderContent, footerContent: sheetsHTML.importOrderFooter, height: 'auto' })
+        BottomSheet({ id: 'importOrderSheet', title: 'Import Orders',  content: sheetsHTML.importOrderContent, footerContent: sheetsHTML.importOrderFooter, height: 'auto' }),
+        BottomSheet({ id: 'taskSheet',        title: 'Add Task',       content: taskHTML.taskFormContent, footerContent: taskHTML.taskFormFooter, height: 'auto' }),
     ].join('');
     
-    // Bind logic for Submit Expense
+    // Bind submit-expense button
     document.getElementById('submit-expense-btn')?.addEventListener('click', async () => {
         if (!activeOrder) return;
         const amt = document.getElementById('expense-amount').value;
-        if (!amt || isNaN(amt)) {
+        if (!amt || isNaN(amt) || parseFloat(amt) <= 0) {
             window.showToast?.('Please enter a valid amount', 'error');
             return;
         }
         window.closeSheet('addExpenseSheet');
         try {
-            await api.addOrderExpense(activeOrder.id, {
-                type: document.getElementById('expense-type').value,
-                amount: amt,
-                notes: document.getElementById('expense-notes').value
-            });
+            const expType = document.getElementById('expense-type').value;
+            const expNotes = document.getElementById('expense-notes').value;
+            await api.addOrderExpense(activeOrder.id, { type: expType, amount: amt, notes: expNotes });
+            pushTimelineEvent(activeOrder, `Expense logged: $${parseFloat(amt).toFixed(2)} (${expType})`, 'expense', 'Current User', expNotes);
             window.showToast?.('Expense logged successfully', 'success');
-            // Re-render
             await loadOrders();
             window.openOrderDetails(activeOrder.id);
             document.getElementById('expense-amount').value = '';
@@ -909,6 +1049,37 @@ async function renderSheets() {
         window.bindFormValidation('createOrderSheet', 'create-order-submit');
         window.bindFormValidation('editOrderSheet', 'edit-order-submit');
     }
+
+    // Bind task sheet submit
+    document.getElementById('task-sheet-submit')?.addEventListener('click', async () => {
+        const title = document.getElementById('task-title')?.value.trim();
+        if (!title) { window.showToast?.('Task title is required', 'error'); return; }
+        const taskData = {
+            title,
+            assignee: document.getElementById('task-assignee')?.value || '',
+            priority: document.getElementById('task-priority')?.value || 'Normal',
+            dueDate:  document.getElementById('task-due-date')?.value || '',
+            notes:    document.getElementById('task-notes')?.value || ''
+        };
+        try {
+            if (_editingTaskId) {
+                await api.updateOrderTask(activeOrder.id, _editingTaskId, taskData);
+                pushTimelineEvent(activeOrder, `Task edited: "${title}"`, 'task', 'Current User');
+                window.showToast?.('Task updated', 'success');
+            } else {
+                await api.addOrderTask(activeOrder.id, taskData);
+                pushTimelineEvent(activeOrder, `Task added: "${title}"`, 'task', 'Current User');
+                window.showToast?.('Task added', 'success');
+            }
+            window.closeSheet('taskSheet');
+            await loadOrders();
+            activeOrder = currentOrders.find(o => o.id === activeOrder.id) || activeOrder;
+            _refreshTaskAndActivityPanels();
+        } catch (e) {
+            window.showToast?.('Failed to save task', 'error');
+        }
+    });
+    _editingTaskId = null;
 
     // Bind live wizard calculations
     bindWizardCalculations();
@@ -1036,17 +1207,22 @@ window.createSampleOrder = function() {
 window.createDraftOrder = async function() {
     if (window.setLoading) window.setLoading('orders-list');
     try {
+        // Omit 'id' so api.saveOrder() takes the create path and auto-generates one
         const newOrder = {
-            id: 'ORD-' + Math.floor(1000 + Math.random() * 9000),
-            customerId: 'cust-001',
-            customerName: 'Acme Corp',
+            customerId: '',
+            customerName: 'Draft',
             product: 'Quick Draft',
             qty: 0,
+            unitPrice: 0,
+            subtotal: 0,
+            tax: 0,
+            grandTotal: 0,
             value: 0,
             status: 'Draft',
+            priority: 'Normal',
             deliveryDate: new Date().toISOString().split('T')[0]
         };
-        await api.createOrder(newOrder);
+        await api.saveOrder(newOrder);
         window.showToast?.('Draft order created', 'success');
         await loadOrders();
     } catch (e) {
@@ -1055,37 +1231,146 @@ window.createDraftOrder = async function() {
 };
 
 window.importOrders = function() {
-    const fileInput = document.getElementById('import-file-upload');
-    if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
-        window.showToast?.('Please select a file to import', 'error');
+    // Confirm previewed rows from handleImportFileSelect
+    const previewPanel = document.getElementById('import-preview-panel');
+    const hasPreview = previewPanel && !previewPanel.classList.contains('hidden');
+    const importBtn = document.getElementById('import-submit-btn');
+
+    if (!hasPreview) {
+        window.showToast?.('Please select a file first', 'error');
         return;
     }
-    
-    const importBtn = document.getElementById('import-submit-btn');
-    if (importBtn) {
-        importBtn.textContent = 'Importing...';
-        importBtn.disabled = true;
+    if (!window._importPreviewRows || window._importPreviewRows.length === 0) {
+        window.showToast?.('No valid rows to import', 'error');
+        return;
     }
-    
+
+    if (importBtn) { importBtn.textContent = 'Importing…'; importBtn.disabled = true; }
+
     setTimeout(async () => {
-        const newOrder = {
-            id: 'ORD-' + Math.floor(1000 + Math.random() * 9000),
-            customerId: 'cust-002',
-            customerName: 'Globex Inc',
-            product: 'Imported Garments',
-            qty: 500,
-            value: 12500,
-            status: 'Draft',
-            deliveryDate: new Date().toISOString().split('T')[0]
-        };
-        await api.createOrder(newOrder);
-        
-        window.showToast?.('1 Order successfully imported!', 'success');
-        window.closeSheet('importOrderSheet');
-        if (importBtn) {
-            importBtn.textContent = 'Import Orders';
-            importBtn.disabled = false;
+        try {
+            for (const row of window._importPreviewRows) {
+                await api.saveOrder({
+                    customerName: row.customer,
+                    product:      row.product,
+                    qty:          row.qty,
+                    unitPrice:    row.unitPrice,
+                    subtotal:     row.qty * row.unitPrice,
+                    tax:          0,
+                    grandTotal:   row.qty * row.unitPrice,
+                    value:        row.qty * row.unitPrice,
+                    status:       'Draft',
+                    priority:     'Normal',
+                    deliveryDate: row.deliveryDate || new Date().toISOString().split('T')[0]
+                });
+            }
+            const count = window._importPreviewRows.length;
+            window._importPreviewRows = [];
+            window.showToast?.(`${count} order${count > 1 ? 's' : ''} imported successfully`, 'success');
+            window.closeSheet('importOrderSheet');
+            await loadOrders();
+        } catch (e) {
+            window.showToast?.('Import failed', 'error');
+        } finally {
+            if (importBtn) { importBtn.textContent = 'Import Orders'; importBtn.disabled = false; }
         }
-        await loadOrders();
-    }, 1500);
+    }, 1200);
+};
+
+// Handles CSV/Excel file selection: simulates parsing and shows a preview table
+window.handleImportFileSelect = function(input) {
+    const file = input?.files?.[0];
+    const previewPanel = document.getElementById('import-preview-panel');
+    const previewRowsEl = document.getElementById('import-preview-rows');
+    const countEl = document.getElementById('import-preview-count');
+    if (!previewPanel || !previewRowsEl) return;
+
+    if (!file) {
+        previewPanel.classList.add('hidden');
+        return;
+    }
+
+    // Simulate parsing — in V1 we generate plausible stub rows based on filename
+    const stem = file.name.replace(/\.[^.]+$/, '').replace(/[_-]/g, ' ');
+    window._importPreviewRows = [
+        { customer: 'Chennai Silks',     product: stem + ' - Style A', qty: 200, unitPrice: 350, deliveryDate: '2026-09-15' },
+        { customer: 'Arvind Fashions',   product: stem + ' - Style B', qty: 150, unitPrice: 420, deliveryDate: '2026-09-22' },
+        { customer: 'Sri Kumaran Stores',product: stem + ' - Style C', qty: 300, unitPrice: 280, deliveryDate: '2026-10-01' },
+    ];
+
+    previewRowsEl.innerHTML = window._importPreviewRows.map((r, i) => `
+        <div class="flex items-start gap-3 p-3 rounded-xl bg-surface-container-lowest border border-outline-variant/50">
+            <span class="w-6 h-6 rounded-full bg-primary/10 text-primary text-[11px] font-bold flex items-center justify-center shrink-0">${i + 1}</span>
+            <div class="text-[13px] flex-1">
+                <p class="font-semibold text-on-surface">${r.product}</p>
+                <p class="text-secondary">${r.customer} · Qty: ${r.qty} · ₹${r.unitPrice}/unit</p>
+                <p class="text-secondary/70">₹${(r.qty * r.unitPrice).toLocaleString('en-IN')} · ${r.deliveryDate}</p>
+            </div>
+        </div>
+    `).join('');
+
+    countEl.textContent = `${window._importPreviewRows.length} rows ready to import`;
+    previewPanel.classList.remove('hidden');
+};
+
+// ─── BULK ACTIONS ────────────────────────────────────────────────────────────
+
+window.bulkDelete = async function() {
+    if (selectedOrders.size === 0) return;
+    window.showConfirmation?.({
+        title: 'Delete Selected Orders',
+        message: `Permanently delete ${selectedOrders.size} order(s)? This cannot be undone.`,
+        confirmText: 'Delete All',
+        onConfirm: async () => {
+            try {
+                for (const id of selectedOrders) await api.deleteOrder(id);
+                window.showToast?.(`${selectedOrders.size} order(s) deleted`, 'success');
+                selectedOrders.clear();
+                window.exitBulkMode();
+                await loadOrders();
+            } catch (e) { window.showToast?.('Bulk delete failed', 'error'); }
+        }
+    });
+};
+
+window.bulkExport = function() {
+    if (selectedOrders.size === 0) return;
+    const rows = currentOrders.filter(o => selectedOrders.has(o.id));
+    const header = 'ID,Customer,Product,Qty,Grand Total,Status,Delivery Date';
+    const csv    = rows.map(o => `${o.id},"${o.customerName}","${o.product}",${o.qty},${o.grandTotal},${o.status},${o.deliveryDate}`).join('\n');
+    const blob   = new Blob([header + '\n' + csv], { type: 'text/csv' });
+    const url    = URL.createObjectURL(blob);
+    const a      = document.createElement('a');
+    a.href = url; a.download = `garment-os-export-${Date.now()}.csv`;
+    a.click(); URL.revokeObjectURL(url);
+    window.showToast?.(`${rows.length} order(s) exported as CSV`, 'success');
+};
+
+window.bulkPrint = function() {
+    if (selectedOrders.size === 0) return;
+    window.showToast?.(`Print job queued for ${selectedOrders.size} order(s)`, 'info');
+    setTimeout(() => window.showToast?.('Print simulation complete', 'success'), 1500);
+};
+
+window.bulkAssign = function() {
+    if (selectedOrders.size === 0) return;
+    // For V1 simulation: assign all selected orders to a factory
+    const factory = 'Unit A - South Wing';
+    window.showConfirmation?.({
+        title: 'Assign to Production',
+        message: `Assign ${selectedOrders.size} order(s) to ${factory}?`,
+        confirmText: 'Assign',
+        onConfirm: async () => {
+            try {
+                for (const id of selectedOrders) {
+                    const order = currentOrders.find(o => o.id === id);
+                    if (order) await api.saveOrder({ ...order, factory });
+                }
+                window.showToast?.(`${selectedOrders.size} order(s) assigned to ${factory}`, 'success');
+                selectedOrders.clear();
+                window.exitBulkMode();
+                await loadOrders();
+            } catch (e) { window.showToast?.('Bulk assign failed', 'error'); }
+        }
+    });
 };

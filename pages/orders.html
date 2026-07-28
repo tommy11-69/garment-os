@@ -71,9 +71,31 @@
             </button>
             <span id="bulk-selected-count" class="text-[14px] font-bold text-on-surface">0 Selected</span>
         </div>
-        <div class="flex gap-2">
-            <button onclick="window.bulkArchive()" class="px-4 py-2 rounded-xl border border-outline-variant text-[14px] font-medium text-secondary active-bg shadow-sm">Archive</button>
-            <button onclick="window.bulkApprove()" class="px-4 py-2 rounded-xl bg-primary text-white text-[14px] font-bold shadow-sm active-scale">Approve</button>
+        <div class="flex gap-1">
+            <button onclick="window.bulkArchive()" title="Archive" class="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl text-secondary active-bg transition-colors">
+                <span class="material-symbols-outlined text-[18px]">archive</span>
+                <span class="text-[10px] font-medium">Archive</span>
+            </button>
+            <button onclick="window.bulkDelete()" title="Delete" class="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl text-error active-bg transition-colors">
+                <span class="material-symbols-outlined text-[18px]">delete</span>
+                <span class="text-[10px] font-medium">Delete</span>
+            </button>
+            <button onclick="window.bulkExport()" title="Export CSV" class="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl text-secondary active-bg transition-colors">
+                <span class="material-symbols-outlined text-[18px]">download</span>
+                <span class="text-[10px] font-medium">Export</span>
+            </button>
+            <button onclick="window.bulkPrint()" title="Print" class="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl text-secondary active-bg transition-colors">
+                <span class="material-symbols-outlined text-[18px]">print</span>
+                <span class="text-[10px] font-medium">Print</span>
+            </button>
+            <button onclick="window.bulkAssign()" title="Assign Production" class="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl text-secondary active-bg transition-colors">
+                <span class="material-symbols-outlined text-[18px]">precision_manufacturing</span>
+                <span class="text-[10px] font-medium">Assign</span>
+            </button>
+            <button onclick="window.bulkApprove()" title="Approve" class="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-xl bg-primary text-on-primary active-scale transition-apple shadow-sm rounded-xl">
+                <span class="material-symbols-outlined text-[18px]">check_circle</span>
+                <span class="text-[10px] font-bold">Approve</span>
+            </button>
         </div>
     </div>
 

@@ -311,10 +311,21 @@ export async function getOrderSheetsHTML() {
                 <p class="text-[14px] text-secondary mt-1">Upload a spreadsheet containing your orders.</p>
             </div>
             <div class="bg-surface-container-lowest border border-dashed border-outline-variant rounded-2xl p-6 relative">
-                <input type="file" id="import-file-upload" accept=".csv, .xlsx" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                <input type="file" id="import-file-upload" accept=".csv, .xlsx" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onchange="window.handleImportFileSelect(this)">
                 <span class="material-symbols-outlined text-[32px] text-secondary mb-2">cloud_upload</span>
                 <p class="text-[14px] font-medium text-on-surface">Tap to select a file</p>
                 <p class="text-[12px] text-secondary">CSV or Excel (Max 5MB)</p>
+            </div>
+            <!-- Preview panel (shown after file select) -->
+            <div id="import-preview-panel" class="hidden text-left">
+                <div class="flex items-center justify-between mb-3">
+                    <h4 class="text-[15px] font-bold text-on-surface">Preview</h4>
+                    <span id="import-preview-count" class="text-[12px] text-secondary"></span>
+                </div>
+                <div id="import-preview-rows" class="flex flex-col gap-2"></div>
+                <div id="import-error-banner" class="hidden mt-3 p-3 bg-error/10 border border-error/20 rounded-xl">
+                    <p class="text-[13px] text-error font-medium" id="import-error-msg"></p>
+                </div>
             </div>
         </div>
     `;
@@ -334,6 +345,49 @@ export async function getOrderSheetsHTML() {
         fabActionContent, importOrderContent, importOrderFooter,
         filterOrderHeader, filterOrderContent, filterOrderFooter
     };
+}
+
+/**
+ * Returns the HTML for the Task create/edit bottom sheet.
+ * A single sheet is reused for both modes — the caller sets task-sheet-mode
+ * data attribute and pre-populates fields before opening.
+ */
+export function getTaskSheetHTML() {
+    const assigneeOptions = [
+        { label: 'Unassigned', value: '' },
+        { label: 'Sales', value: 'Sales' },
+        { label: 'QC Team', value: 'QC Team' },
+        { label: 'Purchasing', value: 'Purchasing' },
+        { label: 'Cutting Floor', value: 'Cutting Floor' },
+        { label: 'Prod Mgr', value: 'Prod Mgr' },
+        { label: 'Finance', value: 'Finance' },
+        { label: 'Logistics', value: 'Logistics' },
+        { label: 'Floor Spv', value: 'Floor Spv' },
+    ];
+    const priorityOptions = [
+        { label: 'Normal', value: 'Normal' },
+        { label: 'High', value: 'High' },
+        { label: 'Low', value: 'Low' },
+    ];
+
+    const taskFormContent = `
+        <div class="flex flex-col gap-4">
+            ${TextInput({ label: 'Task Title', id: 'task-title', placeholder: 'e.g. Review cut plan', required: true })}
+            <div class="grid grid-cols-2 gap-4">
+                ${SelectInput({ label: 'Assignee', id: 'task-assignee', options: assigneeOptions })}
+                ${SelectInput({ label: 'Priority', id: 'task-priority', options: priorityOptions })}
+            </div>
+            ${TextInput({ label: 'Due Date', id: 'task-due-date', type: 'date' })}
+            ${TextareaInput({ label: 'Notes', id: 'task-notes', placeholder: 'Optional details…', rows: 2 })}
+            <div class="h-4"></div>
+        </div>
+    `;
+    const taskFormFooter = `
+        <button id="task-sheet-submit" type="button" class="flex-1 bg-primary text-on-primary font-bold text-[15px] py-3.5 rounded-2xl active-scale transition-apple shadow-sm">
+            Save Task
+        </button>
+    `;
+    return { taskFormContent, taskFormFooter };
 }
 
 export function getOrderDetailsHTML() {

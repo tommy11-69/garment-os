@@ -26,22 +26,22 @@ export const ORDER_STATUSES = {
 export let customers = [
     {
         id: "c-001",
-        name: "Eleanor Vance",
-        company: "Everlane Corp.",
+        name: "Priya Rajan",
+        company: "Chennai Silks",
         initials: "EV",
         avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuDjsQrnDGH6EpdDe4Jzpub5fpI9paxS1qSAF-0EYDdMRn-40Zfp1H4ivFc2T7cTj7HS3uZnWtjlCmyhcGKN0KHS3HNaNzMWa9yB-DqA66rQK9arPwIXmP6fDsjao2TRWu0oBpTuJXOMi1KOYpAZUIu7lItqa1jt8lggfNjZcOdLiLUjAY1Pzb1YSCbv0Mv1uuofmOTAuRcPT0in4vDp1x6znmYUJiKEFUrz6dxdh7LMj1KSq02cN5HiRB1n2brh4gxTAT1U9qJlUa8Q",
-        email: "eleanor@everlane.com",
+        email: "priya@chennaisilks.com",
         phone: "+1 (555) 019-2834",
         status: "Active",
         statusColor: "bg-[#008A00]/10 text-[#008A00]"
     },
     {
         id: "c-002",
-        name: "Marcus Thorne",
-        company: "Patagonia",
+        name: "Karthik Natarajan",
+        company: "Arvind Fashions",
         initials: "MT",
         avatar: "https://lh3.googleusercontent.com/aida-public/AB6AXuDnM486kZM-lpNWk2IlqpzF64WxPwyZNAGRmmwbnl1hZ-4jogabI--2ibQdvzPZRfGgcdsRhOwmJc4blIdV_dfrApDpiQ-m6C8uPLmMUb6vUjeCvEyruI55DlXQUPPUz4Wbk722E-G5pUrRRZHOpe912RqyxaxQseAPz4miWYpvNJHYJShsMaEi7ViP2m5_Hc5EXSnMakPPbSQ45nQQTAYQ5l5gwT6clchpVQxqZCiAOfsBJ5hzqwoaHDLdD-YRAA1JFY8S7YOnN_ON",
-        email: "m.thorne@patagonia.com",
+        email: "k.natarajan@arvind.com",
         phone: "+1 (555) 018-9273",
         status: "Inactive",
         statusColor: "bg-surface-variant text-secondary"
@@ -66,7 +66,7 @@ export let costings = [
 export let orders = [
     {
         id: "ORD-992",
-        customerName: "Everlane Corp.",
+        customerName: "Chennai Silks",
         customerId: "c-001",
         costingId: "cost-001",
         product: "Organic Cotton Tees (SS24)",
@@ -94,8 +94,8 @@ export let orders = [
         
         // Production Tracking
         factory: "Unit A - South Wing",
-        productionManager: "Sarah Jenkins",
-        merchandiser: "Tom Hardy",
+        productionManager: "Meenakshi Iyer",
+        merchandiser: "Ramesh Krishnan",
         progressPercentage: 45,
         progressLabel: "Cutting Patterns",
         progressColor: "bg-orange-500",
@@ -104,10 +104,10 @@ export let orders = [
         
         // Timeline & Tasks
         timeline: [
-            { date: "Oct 20, 2026 - 09:00 AM", title: "Order Created", user: "Eleanor Vance", type: "system", status: "completed" },
+            { date: "Oct 20, 2026 - 09:00 AM", title: "Order Created", user: "Priya Rajan", type: "system", status: "completed" },
             { date: "Oct 21, 2026 - 10:15 AM", title: "Status Updated: Approved", user: "System", type: "status", status: "completed" },
             { date: "Oct 22, 2026 - 11:30 AM", title: "Status Updated: Material Reserved", user: "Inventory", type: "inventory", status: "completed" },
-            { date: "Oct 24, 2026 - 08:00 AM", title: "Status Updated: Cutting", user: "Sarah Jenkins", type: "status", status: "active" }
+            { date: "Oct 24, 2026 - 08:00 AM", title: "Status Updated: Cutting", user: "Meenakshi Iyer", type: "status", status: "active" }
         ],
         tasks: [
             { id: "t1", title: "Source 500kg Organic Cotton Yarn", assignee: "Purchasing", status: "Completed" },
@@ -167,7 +167,7 @@ export let transactions = [
     {
         id: "txn-001",
         type: "expense",
-        title: "Fabric Supplier (TexCorp)",
+        title: "Fabric Supplier (Coimbatore Textiles)",
         category: "Raw Materials",
         amount: 4200.00,
         amountColor: "text-on-surface",

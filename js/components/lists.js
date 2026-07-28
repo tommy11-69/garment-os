@@ -10,6 +10,10 @@ export function TimelineEvent({ title, description, timestamp, status = 'complet
     if (type === 'system') iconName = 'settings';
     if (type === 'status') iconName = 'update';
     if (type === 'inventory') iconName = 'inventory_2';
+    if (type === 'action') iconName = 'bolt';
+    if (type === 'task') iconName = 'task_alt';
+    if (type === 'expense') iconName = 'receipt_long';
+    if (type === 'edit') iconName = 'edit';
     
     const iconColor = statusColors[status] || statusColors.pending;
     let icon = '';
@@ -35,21 +39,39 @@ export function TimelineEvent({ title, description, timestamp, status = 'complet
     </div>`;
 }
 
-export function TaskCard({ id, title, status, assignee }) {
+export function TaskCard({ id, title, status, assignee, priority = 'Normal', dueDate = '' }) {
     const isCompleted = status === 'Completed';
     const checkClass = isCompleted ? 'text-primary' : 'text-outline';
     const checkIcon = isCompleted ? 'check_box' : 'check_box_outline_blank';
     const textClass = isCompleted ? 'text-secondary line-through' : 'text-on-surface';
 
+    const priorityColors = { High: 'text-error bg-error/10', Normal: 'text-secondary bg-surface-variant', Low: 'text-secondary bg-surface-variant' };
+    const priorityBadge = priority && priority !== 'Normal'
+        ? `<span class="text-[10px] font-bold px-1.5 py-0.5 rounded ${priorityColors[priority] || priorityColors.Normal}">${priority}</span>`
+        : '';
+
+    const dueDateChip = dueDate
+        ? `<span class="text-[10px] text-secondary flex items-center gap-0.5"><span class="material-symbols-outlined text-[11px]">event</span>${dueDate}</span>`
+        : '';
+
     return `
-    <div class="flex items-center gap-3 p-3 rounded-xl border border-outline-variant/50 bg-surface-container-lowest mb-2 cursor-pointer active-bg transition-colors" onclick="window.toggleTaskStatus('${id}')">
-        <span class="material-symbols-outlined ${checkClass} text-[20px] shrink-0">${checkIcon}</span>
-        <div class="flex-1 min-w-0">
+    <div class="flex items-center gap-3 p-3 rounded-xl border border-outline-variant/50 bg-surface-container-lowest mb-2">
+        <span class="material-symbols-outlined ${checkClass} text-[20px] shrink-0 cursor-pointer active-scale transition-apple" onclick="window.toggleTaskStatus('${id}')">${checkIcon}</span>
+        <div class="flex-1 min-w-0 cursor-pointer" onclick="window.toggleTaskStatus('${id}')">
             <h4 class="text-[14px] font-medium ${textClass} truncate">${title}</h4>
-            <div class="flex items-center gap-1 mt-1">
-                <span class="material-symbols-outlined text-[12px] text-secondary">person</span>
-                <span class="text-[11px] text-secondary truncate">${assignee}</span>
+            <div class="flex items-center gap-2 mt-1 flex-wrap">
+                <span class="text-[11px] text-secondary flex items-center gap-0.5 truncate"><span class="material-symbols-outlined text-[11px]">person</span>${assignee || 'Unassigned'}</span>
+                ${priorityBadge}
+                ${dueDateChip}
             </div>
+        </div>
+        <div class="flex gap-1 shrink-0">
+            <button onclick="event.stopPropagation(); window.openEditTask('${id}')" class="w-7 h-7 rounded-lg flex items-center justify-center text-secondary active-bg transition-colors" title="Edit Task">
+                <span class="material-symbols-outlined text-[16px]">edit</span>
+            </button>
+            <button onclick="event.stopPropagation(); window.deleteTask('${id}')" class="w-7 h-7 rounded-lg flex items-center justify-center text-error/70 active-bg transition-colors" title="Delete Task">
+                <span class="material-symbols-outlined text-[16px]">delete</span>
+            </button>
         </div>
     </div>`;
 }

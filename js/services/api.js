@@ -10,6 +10,10 @@ import {
  */
 const delay = (ms = 600) => new Promise(resolve => setTimeout(resolve, ms));
 
+/** Returns a formatted timestamp string for timeline events. */
+export const makeTimestamp = () =>
+    new Intl.DateTimeFormat('en-IN', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date());
+
 export const api = {
     async getCustomers() { await delay(); return customers; },
     async getOrders() { await delay(); return orders; },
@@ -40,7 +44,7 @@ export const api = {
                     if (!newOrder.timeline) newOrder.timeline = [];
                     newOrder.timeline.unshift({
                         id: `t-${Date.now()}`,
-                        date: new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date()),
+                        date: makeTimestamp(),
                         title: 'Order Details Edited',
                         user: 'System',
                         type: 'action'
@@ -55,7 +59,7 @@ export const api = {
             if (!newOrder.timeline) newOrder.timeline = [];
             newOrder.timeline.unshift({
                 id: `t-${Date.now()}`,
-                date: new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date()),
+                date: makeTimestamp(),
                 title: 'Order Created',
                 user: 'System',
                 type: 'action'
@@ -79,7 +83,7 @@ export const api = {
                 if (!newO.timeline) newO.timeline = [];
                 newO.timeline.unshift({
                     id: `t-${Date.now()}`,
-                    date: new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date()),
+                    date: makeTimestamp(),
                     title: 'Order Archived',
                     user: 'System',
                     type: 'action'
@@ -124,11 +128,10 @@ export const api = {
         order.status = newStatus;
         // Mock timeline event
         if (!order.timeline) order.timeline = [];
-        const formatter = new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' });
         
         order.timeline.unshift({
             id: `t-${Date.now()}`,
-            date: formatter.format(new Date()),
+            date: makeTimestamp(),
             title: `Status: ${newStatus}`,
             user: "System Workflow",
             type: "status"
@@ -186,17 +189,37 @@ export const api = {
     async addOrderTask(orderId, taskData) {
         await delay();
         const order = orders.find(o => o.id === orderId);
-        if (!order) throw new Error("Order not found");
-        
+        if (!order) throw new Error('Order not found');
         if (!order.tasks) order.tasks = [];
         const newTask = {
             id: `tsk-${Date.now()}`,
             title: taskData.title,
-            status: taskData.status || "Pending",
-            assignee: taskData.assignee || "Unassigned"
+            status: taskData.status || 'Pending',
+            assignee: taskData.assignee || 'Unassigned',
+            priority: taskData.priority || 'Normal',
+            dueDate: taskData.dueDate || '',
+            notes: taskData.notes || ''
         };
         order.tasks.unshift(newTask);
         return newTask;
+    },
+
+    async updateOrderTask(orderId, taskId, taskData) {
+        await delay();
+        const order = orders.find(o => o.id === orderId);
+        if (!order) throw new Error('Order not found');
+        const taskIdx = (order.tasks || []).findIndex(t => t.id === taskId);
+        if (taskIdx === -1) throw new Error('Task not found');
+        order.tasks[taskIdx] = { ...order.tasks[taskIdx], ...taskData };
+        return order.tasks[taskIdx];
+    },
+
+    async deleteOrderTask(orderId, taskId) {
+        await delay();
+        const order = orders.find(o => o.id === orderId);
+        if (!order) throw new Error('Order not found');
+        order.tasks = (order.tasks || []).filter(t => t.id !== taskId);
+        return { success: true };
     },
 
     async logOrderActivity(orderId, activityData) {
@@ -208,7 +231,7 @@ export const api = {
         if (!order.timeline) order.timeline = [];
         order.timeline.unshift({
             id: `t-${Date.now()}`,
-            date: new Date().toISOString().split('T')[0],
+            date: makeTimestamp(),
             title: activityData.title,
             user: "Current User",
             type: "system"
@@ -237,7 +260,7 @@ export const api = {
         // Log to timeline
         if (!order.timeline) order.timeline = [];
         order.timeline.unshift({
-            date: new Date().toLocaleString(),
+            date: makeTimestamp(),
             title: `Logged Expense: $${newExpense.amount} (${newExpense.type})`,
             user: "System",
             type: "inventory",
