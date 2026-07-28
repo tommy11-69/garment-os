@@ -108,7 +108,7 @@ export const renderers = {
 
     inventoryCard(item) {
         return `
-            <div role="button" tabindex="0" class="bg-surface-container-lowest rounded-[24px] border border-outline-variant p-md shadow-sm active-scale transition-apple cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary" onclick="openSheet('itemDetailsSheet')">
+            <div role="button" tabindex="0" class="bg-surface-container-lowest rounded-[24px] border border-outline-variant p-md shadow-sm active-scale transition-apple cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary" onclick="window.openItemDetails('${item.id}')">
                 <div class="flex justify-between items-start mb-3">
                     <div class="flex gap-3 items-center">
                         <div class="w-10 h-10 rounded-full ${item.iconColor} flex items-center justify-center">
