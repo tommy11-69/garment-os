@@ -113,7 +113,7 @@ export function BottomSheet({ id, title = '', customHeader = '', content, footer
     <div id="${id}-overlay" class="bottom-sheet-overlay" onclick="closeSheet('${id}')" aria-hidden="true"></div>
     
     <!-- Sheet -->
-    <${tag} id="${id}" role="dialog" aria-modal="true" aria-labelledby="${id}-title" class="bottom-sheet-content flex flex-col h-[${height}]" ${formAttr}>
+    <${tag} id="${id}-content" role="dialog" aria-modal="true" aria-labelledby="${id}-title" class="bottom-sheet-content flex flex-col h-[${height}]" ${formAttr}>
         <div class="sheet-handle"></div>
         ${headerHtml}
         <div class="flex-1 overflow-y-auto p-lg flex flex-col gap-lg bg-background">

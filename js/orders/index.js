@@ -9,21 +9,31 @@ let activeOrder = null;
 let currentFilter = 'all';
 
 document.addEventListener('DOMContentLoaded', async () => {
-    // 1. Initialize Segmented Control
     const segControl = document.getElementById('orders-segmented-control');
     if (segControl) {
-        segControl.innerHTML = SegmentedControl({
-            options: [
-                { id: 'all', label: 'All' },
-                { id: 'active', label: 'Active (Draft/Prod)' },
-                { id: 'completed', label: 'Completed' }
-            ],
-            activeOption: 'all',
-            onChange: (val) => {
-                currentFilter = val;
-                renderOrders();
-            }
-        });
+        const options = [
+            { id: 'all', label: 'All' },
+            { id: 'active', label: 'Active (Draft/Prod)' },
+            { id: 'completed', label: 'Completed' }
+        ];
+        
+        const renderSegControl = () => {
+            segControl.innerHTML = SegmentedControl({
+                options: options,
+                activeOption: currentFilter
+            });
+            
+            // Attach event listeners manually
+            const tabs = segControl.querySelectorAll('button[role="tab"]');
+            tabs.forEach(tab => {
+                tab.addEventListener('click', (e) => {
+                    currentFilter = e.currentTarget.dataset.option;
+                    renderSegControl(); // Re-render to update classes
+                    renderOrders();
+                });
+            });
+        };
+        renderSegControl();
     }
 
     // 2. Load Data
