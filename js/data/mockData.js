@@ -197,3 +197,4 @@ export const setTransactions = (newTxns) => { transactions = newTxns; };
 export const setActiveBatches = (newBatches) => { activeBatches = newBatches; };
 export const setCostings = (newCostings) => { costings = newCostings; };
 export const setOrders = (newOrders) => { orders = newOrders; };
+export const setCustomers = (newCustomers) => { customers = newCustomers; };

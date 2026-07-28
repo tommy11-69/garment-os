@@ -3,6 +3,7 @@ import { renderers } from '../renderers.js';
 import { SegmentedControl, BottomSheet, TimelineEvent, TaskCard } from '../components/index.js';
 import { bindFormValidation } from '../utils/formHandler.js';
 import { getOrderSheetsHTML, getOrderDetailsHTML, getTaskSheetHTML } from './templates.js';
+import { getCreateCustomerSheetHTML, getCreateCustomerFooterHTML } from '../components/customerForms.js';
 
 // ─── Shared timeline event pusher ────────────────────────────────────────────
 // Pushes a standardised event to an order's timeline array.
@@ -772,6 +773,14 @@ function validateWizardStep(stepNumber) {
 }
 
 window.goToOrderStep = function(dir) {
+    if (dir > 0) {
+        const error = validateWizardStep(currentWizardStep);
+        if (error) {
+            window.showToast?.(error, 'error');
+            // Add error styling to inputs if needed
+            return;
+        }
+    }
     const nextStep = currentWizardStep + dir;
     if (nextStep < 1 || nextStep > TOTAL_WIZARD_STEPS) return;
 
@@ -1010,6 +1019,9 @@ async function renderSheets() {
 
     // Render all bottom sheets
     const taskHTML = getTaskSheetHTML();
+    const createCustContent = getCreateCustomerSheetHTML();
+    const createCustFooter = getCreateCustomerFooterHTML();
+
     sheetsContainer.innerHTML = [
         BottomSheet({ id: 'fabActionSheet',    title: 'Order Actions',  content: sheetsHTML.fabActionContent, height: 'auto' }),
         BottomSheet({ id: 'createOrderSheet', title: 'Create Order',   content: sheetsHTML.createOrderContent, footerContent: sheetsHTML.createOrderFooter, isForm: true }),
@@ -1019,6 +1031,7 @@ async function renderSheets() {
         BottomSheet({ id: 'filterOrderSheet', customHeader: sheetsHTML.filterOrderHeader, content: sheetsHTML.filterOrderContent, footerContent: sheetsHTML.filterOrderFooter, height: 'auto' }),
         BottomSheet({ id: 'importOrderSheet', title: 'Import Orders',  content: sheetsHTML.importOrderContent, footerContent: sheetsHTML.importOrderFooter, height: 'auto' }),
         BottomSheet({ id: 'taskSheet',        title: 'Add Task',       content: taskHTML.taskFormContent, footerContent: taskHTML.taskFormFooter, height: 'auto' }),
+        BottomSheet({ id: 'createCustomerSheet', title: 'New Customer', content: createCustContent, footerContent: createCustFooter, height: '90vh', isForm: true })
     ].join('');
     
     // Bind submit-expense button
@@ -1084,6 +1097,7 @@ async function renderSheets() {
     // Bind live wizard calculations
     bindWizardCalculations();
     bindOrderSubmissions();
+    bindCustomerSearch();
     
     // Bind Auto-Fill for Quote Linking
     const quoteSelect = document.getElementById('create-quote');
@@ -1373,4 +1387,194 @@ window.bulkAssign = function() {
             } catch (e) { window.showToast?.('Bulk assign failed', 'error'); }
         }
     });
+};
+
+// ─── CREATE NEW CUSTOMER & CUSTOMER DROPDOWN ────────────────────────────────
+
+let cachedCustomers = [];
+
+async function bindCustomerSearch() {
+    cachedCustomers = await api.getCustomers();
+    
+    const searchInput = document.getElementById('create-customer-search');
+    const dropdown = document.getElementById('customer-search-dropdown');
+    
+    if (searchInput && dropdown) {
+        // Show dropdown on focus
+        searchInput.addEventListener('focus', () => {
+            dropdown.classList.remove('hidden');
+            window.handleCustomerSearch(searchInput.value); // render initial
+        });
+        
+        // Hide dropdown on blur (delayed to allow clicks)
+        searchInput.addEventListener('blur', () => {
+            setTimeout(() => {
+                dropdown.classList.add('hidden');
+            }, 200);
+        });
+        
+        // Live search on input
+        searchInput.addEventListener('input', (e) => {
+            dropdown.classList.remove('hidden');
+            window.handleCustomerSearch(e.target.value);
+            // Clear hidden input if user changes text
+            document.getElementById('create-customer').value = '';
+        });
+    }
+}
+
+window.openCreateCustomer = function() {
+    const form = document.getElementById('createCustomerSheet-content');
+    if (form) form.reset();
+    
+    // Clear validation errors
+    const errorSpans = document.querySelectorAll('#createCustomerSheet .text-error');
+    errorSpans.forEach(span => {
+        if(span.id && span.id.endsWith('-error')) {
+            span.textContent = '';
+            span.classList.remove('opacity-100');
+            span.classList.add('opacity-0');
+        }
+    });
+    const errorWrappers = document.querySelectorAll('#createCustomerSheet .group.is-invalid');
+    errorWrappers.forEach(w => w.classList.remove('is-invalid'));
+
+    window.openSheet('createCustomerSheet');
+    
+    // Bind validation logic right after opening
+    if (window.bindFormValidation) {
+        window.bindFormValidation('createCustomerSheet-content', 'create-customer-submit');
+    }
+    
+    // Hide the customer search dropdown if it's open
+    const dropdown = document.getElementById('customer-search-dropdown');
+    if(dropdown) dropdown.classList.add('hidden');
+};
+
+window.saveNewCustomer = async function() {
+    const btn = document.getElementById('create-customer-submit');
+    const originalText = btn.innerHTML;
+    
+    // Collect data
+    const customerData = {
+        name: document.getElementById('new-cust-name').value,
+        company: document.getElementById('new-cust-company').value,
+        contactPerson: document.getElementById('new-cust-contact').value,
+        mobile: document.getElementById('new-cust-mobile').value,
+        whatsapp: document.getElementById('new-cust-whatsapp').value,
+        email: document.getElementById('new-cust-email').value,
+        gst: document.getElementById('new-cust-gst').value,
+        customerType: document.getElementById('new-cust-type').value,
+        paymentTerms: document.getElementById('new-cust-terms').value,
+        creditLimit: document.getElementById('new-cust-limit').value,
+        currency: document.getElementById('new-cust-currency').value,
+        address: document.getElementById('new-cust-addr1').value + ' ' + document.getElementById('new-cust-addr2').value,
+        city: document.getElementById('new-cust-city').value,
+        state: document.getElementById('new-cust-state').value,
+        country: document.getElementById('new-cust-country').value,
+        pincode: document.getElementById('new-cust-pincode').value,
+        notes: document.getElementById('new-cust-notes').value,
+        isActive: document.getElementById('new-cust-active').checked,
+    };
+    
+    if(!customerData.name || !customerData.mobile) {
+        window.showToast?.('Please fill required fields', 'error');
+        return;
+    }
+
+    try {
+        btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>';
+        btn.disabled = true;
+        
+        const newCustomer = await api.saveCustomer(customerData);
+        
+        window.showToast?.('Customer created successfully', 'success');
+        
+        // Auto-select in the wizard without closing wizard
+        const searchInput = document.getElementById('create-customer-search');
+        const hiddenInput = document.getElementById('create-customer');
+        if (searchInput && hiddenInput) {
+            searchInput.value = newCustomer.name;
+            hiddenInput.value = newCustomer.id;
+            hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
+            searchInput.closest('.group')?.classList.remove('is-invalid');
+            const errorSpan = document.getElementById('create-customer-search-error');
+            if (errorSpan) {
+                errorSpan.classList.add('opacity-0');
+                errorSpan.classList.remove('opacity-100');
+            }
+        }
+        
+        // Update local cache
+        cachedCustomers = await api.getCustomers();
+        
+        window.closeSheet('createCustomerSheet');
+        
+    } catch (e) {
+        window.showToast?.(e.message || 'Failed to create customer', 'error');
+        // Simple inline error mapping if it was duplicate
+        if (e.message.includes('Duplicate')) {
+            const nameWrapper = document.getElementById('new-cust-name').closest('.group');
+            const nameError = document.getElementById('new-cust-name-error');
+            if (nameWrapper && nameError) {
+                nameWrapper.classList.add('is-invalid');
+                nameError.textContent = 'Possible duplicate';
+                nameError.classList.remove('opacity-0');
+                nameError.classList.add('opacity-100');
+            }
+            document.getElementById('new-cust-name').focus();
+        }
+    } finally {
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    }
+};
+
+window.handleCustomerSearch = function(query) {
+    const resultsContainer = document.getElementById('customer-search-results');
+    if (!resultsContainer) return;
+    
+    const lowerQuery = query.toLowerCase();
+    const filtered = cachedCustomers.filter(c => {
+        const name = (c.name || '').toLowerCase();
+        const company = (c.company || '').toLowerCase();
+        const phone = (c.phone || '').toLowerCase();
+        const gst = (c.gst || '').toLowerCase();
+        const code = (c.customerCode || '').toLowerCase();
+        return name.includes(lowerQuery) || company.includes(lowerQuery) || 
+               phone.includes(lowerQuery) || gst.includes(lowerQuery) || code.includes(lowerQuery);
+    });
+    
+    if (filtered.length === 0) {
+        resultsContainer.innerHTML = `<div class="p-3 text-center text-[13px] text-secondary">No customer found</div>`;
+    } else {
+        resultsContainer.innerHTML = filtered.map(c => `
+            <button type="button" onmousedown="window.selectCustomer('${c.id}', '${c.name.replace(/'/g, "\\'")}')" class="flex flex-col text-left p-2.5 rounded-lg hover:bg-surface-variant active:bg-surface-variant transition-colors">
+                <span class="text-[14px] font-medium text-on-surface">${c.name}</span>
+                <span class="text-[12px] text-secondary">${c.company || c.phone || c.customerCode || ''}</span>
+            </button>
+        `).join('');
+    }
+};
+
+window.selectCustomer = function(id, name) {
+    const searchInput = document.getElementById('create-customer-search');
+    const hiddenInput = document.getElementById('create-customer');
+    const dropdown = document.getElementById('customer-search-dropdown');
+    
+    if (searchInput && hiddenInput) {
+        searchInput.value = name;
+        hiddenInput.value = id;
+        
+        // Trigger validation check since we programmatically changed it
+        hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
+        searchInput.closest('.group')?.classList.remove('is-invalid'); 
+        
+        const errorSpan = document.getElementById('create-customer-search-error');
+        if (errorSpan) {
+            errorSpan.classList.add('opacity-0');
+            errorSpan.classList.remove('opacity-100');
+        }
+    }
+    if (dropdown) dropdown.classList.add('hidden');
 };

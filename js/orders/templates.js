@@ -81,7 +81,32 @@ export async function getOrderSheetsHTML() {
         <div id="order-step-1" class="wizard-step">
             <h3 class="text-[18px] font-bold text-on-surface mb-4">Customer & Product</h3>
             ${SelectInput({ label: 'Link Saved Quote', id: 'create-quote', options: costingOptions, helpText: 'Optional: Inherit pricing' })}
-            ${SelectInput({ label: 'Customer', id: 'create-customer', options: customerOptions, required: true })}
+            
+            <div class="flex flex-col gap-2 relative group mb-4">
+                <label class="text-[14px] font-semibold text-on-surface flex justify-between" for="create-customer-search">
+                    <span>Customer <span class="text-error" aria-hidden="true">*</span></span>
+                    <span class="text-[12px] text-error font-medium opacity-0 transition-opacity" id="create-customer-search-error" aria-live="polite"></span>
+                </label>
+                <div class="relative">
+                    <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-secondary" aria-hidden="true">search</span>
+                    <input type="text" id="create-customer-search" placeholder="Search name, company, GST, phone..." autocomplete="off"
+                           class="w-full bg-surface border border-outline-variant rounded-xl pl-11 pr-4 py-3 text-[16px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple placeholder:text-secondary">
+                    <input type="hidden" id="create-customer" required>
+                </div>
+                <!-- Custom Dropdown Menu -->
+                <div id="customer-search-dropdown" class="hidden absolute top-[100%] left-0 w-full bg-surface border border-outline-variant rounded-xl shadow-lg z-50 mt-1 max-h-60 flex flex-col overflow-hidden">
+                    <div id="customer-search-results" class="overflow-y-auto p-1 flex flex-col gap-1">
+                        <!-- Populated dynamically -->
+                    </div>
+                    <div class="p-2 border-t border-outline-variant/30 bg-surface-container-lowest sticky bottom-0">
+                        <button type="button" onclick="window.openCreateCustomer()" class="w-full py-2.5 rounded-lg bg-primary/10 text-primary text-[14px] font-semibold flex items-center justify-center gap-2 active-scale transition-apple">
+                            <span class="material-symbols-outlined text-[18px]">person_add</span>
+                            Create New Customer
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             ${TextInput({ label: 'Product Name', id: 'create-product', placeholder: 'e.g. Organic Cotton Tees', required: true })}
         </div>
 
@@ -536,7 +561,7 @@ export function getOrderDetailsHTML() {
             <!-- Action Grid -->
             <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-sm p-lg">
                 <h3 class="text-[14px] font-semibold text-secondary uppercase tracking-wider mb-4">Quick Actions</h3>
-                <div class="grid grid-cols-3 gap-3">
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                     <button onclick="handleOrderAction('Print Quote')" class="flex flex-col items-center justify-center p-3 rounded-xl bg-surface-variant active-scale transition-apple">
                         <span class="material-symbols-outlined text-secondary mb-1">picture_as_pdf</span>
                         <span class="text-[11px] font-medium text-on-surface">Print Quote</span>
@@ -602,3 +627,5 @@ export function getOrderDetailsHTML() {
 
     return { orderDetailsHeader, orderDetailsContent, orderDetailsFooter };
 }
+
+// ==========================================

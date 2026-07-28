@@ -1,6 +1,6 @@
 import { 
     customers, orders, inventory, activeBatches, transactions, costings,
-    setInventory, setTransactions, setActiveBatches, setCostings, setOrders
+    setInventory, setTransactions, setActiveBatches, setCostings, setOrders, setCustomers
 } from '../data/mockData.js';
 
 /**
@@ -15,7 +15,36 @@ export const makeTimestamp = () =>
     new Intl.DateTimeFormat('en-IN', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date());
 
 export const api = {
-    async getCustomers() { await delay(); return customers; },
+    
+    _enrichCustomerStats(c) {
+        const cOrders = orders.filter(o => o.customerId === c.id);
+        const totalOrders = cOrders.length;
+        const completedOrders = cOrders.filter(o => o.status === 'Completed').length;
+        const totalRevenue = cOrders.reduce((sum, o) => sum + (o.value || 0), 0);
+        const outstanding = cOrders.filter(o => ['Pending', 'Processing'].includes(o.status)).reduce((sum, o) => sum + (o.value || 0), 0);
+        const averageOrderValue = totalOrders > 0 ? (totalRevenue / totalOrders) : 0;
+        
+        // Sort to find last order date
+        const sorted = [...cOrders].sort((a,b) => new Date(b.date) - new Date(a.date));
+        const lastOrderDate = sorted.length > 0 ? sorted[0].date : null;
+        
+        return {
+            ...c,
+            totalOrders,
+            completedOrders,
+            totalRevenue,
+            outstanding,
+            averageOrderValue,
+            lastOrderDate,
+            activeOrders: totalOrders - completedOrders // legacy field support
+        };
+    },
+
+    async getCustomers() { 
+        await delay(); 
+        return customers.map(c => this._enrichCustomerStats(c)); 
+    },
+
     async getOrders() { await delay(); return orders; },
     async getInventory() { await delay(); return inventory; },
     async getActiveBatches() { await delay(); return activeBatches; },
@@ -23,6 +52,156 @@ export const api = {
     async getCostings() { await delay(); return costings; },
     async getCostingById(id) { await delay(); return costings.find(c => c.id === id); },
     
+    // -- CUSTOMERS --
+    
+    
+    async getCustomer(id) {
+        await delay(300);
+        const c = customers.find(c => c.id === id); return c ? this._enrichCustomerStats(c) : null;
+    },
+
+    async updateCustomer(id, data) {
+        await delay(500);
+        const index = customers.findIndex(c => c.id === id);
+        if (index === -1) throw new Error('Customer not found');
+        
+        customers[index] = {
+            ...customers[index],
+            ...data,
+            lastUpdated: new Date().toISOString()
+        };
+        return this._enrichCustomerStats(customers[index]);
+    },
+
+    async archiveCustomer(id) {
+        await delay(400);
+        const index = customers.findIndex(c => c.id === id);
+        if (index === -1) throw new Error('Customer not found');
+        customers[index].status = 'Archived';
+        customers[index].statusColor = 'bg-surface-variant text-secondary';
+        return this._enrichCustomerStats(customers[index]);
+    },
+
+    async restoreCustomer(id) {
+        await delay(400);
+        const index = customers.findIndex(c => c.id === id);
+        if (index === -1) throw new Error('Customer not found');
+        customers[index].status = 'Active';
+        customers[index].statusColor = 'bg-success-container/30 text-success';
+        return this._enrichCustomerStats(customers[index]);
+    },
+
+    async deleteCustomer(id) {
+        await delay(600);
+        const index = customers.findIndex(c => c.id === id);
+        if (index === -1) throw new Error('Customer not found');
+        customers.splice(index, 1);
+        return true;
+    },
+
+    async duplicateCustomer(id) {
+        await delay(500);
+        const customer = customers.find(c => c.id === id);
+        if (!customer) throw new Error('Customer not found');
+        
+        const duplicate = {
+            ...customer,
+            id: `c-${Date.now()}`,
+            customerCode: `CUST-${Math.floor(1000 + Math.random() * 9000)}`,
+            name: `${customer.name} (Copy)`,
+            status: 'Active',
+            statusColor: 'bg-success-container/30 text-success',
+            activeOrders: 0,
+            totalRevenue: 0
+        };
+        customers.unshift(duplicate);
+        return this._enrichCustomerStats(duplicate);
+    },
+
+    
+    async searchCustomers(query) {
+        const all = await this.getCustomers();
+        const q = query.toLowerCase();
+        return all.filter(c => 
+            c.name.toLowerCase().includes(q) || 
+            (c.company && c.company.toLowerCase().includes(q)) ||
+            (c.customerCode && c.customerCode.toLowerCase().includes(q)) ||
+            (c.phone && c.phone.includes(q)) ||
+            (c.gst && c.gst.toLowerCase().includes(q)) ||
+            (c.email && c.email.toLowerCase().includes(q)) ||
+            (c.city && c.city.toLowerCase().includes(q)) ||
+            (c.state && c.state.toLowerCase().includes(q))
+        );
+    },
+
+    async filterCustomers(filters) {
+        const all = await this.getCustomers();
+        return all.filter(c => {
+            if (filters.status && filters.status !== 'All') {
+                if (c.status !== filters.status) return false;
+            }
+            if (filters.customerType && filters.customerType !== 'All') {
+                if (c.customerType !== filters.customerType) return false;
+            }
+            if (filters.city && c.city !== filters.city) return false;
+            if (filters.state && c.state !== filters.state) return false;
+            return true;
+        });
+    },
+
+    async saveCustomer(customerData) {
+        await delay();
+        const nameLower = customerData.name.trim().toLowerCase();
+        
+        // Duplicate Detection
+        const duplicate = customers.find(c => {
+            if (c.name.trim().toLowerCase() === nameLower) return true;
+            if (c.phone && customerData.mobile && c.phone === customerData.mobile) return true;
+            if (c.gst && customerData.gst && c.gst === customerData.gst) return true;
+            return false;
+        });
+
+        if (duplicate) {
+            throw new Error('Duplicate customer found (Name, Mobile, or GST matches an existing record).');
+        }
+
+        const now = new Date().toISOString();
+        const newCustomer = {
+            id: `c-${Date.now()}`,
+            customerCode: `CUST-${Math.floor(1000 + Math.random() * 9000)}`,
+            name: customerData.name.trim(),
+            company: customerData.company || '',
+            contactPerson: customerData.contactPerson || '',
+            initials: customerData.name.substring(0, 2).toUpperCase(),
+            avatar: '', // Mock generic avatar
+            phone: customerData.mobile,
+            whatsapp: customerData.whatsapp || '',
+            email: customerData.email || '',
+            gst: customerData.gst || '',
+            customerType: customerData.customerType || 'Brand',
+            paymentTerms: customerData.paymentTerms || '',
+            creditLimit: parseFloat(customerData.creditLimit) || 0,
+            currency: customerData.currency || 'INR',
+            address: customerData.address || '',
+            city: customerData.city || '',
+            state: customerData.state || '',
+            country: customerData.country || '',
+            pincode: customerData.pincode || '',
+            notes: customerData.notes || '',
+            isActive: customerData.isActive !== false, // default true
+            createdAt: now,
+            updatedAt: now,
+            totalOrders: 0,
+            totalRevenue: 0,
+            outstandingAmount: 0,
+            status: customerData.isActive === false ? 'Inactive' : 'Active',
+            statusColor: customerData.isActive === false ? 'bg-surface-variant text-secondary' : 'bg-[#008A00]/10 text-[#008A00]'
+        };
+
+        setCustomers([newCustomer, ...customers]);
+        return newCustomer;
+    },
+
     // -- ORDERS --
     
     async saveOrder(orderData) {
@@ -115,7 +294,7 @@ export const api = {
         };
         
         setOrders([duplicate, ...orders]);
-        return duplicate;
+        return this._enrichCustomerStats(duplicate);
     },
 
     async updateOrderStatus(orderId, newStatus) {

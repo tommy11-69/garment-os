@@ -1,32 +1,42 @@
 import { ProgressBar } from './components/index.js';
 
 export const renderers = {
-    customerCard(customer) {
+    customerCard(customer, isBulkMode = false, isSelected = false) {
         const avatarHtml = customer.avatar 
             ? `<img class="w-full h-full object-cover" src="${customer.avatar}" alt="${customer.name}"/>`
             : `<span class="text-secondary font-medium">${customer.initials}</span>`;
             
+        const checkboxHtml = isBulkMode ? `
+            <div class="mr-3 flex items-center h-full">
+                <div class="w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors ${isSelected ? 'bg-primary border-primary' : 'border-outline-variant'}" onclick="event.stopPropagation(); window.toggleCustomerSelection('${customer.id}')">
+                    ${isSelected ? '<span class="material-symbols-outlined text-white text-[16px] font-bold">check</span>' : ''}
+                </div>
+            </div>
+        ` : '';
+            
         return `
-            <div role="button" tabindex="0" onclick="openSheet('customerDetailsSheet')" class="bg-surface-container-lowest rounded-[24px] border border-outline-variant p-md shadow-sm active-bg transition-colors flex items-start gap-4 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary">
+            <div role="button" tabindex="0" onclick="${isBulkMode ? `window.toggleCustomerSelection('${customer.id}')` : `window.openCustomerDetails('${customer.id}')`}" class="bg-surface-container-lowest rounded-[24px] border ${isSelected ? 'border-primary ring-1 ring-primary' : 'border-outline-variant'} p-md shadow-sm active-bg transition-colors flex items-start gap-4 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary">
+                ${checkboxHtml}
                 <div class="w-[60px] h-[60px] rounded-full overflow-hidden border border-outline-variant/30 flex-shrink-0 flex items-center justify-center bg-surface-variant/50">
                     ${avatarHtml}
                 </div>
-                <div class="flex-1">
+                <div class="flex-1 w-full min-w-0">
                     <div class="flex items-start justify-between">
                         <div>
-                            <h4 class="text-body-bold text-on-surface mb-0.5">${customer.name}</h4>
-                            <p class="text-caption text-secondary mb-2">${customer.company}</p>
+                            <span class="text-[12px] font-semibold text-primary mb-0.5 block">${customer.customerCode || ''}</span>
+                            <h4 class="text-body-bold text-on-surface mb-0.5 truncate">${customer.name}</h4>
+                            <p class="text-caption text-secondary mb-2 truncate">${customer.company}</p>
                         </div>
-                        <span class="px-2.5 py-1 rounded-full text-[11px] font-medium ${customer.statusColor}">${customer.status}</span>
+                        <span class="px-2.5 py-1 rounded-full text-[11px] font-medium shrink-0 ml-2 ${customer.statusColor || 'bg-success-container/30 text-success'}">${customer.status || 'Active'}</span>
                     </div>
-                    <div class="flex flex-col gap-1">
-                        <div class="flex items-center gap-2 text-secondary">
-                            <span class="material-symbols-outlined text-[16px]">mail</span>
-                            <span class="text-caption truncate">${customer.email}</span>
+                    <div class="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-outline-variant/30">
+                        <div>
+                            <span class="text-[11px] text-secondary uppercase tracking-wider block mb-0.5">Revenue</span>
+                            <span class="text-[13px] font-bold text-on-surface">$${(customer.totalRevenue || 0).toLocaleString()}</span>
                         </div>
-                        <div class="flex items-center gap-2 text-secondary">
-                            <span class="material-symbols-outlined text-[16px]">call</span>
-                            <span class="text-caption">${customer.phone}</span>
+                        <div>
+                            <span class="text-[11px] text-secondary uppercase tracking-wider block mb-0.5">Active Orders</span>
+                            <span class="text-[13px] font-bold text-on-surface">${customer.activeOrders || 0}</span>
                         </div>
                     </div>
                 </div>
