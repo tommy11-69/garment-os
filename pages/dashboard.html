@@ -40,50 +40,7 @@
             
             <!-- Metric Cards Container -->
             <div id="dashboard-metrics" class="grid grid-cols-2 gap-md"></div>
-            <script type="module">
-                import { MetricCard } from '../js/components/index.js';
-                import { api } from '../js/services/api.js';
-                import { renderers } from '../js/renderers.js';
-                
-                document.getElementById('dashboard-metrics').innerHTML = `
-                    ${MetricCard({ title: 'Revenue', icon: 'payments', value: '$1.2M', trend: 'up', trendValue: '+12%', iconColorClass: 'bg-accent-primary-light text-[#0071E3]', trendColorClass: 'text-[#008A00]' })}
-                    ${MetricCard({ title: 'Profit', icon: 'account_balance', value: '$428K', trend: 'up', trendValue: '+8%', iconColorClass: 'bg-[#008A00]/10 text-[#008A00]', trendColorClass: 'text-[#008A00]' })}
-                    ${MetricCard({ title: 'Orders', icon: 'receipt_long', value: '42', trend: 'neutral', trendValue: '3 need attention', iconColorClass: 'bg-surface-container text-on-surface', trendColorClass: 'text-secondary' })}
-                    ${MetricCard({ title: 'Capacity', icon: 'precision_manufacturing', value: '88%', trend: 'neutral', trendValue: '', iconColorClass: 'bg-[#FF9F0A]/10 text-[#FF9F0A]', trendColorClass: '' })}
-                `;
-                
-                async function loadDashboardData() {
-                    const ordersContainer = document.getElementById('dashboard-recent-orders');
-                    const batchesContainer = document.getElementById('dashboard-active-batches');
-                    
-                    if (window.setLoading) {
-                        window.setLoading('dashboard-recent-orders');
-                        window.setLoading('dashboard-active-batches');
-                    } else {
-                        ordersContainer.innerHTML = '<div class="p-md text-center text-secondary">Loading...</div>';
-                        batchesContainer.innerHTML = '<div class="p-md text-center text-secondary">Loading...</div>';
-                    }
-
-                    try {
-                        const [orders, batches] = await Promise.all([
-                            api.getOrders(),
-                            api.getActiveBatches()
-                        ]);
-                        ordersContainer.innerHTML = orders.map(o => renderers.dashboardOrderCard(o)).join('');
-                        batchesContainer.innerHTML = batches.map(b => renderers.dashboardBatchCard(b)).join('');
-                    } catch (error) {
-                        console.error('Failed to load dashboard data', error);
-                        ordersContainer.innerHTML = '<div class="p-md text-center text-error">Failed to load data</div>';
-                        batchesContainer.innerHTML = '<div class="p-md text-center text-error">Failed to load data</div>';
-                    }
-                }
-
-                if (document.readyState === 'loading') {
-                    document.addEventListener('DOMContentLoaded', loadDashboardData);
-                } else {
-                    loadDashboardData();
-                }
-            </script>
+            <script type="module" src="../js/dashboard/index.js"></script>
 
             <!-- Quick Actions -->
             <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant p-md shadow-sm">
