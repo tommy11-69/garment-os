@@ -144,6 +144,37 @@ export const api = {
         return { success: true };
     },
 
+    async addOrderExpense(orderId, expense) {
+        await delay();
+        const order = orders.find(o => o.id === orderId);
+        if (!order) throw new Error('Order not found');
+        
+        if (!order.expenses) order.expenses = [];
+        const newExpense = {
+            id: 'e' + Date.now(),
+            type: expense.type,
+            amount: parseFloat(expense.amount),
+            date: expense.date || new Date().toISOString().split('T')[0],
+            notes: expense.notes
+        };
+        order.expenses.push(newExpense);
+        
+        // Update incurred cost
+        order.incurredCost = (order.incurredCost || 0) + newExpense.amount;
+        
+        // Log to timeline
+        if (!order.timeline) order.timeline = [];
+        order.timeline.unshift({
+            date: new Date().toLocaleString(),
+            title: `Logged Expense: $${newExpense.amount} (${newExpense.type})`,
+            user: "System",
+            type: "inventory",
+            status: "completed"
+        });
+        
+        return order;
+    },
+
     /**
      * Logs an expense against a specific production batch.
      */

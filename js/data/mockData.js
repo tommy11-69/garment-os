@@ -98,13 +98,19 @@ export let orders = [
         
         // Timeline & Tasks
         timeline: [
-            { id: "t1", date: "2026-10-10", title: "Order Created", user: "Sales User", type: "system" },
-            { id: "t2", date: "2026-10-11", title: "Status: Approved", user: "Admin", type: "status" },
-            { id: "t3", date: "2026-10-12", title: "Fabric Allocated", user: "Inventory Mgr", type: "inventory" }
+            { date: "Oct 20, 2026 - 09:00 AM", title: "Order Created", user: "Eleanor Vance", type: "system", status: "completed" },
+            { date: "Oct 21, 2026 - 10:15 AM", title: "Status Updated: Approved", user: "System", type: "status", status: "completed" },
+            { date: "Oct 22, 2026 - 11:30 AM", title: "Status Updated: Material Reserved", user: "Inventory", type: "inventory", status: "completed" },
+            { date: "Oct 24, 2026 - 08:00 AM", title: "Status Updated: Cutting", user: "Sarah Jenkins", type: "status", status: "active" }
         ],
         tasks: [
-            { id: "task1", title: "Issue Fabric to Cutting Dept", status: "Completed", assignee: "Inventory Mgr" },
-            { id: "task2", title: "Cut 5000 units", status: "In Progress", assignee: "Cutting Dept" }
+            { id: "t1", title: "Source 500kg Organic Cotton Yarn", assignee: "Purchasing", status: "Completed" },
+            { id: "t2", title: "Cut patterns for sizes S, M, L", assignee: "Cutting Floor", status: "Pending" },
+            { id: "t3", title: "QC on first 100 cut pieces", assignee: "QC Team", status: "Pending" }
+        ],
+        expenses: [
+            { id: "e1", type: "Material", amount: 4000, date: "2026-10-22", notes: "Cotton Yarn Purchase" },
+            { id: "e2", type: "Overhead", amount: 500, date: "2026-10-23", notes: "Cutting Setup" }
         ]
     }
 ];

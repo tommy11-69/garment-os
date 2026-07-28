@@ -167,6 +167,35 @@ window.openOrderDetails = async function(orderId) {
     window.switchOrderTab('overview');
 };
 
+window.handleOrderAction = function(action) {
+    if (!activeOrder) return;
+    
+    switch (action) {
+        case 'Print Quote':
+            window.showToast?.('Generating PDF...', 'info');
+            setTimeout(() => window.showToast?.('Quote PDF downloaded', 'success'), 1000);
+            break;
+        case 'Generate Invoice':
+            window.showToast?.('Invoice generation simulated', 'success');
+            break;
+        case 'Generate PO':
+            window.showToast?.('Purchase Order simulated', 'success');
+            break;
+        case 'Assign Production':
+            window.handleStatusTransition('Cutting');
+            setTimeout(() => window.switchOrderTab('timeline'), 300); // Switch to timeline to show automation
+            break;
+        case 'View Timeline':
+            window.switchOrderTab('timeline');
+            break;
+        case 'View Dispatch':
+            window.showToast?.('Dispatch tracking coming soon', 'info');
+            break;
+        default:
+            console.log('Action not mapped:', action);
+    }
+};
+
 window.switchOrderTab = function(tabName) {
     // Hide all tabs
     document.querySelectorAll('.od-tab-content').forEach(el => el.classList.add('hidden'));
@@ -468,9 +497,13 @@ async function renderSheets() {
                         <span class="text-secondary">Current Profit</span>
                         <span id="od-profit-val" class="font-bold text-on-surface"></span>
                     </div>
-                    <div class="w-full h-2 bg-surface-container rounded-full overflow-hidden">
+                    <div class="w-full h-2 bg-surface-container rounded-full overflow-hidden mb-4">
                         <div id="od-profit-bar" class="h-full rounded-full transition-all duration-500" style="width: 0%"></div>
                     </div>
+                    <button onclick="window.openSheet('addExpenseSheet')" class="w-full py-2 rounded-xl bg-surface-variant text-[13px] font-semibold text-on-surface active-scale transition-apple flex items-center justify-center gap-2">
+                        <span class="material-symbols-outlined text-[16px]">receipt_long</span>
+                        Log Production Expense
+                    </button>
                 </div>
             </div>
 
@@ -625,13 +658,68 @@ async function renderSheets() {
         <div class="h-4"></div>
     `;
 
+    const addExpenseContent = `
+        <div class="flex flex-col gap-4">
+            <div class="flex flex-col gap-1.5">
+                <label class="text-[13px] font-medium text-on-surface ml-1">Expense Type</label>
+                <select id="expense-type" class="w-full h-12 px-4 rounded-xl bg-surface-container-lowest border border-outline-variant text-[15px] focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all">
+                    <option value="Material">Material (Fabric/Yarn)</option>
+                    <option value="Stitching">Stitching Labor</option>
+                    <option value="Printing">Printing / Embroidery</option>
+                    <option value="Overhead">Factory Overhead</option>
+                    <option value="Shipping">Logistics</option>
+                </select>
+            </div>
+            <div class="flex flex-col gap-1.5">
+                <label class="text-[13px] font-medium text-on-surface ml-1">Amount ($)</label>
+                <input type="number" id="expense-amount" class="w-full h-12 px-4 rounded-xl bg-surface-container-lowest border border-outline-variant text-[15px] focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" placeholder="e.g. 500.00" required>
+            </div>
+            <div class="flex flex-col gap-1.5">
+                <label class="text-[13px] font-medium text-on-surface ml-1">Notes</label>
+                <input type="text" id="expense-notes" class="w-full h-12 px-4 rounded-xl bg-surface-container-lowest border border-outline-variant text-[15px] focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all" placeholder="Optional details">
+            </div>
+        </div>
+    `;
+    const addExpenseFooter = `
+        <button id="submit-expense-btn" class="w-full bg-primary text-on-primary font-bold text-[15px] py-3.5 rounded-2xl active-scale transition-apple">
+            Save Expense
+        </button>
+    `;
+
     // Render Sheets
     sheetsContainer.innerHTML = [
         BottomSheet({ id: 'fabActionSheet', title: 'Order Actions', content: fabActionContent, height: 'auto' }),
         BottomSheet({ id: 'createOrderSheet', title: 'Create Order', content: createOrderContent, footerContent: createOrderFooter, isForm: true }),
-        BottomSheet({ id: 'orderDetailsSheet', customHeader: orderDetailsHeader, content: orderDetailsContent, footerContent: orderDetailsFooter, height: '90vh' })
+        BottomSheet({ id: 'orderDetailsSheet', customHeader: orderDetailsHeader, content: orderDetailsContent, footerContent: orderDetailsFooter, height: '90vh' }),
+        BottomSheet({ id: 'addExpenseSheet', title: 'Log Expense', content: addExpenseContent, footerContent: addExpenseFooter, height: 'auto' })
     ].join('');
     
+    // Bind logic for Submit Expense
+    document.getElementById('submit-expense-btn')?.addEventListener('click', async () => {
+        if (!activeOrder) return;
+        const amt = document.getElementById('expense-amount').value;
+        if (!amt || isNaN(amt)) {
+            window.showToast?.('Please enter a valid amount', 'error');
+            return;
+        }
+        window.closeSheet('addExpenseSheet');
+        try {
+            await api.addOrderExpense(activeOrder.id, {
+                type: document.getElementById('expense-type').value,
+                amount: amt,
+                notes: document.getElementById('expense-notes').value
+            });
+            window.showToast?.('Expense logged successfully', 'success');
+            // Re-render
+            await loadOrders();
+            window.openOrderDetails(activeOrder.id);
+            document.getElementById('expense-amount').value = '';
+            document.getElementById('expense-notes').value = '';
+        } catch (e) {
+            window.showToast?.('Failed to log expense', 'error');
+        }
+    });
+
     // Bind form validation for the create order sheet
     if (window.bindFormValidation) {
         window.bindFormValidation('createOrderSheet', 'create-order-submit');
