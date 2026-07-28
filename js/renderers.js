@@ -134,7 +134,7 @@ export const renderers = {
     transactionCard(txn) {
         const sign = txn.isNegative ? "-" : "+";
         return `
-            <div role="button" tabindex="0" class="p-md ${txn.id === 'txn-003' ? '' : 'border-b border-outline-variant/30'} flex justify-between items-center active-scale transition-apple cursor-pointer outline-none focus-visible:bg-surface-variant focus-visible:ring-2 focus-visible:ring-primary" onclick="openSheet('transactionDetailsSheet')">
+            <div role="button" tabindex="0" class="p-md ${txn.id === 'txn-003' ? '' : 'border-b border-outline-variant/30'} flex justify-between items-center active-scale transition-apple cursor-pointer outline-none focus-visible:bg-surface-variant focus-visible:ring-2 focus-visible:ring-primary" onclick="window.openTransactionDetails('${txn.id}')">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-full ${txn.iconBg} ${txn.iconColor} flex items-center justify-center">
                         <span class="material-symbols-outlined text-[20px]">${txn.icon}</span>
