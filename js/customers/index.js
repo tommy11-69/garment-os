@@ -1,4 +1,4 @@
-import { api } from '../services/api.js';
+import { customerStore } from '../stores/CustomerStore.js';
 import { renderers } from '../renderers.js';
 import { BottomSheet } from '../components/index.js';
 import { bindFormValidation } from '../utils/formHandler.js';
@@ -12,17 +12,12 @@ import {
     getEditCustomerFooterHTML 
 } from './templates.js';
 
-let currentCustomers = [];
-let selectedCustomerIds = new Set();
-let isBulkMode = false;
-let currentSearch = '';
-let currentFilters = { status: 'All', customerType: 'All' };
-
 // ─── INITIALIZATION ───────────────────────────────────────────────
 
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', () => {
     initUI();
-    await loadCustomers();
+    customerStore.subscribe(renderUI);
+    customerStore.loadCustomers();
 });
 
 function initUI() {
@@ -43,12 +38,11 @@ function initUI() {
     const searchInput = document.querySelector('input[placeholder="Search..."]');
     if (searchInput) {
         searchInput.addEventListener('input', (e) => {
-            currentSearch = e.target.value;
-            applyFiltersAndSearch();
+            customerStore.setSearch(e.target.value);
         });
     }
 
-    // Filter binding (Assuming there's a filter button triggering a filter sheet, mock for now)
+    // Filter binding
     const filterBtn = Array.from(document.querySelectorAll('button')).find(btn => btn.textContent.includes('tune'));
     if (filterBtn) {
         filterBtn.addEventListener('click', () => {
@@ -57,67 +51,80 @@ function initUI() {
     }
 }
 
-// ─── DATA LOADING & RENDERING ─────────────────────────────────────
+// ─── STATE-DRIVEN RENDERING ─────────────────────────────────────
 
-async function loadCustomers() {
+function renderUI(state) {
+    const { entities, activeEntity, selectedIds, isBulkMode, loading, error } = state;
+    
+    // Render List
     const container = document.getElementById('customers-list-container');
-    if (window.setLoading && container) {
-        window.setLoading('customers-list-container');
+    if (container) {
+        if (loading) {
+            if (window.setLoading) window.setLoading('customers-list-container');
+        } else if (error) {
+            container.innerHTML = `<div class="p-md text-center text-error">Failed to load customers: ${error.message}</div>`;
+        } else if (entities.length === 0) {
+            container.innerHTML = `
+                <div class="flex flex-col items-center justify-center p-xl text-center">
+                    <div class="w-16 h-16 rounded-full bg-surface-variant flex items-center justify-center mb-4 text-secondary">
+                        <span class="material-symbols-outlined text-[32px]">person_off</span>
+                    </div>
+                    <h3 class="text-[16px] font-bold text-on-surface mb-1">No Customers Found</h3>
+                    <p class="text-body text-secondary max-w-[250px]">Try adjusting your search or filters.</p>
+                </div>
+            `;
+        } else {
+            container.innerHTML = entities.map(c => 
+                renderers.customerCard(c, isBulkMode, selectedIds.has(c.id))
+            ).join('');
+        }
     }
     
-    try {
-        currentCustomers = await api.getCustomers();
-        applyFiltersAndSearch();
-    } catch (error) {
-        if (container) container.innerHTML = '<div class="p-md text-center text-error">Failed to load customers</div>';
-        console.error(error);
+    // Update Bulk Toolbar
+    updateBulkToolbar(state);
+    
+    // Update Active Entity Sheets if they are open
+    if (activeEntity) {
+        updateActiveEntitySheets(activeEntity);
     }
 }
 
-async function applyFiltersAndSearch() {
-    const container = document.getElementById('customers-list-container');
-    if (!container) return;
-
-    let filtered = [...currentCustomers];
-
-    // Search
-    if (currentSearch) {
-        const q = currentSearch.toLowerCase();
-        filtered = filtered.filter(c => 
-            c.name.toLowerCase().includes(q) || 
-            (c.company && c.company.toLowerCase().includes(q)) ||
-            (c.customerCode && c.customerCode.toLowerCase().includes(q)) ||
-            (c.phone && c.phone.includes(q)) ||
-            (c.email && c.email.toLowerCase().includes(q))
-        );
-    }
-
-    // Filters
-    if (currentFilters.status !== 'All') {
-        filtered = filtered.filter(c => c.status === currentFilters.status);
-    }
-    if (currentFilters.customerType !== 'All') {
-        filtered = filtered.filter(c => c.customerType === currentFilters.customerType);
-    }
-
-    if (filtered.length === 0) {
-        container.innerHTML = `
-            <div class="flex flex-col items-center justify-center p-xl text-center">
-                <div class="w-16 h-16 rounded-full bg-surface-variant flex items-center justify-center mb-4 text-secondary">
-                    <span class="material-symbols-outlined text-[32px]">person_off</span>
-                </div>
-                <h3 class="text-[16px] font-bold text-on-surface mb-1">No Customers Found</h3>
-                <p class="text-body text-secondary max-w-[250px]">Try adjusting your search or filters.</p>
-            </div>
-        `;
-        return;
-    }
-
-    container.innerHTML = filtered.map(c => 
-        renderers.customerCard(c, isBulkMode, selectedCustomerIds.has(c.id))
-    ).join('');
+function updateBulkToolbar(state) {
+    const { isBulkMode, selectedIds } = state;
+    let toolbar = document.getElementById('customer-bulk-toolbar');
     
-    updateBulkToolbar();
+    if (isBulkMode) {
+        if (!toolbar) {
+            toolbar = document.createElement('div');
+            toolbar.id = 'customer-bulk-toolbar';
+            toolbar.className = 'fixed bottom-[80px] left-4 right-4 bg-surface-container-highest border border-outline-variant shadow-lg rounded-2xl p-3 z-40 transition-all duration-300 translate-y-0 opacity-100 flex items-center max-w-[400px] mx-auto';
+            document.body.appendChild(toolbar);
+        }
+        toolbar.innerHTML = getBulkToolbarHTML(selectedIds.size);
+    } else {
+        if (toolbar) {
+            toolbar.classList.add('translate-y-4', 'opacity-0');
+            setTimeout(() => toolbar.remove(), 300);
+        }
+    }
+}
+
+function updateActiveEntitySheets(entity) {
+    // If the customer details sheet is currently open, we should re-render its contents to reflect any state changes.
+    const detailsSheet = document.getElementById('customerDetailsSheet');
+    if (detailsSheet && !detailsSheet.classList.contains('translate-y-full')) {
+        // We avoid completely replacing the HTML so we don't break animations.
+        // For now, since we rebuild BottomSheet HTML, we will just silently swap the contents.
+        const bodyContent = detailsSheet.querySelector('.overflow-y-auto');
+        if (bodyContent) {
+            bodyContent.innerHTML = getCustomerDetailsContent(entity);
+        }
+        // Header
+        const header = detailsSheet.querySelector('.bg-surface-container-lowest.sticky');
+        if (header) {
+            header.innerHTML = getCustomerDetailsHeader(entity);
+        }
+    }
 }
 
 // ─── CRUD OPERATIONS ──────────────────────────────────────────────
@@ -126,7 +133,7 @@ window.saveNewCustomer = async function() {
     const btn = document.getElementById('create-customer-submit');
     if (btn) btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>';
     
-    const customerData = {
+    const data = {
         name: document.getElementById('new-cust-name').value,
         company: document.getElementById('new-cust-company').value,
         contactPerson: document.getElementById('new-cust-contact').value,
@@ -148,16 +155,19 @@ window.saveNewCustomer = async function() {
         isActive: document.getElementById('new-cust-active').checked
     };
     
+    const payload = {
+        ...data,
+        status: 'Active',
+        statusColor: 'bg-success-container/30 text-success'
+    };
+    
     try {
-        await api.saveCustomer(customerData);
+        await customerStore.createCustomer(payload);
         window.closeSheet('addCustomerSheet');
         window.showToast('Customer saved successfully', 'success');
         
-        // Reset form
         const form = document.getElementById('addCustomerSheet-content');
         if (form) form.reset();
-        
-        await loadCustomers();
     } catch (error) {
         console.error(error);
         window.showToast(error.message || 'Failed to save customer', 'error');
@@ -171,6 +181,8 @@ window.saveEditedCustomer = async function() {
     if (btn) btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>';
     
     const id = document.getElementById('edit-cust-id').value;
+    const isActive = document.getElementById('edit-cust-active').checked;
+    
     const customerData = {
         name: document.getElementById('edit-cust-name').value,
         company: document.getElementById('edit-cust-company').value,
@@ -190,16 +202,15 @@ window.saveEditedCustomer = async function() {
         country: document.getElementById('edit-cust-country').value,
         pincode: document.getElementById('edit-cust-pincode').value,
         notes: document.getElementById('edit-cust-notes').value,
-        status: document.getElementById('edit-cust-active').checked ? 'Active' : 'Inactive'
+        status: isActive ? 'Active' : 'Inactive',
+        statusColor: isActive ? 'bg-success-container/30 text-success' : 'bg-surface-variant text-secondary'
     };
     
     try {
-        await api.updateCustomer(id, customerData);
+        await customerStore.updateCustomer(id, customerData);
         window.closeSheet('editCustomerSheet');
         window.showToast('Customer updated successfully', 'success');
-        await loadCustomers();
-        
-        // Optional: Re-open details sheet with updated data
+        // Re-open details sheet
         setTimeout(() => window.openCustomerDetails(id), 300);
     } catch (error) {
         console.error(error);
@@ -210,7 +221,7 @@ window.saveEditedCustomer = async function() {
 };
 
 window.deleteCustomerFlow = function(id) {
-    const customer = currentCustomers.find(c => c.id === id);
+    const customer = customerStore.getState().entities.find(c => c.id === id);
     if (!customer) return;
 
     window.showConfirmation({
@@ -220,9 +231,8 @@ window.deleteCustomerFlow = function(id) {
         onConfirm: async () => {
             try {
                 window.closeSheet('customerDetailsSheet');
-                await api.deleteCustomer(id);
+                await customerStore.deleteCustomer(id);
                 window.showToast('Customer deleted successfully', 'success');
-                await loadCustomers();
             } catch (error) {
                 window.showToast('Failed to delete customer', 'error');
             }
@@ -233,9 +243,8 @@ window.deleteCustomerFlow = function(id) {
 window.archiveCustomerFlow = async function(id) {
     try {
         window.closeSheet('customerDetailsSheet');
-        await api.archiveCustomer(id);
+        await customerStore.archiveCustomer(id);
         window.showToast('Customer archived', 'success');
-        await loadCustomers();
     } catch (error) {
         window.showToast('Failed to archive customer', 'error');
     }
@@ -244,9 +253,8 @@ window.archiveCustomerFlow = async function(id) {
 window.restoreCustomerFlow = async function(id) {
     try {
         window.closeSheet('customerDetailsSheet');
-        await api.restoreCustomer(id);
+        await customerStore.restoreCustomer(id);
         window.showToast('Customer restored', 'success');
-        await loadCustomers();
     } catch (error) {
         window.showToast('Failed to restore customer', 'error');
     }
@@ -255,9 +263,8 @@ window.restoreCustomerFlow = async function(id) {
 window.duplicateCustomerFlow = async function(id) {
     try {
         window.closeSheet('customerDetailsSheet');
-        await api.duplicateCustomer(id);
+        await customerStore.duplicateCustomer(id);
         window.showToast('Customer duplicated successfully', 'success');
-        await loadCustomers();
     } catch (error) {
         window.showToast('Failed to duplicate customer', 'error');
     }
@@ -265,19 +272,23 @@ window.duplicateCustomerFlow = async function(id) {
 
 // ─── SHEETS & UI FLOWS ────────────────────────────────────────────
 
-window.openCustomerDetails = function(id) {
-    if (isBulkMode) {
+window.openCustomerDetails = async function(id) {
+    if (customerStore.getState().isBulkMode) {
         window.toggleCustomerSelection(id);
         return;
     }
 
-    const customer = currentCustomers.find(c => c.id === id);
+    await customerStore.fetchActiveEntity(id);
+    const customer = customerStore.getState().activeEntity;
     if (!customer) return;
 
-    // We dynamically inject the bottom sheet for this customer
     const container = document.getElementById('sheets-container');
     const existing = document.getElementById('customerDetailsSheet');
-    if (existing) existing.remove(); // Remove old instance
+    if (existing) {
+        existing.remove(); 
+        const overlay = document.getElementById('customerDetailsSheet-overlay');
+        if (overlay) overlay.remove();
+    }
 
     const sheetHTML = BottomSheet({
         id: 'customerDetailsSheet',
@@ -291,21 +302,26 @@ window.openCustomerDetails = function(id) {
     setTimeout(() => window.openSheet('customerDetailsSheet'), 50);
 };
 
-window.openEditCustomer = function(id) {
-    const customer = currentCustomers.find(c => c.id === id);
+window.openEditCustomer = async function(id) {
+    await customerStore.fetchActiveEntity(id);
+    const customer = customerStore.getState().activeEntity;
     if (!customer) return;
 
     window.closeSheet('customerDetailsSheet');
 
     const container = document.getElementById('sheets-container');
     const existing = document.getElementById('editCustomerSheet');
-    if (existing) existing.remove();
+    if (existing) {
+        existing.remove();
+        const overlay = document.getElementById('editCustomerSheet-overlay');
+        if (overlay) overlay.remove();
+    }
 
     const sheetHTML = BottomSheet({
         id: 'editCustomerSheet',
         title: 'Edit Customer',
         content: getEditCustomerSheetHTML(customer),
-        footerContent: getEditCustomerFooterHTML(),
+        footerContent: getEditCustomerFooterHTML(customer.id),
         isForm: true
     });
 
@@ -315,77 +331,43 @@ window.openEditCustomer = function(id) {
     setTimeout(() => {
         bindFormValidation('editCustomerSheet-content', 'edit-customer-submit');
         window.openSheet('editCustomerSheet');
-    }, 50);
+    }, 300);
 };
 
 // ─── BULK OPERATIONS ──────────────────────────────────────────────
 
 window.toggleCustomerSelection = function(id) {
-    if (selectedCustomerIds.has(id)) {
-        selectedCustomerIds.delete(id);
-    } else {
-        selectedCustomerIds.add(id);
-    }
-    
-    isBulkMode = selectedCustomerIds.size > 0;
-    applyFiltersAndSearch();
+    customerStore.toggleSelection(id);
 };
 
 window.clearCustomerSelection = function() {
-    selectedCustomerIds.clear();
-    isBulkMode = false;
-    applyFiltersAndSearch();
+    customerStore.clearSelection();
 };
 
-function updateBulkToolbar() {
-    let toolbar = document.getElementById('customer-bulk-toolbar');
-    
-    if (isBulkMode) {
-        if (!toolbar) {
-            toolbar = document.createElement('div');
-            toolbar.id = 'customer-bulk-toolbar';
-            toolbar.className = 'fixed bottom-[80px] left-4 right-4 bg-surface-container-highest border border-outline-variant shadow-lg rounded-2xl p-3 z-40 transition-all duration-300 translate-y-0 opacity-100 flex items-center max-w-[400px] mx-auto';
-            document.body.appendChild(toolbar);
-        }
-        toolbar.innerHTML = getBulkToolbarHTML(selectedCustomerIds.size);
-    } else {
-        if (toolbar) {
-            toolbar.classList.add('translate-y-4', 'opacity-0');
-            setTimeout(() => toolbar.remove(), 300);
-        }
-    }
-}
-
 window.bulkArchiveCustomers = async function() {
-    const ids = Array.from(selectedCustomerIds);
-    if (!ids.length) return;
+    const size = customerStore.getState().selectedIds.size;
+    if (!size) return;
     
     try {
-        for (const id of ids) {
-            await api.archiveCustomer(id);
-        }
-        window.showToast(`${ids.length} customers archived`, 'success');
-        window.clearCustomerSelection();
+        await customerStore.bulkArchive();
+        window.showToast(`${size} customers archived`, 'success');
     } catch (e) {
         window.showToast('Failed to archive customers', 'error');
     }
 };
 
 window.bulkDeleteCustomers = function() {
-    const ids = Array.from(selectedCustomerIds);
-    if (!ids.length) return;
+    const size = customerStore.getState().selectedIds.size;
+    if (!size) return;
 
     window.showConfirmation({
         title: 'Delete Customers',
-        message: `Are you sure you want to permanently delete ${ids.length} customers?`,
+        message: `Are you sure you want to permanently delete ${size} customers?`,
         confirmText: 'Delete All',
         onConfirm: async () => {
             try {
-                for (const id of ids) {
-                    await api.deleteCustomer(id);
-                }
-                window.showToast(`${ids.length} customers deleted`, 'success');
-                window.clearCustomerSelection();
+                await customerStore.bulkDelete();
+                window.showToast(`${size} customers deleted`, 'success');
             } catch (e) {
                 window.showToast('Failed to delete customers', 'error');
             }
