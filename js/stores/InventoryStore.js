@@ -3,7 +3,7 @@ import { inventoryRepository } from '../repositories/InventoryRepository.js';
 
 class InventoryStore extends BaseStore {
     constructor() {
-        super();
+        super(inventoryRepository);
         this.currentSearch = '';
         this.currentCategory = 'All';
     }
@@ -17,12 +17,12 @@ class InventoryStore extends BaseStore {
     }
 
     async loadInventory() {
-        this.setLoading(true);
+        this.setState({ loading: true });
         try {
             const results = await inventoryRepository.searchInventory(this.currentSearch, this.currentCategory);
-            this.setEntities(results);
+            this.setState({ entities: results, loading: false });
         } catch (err) {
-            this.setError(err);
+            this.setState({ error: err, loading: false });
         }
     }
 

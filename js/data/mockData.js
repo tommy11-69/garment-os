@@ -117,6 +117,12 @@ export let orders = [
         expenses: [
             { id: "e1", type: "Material", amount: 4000, date: "2026-10-22", notes: "Cotton Yarn Purchase" },
             { id: "e2", type: "Overhead", amount: 500, date: "2026-10-23", notes: "Cutting Setup" }
+        ],
+        paymentStatus: "Partial",
+        paymentReceived: 50000,
+        fabric: "100% Organic Cotton Jersey",
+        activityLog: [
+            { note: "Client confirmed Navy colorway. Strict QC needed.", user: "Priya Rajan", date: "Oct 21, 2026 - 10:30 AM" }
         ]
     }
 ];
@@ -163,33 +169,7 @@ export let activeBatches = [
     }
 ];
 
-export let transactions = [
-    {
-        id: "txn-001",
-        type: "expense",
-        title: "Fabric Supplier (Coimbatore Textiles)",
-        category: "Raw Materials",
-        amount: 4200.00,
-        amountColor: "text-on-surface",
-        isNegative: true,
-        icon: "store",
-        iconBg: "bg-error/10",
-        iconColor: "text-error"
-    },
-    {
-        id: "txn-004",
-        type: "expense",
-        title: "Dyeing Chemicals",
-        category: "Production",
-        amount: 500.00,
-        amountColor: "text-on-surface",
-        isNegative: true,
-        icon: "science",
-        iconBg: "bg-error/10",
-        iconColor: "text-error",
-        linkedBatchId: "B-8092"
-    }
-];
+export let transactions = [];
 
 // Utility to export mutable data
 export const setInventory = (newInv) => { inventory = newInv; };

@@ -60,11 +60,11 @@ export function getCustomerDetailsHeader(customer) {
 }
 
 export function getCustomerDetailsContent(customer) {
-    const revenueStr = `$${(customer.totalRevenue || 0).toLocaleString()}`;
+    const revenueStr = `₹${(customer.totalRevenue || 0).toLocaleString()}`;
     const activeOrders = customer.activeOrders || 0;
     const completedOrders = customer.completedOrders || 0;
-    const outstandingStr = `$${(customer.outstanding || 0).toLocaleString()}`;
-    const avgOrderValue = `$${(customer.averageOrderValue || 0).toLocaleString(undefined, {maximumFractionDigits: 2})}`;
+    const outstandingStr = `₹${(customer.outstanding || 0).toLocaleString()}`;
+    const avgOrderValue = `₹${(customer.averageOrderValue || 0).toLocaleString(undefined, {maximumFractionDigits: 2})}`;
 
     return `
         <div class="grid grid-cols-2 gap-3 mb-4">
@@ -126,7 +126,7 @@ export function getCustomerDetailsContent(customer) {
                 </div>
                 <div>
                     <span class="text-[11px] font-semibold text-secondary uppercase tracking-wider block mb-1">Credit Limit</span>
-                    <span class="text-[14px] text-on-surface">${customer.creditLimit ? `$${customer.creditLimit.toLocaleString()}` : 'N/A'}</span>
+                    <span class="text-[14px] text-on-surface">${customer.creditLimit ? `₹${customer.creditLimit.toLocaleString()}` : 'N/A'}</span>
                 </div>
             </div>
         </div>
@@ -171,6 +171,29 @@ export function getCustomerDetailsContent(customer) {
             </div>
             <div class="p-4">
                 <p class="text-[14px] text-on-surface whitespace-pre-wrap">${customer.notes}</p>
+            </div>
+        </div>
+        ` : ''}
+
+        
+        ${customer.recentOrders && customer.recentOrders.length > 0 ? `
+        <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-sm overflow-hidden mb-4">
+            <div class="p-4 border-b border-outline-variant/50">
+                <h3 class="text-[15px] font-bold text-on-surface">Recent Orders</h3>
+            </div>
+            <div class="flex flex-col">
+                ${customer.recentOrders.map(o => `
+                    <button onclick="window.location.href='orders.html?orderId=${o.id}'" class="flex items-center justify-between p-4 border-b border-outline-variant/50 last:border-0 active-bg text-left transition-colors">
+                        <div>
+                            <p class="text-[14px] font-bold text-on-surface mb-1">${o.id}</p>
+                            <p class="text-[12px] text-secondary">${o.garmentType} • ${o.qty} pcs</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-[14px] font-bold text-on-surface mb-1">₹${(o.value || o.grandTotal || 0).toLocaleString()}</p>
+                            <span class="text-[10px] font-medium px-2 py-0.5 rounded ${o.statusColor || 'bg-surface-variant'}">${o.status}</span>
+                        </div>
+                    </button>
+                `).join('')}
             </div>
         </div>
         ` : ''}
@@ -268,6 +291,29 @@ export function getEditCustomerSheetHTML(customer) {
                 </label>
             </div>
         </div>
+        
+        ${customer.recentOrders && customer.recentOrders.length > 0 ? `
+        <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-sm overflow-hidden mb-4">
+            <div class="p-4 border-b border-outline-variant/50">
+                <h3 class="text-[15px] font-bold text-on-surface">Recent Orders</h3>
+            </div>
+            <div class="flex flex-col">
+                ${customer.recentOrders.map(o => `
+                    <button onclick="window.location.href='orders.html?orderId=${o.id}'" class="flex items-center justify-between p-4 border-b border-outline-variant/50 last:border-0 active-bg text-left transition-colors">
+                        <div>
+                            <p class="text-[14px] font-bold text-on-surface mb-1">${o.id}</p>
+                            <p class="text-[12px] text-secondary">${o.garmentType} • ${o.qty} pcs</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-[14px] font-bold text-on-surface mb-1">₹${(o.value || o.grandTotal || 0).toLocaleString()}</p>
+                            <span class="text-[10px] font-medium px-2 py-0.5 rounded ${o.statusColor || 'bg-surface-variant'}">${o.status}</span>
+                        </div>
+                    </button>
+                `).join('')}
+            </div>
+        </div>
+        ` : ''}
+
         <div class="h-10"></div>
     </div>
     `;

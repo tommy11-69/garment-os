@@ -3,7 +3,7 @@ import { customerRepository } from '../repositories/CustomerRepository.js';
 
 class CustomerStore extends BaseStore {
     constructor() {
-        super();
+        super(customerRepository);
         this.currentSearch = '';
         this.currentFilters = { status: 'All', customerType: 'All' };
     }
@@ -18,12 +18,12 @@ class CustomerStore extends BaseStore {
     }
 
     async loadCustomers() {
-        this.setLoading(true);
+        this.setState({ loading: true });
         try {
             const results = await customerRepository.searchCustomers(this.currentSearch, this.currentFilters);
-            this.setEntities(results);
+            this.setState({ entities: results, loading: false });
         } catch (err) {
-            this.setError(err);
+            this.setState({ error: err, loading: false });
         }
     }
 

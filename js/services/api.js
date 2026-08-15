@@ -1,7 +1,9 @@
 import { 
     customers, orders, inventory, activeBatches, transactions, costings,
-    setInventory, setTransactions, setActiveBatches, setCostings, setOrders, setCustomers
+    setInventory, setTransactions, setActiveBatches, setCostings, setOrders, setCustomers,
+    ORDER_STATUSES
 } from '../data/mockData.js';
+import { db } from '../data/database.js';
 
 /**
  * Simulates a network delay for API calls.
@@ -15,6 +17,7 @@ export const makeTimestamp = () =>
     new Intl.DateTimeFormat('en-IN', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }).format(new Date());
 
 export const api = {
+    ORDER_STATUSES,
     
     _enrichCustomerStats(c) {
         const cOrders = orders.filter(o => o.customerId === c.id);
@@ -48,7 +51,7 @@ export const api = {
     async getOrders() { await delay(); return orders; },
     async getInventory() { await delay(); return inventory; },
     async getActiveBatches() { await delay(); return activeBatches; },
-    async getTransactions() { await delay(); return transactions; },
+    async getTransactions() { return await db.getCollection('transactions'); },
     async getCostings() { await delay(); return costings; },
     async getCostingById(id) { await delay(); return costings.find(c => c.id === id); },
     
@@ -223,7 +226,7 @@ export const api = {
                     if (!newOrder.timeline) newOrder.timeline = [];
                     newOrder.timeline.unshift({
                         id: `t-${Date.now()}`,
-                        date: makeTimestamp(),
+                        date: new Date().toISOString().split('T')[0],
                         title: 'Order Details Edited',
                         user: 'System',
                         type: 'action'
@@ -233,19 +236,30 @@ export const api = {
                 return o;
             });
             setOrders(updated);
+            return updated.find(o => o.id === orderData.id);
         } else {
             // Create
             if (!newOrder.timeline) newOrder.timeline = [];
             newOrder.timeline.unshift({
                 id: `t-${Date.now()}`,
-                date: makeTimestamp(),
+                date: new Date().toISOString().split('T')[0],
                 title: 'Order Created',
                 user: 'System',
                 type: 'action'
             });
             setOrders([newOrder, ...orders]);
+            return newOrder;
         }
-        return newOrder;
+    },
+
+    async updateOrder(orderId, updates) {
+        await delay();
+        const orderIndex = orders.findIndex(o => o.id === orderId);
+        if (orderIndex === -1) throw new Error('Order not found');
+        const updated = [...orders];
+        updated[orderIndex] = { ...updated[orderIndex], ...updates };
+        setOrders(updated);
+        return updated[orderIndex];
     },
 
     async deleteOrder(orderId) {
@@ -402,7 +416,6 @@ export const api = {
     },
 
     async logOrderActivity(orderId, activityData) {
-        // Will be used for internal audit logging
         await delay();
         const order = orders.find(o => o.id === orderId);
         if (!order) return;
@@ -412,10 +425,40 @@ export const api = {
             id: `t-${Date.now()}`,
             date: makeTimestamp(),
             title: activityData.title,
-            user: "Current User",
-            type: "system"
+            user: 'Current User',
+            type: 'system'
+        });
+
+        // Also add to activityLog for the chat-style feed
+        if (!order.activityLog) order.activityLog = [];
+        order.activityLog.unshift({
+            note: activityData.title,
+            user: 'Current User',
+            date: makeTimestamp()
         });
         return { success: true };
+    },
+
+    async recordPayment(orderId, amount, date) {
+        await delay();
+        const order = orders.find(o => o.id === orderId);
+        if (!order) throw new Error('Order not found');
+        order.paymentReceived = (order.paymentReceived || 0) + amount;
+        const total = order.grandTotal || order.value || 0;
+        if (order.paymentReceived >= total) {
+            order.paymentStatus = 'Paid';
+        } else if (order.paymentReceived > 0) {
+            order.paymentStatus = 'Partial';
+        }
+        if (!order.timeline) order.timeline = [];
+        order.timeline.unshift({
+            id: `t-${Date.now()}`,
+            date: makeTimestamp(),
+            title: `Payment Received: \u20b9${amount.toLocaleString()}${date ? ' on ' + date : ''}`,
+            user: 'Finance',
+            type: 'action'
+        });
+        return order;
     },
 
     async addOrderExpense(orderId, expense) {
@@ -440,7 +483,7 @@ export const api = {
         if (!order.timeline) order.timeline = [];
         order.timeline.unshift({
             date: makeTimestamp(),
-            title: `Logged Expense: $${newExpense.amount} (${newExpense.type})`,
+            title: `Logged Expense: ₹${newExpense.amount} (${newExpense.type})`,
             user: "System",
             type: "inventory",
             status: "completed"
@@ -453,7 +496,6 @@ export const api = {
      * Logs an expense against a specific production batch.
      */
     async logBatchExpense(batchId, title, amount) {
-        await delay();
         const newTxn = {
             id: `txn-${Date.now()}`,
             type: "expense",
@@ -467,8 +509,7 @@ export const api = {
             iconColor: "text-error",
             linkedBatchId: batchId
         };
-        const newTxns = [newTxn, ...transactions];
-        setTransactions(newTxns);
+        await db.insert('transactions', newTxn);
 
         // Update the batch's expenses array
         const updatedBatches = activeBatches.map(b => {
@@ -530,5 +571,91 @@ export const api = {
         };
         setCostings([newCosting, ...costings]);
         return newCosting;
+    },
+
+    // -- TRANSACTIONS --
+
+    async createTransaction(data) {
+        return await db.insert('transactions', data);
+    },
+
+    async updateTransaction(id, data) {
+        return await db.update('transactions', id, data);
+    },
+
+    async deleteTransaction(id) {
+        return await db.delete('transactions', id);
+    },
+
+    async archiveTransaction(id) {
+        return await db.update('transactions', id, {
+            status: 'Archived',
+            statusColor: 'bg-surface-variant text-secondary'
+        });
+    },
+
+    async duplicateTransaction(id) {
+        const original = await db.getById('transactions', id);
+        if (!original) throw new Error('Transaction not found');
+        const duplicateData = {
+            ...original,
+            date: new Date().toISOString().split('T')[0]
+        };
+        delete duplicateData.id;
+        delete duplicateData.createdAt;
+        delete duplicateData.updatedAt;
+        return await db.insert('transactions', duplicateData);
+    },
+
+    // -- COSTINGS --
+    
+    async createCosting(data) {
+        await delay(500);
+        const newItem = {
+            id: `CST-${Date.now()}`,
+            ...data,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+        };
+        costings.unshift(newItem);
+        return newItem;
+    },
+    
+    async updateCosting(id, data) {
+        await delay(500);
+        const index = costings.findIndex(c => c.id === id);
+        if (index === -1) throw new Error('Costing not found');
+        costings[index] = { ...costings[index], ...data, updatedAt: new Date().toISOString() };
+        return costings[index];
+    },
+    
+    async deleteCosting(id) {
+        await delay(500);
+        const index = costings.findIndex(c => c.id === id);
+        if (index !== -1) costings.splice(index, 1);
+        return true;
+    },
+    
+    // -- AGGREGATION (Simulating Backend pipelines) --
+    
+    async getCustomerStats(customerId) {
+        await delay(300);
+        const cOrders = orders.filter(o => o.customerId === customerId);
+        const totalOrders = cOrders.length;
+        const completedOrders = cOrders.filter(o => o.status === 'Completed').length;
+        const totalRevenue = cOrders.reduce((sum, o) => sum + (o.value || 0), 0);
+        const outstanding = cOrders.filter(o => ['Pending', 'Processing'].includes(o.status)).reduce((sum, o) => sum + (o.value || 0), 0);
+        
+        return { totalOrders, completedOrders, totalRevenue, outstanding };
+    },
+    
+    async getOrderFinancials(orderId) {
+        const allTrans = await db.getCollection('transactions');
+        const oTrans = allTrans.filter(t => t.linkedOrderId === orderId);
+        const totalIncome = oTrans.filter(t => t.type === 'Income').reduce((sum, t) => sum + t.amount, 0);
+        const totalExpense = oTrans.filter(t => t.type === 'Expense').reduce((sum, t) => sum + t.amount, 0);
+        const profit = totalIncome - totalExpense;
+        
+        return { totalIncome, totalExpense, profit, transactions: oTrans };
     }
 };

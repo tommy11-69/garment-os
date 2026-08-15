@@ -1,0 +1,25 @@
+{
+  "type": "Compass Connections",
+  "version": {
+    "$numberInt": "1"
+  },
+  "connections": [
+    {
+      "id": "900529ff-00f8-4f80-868f-4bee27a7f445",
+      "lastUsed": {
+        "$date": {
+          "$numberLong": "1786820353993"
+        }
+      },
+      "favorite": {
+        "name": "Garment Os",
+        "color": "color1"
+      },
+      "savedConnectionType": "recent",
+      "connectionOptions": {
+        "connectionString": "mongodb://localhost:27017/",
+        "oidc": {}
+      }
+    }
+  ]
+}

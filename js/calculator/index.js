@@ -2,50 +2,21 @@ import { api } from '../services/api.js';
 import { BottomSheet } from '../components/index.js';
 import { TextInput, SelectInput, TextareaInput } from '../components/inputs.js';
 import { bindFormValidation } from '../utils/formHandler.js';
+import { calculatorStore } from '../stores/CalculatorStore.js';
 
 // ══════════════════════════════════════════════════════
 //  STATE
 // ══════════════════════════════════════════════════════
-let state = {
-    currency: '₹',
-    activeTab: 'pp',
-    pp: {
-        qty: 0, pcsPerKg: 0, fabricPriceKg: 0, wastage: 0,
-        fabricCostPc: 0,
-        printing: 0, wages: 0, packaging: 0, allowances: 0, overheads: 0,
-        cp: 0, sp: null, profitPct: null,
-        lastEdited: null,   // 'sp' | 'pct' | null
-        garmentType: 'T-Shirt',
-    },
-    oc: {
-        qty: 0, fabric: 0,
-        acc1: 0, acc2: 0, acc3: 0, pattern: 0,
-        stitch: 0, sublimation: 0, overheads: 0, printing: 0,
-        totalCost: 0, cp: 0,
-        sp: null, profitPct: null, totalSales: 0, profitDone: 0,
-        lastEdited: null,
-        garmentType: 'T-Shirt',
-    },
-    prefs: {
-        stitchRate: 25,
-        overheadsRate: 2,
-    },
-};
+const state = new Proxy({}, {
+    get: (target, prop) => calculatorStore.state[prop],
+    set: (target, prop, value) => { calculatorStore.setState({ [prop]: value }); return true; }
+});
 
 // ══════════════════════════════════════════════════════
 //  PREFERENCES  (persisted to localStorage)
 // ══════════════════════════════════════════════════════
-function loadPrefs() {
-    try {
-        const saved = localStorage.getItem('garment_os_calc_prefs');
-        if (saved) state.prefs = { ...state.prefs, ...JSON.parse(saved) };
-    } catch (_) {}
-}
-function savePrefs() {
-    try {
-        localStorage.setItem('garment_os_calc_prefs', JSON.stringify(state.prefs));
-    } catch (_) {}
-}
+
+
 
 // ══════════════════════════════════════════════════════
 //  HELPERS
@@ -184,11 +155,11 @@ window.selectGarmentType = function(btn, tab) {
 //  CURRENCY
 // ══════════════════════════════════════════════════════
 window.setCurrency = function(sym) {
-    state.currency = sym;
+    calculatorStore.setCurrency(sym);
     $('currency-inr').classList.toggle('active', sym === '₹');
-    $('currency-usd').classList.toggle('active', sym === '$');
+    $('currency-usd').classList.toggle('active', sym === '₹');
     $('currency-inr').classList.toggle('text-secondary', sym !== '₹');
-    $('currency-usd').classList.toggle('text-secondary', sym !== '$');
+    $('currency-usd').classList.toggle('text-secondary', sym !== '₹');
     document.querySelectorAll('.curr-sym').forEach(el => el.textContent = sym);
     calcPP();
     calcOrder();
@@ -198,7 +169,7 @@ window.setCurrency = function(sym) {
 //  TAB SWITCHING
 // ══════════════════════════════════════════════════════
 window.switchTab = function(tab) {
-    state.activeTab = tab;
+    calculatorStore.setActiveTab(tab);
     document.querySelectorAll('.calc-tab-panel').forEach(p => p.classList.remove('active'));
     $('tab-' + tab)?.classList.add('active');
     document.querySelectorAll('.calc-tab-btn').forEach(b => {
@@ -273,7 +244,7 @@ window.calcPP = function() {
     const cp = fabricCostPc + printing + wages + packaging + allowances + overheads;
 
     // Persist to state
-    Object.assign(state.pp, { qty, pcsPerKg, fabricPriceKg, wastage, fabricCostPc, printing, wages, packaging, allowances, overheads, cp });
+    calculatorStore.updatePP({ qty, pcsPerKg, fabricPriceKg, wastage, fabricCostPc, printing, wages, packaging, allowances, overheads, cp });
 
     // Section header badges
     const fabricBadge = $('pp-fabric-badge');
@@ -315,32 +286,30 @@ function recomputePPResults(cp) {
 
     if (last === 'sp' && !isNaN(userSP) && spInput.value !== '') {
         const pct = cp > 0 ? (userSP - cp) / cp * 100 : 0;
-        state.pp.sp = userSP;
-        state.pp.profitPct = pct;
+        calculatorStore.updatePP({ sp: userSP, profitPct: pct });
         pctInput.value = pct.toFixed(1);
         setProfitBar('pp-profit-bar', 'pp-margin-label', pct);
     } else if (last === 'pct' && !isNaN(userPct) && pctInput.value !== '') {
         const sp = cp > 0 ? cp * (1 + userPct / 100) : 0;
-        state.pp.sp = sp;
-        state.pp.profitPct = userPct;
+        calculatorStore.updatePP({ sp: sp, profitPct: userPct });
         spInput.value = sp > 0 ? sp.toFixed(2) : '';
         setProfitBar('pp-profit-bar', 'pp-margin-label', userPct);
     } else {
         // Default suggestion (not locked in)
         if (cp > 0) {
-            state.pp.sp = cp * 1.33;
-            state.pp.profitPct = 33;
+            calculatorStore.updatePP({ sp: cp * 1.33, profitPct: 33 });
             pctInput.placeholder = '33';
         } else {
-            state.pp.sp = null;
-            state.pp.profitPct = null;
+            calculatorStore.updatePP({ sp: null, profitPct: null });
+            spInput.placeholder = '';
+            pctInput.placeholder = '';
         }
         setProfitBar('pp-profit-bar', 'pp-margin-label', state.pp.profitPct);
     }
 }
 
 window.onPPSpChange = function() {
-    state.pp.lastEdited = 'sp';
+    calculatorStore.updatePP({ lastEdited: 'sp' });
     // Clear the other field so it can be recalculated
     const pctInput = $('pp-profit-pct');
     if (pctInput) pctInput.value = '';
@@ -348,7 +317,7 @@ window.onPPSpChange = function() {
 };
 
 window.onPPProfitPctChange = function() {
-    state.pp.lastEdited = 'pct';
+    calculatorStore.updatePP({ lastEdited: 'pct' });
     const spInput = $('pp-sp');
     if (spInput) spInput.value = '';
     calcPP();
@@ -403,7 +372,7 @@ window.calcOrder = function() {
     const totalCost = fabric + acc1 + acc2 + acc3 + pattern + stitch + sublimation + overheads + printing;
     const cp        = qty > 0 ? totalCost / qty : 0;
 
-    Object.assign(state.oc, { qty, fabric, acc1, acc2, acc3, pattern, stitch, sublimation, overheads, printing, totalCost, cp });
+    calculatorStore.updateOC({ qty, fabric, acc1, acc2, acc3, pattern, stitch, sublimation, overheads, printing, totalCost, cp });
 
     // Cost breakdown visual
     renderBreakdown('oc-breakdown-bar', 'oc-breakdown-legend', 'oc-breakdown', 'oc-breakdown-total', [
@@ -485,13 +454,11 @@ function recomputeOCResults(cp, qty, totalCost) {
         if (cp > 0) { profitPct = 30; sp = cp * 1.30; pctInput.placeholder = '30'; }
     }
 
-    state.oc.sp = sp;
-    state.oc.profitPct = profitPct;
+    calculatorStore.updateOC({ sp, profitPct });
 
     const totalSales = sp && qty ? sp * qty : 0;
     const profitDone = totalSales - totalCost;
-    state.oc.totalSales = totalSales;
-    state.oc.profitDone = profitDone;
+    calculatorStore.updateOC({ totalSales, profitDone });
 
     // Update summary row (always visible for order tab)
     if (state.activeTab === 'order') {
@@ -516,14 +483,14 @@ function recomputeOCResults(cp, qty, totalCost) {
 }
 
 window.onOCSPChange = function() {
-    state.oc.lastEdited = 'sp';
+    calculatorStore.updateOC({ lastEdited: 'sp' });
     const pctInput = $('oc-profit-pct');
     if (pctInput) pctInput.value = '';
     calcOrder();
 };
 
 window.onOCProfitPctChange = function() {
-    state.oc.lastEdited = 'pct';
+    calculatorStore.updateOC({ lastEdited: 'pct' });
     const spInput = $('oc-sp');
     if (spInput) spInput.value = '';
     calcOrder();
@@ -578,9 +545,7 @@ window.resetCalc = function() {
         }
     });
 
-    // Reset state (preserve garmentType and prefs)
-    state.pp = { ...state.pp, qty:0, pcsPerKg:0, fabricPriceKg:0, wastage:0, fabricCostPc:0, printing:0, wages:0, packaging:0, allowances:0, overheads:0, cp:0, sp:null, profitPct:null, lastEdited:null };
-    state.oc = { ...state.oc, qty:0, fabric:0, acc1:0, acc2:0, acc3:0, pattern:0, stitch:0, sublimation:0, overheads:0, printing:0, totalCost:0, cp:0, sp:null, profitPct:null, lastEdited:null };
+    calculatorStore.resetCalculator();
 
     // Reset UI indicators
     ['result-cp','result-sp','result-profit-pct','result-total-cost','result-total-sales','result-profit-done'].forEach(id => setEl(id, '—'));
@@ -696,6 +661,224 @@ window.copyQuoteToClipboard = function() {
         .catch(() => window.showToast?.('Could not copy — select manually', 'error'));
 };
 
+window.downloadQuotePDF = function() {
+    const isOrder = state.activeTab === 'order';
+    const s       = isOrder ? state.oc : state.pp;
+    const client  = (isOrder ? $('oc-client')?.value : $('pp-client')?.value) || 'Valued Customer';
+    const garment = s.garmentType || 'Garment';
+    const qty     = s.qty || 0;
+    
+    const quoteNo = 'QT-' + Math.floor(100000 + Math.random() * 900000);
+    const dateStr = new Date().toLocaleDateString('en-IN', { day:'numeric', month:'long', year:'numeric' });
+    
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+        window.showToast?.('Please allow popups to download PDF', 'error');
+        return;
+    }
+    
+    let breakdownHTML = '';
+    if (isOrder) {
+        const accsTotal = (s.acc1 || 0) + (s.acc2 || 0) + (s.acc3 || 0);
+        breakdownHTML = `
+            <tr>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB;">Fabric Cost</td>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${qty > 0 ? fmtFull(s.fabric / qty) : '—'}/pc</td>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${fmtFull(s.fabric)}</td>
+            </tr>
+            <tr>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB;">Accessories & Trims</td>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${qty > 0 ? fmtFull(accsTotal / qty) : '—'}/pc</td>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${fmtFull(accsTotal)}</td>
+            </tr>
+            <tr>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB;">Pattern Design</td>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${qty > 0 ? fmtFull(s.pattern / qty) : '—'}/pc</td>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${fmtFull(s.pattern)}</td>
+            </tr>
+            <tr>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB;">Stitching Labor</td>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${qty > 0 ? fmtFull(s.stitch / qty) : '—'}/pc</td>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${fmtFull(s.stitch)}</td>
+            </tr>
+            <tr>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB;">Sublimation Printing</td>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${qty > 0 ? fmtFull(s.sublimation / qty) : '—'}/pc</td>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${fmtFull(s.sublimation)}</td>
+            </tr>
+            <tr>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB;">Printing / Embroidery</td>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${qty > 0 ? fmtFull(s.printing / qty) : '—'}/pc</td>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${fmtFull(s.printing)}</td>
+            </tr>
+            <tr>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB;">Factory Overheads</td>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${qty > 0 ? fmtFull(s.overheads / qty) : '—'}/pc</td>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${fmtFull(s.overheads)}</td>
+            </tr>
+        `;
+    } else {
+        breakdownHTML = `
+            <tr>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB;">Fabric Cost</td>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${fmtFull(s.fabricCostPc)}/pc</td>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${qty > 0 ? fmtFull(s.fabricCostPc * qty) : '—'}</td>
+            </tr>
+            <tr>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB;">Printing / Embroidery</td>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${fmtFull(s.printing)}/pc</td>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${qty > 0 ? fmtFull(s.printing * qty) : '—'}</td>
+            </tr>
+            <tr>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB;">Wages / Stitching Labor</td>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${fmtFull(s.wages)}/pc</td>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${qty > 0 ? fmtFull(s.wages * qty) : '—'}</td>
+            </tr>
+            <tr>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB;">Packaging</td>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${fmtFull(s.packaging)}/pc</td>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${qty > 0 ? fmtFull(s.packaging * qty) : '—'}</td>
+            </tr>
+            <tr>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB;">Allowances</td>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${fmtFull(s.allowances)}/pc</td>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${qty > 0 ? fmtFull(s.allowances * qty) : '—'}</td>
+            </tr>
+            <tr>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB;">Factory Overheads</td>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${fmtFull(s.overheads)}/pc</td>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${qty > 0 ? fmtFull(s.overheads * qty) : '—'}</td>
+            </tr>
+        `;
+    }
+
+    const totalCostVal = isOrder ? s.totalCost : (qty > 0 ? s.cp * qty : s.cp);
+    const totalSalesVal = isOrder ? s.totalSales : (qty > 0 && s.sp ? s.sp * qty : null);
+    const totalProfitVal = isOrder ? s.totalProfit : (totalSalesVal ? totalSalesVal - totalCostVal : null);
+
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Garment OS - Costing Quote ${quoteNo}</title>
+            <style>
+                body { font-family: 'Inter', system-ui, sans-serif; color: #1F2937; padding: 40px; line-height: 1.5; }
+                .header { display: flex; justify-content: space-between; border-bottom: 2px solid #E5E7EB; padding-bottom: 20px; margin-bottom: 30px; }
+                .title { font-size: 26px; font-weight: bold; color: #0071E3; margin: 0; }
+                .subtitle { font-size: 14px; color: #6B7280; margin: 5px 0 0 0; }
+                .info-grid { display: grid; grid-template-cols: 1fr 1fr; gap: 40px; margin-bottom: 30px; }
+                .info-section h3 { font-size: 14px; text-transform: uppercase; color: #6B7280; margin-bottom: 10px; border-bottom: 1px solid #F3F4F6; padding-bottom: 5px; }
+                .info-section p { margin: 4px 0; font-size: 15px; }
+                table { width: 100%; border-collapse: collapse; margin-bottom: 40px; }
+                th { background-color: #F9FAFB; padding: 12px 10px; text-align: left; font-size: 13px; font-weight: 600; color: #4B5563; border-bottom: 1px solid #E5E7EB; }
+                .summary-box { background: #F9FAFB; border-radius: 12px; padding: 20px; display: grid; grid-template-cols: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
+                .summary-card { text-align: center; }
+                .summary-card p { margin: 0; font-size: 11px; text-transform: uppercase; color: #6B7280; font-weight: 600; }
+                .summary-card h4 { margin: 5px 0 0 0; font-size: 20px; font-weight: bold; color: #111827; }
+                .footer { text-align: center; font-size: 12px; color: #9CA3AF; border-top: 1px solid #E5E7EB; padding-top: 20px; margin-top: 50px; }
+                @media print {
+                    body { padding: 0; }
+                    .no-print { display: none; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="header">
+                <div>
+                    <h1 class="title">GARMENT OS</h1>
+                    <p class="subtitle">Official Costing &amp; Style Quotation</p>
+                </div>
+                <div style="text-align: right;">
+                    <h2 style="margin: 0; font-size: 18px; color: #111827;">Costing Quote</h2>
+                    <p style="margin: 5px 0 0 0; font-size: 14px; color: #4B5563;"><strong>Quote No:</strong> ${quoteNo}</p>
+                    <p style="margin: 3px 0 0 0; font-size: 14px; color: #4B5563;"><strong>Date:</strong> ${dateStr}</p>
+                </div>
+            </div>
+
+            <div class="info-grid">
+                <div class="info-section">
+                    <h3>Client &amp; Job Description</h3>
+                    <p><strong>Client / Brand:</strong> ${client}</p>
+                    <p><strong>Garment Category:</strong> ${garment}</p>
+                    <p><strong>Total Quantity:</strong> ${qty > 0 ? qty.toLocaleString() + ' pcs' : 'Not Specified'}</p>
+                </div>
+                <div class="info-section">
+                    <h3>Calculation Parameters</h3>
+                    <p><strong>Calculation Mode:</strong> ${isOrder ? 'Order-based cost rollup' : 'Per-piece breakdown'}</p>
+                    <p><strong>Currency:</strong> INR (₹)</p>
+                    <p><strong>Status:</strong> Draft Quotation</p>
+                </div>
+            </div>
+
+            <h3 style="font-size: 15px; text-transform: uppercase; color: #6B7280; margin-bottom: 15px; border-bottom: 1px solid #F3F4F6; padding-bottom: 5px;">Cost Breakdown</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 50%;">Cost Component</th>
+                        <th style="width: 25%; text-align: right;">Cost / Piece</th>
+                        <th style="width: 25%; text-align: right;">Total Amount</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${breakdownHTML}
+                    <tr style="font-weight: bold; background-color: #F9FAFB;">
+                        <td style="padding: 12px 10px; border-top: 2px solid #D1D5DB;">Total Unit Cost (CP)</td>
+                        <td style="padding: 12px 10px; border-top: 2px solid #D1D5DB; text-align: right;">${fmtFull(s.cp)}/pc</td>
+                        <td style="padding: 12px 10px; border-top: 2px solid #D1D5DB; text-align: right;">${fmtFull(totalCostVal)}</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <h3 style="font-size: 15px; text-transform: uppercase; color: #6B7280; margin-bottom: 15px; border-bottom: 1px solid #F3F4F6; padding-bottom: 5px;">Pricing &amp; Margins Summary</h3>
+            
+            <h4 style="margin: 0 0 10px 0; font-size: 13px; text-transform: uppercase; color: #4B5563; font-weight: 600;">Per Unit Metrics</h4>
+            <div class="summary-box" style="margin-bottom: 20px;">
+                <div class="summary-card">
+                    <p>Unit Cost (CP)</p>
+                    <h4>${fmtFull(s.cp)}</h4>
+                </div>
+                <div class="summary-card">
+                    <p>Suggested Unit SP</p>
+                    <h4>${s.sp ? fmtFull(s.sp) : '—'}</h4>
+                </div>
+                <div class="summary-card">
+                    <p>Unit Profit / Margin</p>
+                    <h4 style="color: #0071E3;">${s.sp ? fmtFull(s.sp - s.cp) : '—'} <span style="font-size: 13px; font-weight: normal; color: #6B7280;">(${s.profitPct !== null ? s.profitPct.toFixed(1) + '%' : '—'})</span></h4>
+                </div>
+            </div>
+
+            <h4 style="margin: 0 0 10px 0; font-size: 13px; text-transform: uppercase; color: #4B5563; font-weight: 600;">Grand Totals (${qty > 0 ? qty.toLocaleString() : '1'} pcs)</h4>
+            <div class="summary-box" style="margin-bottom: 40px;">
+                <div class="summary-card">
+                    <p>Total Cost Amount</p>
+                    <h4>${fmtFull(totalCostVal)}</h4>
+                </div>
+                <div class="summary-card">
+                    <p>Total Sales Value</p>
+                    <h4>${totalSalesVal ? fmtFull(totalSalesVal) : '—'}</h4>
+                </div>
+                <div class="summary-card">
+                    <p>Total Net Profit</p>
+                    <h4 style="color: #34C759;">${totalProfitVal !== null ? fmtFull(totalProfitVal) : '—'}</h4>
+                </div>
+            </div>
+
+            <div class="footer">
+                <p>This is a computer-generated costing quotation generated by Garment OS.</p>
+                <p>&copy; 2026 Garment OS. All rights reserved.</p>
+            </div>
+            
+            <script>
+                window.onload = function() {
+                    window.print();
+                };
+            </script>
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+};
+
 // ══════════════════════════════════════════════════════
 //  RATES EDITOR  (editable stitching & overhead rates)
 // ══════════════════════════════════════════════════════
@@ -715,9 +898,10 @@ window.openRatesEditor = function() {
 window.saveRates = function() {
     const sr = parseFloat($('rates-stitch')?.value);
     const or = parseFloat($('rates-oh')?.value);
-    if (!isNaN(sr) && sr > 0) state.prefs.stitchRate = sr;
-    if (!isNaN(or) && or > 0) state.prefs.overheadsRate = or;
-    savePrefs();
+    const updates = {};
+    if (!isNaN(sr) && sr > 0) updates.stitchRate = sr;
+    if (!isNaN(or) && or > 0) updates.overheadsRate = or;
+    calculatorStore.updatePrefs(updates);
     updateAutoSuggestions();
     window.closeSheet('ratesEditorSheet');
     window.showToast?.('Default rates updated', 'success');
@@ -727,7 +911,7 @@ window.saveRates = function() {
 //  INIT
 // ══════════════════════════════════════════════════════
 async function initModule() {
-    loadPrefs();
+    
 
     const sheetsContainer = $('sheets-container');
     if (!sheetsContainer) return;
@@ -749,12 +933,21 @@ async function initModule() {
     // ── Quote Preview sheet ──
     const quoteContent = `<div id="quote-preview-body" class="min-h-[180px]"><div class="p-8 text-center text-secondary text-[14px]">Fill in costs to preview</div></div>`;
     const quoteFooter  = `
-        <button onclick="copyQuoteToClipboard()" class="flex-1 bg-surface-container-high text-on-surface font-bold text-[15px] py-3.5 rounded-2xl active-scale transition-apple flex items-center justify-center gap-2">
-            <span class="material-symbols-outlined text-[18px]">content_copy</span> Copy
+        <button onclick="downloadQuotePDF()" class="w-full bg-primary text-on-primary font-bold text-[15px] py-3.5 rounded-2xl active-scale transition-apple shadow-sm flex items-center justify-center gap-2">
+            <span class="material-symbols-outlined text-[18px]">picture_as_pdf</span> Download PDF Quote
         </button>
-        <button onclick="openSaveDraft(); window.closeSheet('quotePreviewSheet');" class="flex-1 bg-primary text-on-primary font-bold text-[15px] py-3.5 rounded-2xl active-scale transition-apple shadow-sm flex items-center justify-center gap-2">
-            <span class="material-symbols-outlined text-[18px]">save</span> Save
-        </button>
+        
+        <div class="flex gap-2 w-full mt-2">
+            <button onclick="copyQuoteToClipboard()" class="flex-grow bg-surface-container-high text-on-surface font-bold text-[14px] py-3 rounded-xl active-scale transition-apple flex items-center justify-center gap-1.5">
+                <span class="material-symbols-outlined text-[17px]">content_copy</span> Copy
+            </button>
+            <button onclick="convertToOrder()" class="flex-grow bg-surface-container-high text-on-surface font-bold text-[14px] py-3 rounded-xl active-scale transition-apple flex items-center justify-center gap-1.5">
+                <span class="material-symbols-outlined text-[17px]">shopping_cart</span> Order
+            </button>
+            <button onclick="openSaveDraft(); window.closeSheet('quotePreviewSheet');" class="flex-grow bg-surface-container-high text-on-surface font-bold text-[14px] py-3 rounded-xl active-scale transition-apple flex items-center justify-center gap-1.5">
+                <span class="material-symbols-outlined text-[17px]">save</span> Save
+            </button>
+        </div>
     `;
 
     // ── Rates Editor sheet ──
@@ -817,3 +1010,10 @@ if (document.readyState === 'loading') {
 } else {
     initModule();
 }
+
+window.convertToOrder = function() {
+    window.showToast?.('Order Draft Created! Redirecting...', 'success');
+    setTimeout(() => {
+        window.location.href = 'orders.html?draft=true';
+    }, 1000);
+};

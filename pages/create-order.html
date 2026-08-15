@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
+    <title>Create Order - Garment OS</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com" rel="preconnect"/>
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="../js/tailwind.config.js"></script>
+    
+    <link rel="stylesheet" href="../css/layout.css">
+    <link rel="stylesheet" href="../css/typography.css">
+    <link rel="stylesheet" href="../css/utilities.css">
+</head>
+<body class="font-body text-body antialiased bg-background">
+
+    <div class="fixed top-0 left-0 right-0 h-16 bg-surface/80 backdrop-blur-md border-b border-outline-variant z-40 flex items-center justify-between px-4">
+        <div class="flex items-center gap-3">
+            <button onclick="window.history.back()" class="w-10 h-10 rounded-full bg-surface-variant flex items-center justify-center text-on-surface active-scale transition-apple">
+                <span class="material-symbols-outlined text-[20px]">arrow_back</span>
+            </button>
+            <h1 class="text-[18px] font-bold text-on-surface">New Order</h1>
+        </div>
+        <button id="save-order-btn" class="px-4 py-2 bg-primary text-white font-bold text-[14px] rounded-xl active-scale transition-apple shadow-sm">
+            Save
+        </button>
+    </div>
+
+    <div class="mobile-wrapper mt-16 pb-32">
+        <main id="main-content-area" class="p-4 flex flex-col gap-6">
+            
+            <!-- Customer Details -->
+            <section>
+                <h3 class="text-[14px] font-semibold text-secondary uppercase tracking-wider mb-3">Customer Details</h3>
+                <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-4 space-y-4">
+                    <div>
+                        <label class="block text-[13px] font-medium text-secondary mb-1">Select Customer</label>
+                        <select id="co-customer" class="w-full bg-surface-variant border-transparent rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple">
+                            <option value="">Select Customer...</option>
+                            <option value="c-001">Chennai Silks</option>
+                            <option value="c-002">Arvind Fashions</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[13px] font-medium text-secondary mb-1">Customer Reference No.</label>
+                        <input type="text" id="co-ref" class="w-full bg-surface-variant border-transparent rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple" placeholder="e.g. PO-12938">
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Product Details -->
+            <section>
+                <h3 class="text-[14px] font-semibold text-secondary uppercase tracking-wider mb-3">Product Specifications</h3>
+                <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-4 space-y-4">
+                    <div>
+                        <label class="block text-[13px] font-medium text-secondary mb-1">Garment Type</label>
+                        <select id="co-garment" class="w-full bg-surface-variant border-transparent rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple">
+                            <option value="T-Shirt">T-Shirt</option>
+                            <option value="Polo">Polo</option>
+                            <option value="Hoodie">Hoodie</option>
+                            <option value="Shorts">Shorts</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[13px] font-medium text-secondary mb-1">Fabric GSM</label>
+                        <input type="number" id="co-gsm" class="w-full bg-surface-variant border-transparent rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple" placeholder="e.g. 180">
+                    </div>
+                    <div>
+                        <label class="block text-[13px] font-medium text-secondary mb-1">Color / Variant</label>
+                        <input type="text" id="co-color" class="w-full bg-surface-variant border-transparent rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple" placeholder="e.g. Navy Blue">
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Quantities & Financials -->
+            <section>
+                <h3 class="text-[14px] font-semibold text-secondary uppercase tracking-wider mb-3">Quantities & Financials</h3>
+                <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-4 space-y-4">
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[13px] font-medium text-secondary mb-1">Total Qty</label>
+                            <input type="number" id="co-qty" class="w-full bg-surface-variant border-transparent rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple" placeholder="0">
+                        </div>
+                        <div>
+                            <label class="block text-[13px] font-medium text-secondary mb-1">Price per pc</label>
+                            <div class="relative">
+                                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-secondary font-semibold">₹</span>
+                                <input type="number" id="co-price" class="w-full bg-surface-variant border-transparent rounded-xl pl-8 pr-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple" placeholder="0.00">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-3 bg-surface-variant/50 rounded-xl flex justify-between items-center">
+                        <span class="text-[14px] font-medium text-on-surface">Total Order Value</span>
+                        <span id="co-total-val" class="text-[16px] font-bold text-primary">₹0.00</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Delivery & Priority -->
+            <section>
+                <h3 class="text-[14px] font-semibold text-secondary uppercase tracking-wider mb-3">Delivery</h3>
+                <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-4 space-y-4">
+                    <div>
+                        <label class="block text-[13px] font-medium text-secondary mb-1">Delivery Date</label>
+                        <input type="date" id="co-date" class="w-full bg-surface-variant border-transparent rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple">
+                    </div>
+                    <div class="flex items-center justify-between p-2">
+                        <div>
+                            <p class="text-[15px] font-medium text-on-surface">Expedited Order</p>
+                            <p class="text-[12px] text-secondary">Mark as high priority</p>
+                        </div>
+                        <input type="checkbox" id="co-expedited" class="w-6 h-6 rounded-md border-outline text-[#FF9F0A] focus:ring-[#FF9F0A] bg-transparent cursor-pointer">
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+    
+    <div id="toast-container" class="fixed top-4 left-0 right-0 z-50 flex flex-col gap-2 items-center pointer-events-none px-4"></div>
+    
+    <script type="module" src="../js/orders/create.js"></script>
+</body>
+</html>

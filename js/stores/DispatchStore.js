@@ -3,7 +3,7 @@ import { dispatchRepository } from '../repositories/DispatchRepository.js';
 
 class DispatchStore extends BaseStore {
     constructor() {
-        super();
+        super(dispatchRepository);
         this.currentFilter = 'All';
     }
 
@@ -15,12 +15,12 @@ class DispatchStore extends BaseStore {
     }
 
     async loadShipments() {
-        this.setLoading(true);
+        this.setState({ loading: true });
         try {
             const results = await dispatchRepository.searchShipments(this.currentFilter);
-            this.setEntities(results);
+            this.setState({ entities: results, loading: false });
         } catch (err) {
-            this.setError(err);
+            this.setState({ error: err, loading: false });
         }
     }
 

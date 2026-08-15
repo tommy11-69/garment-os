@@ -34,7 +34,7 @@
             
             <!-- Greeting Section -->
             <div class="px-xs pt-sm pb-xs">
-                <h2 class="text-[28px] leading-tight font-semibold tracking-tight text-on-surface mb-1">Good morning, Michael</h2>
+                <h2 id="dashboard-greeting" class="text-[28px] leading-tight font-semibold tracking-tight text-on-surface mb-1">Good morning, Michael</h2>
                 <p class="text-body text-secondary">Here's your production overview.</p>
             </div>
             
@@ -101,25 +101,8 @@
                     <h3 class="font-section-title text-[20px] text-on-surface">Activity</h3>
                 </div>
                 <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-sm p-md pb-sm">
-                    <div class="relative border-l-2 border-[#E5E5EA] ml-3 space-y-6">
-                        <!-- Activity Item 1 -->
-                        <div class="relative pl-6">
-                            <div class="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-primary ring-4 ring-white"></div>
-                            <div class="mb-1">
-                                <span class="text-body-bold text-on-surface">Inventory Alert</span>
-                            </div>
-                            <p class="text-body text-secondary leading-snug">Low stock on Navy Blue Thread. Reorder recommended.</p>
-                            <span class="text-caption text-secondary mt-1 block">10 mins ago</span>
-                        </div>
-                        <!-- Activity Item 2 -->
-                        <div class="relative pl-6">
-                            <div class="absolute -left-[9px] top-0 w-4 h-4 rounded-full bg-[#008A00] ring-4 ring-white"></div>
-                            <div class="mb-1">
-                                <span class="text-body-bold text-on-surface">Batch Complete</span>
-                            </div>
-                            <p class="text-body text-secondary leading-snug">Batch #B-8090 cleared QA inspection.</p>
-                            <span class="text-caption text-secondary mt-1 block">2 hrs ago</span>
-                        </div>
+                    <div id="dashboard-activity-feed" class="relative border-l-2 border-[#E5E5EA] ml-3 space-y-6">
+                        <!-- Data will be injected here -->
                     </div>
                 </div>
             </div>

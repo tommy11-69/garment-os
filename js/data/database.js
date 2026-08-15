@@ -40,10 +40,27 @@ class Database {
 
     // --- Core CRUD ---
     
-    async getCollection(collectionName) {
+    async getCollection(collectionName, options = {}) {
         await this._delay();
         if (!this.collections[collectionName]) throw new Error(`Collection ${collectionName} not found.`);
-        return [...this.collections[collectionName]];
+        
+        let data = [...this.collections[collectionName]];
+        const total = data.length;
+        
+        if (options.limit) {
+            const page = options.page || 1;
+            const start = (page - 1) * options.limit;
+            const end = start + options.limit;
+            data = data.slice(start, end);
+            return {
+                data,
+                total,
+                page,
+                totalPages: Math.ceil(total / options.limit)
+            };
+        }
+        
+        return data;
     }
 
     async getById(collectionName, id) {
@@ -61,7 +78,7 @@ class Database {
         if (!collection) throw new Error(`Collection ${collectionName} not found.`);
         
         const newItem = {
-            id: `${collectionName.charAt(0)}-${Date.now()}`,
+            id: data.id || `${collectionName.charAt(0)}-${Date.now()}`,
             ...data,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
@@ -100,11 +117,14 @@ class Database {
         return true;
     }
 
-    async search(collectionName, query, fields) {
-        const collection = await this.getCollection(collectionName);
+    async search(collectionName, query, fields, options = {}) {
+        await this._delay();
+        const collection = this.collections[collectionName];
+        if (!collection) throw new Error(`Collection ${collectionName} not found.`);
+        
         const q = query.toLowerCase();
         
-        return collection.filter(item => {
+        let data = collection.filter(item => {
             return fields.some(field => {
                 const val = item[field];
                 if (val && typeof val === 'string') {
@@ -113,6 +133,23 @@ class Database {
                 return false;
             });
         });
+        
+        const total = data.length;
+        
+        if (options.limit) {
+            const page = options.page || 1;
+            const start = (page - 1) * options.limit;
+            const end = start + options.limit;
+            data = data.slice(start, end);
+            return {
+                data,
+                total,
+                page,
+                totalPages: Math.ceil(total / options.limit)
+            };
+        }
+        
+        return data;
     }
 }
 

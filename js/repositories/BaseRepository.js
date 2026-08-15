@@ -5,8 +5,8 @@ export class BaseRepository {
         this.collection = collectionName;
     }
 
-    async getAll() {
-        return await db.getCollection(this.collection);
+    async getAll(options = {}) {
+        return await db.getCollection(this.collection, options);
     }
 
     async getById(id) {
@@ -33,7 +33,7 @@ export class BaseRepository {
         return await this.update(id, { status: 'Active', statusColor: 'bg-success-container/30 text-success' });
     }
 
-    async search(query, fields) {
-        return await db.search(this.collection, query, fields);
+    async search(query, fields, options = {}) {
+        return await db.search(this.collection, query, fields, options);
     }
 }

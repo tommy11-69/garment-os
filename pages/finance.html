@@ -24,98 +24,48 @@
     <div id="topbar-container"></div>
 
     <div class="mobile-wrapper">
-        <main id="main-content-area" class="flex-1 p-md flex flex-col gap-lg">
+                <main id="main-content-area" class="flex-1 p-md flex flex-col gap-lg pb-32">
             
             <div class="px-xs pt-sm">
-                <h2 class="text-[28px] leading-tight font-semibold tracking-tight text-on-surface mb-1">Finance</h2>
-                <p class="text-[15px] text-secondary">October 2026 Overview</p>
+                <h2 class="text-[28px] leading-tight font-semibold tracking-tight text-on-surface mb-1">Cash Flow</h2>
+                <p class="text-[15px] text-secondary">Financial Overview</p>
             </div>
             
-            <!-- Cash Flow Summary Card -->
-            <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant p-lg shadow-sm">
-                <p class="text-[13px] font-semibold text-secondary uppercase tracking-wider mb-2">Net Cash Flow</p>
-                <div class="text-[36px] font-bold tracking-tight text-on-surface mb-6">$124,500.00</div>
-                
-                <div class="grid grid-cols-2 gap-4 pt-4 border-t border-outline-variant/30">
-                    <div>
-                        <div class="flex items-center gap-1.5 mb-1">
-                            <div class="w-2 h-2 rounded-full bg-[#008A00]"></div>
-                            <span class="text-[13px] text-secondary">Income</span>
-                        </div>
-                        <span class="text-[18px] font-bold text-on-surface">$245,200</span>
-                    </div>
-                    <div>
-                        <div class="flex items-center gap-1.5 mb-1">
-                            <div class="w-2 h-2 rounded-full bg-error"></div>
-                            <span class="text-[13px] text-secondary">Expenses</span>
-                        </div>
-                        <span class="text-[18px] font-bold text-on-surface">$120,700</span>
-                    </div>
-                </div>
+            <!-- Dashboard Cards container -->
+            <div id="finance-dashboard-container" class="flex flex-col gap-4">
+                <!-- Rendered dynamically -->
             </div>
 
-            <!-- Quick Action Buttons -->
-            <div class="flex gap-3">
-                <button class="flex-1 py-3 rounded-[16px] bg-primary/10 text-primary font-bold text-[14px] flex flex-col items-center gap-1 active:bg-primary/20 transition-colors">
-                    <span class="material-symbols-outlined text-[20px]">call_received</span>
-                    Record In
-                </button>
-                <button class="flex-1 py-3 rounded-[16px] bg-error/10 text-error font-bold text-[14px] flex flex-col items-center gap-1 active:bg-error/20 transition-colors">
-                    <span class="material-symbols-outlined text-[20px]">call_made</span>
-                    Record Out
+            <!-- Search & Actions -->
+            <div class="flex items-center gap-3 mt-2">
+                <div class="relative flex-1">
+                    <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[20px]" aria-hidden="true">search</span>
+                    <input type="text" id="transaction-search-input" placeholder="Search transactions..." autocomplete="off"
+                           class="w-full bg-surface-container-lowest border border-outline-variant rounded-2xl pl-10 pr-4 py-3.5 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple shadow-sm placeholder:text-secondary">
+                </div>
+                
+                <button onclick="window.openSheet('filterSheet')" class="w-12 h-12 shrink-0 rounded-2xl bg-surface-container-lowest border border-outline-variant flex items-center justify-center text-on-surface active-scale transition-apple shadow-sm">
+                    <span class="material-symbols-outlined text-[22px]">tune</span>
                 </button>
             </div>
 
-            <!-- Pending Payments -->
-            <div class="flex flex-col gap-sm">
-                <h3 class="font-section-title text-[18px] text-on-surface px-xs">Pending (To Collect)</h3>
-                <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-sm overflow-hidden flex flex-col divide-y divide-outline-variant/50">
-                    <div class="p-md flex items-center justify-between">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-full bg-surface-variant flex items-center justify-center text-on-surface-variant font-bold">A</div>
-                            <div>
-                                <h4 class="text-[15px] font-bold text-on-surface">Kumaran Silks</h4>
-                                <p class="text-[12px] text-error font-medium">Overdue by 5 days</p>
-                            </div>
-                        </div>
-                        <span class="text-[16px] font-bold text-on-surface">$12,400</span>
-                    </div>
-                    <div class="p-md flex items-center justify-between">
-                        <div class="flex items-center gap-3">
-                            <div class="w-10 h-10 rounded-full bg-surface-variant flex items-center justify-center text-on-surface-variant font-bold">N</div>
-                            <div>
-                                <h4 class="text-[15px] font-bold text-on-surface">Nomad Gear Inc.</h4>
-                                <p class="text-[12px] text-secondary font-medium">Due in 14 days</p>
-                            </div>
-                        </div>
-                        <span class="text-[16px] font-bold text-on-surface">$8,950</span>
-                    </div>
-                </div>
+            <div class="flex items-center justify-between mb-2">
+                <h3 class="text-[18px] font-bold text-on-surface tracking-tight">Recent Transactions</h3>
             </div>
-
-            <!-- Recent Transactions -->
-            <div class="flex flex-col gap-sm">
-                <div class="flex items-center justify-between px-xs">
-                    <h3 class="font-section-title text-[18px] text-on-surface">Recent Transactions</h3>
-                    <button class="text-[14px] font-bold text-primary active:opacity-70">See All</button>
-                </div>
-                
-                <div id="transactions-list" class="bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-sm overflow-hidden flex flex-col divide-y divide-outline-variant/50">
-                    <!-- Data will be injected here -->
-                </div>
+            
+            <div id="transactions-list" class="flex flex-col">
+                <!-- Transactions rendered here -->
             </div>
-
-            <div class="h-6"></div>
         </main>
     </div>
     
-    <div id="fab-container" data-icon="receipt_long" data-action="openSheet('addTransactionSheet')"></div>
+    <div id="fab-container" data-icon="receipt_long" data-action="window.openSheet('addTransactionSheet')"></div>
     <div id="bottom-nav-container"></div>
     
     <div id="sheets-container"></div>
     
     <script type="module" src="../js/finance/index.js"></script>
-
+    <script src="../js/utils/sheet.js"></script>
     <script src="../js/app.js"></script>
 </body>
 </html>

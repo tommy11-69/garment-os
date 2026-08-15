@@ -3,7 +3,7 @@ import { orderRepository } from '../repositories/OrderRepository.js';
 
 class OrderStore extends BaseStore {
     constructor() {
-        super();
+        super(orderRepository);
         this.currentSearch = '';
         this.currentFilters = { status: 'all' };
     }
@@ -17,12 +17,12 @@ class OrderStore extends BaseStore {
     }
 
     async loadOrders() {
-        this.setLoading(true);
+        this.setState({ loading: true });
         try {
             const results = await orderRepository.searchOrders(this.currentSearch, this.currentFilters);
-            this.setEntities(results);
+            this.setState({ entities: results, loading: false });
         } catch (err) {
-            this.setError(err);
+            this.setState({ error: err, loading: false });
         }
     }
 
@@ -64,6 +64,23 @@ class OrderStore extends BaseStore {
     async addTimelineEvent(id, event) {
         await orderRepository.addTimelineEvent(id, event);
         await this.fetchActiveEntity(id);
+    }
+
+    async toggleTask(orderId, taskId) {
+        const order = await orderRepository.getByIdEnriched(orderId);
+        if (!order || !order.tasks) return;
+        
+        const task = order.tasks.find(t => t.id === taskId);
+        if (!task) return;
+        
+        task.status = task.status === 'Completed' ? 'Pending' : 'Completed';
+        
+        // Calculate progress
+        const total = order.tasks.length;
+        const completed = order.tasks.filter(t => t.status === 'Completed').length;
+        const progress = total === 0 ? 0 : Math.round((completed / total) * 100);
+        
+        await this.updateOrder(orderId, { tasks: order.tasks, progress });
     }
 }
 

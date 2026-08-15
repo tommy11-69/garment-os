@@ -64,7 +64,8 @@ class CustomerRepository extends BaseRepository {
             outstanding,
             averageOrderValue,
             lastOrderDate,
-            activeOrders: totalOrders - completedOrders
+            activeOrders: totalOrders - completedOrders,
+            recentOrders: sorted.slice(0, 5)
         };
     }
 }

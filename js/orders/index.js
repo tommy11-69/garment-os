@@ -1,327 +1,359 @@
-import { orderStore } from '../stores/OrderStore.js';
-import { api, makeTimestamp } from '../services/api.js';
+import { api } from '../services/api.js';
 import { renderers } from '../renderers.js';
-import { SegmentedControl, BottomSheet, TimelineEvent, TaskCard } from '../components/index.js';
-import { bindFormValidation } from '../utils/formHandler.js';
-import { getOrderSheetsHTML, getOrderDetailsHeader, getOrderDetailsContent, getTaskSheetHTML } from './templates.js';
-import { getCreateCustomerSheetHTML, getCreateCustomerFooterHTML } from '../components/customerForms.js';
+import { getOrderSheetsHTML, getOrderDetailsHeader, getOrderDetailsContent, getOrdersAnalyticsHTML } from './templates.js';
 
-// ─── Shared timeline event pusher ────────────────────────────────────────────
-// Pushes a standardised event to an order's timeline array.
-// type: 'system' | 'status' | 'action' | 'task' | 'expense' | 'edit' | 'inventory'
-function pushTimelineEvent(order, title, type = 'action', user = 'System', description = '') {
-    if (!order) return;
-    if (!order.timeline) order.timeline = [];
-    order.timeline.unshift({
-        id: `t-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-        date: makeTimestamp(),
-        title,
-        description,
-        user,
-        type
-    });
-}
+let currentOrders = [];
+let activeOrder = null;
+let currentFilter = 'active';
+let currentSearchQuery = '';
+const TOTAL_WIZARD_STEPS = 4;
+window.currentWizardStep = 1;
 
-
-
-
-
-let currentAdvFilters = {
-    status: '',
-    priority: '',
-    dateFrom: '',
-    dateTo: ''
-};
-
-
-
-async function renderSheets() {
-    const container = document.getElementById('sheets-container');
-    if (container) {
-        let html = '';
-        if (typeof getOrderSheetsHTML === 'function') {
-            html += await getOrderSheetsHTML();
-        }
-        if (typeof getCreateCustomerSheetHTML === 'function') {
-            html += getCreateCustomerSheetHTML();
-        }
-        container.innerHTML = html;
-        if (typeof bindFormValidation === 'function') {
-            bindFormValidation(document);
-        }
+document.addEventListener('DOMContentLoaded', async () => {
+    // 1. Render Sheets
+    const sheetsContainer = document.getElementById('sheets-container');
+    if (sheetsContainer) {
+        sheetsContainer.innerHTML = await getOrderSheetsHTML();
     }
-}
-
-async function initModule() {
-    // 1. Subscribe to Store
-    orderStore.subscribe(renderUI);
-
-    const segControl = document.getElementById('orders-segmented-control');
-    if (segControl) {
-        const options = [
-            { id: 'all', label: 'All' },
-            { id: 'active', label: 'Active (Draft/Prod)' },
-            { id: 'completed', label: 'Completed' }
-        ];
-        
-        const renderSegControl = () => {
-            segControl.innerHTML = SegmentedControl({
-                options: options,
-                activeOption: orderStore.getState().currentFilters.status || 'all'
-            });
-            
-            const tabs = segControl.querySelectorAll('button[role="tab"]');
-            tabs.forEach(tab => {
-                tab.addEventListener('click', (e) => {
-                    orderStore.setFilter('status', e.currentTarget.dataset.option);
-                    renderSegControl();
-                });
-            });
-        };
-        renderSegControl();
-    }
-
-    // Bind Search
-    const searchInput = document.getElementById('order-search-input');
-    if (searchInput) {
-        searchInput.addEventListener('input', (e) => {
-            orderStore.setSearch(e.target.value);
-        });
-    }
-
-    // 2. Render Sheets
-    await renderSheets();
     
-    // 3. Load Data
-    await orderStore.loadOrders();
+    // 2. Load Data
+    await loadOrders();
 
-    // If URL has orderId, open it
+    // 3. Bind events
+    document.getElementById('orders-search-input')?.addEventListener('input', (e) => {
+        currentSearchQuery = e.target.value.trim().toLowerCase();
+        renderOrders();
+    });
+
+    bindWizardCalculations();
+    bindCostingAutoFill();
+
+    // Open from URL if present
     const params = new URLSearchParams(window.location.search);
     const orderId = params.get('orderId');
-    if (orderId) {
-        window.openOrderDetails(orderId);
-    }
+    if (orderId) window.openOrderDetails(orderId);
+});
+
+async function loadOrders() {
+    currentOrders = await api.getOrders();
+    renderOrders();
+    renderAnalyticsSummary();
 }
 
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initModule);
-} else {
-    initModule();
-}
+function renderAnalyticsSummary() {
+    const container = document.getElementById('orders-analytics-container');
+    if (!container) return;
 
-// ─── STATE-DRIVEN RENDERING ─────────────────────────────────────
-
-function renderUI(state) {
-    const { entities, activeEntity, selectedIds, isBulkMode, loading, error } = state;
+    const activeOrders = currentOrders.filter(o => !['Dispatched', 'Delivered', 'Closed', 'Archived'].includes(o.status));
     
-    // Render List
-    const container = document.getElementById('orders-list');
-    if (container) {
-        if (loading) {
-            if (window.setLoading) window.setLoading('orders-list');
-        } else if (error) {
-            container.innerHTML = `<div class="p-md text-center text-error">Failed to load orders: ${error.message}</div>`;
-        } else if (entities.length === 0) {
-            container.innerHTML = `
-                <div class="flex flex-col items-center justify-center p-xl text-center">
-                    <div class="w-16 h-16 rounded-full bg-surface-variant flex items-center justify-center mb-4 text-secondary">
-                        <span class="material-symbols-outlined text-[32px]">inventory_2</span>
-                    </div>
-                    <h3 class="text-[16px] font-bold text-on-surface mb-1">No Orders Found</h3>
-                    <p class="text-body text-secondary max-w-[250px]">Adjust filters or create a new order.</p>
-                </div>
-            `;
-        } else {
-            container.innerHTML = entities.map(o => 
-                renderers.orderCard(o, isBulkMode, selectedIds.has(o.id))
-            ).join('');
-        }
-    }
-    
-    // Update Bulk Toolbar
-    updateBulkToolbar(state);
-    
-    // Update Active Entity Sheets
-    if (activeEntity) {
-        updateActiveEntitySheets(activeEntity);
-    }
-}
+    const totalValue = activeOrders.reduce((sum, o) => sum + (o.value || 0), 0);
+    const pendingUnits = activeOrders.reduce((sum, o) => sum + (o.qty || 0), 0);
+    const cuttingCount = activeOrders.filter(o => o.status === 'Cutting').length;
+    const stitchingCount = activeOrders.filter(o => o.status === 'Stitching').length;
+    const printingCount = activeOrders.filter(o => o.status === 'Printing').length;
 
-function updateBulkToolbar(state) {
-    const { isBulkMode, selectedIds } = state;
-    let toolbarContainer = document.getElementById('bulk-toolbar-container');
-    
-    if (isBulkMode) {
-        if (!toolbarContainer) {
-            toolbarContainer = document.createElement('div');
-            toolbarContainer.id = 'bulk-toolbar-container';
-            document.body.appendChild(toolbarContainer);
-        }
-        // Make sure we have getBulkToolbarHTML from templates... we'll just mock it if not imported properly
-        toolbarContainer.innerHTML = `<div class="fixed bottom-[80px] left-4 right-4 bg-surface-container-highest border border-outline-variant shadow-lg rounded-2xl p-3 z-40 transition-all duration-300 translate-y-0 opacity-100 flex items-center max-w-[400px] mx-auto">
-            <button onclick="window.cancelBulkSelection()" class="w-10 h-10 rounded-full hover:bg-surface-variant flex items-center justify-center text-secondary active-scale transition-apple mr-3">
-                <span class="material-symbols-outlined text-[20px]">close</span>
-            </button>
-            <div class="flex-1">
-                <span class="text-[14px] font-bold text-on-surface block">${selectedIds.size} Selected</span>
-                <span class="text-[12px] text-secondary">Bulk Actions</span>
-            </div>
-        </div>`;
-    } else if (toolbarContainer) {
-        toolbarContainer.remove();
-    }
-}
-
-function updateActiveEntitySheets(entity) {
-    const sheet = document.getElementById('orderDetailsSheet');
-    if (sheet && !sheet.classList.contains('translate-y-full')) {
-        const bodyContent = sheet.querySelector('.overflow-y-auto');
-        if (bodyContent && getOrderDetailsContent) {
-            bodyContent.innerHTML = getOrderDetailsContent(entity);
-        }
-        const header = sheet.querySelector('.bg-surface-container-lowest.sticky');
-        if (header && getOrderDetailsHeader) {
-            header.innerHTML = getOrderDetailsHeader(entity);
-        }
-    }
-}
-
-window.toggleOrderSelection = function(orderId) {
-    orderStore.toggleSelection(orderId);
-};
-
-window.selectAllOrders = function() {
-    const state = orderStore.getState();
-    const allSelected = state.entities.length > 0 && state.selectedIds.size === state.entities.length;
-    if (allSelected) {
-        orderStore.clearSelection();
-    } else {
-        orderStore.selectAll(state.entities.map(e => e.id));
-    }
-};
-
-window.cancelBulkSelection = function() {
-    orderStore.clearSelection();
-};
-
-
-
-window.bulkArchive = async function() {
-    if (orderStore.getState().selectedIds.size === 0) return;
-    window.showToast?.(`Archiving ${orderStore.getState().selectedIds.size} orders...`, 'info');
-    if (window.setLoading) window.setLoading('orders-list');
-    
-    try {
-        for (const orderId of orderStore.getState().selectedIds) {
-            await api.archiveOrder(orderId);
-        }
-        window.showToast?.('Orders archived', 'success');
-        orderStore.clearSelection(); // Exit bulk mode
-        await orderStore.loadOrders();
-    } catch (e) {
-        window.showToast?.('Failed to bulk archive', 'error');
-    }
-};
-
-window.bulkDelete = async function() {
-    if (orderStore.getState().selectedIds.size === 0) return;
-    window.showConfirmation({
-        title: 'Bulk Delete',
-        message: `Are you sure you want to permanently delete ${orderStore.getState().selectedIds.size} orders?`,
-        confirmText: 'Delete',
-        onConfirm: async () => {
-            window.showToast?.(`Deleting ${orderStore.getState().selectedIds.size} orders...`, 'info');
-            if (window.setLoading) window.setLoading('orders-list');
-            try {
-                for (const orderId of orderStore.getState().selectedIds) {
-                    await api.deleteOrder(orderId);
-                }
-                window.showToast?.('Orders deleted', 'success');
-                orderStore.clearSelection();
-                await orderStore.loadOrders();
-            } catch (e) {
-                window.showToast?.('Failed to bulk delete', 'error');
-            }
-        }
+    container.innerHTML = getOrdersAnalyticsHTML({
+        totalValue,
+        pendingUnits,
+        cuttingCount,
+        stitchingCount,
+        printingCount
     });
-};
+}
 
-window.bulkExport = function() {
-    if (orderStore.getState().selectedIds.size === 0) return;
-    window.showToast?.(`Exporting ${orderStore.getState().selectedIds.size} orders to CSV...`, 'info');
-    setTimeout(() => {
-        window.showToast?.('Export complete', 'success');
-        orderStore.clearSelection();
-    }, 1000);
-};
+function renderOrders() {
+    const container = document.getElementById('orders-list');
+    if (!container) return;
 
-window.bulkPrint = function() {
-    if (orderStore.getState().selectedIds.size === 0) return;
-    window.showToast?.(`Generating PDFs for ${orderStore.getState().selectedIds.size} orders...`, 'info');
-    setTimeout(() => {
-        window.showToast?.('Ready for printing', 'success');
-        orderStore.clearSelection();
-        window.print();
-    }, 1000);
-};
+    let filtered = currentOrders;
 
-window.bulkAssign = function() {
-    if (orderStore.getState().selectedIds.size === 0) return;
-    // Simulate assigning to production
-    window.showToast?.(`Assigning ${orderStore.getState().selectedIds.size} orders to production...`, 'info');
-    setTimeout(() => {
-        window.showToast?.('Orders assigned', 'success');
-        orderStore.clearSelection();
-    }, 1000);
-};
-
-window.bulkApprove = async function() {
-    if (orderStore.getState().selectedIds.size === 0) return;
-    window.showToast?.(`Approving ${orderStore.getState().selectedIds.size} orders...`, 'info');
-    if (window.setLoading) window.setLoading('orders-list');
-    
-    try {
-        for (const orderId of orderStore.getState().selectedIds) {
-            const o = orderStore.getState().entities.find(ord => ord.id === orderId);
-            if (o && (o.status === 'Draft' || o.status === 'Quotation Sent' || o.status === 'Awaiting Approval')) {
-                await api.updateOrderStatus(orderId, 'Approved');
-            }
-        }
-        window.showToast?.('Orders approved', 'success');
-        orderStore.clearSelection(); // Exit bulk mode
-        await orderStore.loadOrders();
-    } catch (e) {
-        window.showToast?.('Failed to bulk approve', 'error');
+    // Segmented tab
+    if (currentFilter === 'active') {
+        filtered = filtered.filter(o => !['Dispatched', 'Delivered', 'Closed', 'Archived'].includes(o.status));
+    } else if (currentFilter === 'completed') {
+        filtered = filtered.filter(o => ['Dispatched', 'Delivered', 'Closed', 'Archived'].includes(o.status));
     }
-};
 
-window.openOrderDetails = async function(orderId) {
-    if (orderStore.getState().isBulkMode) {
-        window.toggleOrderSelection(orderId);
+    // Search
+    if (currentSearchQuery) {
+        filtered = filtered.filter(o => 
+            (o.id && o.id.toLowerCase().includes(currentSearchQuery)) ||
+            (o.product && o.product.toLowerCase().includes(currentSearchQuery)) ||
+            (o.customerId && o.customerId.toLowerCase().includes(currentSearchQuery)) ||
+            (o.status && o.status.toLowerCase().includes(currentSearchQuery))
+        );
+    }
+
+    if (filtered.length === 0) {
+        container.innerHTML = `<div class="p-8 text-center text-secondary">
+            <span class="material-symbols-outlined text-[48px] mb-2 opacity-50">inbox</span>
+            <p>No orders found.</p>
+        </div>`;
         return;
     }
 
-    await orderStore.fetchActiveEntity(orderId);
-    const order = orderStore.getState().activeEntity;
-    if (!order) return;
+    container.innerHTML = filtered.map(o => `
+        <div onclick="window.openOrderDetails('${o.id}')" class="cursor-pointer active-scale transition-apple">
+            ${renderers.orderCard(o)}
+        </div>
+    `).join('');
+}
 
-    const container = document.getElementById('sheets-container');
-    const existing = document.getElementById('orderDetailsSheet');
-    if (existing) {
-        existing.remove(); 
-        const overlay = document.getElementById('orderDetailsSheet-overlay');
-        if (overlay) overlay.remove();
+window.setFilter = function(filter) {
+    currentFilter = filter;
+    document.getElementById('tab-active')?.classList.replace('bg-surface-variant', 'text-secondary');
+    document.getElementById('tab-active')?.classList.replace('text-on-surface', 'text-secondary');
+    document.getElementById('tab-active')?.classList.remove('bg-surface-variant', 'text-on-surface');
+    document.getElementById('tab-completed')?.classList.remove('bg-surface-variant', 'text-on-surface');
+    
+    if (filter === 'active') {
+        document.getElementById('tab-active')?.classList.add('bg-surface-variant', 'text-on-surface');
+        document.getElementById('tab-completed')?.classList.add('text-secondary');
+    } else {
+        document.getElementById('tab-completed')?.classList.add('bg-surface-variant', 'text-on-surface');
+        document.getElementById('tab-completed')?.classList.remove('text-secondary');
+        document.getElementById('tab-active')?.classList.add('text-secondary');
+    }
+    renderOrders();
+}
+
+window.openOrderDetails = async function (orderId) {
+    activeOrder = currentOrders.find(o => o.id === orderId);
+    if (!activeOrder) return;
+
+    const detailsSheet = document.getElementById('orderDetailsSheet-content');
+    if (detailsSheet) {
+        const headerEl = detailsSheet.querySelector('.sheet-custom-header');
+        const contentEl = document.getElementById('orderDetailsSheet-inner-content');
+        if (headerEl) headerEl.innerHTML = getOrderDetailsHeader(activeOrder);
+        if (contentEl) contentEl.innerHTML = getOrderDetailsContent(activeOrder);
     }
 
-    const sheetHTML = BottomSheet({
-        id: 'orderDetailsSheet',
-        customHeader: getOrderDetailsHeader ? getOrderDetailsHeader(order) : '<div class="p-4">Loading Header...</div>',
-        content: getOrderDetailsContent ? getOrderDetailsContent(order) : '<div class="p-4">Loading Content...</div>',
-        height: '90vh'
-    });
-
-    container.insertAdjacentHTML('beforeend', sheetHTML);
-    setTimeout(() => window.openSheet('orderDetailsSheet'), 50);
+    window.openSheet('orderDetailsSheet');
+    window.switchOrderTab('overview');
 };
 
+window.switchOrderTab = function(tabId) {
+    document.querySelectorAll('.od-tab-content').forEach(el => el.classList.add('hidden'));
+    document.querySelectorAll('.od-tab-btn').forEach(btn => {
+        btn.classList.remove('border-primary', 'text-primary');
+        btn.classList.add('border-transparent', 'text-secondary');
+    });
 
+    document.getElementById(`od-tab-${tabId}`)?.classList.remove('hidden');
+    const btn = document.getElementById(`od-tab-btn-${tabId}`);
+    if (btn) {
+        btn.classList.remove('border-transparent', 'text-secondary');
+        btn.classList.add('border-primary', 'text-primary');
+    }
+}
+
+// ==========================================
+// CREATE WIZARD LOGIC
+// ==========================================
+window.openCreateWizard = function() {
+    window.currentWizardStep = 1;
+    window.goToOrderStep(0); // init
+    document.getElementById('create-order-form')?.reset();
+    document.getElementById('calc-grandtotal').textContent = '₹0.00';
+    window.openSheet('createOrderSheet');
+}
+
+window.goToOrderStep = function(direction) {
+    let nextStep = window.currentWizardStep + direction;
+    if (nextStep < 1 || nextStep > TOTAL_WIZARD_STEPS) return;
+    
+    for (let i = 1; i <= TOTAL_WIZARD_STEPS; i++) {
+        document.getElementById(`order-step-${i}`)?.classList.add('hidden');
+    }
+    document.getElementById(`order-step-${nextStep}`)?.classList.remove('hidden');
+    
+    const progressWidth = ((nextStep - 1) / (TOTAL_WIZARD_STEPS - 1)) * 100;
+    const progressEl = document.getElementById('wizard-progress-bar');
+    if (progressEl) progressEl.style.width = `${progressWidth}%`;
+
+    document.getElementById('wizard-prev-btn')?.classList.toggle('hidden', nextStep === 1);
+    document.getElementById('wizard-next-btn')?.classList.toggle('hidden', nextStep === TOTAL_WIZARD_STEPS);
+    document.getElementById('create-order-submit')?.classList.toggle('hidden', nextStep !== TOTAL_WIZARD_STEPS);
+
+    window.currentWizardStep = nextStep;
+}
+
+function bindWizardCalculations() {
+    const qtyInput = document.getElementById('create-qty');
+    const priceInput = document.getElementById('create-price');
+    const totalEl = document.getElementById('calc-grandtotal');
+
+    const calc = () => {
+        const q = parseInt(qtyInput?.value) || 0;
+        const p = parseFloat(priceInput?.value) || 0;
+        if (totalEl) totalEl.textContent = `₹${(q * p).toLocaleString()}`;
+    };
+
+    qtyInput?.addEventListener('input', calc);
+    priceInput?.addEventListener('input', calc);
+}
+
+function bindCostingAutoFill() {
+    const quoteSelect = document.getElementById('create-quote');
+    quoteSelect?.addEventListener('change', async (e) => {
+        const costingId = e.target.value;
+        if (!costingId) return;
+
+        try {
+            const costings = await api.getCostings();
+            const costing = costings.find(c => c.id === costingId);
+            if (costing) {
+                const productInput = document.getElementById('create-product');
+                const fabricInput = document.getElementById('create-fabric');
+                const priceInput = document.getElementById('create-price');
+
+                if (productInput) productInput.value = costing.styleRef || '';
+                if (fabricInput) fabricInput.value = costing.fabricType || '';
+                if (priceInput) {
+                    priceInput.value = costing.retailPrice || costing.totalCost || 0;
+                    // Trigger calculations
+                    const qtyInput = document.getElementById('create-qty');
+                    const q = parseInt(qtyInput?.value) || 0;
+                    const p = parseFloat(priceInput.value) || 0;
+                    const totalEl = document.getElementById('calc-grandtotal');
+                    if (totalEl) totalEl.textContent = `₹${(q * p).toLocaleString()}`;
+                }
+                window.showToast?.('Pre-filled specs from quotation', 'success');
+            }
+        } catch (err) {
+            console.error('Failed to auto-fill costing:', err);
+        }
+    });
+}
+
+// ==========================================
+// CRUD OPERATIONS
+// ==========================================
+window.submitNewOrder = async function() {
+    const customerId = document.getElementById('create-customer-select')?.value;
+    const product = document.getElementById('create-product')?.value;
+    const qty = parseInt(document.getElementById('create-qty')?.value) || 0;
+    const unitPrice = parseFloat(document.getElementById('create-price')?.value) || 0;
+    
+    if (!customerId || !product || qty <= 0) {
+        window.showToast?.('Please fill required fields (Customer, Product, Qty > 0)', 'error');
+        return;
+    }
+    
+    const newOrder = {
+        customerId,
+        product,
+        qty,
+        fabric: document.getElementById('create-fabric')?.value || '',
+        sizes: document.getElementById('create-sizes')?.value || '',
+        colors: document.getElementById('create-colors')?.value || '',
+        status: document.getElementById('create-status')?.value || 'Draft',
+        priority: document.getElementById('create-priority')?.value || 'Normal',
+        value: (qty * unitPrice),
+        incurredCost: 0,
+        deliveryDate: document.getElementById('create-delivery')?.value || '',
+        tasks: [],
+        timeline: [],
+        paymentStatus: 'Unpaid',
+        paymentReceived: 0
+    };
+    
+    try {
+        await api.saveOrder(newOrder);
+        window.showToast?.('Order created successfully', 'success');
+        window.closeSheet('createOrderSheet');
+        await loadOrders();
+    } catch (err) {
+        window.showToast?.('Failed to create order', 'error');
+    }
+}
+
+window.openEditOrder = function() {
+    if (!activeOrder) return;
+    document.getElementById('edit-product').value = activeOrder.product || '';
+    document.getElementById('edit-qty').value = activeOrder.qty || '';
+    document.getElementById('edit-price').value = (activeOrder.value / (activeOrder.qty || 1)) || '';
+    document.getElementById('edit-priority').value = activeOrder.priority || 'Normal';
+    document.getElementById('edit-delivery').value = activeOrder.deliveryDate || '';
+    
+    window.closeSheet('orderDetailsSheet');
+    window.openSheet('editOrderSheet');
+}
+
+window.submitEditOrder = async function() {
+    if (!activeOrder) return;
+    const product = document.getElementById('edit-product').value;
+    const qty = parseInt(document.getElementById('edit-qty').value) || activeOrder.qty;
+    const unitPrice = parseFloat(document.getElementById('edit-price').value) || 0;
+    const priority = document.getElementById('edit-priority').value;
+    const deliveryDate = document.getElementById('edit-delivery').value;
+
+    const updates = {
+        product,
+        qty,
+        priority,
+        deliveryDate,
+        value: (qty * unitPrice)
+    };
+
+    try {
+        await api.updateOrder(activeOrder.id, updates);
+        window.showToast?.('Order updated', 'success');
+        window.closeSheet('editOrderSheet');
+        await loadOrders();
+        window.openOrderDetails(activeOrder.id);
+    } catch (e) {
+        window.showToast?.('Failed to update', 'error');
+    }
+}
+
+window.deleteOrder = async function () {
+    if (!activeOrder) return;
+    try {
+        await api.deleteOrder(activeOrder.id);
+        window.showToast?.('Order deleted', 'success');
+        window.closeSheet('orderDetailsSheet');
+        await loadOrders();
+    } catch (e) {
+        window.showToast?.('Failed to delete', 'error');
+    }
+};
+
+window.handleStatusTransition = async function (newStatus) {
+    if (!activeOrder) return;
+    try {
+        window.showToast?.(`Moving to ${newStatus}...`, 'info');
+        await api.updateOrderStatus(activeOrder.id, newStatus);
+        
+        let autoTasks = [];
+        if (newStatus === 'Cutting') {
+            autoTasks = [
+                { id: `t-cut-1-${Date.now()}`, title: 'Verify fabric quantity & laying', completed: false },
+                { id: `t-cut-2-${Date.now()}`, title: 'Apply marker templates & cut fabrics', completed: false }
+            ];
+        } else if (newStatus === 'Stitching') {
+            autoTasks = [
+                { id: `t-stitch-1-${Date.now()}`, title: 'Assemble front & back panels', completed: false },
+                { id: `t-stitch-2-${Date.now()}`, title: 'Attach collar and sleeves', completed: false }
+            ];
+        } else if (newStatus === 'Printing') {
+            autoTasks = [
+                { id: `t-print-1-${Date.now()}`, title: 'Prepare screen/embroidery frames', completed: false },
+                { id: `t-print-2-${Date.now()}`, title: 'Print sample panel & check alignment', completed: false }
+            ];
+        }
+        
+        if (autoTasks.length > 0) {
+            for (const t of autoTasks) {
+                await api.updateOrderTask(activeOrder.id, t.id, t);
+            }
+        }
+
+        await loadOrders();
+        window.closeSheet('orderDetailsSheet');
+        window.showToast?.(`Status updated to ${newStatus}`, 'success');
+    } catch (e) {
+        window.showToast?.('Failed to update status', 'error');
+    }
+};

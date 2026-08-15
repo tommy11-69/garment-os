@@ -3,7 +3,7 @@ import { SelectInput, TextInput, TextareaInput } from '../components/inputs.js';
 export function getExpenseContentHTML() {
     return `
         ${TextInput({ label: 'Expense Description', id: 'exp-title', placeholder: 'e.g., Dyeing Chemicals', required: true })}
-        ${TextInput({ label: 'Amount ($)', id: 'exp-amount', type: 'number', placeholder: '500.00', required: true })}
+        ${TextInput({ label: 'Amount (₹)', id: 'exp-amount', type: 'number', placeholder: '500.00', required: true })}
         <div class="h-10"></div>
     `;
 }

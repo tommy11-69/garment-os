@@ -3,16 +3,16 @@ import { productionRepository } from '../repositories/ProductionRepository.js';
 
 class ProductionStore extends BaseStore {
     constructor() {
-        super();
+        super(productionRepository);
     }
 
     async loadBatches() {
-        this.setLoading(true);
+        this.setState({ loading: true });
         try {
             const results = await productionRepository.getAll();
-            this.setEntities(results);
+            this.setState({ entities: results, loading: false });
         } catch (err) {
-            this.setError(err);
+            this.setState({ error: err, loading: false });
         }
     }
 }
