@@ -1,6 +1,8 @@
+import { getApiBaseUrl } from '../config.js';
+
 class Database {
     constructor() {
-        this.baseUrl = 'http://localhost:5000/api';
+        this.baseUrl = getApiBaseUrl();
     }
 
     async _delay(ms = 0) {
@@ -8,7 +10,9 @@ class Database {
     }
 
     async _fetchAPI(endpoint, options = {}) {
-        const url = `${this.baseUrl}${endpoint}`;
+        // Ensure endpoint starts with a slash
+        const formattedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+        const url = `${this.baseUrl}${formattedEndpoint}`;
         const headers = {
             'Content-Type': 'application/json',
             ...options.headers
