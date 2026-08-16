@@ -9,23 +9,15 @@ class CalculatorStore extends BaseStore {
         this.state = {
             ...this.state,
             currency: '₹',
-            activeTab: 'pp',
-            pp: {
-                qty: 0, pcsPerKg: 0, fabricPriceKg: 0, wastage: 0,
-                fabricCostPc: 0,
-                printing: 0, wages: 0, packaging: 0, allowances: 0, overheads: 0,
-                cp: 0, sp: null, profitPct: null,
-                lastEdited: null,
-                garmentType: 'T-Shirt',
-            },
-            oc: {
-                qty: 0, fabric: 0,
+            u: {
+                qty: 0, pcsPerKg: 0, garmentType: 'T-Shirt', cmtMode: 'combined',
+                fabricPriceKg: 0, wastage: 0, fabricCostPc: 0,
+                cmt: 0, cutting: 0, fusing: 0, wages: 0, packing: 0,
+                printing: 0, sublimation: 0, allowances: 0, overheads: 0,
                 acc1: 0, acc2: 0, acc3: 0, pattern: 0,
-                stitch: 0, sublimation: 0, overheads: 0, printing: 0,
-                totalCost: 0, cp: 0,
+                cp: 0, totalCost: 0,
                 sp: null, profitPct: null, totalSales: 0, profitDone: 0,
                 lastEdited: null,
-                garmentType: 'T-Shirt',
             },
             prefs: {
                 stitchRate: 25,
@@ -57,16 +49,8 @@ class CalculatorStore extends BaseStore {
         this.setState({ currency: sym });
     }
     
-    setActiveTab(tab) {
-        this.setState({ activeTab: tab });
-    }
-    
-    updatePP(updates) {
-        this.setState({ pp: { ...this.state.pp, ...updates } });
-    }
-    
-    updateOC(updates) {
-        this.setState({ oc: { ...this.state.oc, ...updates } });
+    updateU(updates) {
+        this.setState({ u: { ...this.state.u, ...updates } });
     }
     
     updatePrefs(updates) {
@@ -76,8 +60,15 @@ class CalculatorStore extends BaseStore {
     
     resetCalculator() {
         this.setState({
-            pp: { ...this.state.pp, qty:0, pcsPerKg:0, fabricPriceKg:0, wastage:0, fabricCostPc:0, printing:0, wages:0, packaging:0, allowances:0, overheads:0, cp:0, sp:null, profitPct:null, lastEdited:null },
-            oc: { ...this.state.oc, qty:0, fabric:0, acc1:0, acc2:0, acc3:0, pattern:0, stitch:0, sublimation:0, overheads:0, printing:0, totalCost:0, cp:0, sp:null, profitPct:null, lastEdited:null }
+            u: { 
+                ...this.state.u, 
+                qty:0, pcsPerKg:0, fabricPriceKg:0, wastage:0, fabricCostPc:0, 
+                cmt:0, cutting:0, fusing:0, wages:0, packing:0,
+                printing:0, sublimation:0, allowances:0, overheads:0, 
+                acc1:0, acc2:0, acc3:0, pattern:0,
+                cp:0, totalCost:0, sp:null, profitPct:null, totalSales:0, profitDone:0, 
+                lastEdited:null 
+            }
         });
     }
 
@@ -86,9 +77,8 @@ class CalculatorStore extends BaseStore {
     async saveCosting(data) {
         // Includes the current calculation snapshot
         const snapshot = {
-            mode: this.state.activeTab,
             currency: this.state.currency,
-            details: this.state.activeTab === 'order' ? this.state.oc : this.state.pp,
+            details: this.state.u,
             ...data
         };
         const newCosting = await this.create(snapshot);

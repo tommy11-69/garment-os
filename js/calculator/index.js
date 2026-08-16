@@ -16,7 +16,78 @@ const state = new Proxy({}, {
 //  PREFERENCES  (persisted to localStorage)
 // ══════════════════════════════════════════════════════
 
+// ══════════════════════════════════════════════════════
+//  SESSION PERSISTENCE  (Phase 3)
+// ══════════════════════════════════════════════════════
+const SESSION_KEY = 'gos_calc_v2_draft';
 
+function saveSession() {
+    try {
+        sessionStorage.setItem(SESSION_KEY, JSON.stringify({
+            sharedClient: $('shared-client')?.value || '',
+            u: state.u
+        }));
+    } catch (_) {}
+}
+
+function restoreSession() {
+    try {
+        const raw = sessionStorage.getItem(SESSION_KEY);
+        if (!raw) return;
+        const d = JSON.parse(raw);
+
+        if ($('shared-client') && d.sharedClient) $('shared-client').value = d.sharedClient;
+        
+        if (d.u) {
+            calculatorStore.updateU(d.u);
+            const u = d.u;
+            
+            // Restore garment chip
+            if (u.garmentType) {
+                const chips = document.querySelectorAll('#shared-garment-chips .garment-chip');
+                chips.forEach(b => b.classList.toggle('active', b.dataset.type === u.garmentType));
+            }
+            
+            // Rehydrate DOM inputs from state
+            const setVal = (id, v) => { const el = $(id); if (el && v) el.value = v; };
+            setVal('u-qty', u.qty);
+            setVal('u-pcs-per-kg', u.pcsPerKg);
+            setVal('u-fabric-price-kg', u.fabricPriceKg);
+            setVal('u-wastage', u.wastage);
+            setVal('u-cmt', u.cmt);
+            setVal('u-cutting', u.cutting);
+            setVal('u-fusing', u.fusing);
+            setVal('u-wages', u.wages);
+            setVal('u-packing', u.packing);
+            setVal('u-printing', u.printing);
+            setVal('u-sublimation', u.sublimation);
+            setVal('u-allowances', u.allowances);
+            setVal('u-overheads', u.overheads);
+            setVal('u-acc1', u.acc1);
+            setVal('u-acc2', u.acc2);
+            setVal('u-acc3', u.acc3);
+            setVal('u-pattern', u.pattern);
+            
+            // SP fields
+            if (u.sp) {
+                if (u.lastEdited === 'sp-pc') setVal('u-sp-pc', u.sp);
+                else if (u.lastEdited === 'sp-total' && u.qty > 0) setVal('u-sp-total', u.sp * u.qty);
+                else setVal('u-sp-pc', u.sp);
+            }
+            
+            if (u.cmtMode === 'separate') {
+                const btn = document.querySelector('button[onclick="setCMTMode(\'separate\')"]');
+                if (btn) btn.click();
+            } else {
+                const btn = document.querySelector('button[onclick="setCMTMode(\'combined\')"]');
+                if (btn) btn.click();
+            }
+            
+            window.updateAllTotals();
+            window.calcUnified();
+        }
+    } catch (_) {}
+}
 
 // ══════════════════════════════════════════════════════
 //  HELPERS
@@ -141,51 +212,56 @@ function renderBreakdown(barId, legendId, containerId, totalLabelId, items) {
 }
 
 // ══════════════════════════════════════════════════════
-//  GARMENT TYPE CHIPS
+//  GARMENT TYPE CHIPS  (Phase 2: single shared chip set)
 // ══════════════════════════════════════════════════════
-window.selectGarmentType = function(btn, tab) {
-    const container = tab === 'pp' ? $('pp-garment-chips') : $('oc-garment-chips');
-    if (!container) return;
-    container.querySelectorAll('.garment-chip').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    state[tab].garmentType = btn.dataset.type;
+window.selectGarmentType = function(btn) {
+    const container = $('shared-garment-chips');
+    if (container) {
+        container.querySelectorAll('.garment-chip').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+    }
+    calculatorStore.updateU({ garmentType: btn.dataset.type });
+    saveSession();
 };
 
-// ══════════════════════════════════════════════════════
-//  CURRENCY
-// ══════════════════════════════════════════════════════
-window.setCurrency = function(sym) {
-    calculatorStore.setCurrency(sym);
-    $('currency-inr').classList.toggle('active', sym === '₹');
-    $('currency-usd').classList.toggle('active', sym === '₹');
-    $('currency-inr').classList.toggle('text-secondary', sym !== '₹');
-    $('currency-usd').classList.toggle('text-secondary', sym !== '₹');
-    document.querySelectorAll('.curr-sym').forEach(el => el.textContent = sym);
-    calcPP();
-    calcOrder();
-};
+
 
 // ══════════════════════════════════════════════════════
-//  TAB SWITCHING
+//  CMT MODE SWITCHING
 // ══════════════════════════════════════════════════════
-window.switchTab = function(tab) {
-    calculatorStore.setActiveTab(tab);
-    document.querySelectorAll('.calc-tab-panel').forEach(p => p.classList.remove('active'));
-    $('tab-' + tab)?.classList.add('active');
-    document.querySelectorAll('.calc-tab-btn').forEach(b => {
-        b.classList.remove('active');
-        b.classList.add('text-secondary');
+window.setCMTMode = function(mode) {
+    calculatorStore.updateU({ cmtMode: mode });
+    
+    // Toggle active buttons
+    document.querySelectorAll('.cmt-toggle-btn').forEach(b => {
+        b.classList.remove('active', 'bg-primary', 'text-white');
+        b.classList.add('text-secondary', 'bg-surface');
     });
-    const btn = $('tab-' + tab + '-btn');
-    btn?.classList.add('active');
-    btn?.classList.remove('text-secondary');
+    const activeBtn = document.querySelector(`button[onclick="setCMTMode('${mode}')"]`);
+    if (activeBtn) {
+        activeBtn.classList.add('active', 'bg-primary', 'text-white');
+        activeBtn.classList.remove('text-secondary', 'bg-surface');
+    }
 
-    $('calc-subtitle').textContent = tab === 'pp'
-        ? 'Per-piece cost calculator'
-        : 'Order-level cost calculator';
-
-    updateResultCard();
-    if (tab === 'order') updateAutoSuggestions();
+    // Show/hide fields
+    const combinedEl = $('cmt-combined');
+    const separateEl = $('cmt-separate');
+    
+    if (mode === 'combined') {
+        if (combinedEl) combinedEl.style.display = 'block';
+        if (separateEl) separateEl.style.display = 'none';
+        // Clear separate inputs & state
+        ['u-cutting', 'u-fusing', 'u-wages', 'u-packing'].forEach(id => { if ($(id)) $(id).value = ''; });
+        calculatorStore.updateU({ cutting: 0, fusing: 0, wages: 0, packing: 0 });
+    } else {
+        if (combinedEl) combinedEl.style.display = 'none';
+        if (separateEl) separateEl.style.display = 'block';
+        // Clear combined input & state
+        if ($('u-cmt')) $('u-cmt').value = '';
+        calculatorStore.updateU({ cmt: 0 });
+    }
+    
+    window.calcUnified();
 };
 
 // ══════════════════════════════════════════════════════
@@ -210,300 +286,279 @@ window.toggleSection = function(btn) {
 };
 
 // ══════════════════════════════════════════════════════
-//  PER-PIECE CALCULATOR
+//  UNIFIED CALCULATOR ENGINE
 // ══════════════════════════════════════════════════════
-window.calcPP = function() {
-    const qty            = num('pp-qty');
-    const pcsPerKg       = num('pp-pcs-per-kg');
-    const fabricPriceKg  = num('pp-fabric-price-kg');
-    const wastage        = num('pp-wastage');   // %
-    const printing       = num('pp-printing');
-    const wages          = num('pp-wages');
-    const packaging      = num('pp-packaging');
-    const allowances     = num('pp-allowances');
-    const overheads      = num('pp-overheads');
+window.calcUnified = function() {
+    const qty = num('u-qty') || num('shared-qty');
+    const pcsPerKg = num('u-pcs-per-kg');
+    const fabricPriceKg = num('u-fabric-price-kg');
+    const wastage = num('u-wastage');
+    
+    const mode = state.u.cmtMode;
+    const cmt = num('u-cmt');
+    const cutting = num('u-cutting');
+    const fusing = num('u-fusing');
+    const wages = num('u-wages');
+    const packing = num('u-packing');
+    
+    const printing = num('u-printing');
+    const sublimation = num('u-sublimation');
+    const allowances = num('u-allowances');
+    const overheads = num('u-overheads');
+    
+    const acc1 = num('u-acc1');
+    const acc2 = num('u-acc2');
+    const acc3 = num('u-acc3');
+    const pattern = num('u-pattern');
 
-    // Fabric cost per pc with wastage buffer
-    const baseFabric   = pcsPerKg > 0 ? fabricPriceKg / pcsPerKg : 0;
-    const fabricCostPc = baseFabric * (1 + wastage / 100);
-    setReadonly('pp-fabric-cost-pc', fabricCostPc > 0 ? fabricCostPc.toFixed(2) : '');
-
-    // Total fabric required
+    // Fabric Calculations
+    let fabricCostPc = 0;
+    const pcEl = $('u-fabric-cost-pc');
+    const totalEl = $('u-fabric-cost-total');
+    
+    if (pcsPerKg > 0 && fabricPriceKg > 0) {
+        const baseFabricPc = fabricPriceKg / pcsPerKg;
+        fabricCostPc = baseFabricPc * (1 + wastage / 100);
+        if (pcEl && document.activeElement !== pcEl) {
+            pcEl.value = fabricCostPc > 0 ? fabricCostPc.toFixed(2) : '';
+        }
+        const totalFabricCost = qty > 0 ? fabricCostPc * qty : 0;
+        if (totalEl && document.activeElement !== totalEl) {
+            totalEl.value = totalFabricCost > 0 ? totalFabricCost.toFixed(2) : '';
+        }
+    } else {
+        // Fallback to manual entry when price/kg or pcs/kg are not both set
+        if (totalEl && document.activeElement === totalEl) {
+            const totalVal = parseFloat(totalEl.value) || 0;
+            fabricCostPc = qty > 0 ? totalVal / qty : 0;
+            if (pcEl) pcEl.value = fabricCostPc > 0 ? fabricCostPc.toFixed(2) : '';
+        } else {
+            fabricCostPc = parseFloat(pcEl?.value) || 0;
+            const totalFabricCost = qty > 0 ? fabricCostPc * qty : 0;
+            if (totalEl && document.activeElement !== totalEl) {
+                totalEl.value = totalFabricCost > 0 ? totalFabricCost.toFixed(2) : '';
+            }
+        }
+    }
+    
     const totalKg = pcsPerKg > 0 && qty > 0 ? qty / pcsPerKg : 0;
-    const kgInfo = $('pp-kg-info');
+    const kgInfo = $('u-kg-info');
     if (kgInfo) {
         if (totalKg > 0) {
             kgInfo.classList.remove('hidden');
-            setEl('pp-kg-val', totalKg.toFixed(2) + ' kg');
+            setEl('u-kg-val', totalKg.toFixed(2) + ' kg');
         } else {
             kgInfo.classList.add('hidden');
         }
     }
 
-    // CP per piece
-    const cp = fabricCostPc + printing + wages + packaging + allowances + overheads;
+    // Costing
+    const cmtTotalPc = mode === 'combined' ? cmt : (cutting + fusing + wages + packing);
+    const printingTotalPc = printing + sublimation;
+    const allowancesTotalPc = allowances + overheads;
+    const accTotalPc = (qty > 0) ? (acc1 + acc2 + acc3 + pattern) / qty : 0; // Access. are typically lump sum, converting to per pc
+    
+    // Convert lump sum accessories to per-piece for CP calculation, or treat them as per-piece? 
+    // Let's assume acc1-3, pattern are lump sum for the order as per old order costing.
+    const lumpSumTotal = acc1 + acc2 + acc3 + pattern;
+    const lumpSumPc = qty > 0 ? lumpSumTotal / qty : 0;
+    
+    const cpPc = fabricCostPc + cmtTotalPc + printingTotalPc + allowancesTotalPc + lumpSumPc;
+    const totalCost = cpPc * qty;
 
-    // Persist to state
-    calculatorStore.updatePP({ qty, pcsPerKg, fabricPriceKg, wastage, fabricCostPc, printing, wages, packaging, allowances, overheads, cp });
+    calculatorStore.updateU({ 
+        qty, pcsPerKg, fabricPriceKg, wastage, fabricCostPc,
+        cmt, cutting, fusing, wages, packing,
+        printing, sublimation, allowances, overheads,
+        acc1, acc2, acc3, pattern,
+        cp: cpPc, totalCost 
+    });
 
-    // Section header badges
-    const fabricBadge = $('pp-fabric-badge');
-    if (fabricBadge) {
-        if (fabricCostPc > 0) { fabricBadge.textContent = fmtFull(fabricCostPc); fabricBadge.classList.remove('hidden'); }
-        else fabricBadge.classList.add('hidden');
-    }
-    const other      = printing + wages + packaging + allowances + overheads;
-    const otherBadge = $('pp-othercosts-badge');
-    if (otherBadge) {
-        if (other > 0) { otherBadge.textContent = fmtFull(other); otherBadge.classList.remove('hidden'); }
-        else otherBadge.classList.add('hidden');
-    }
-
-    // Cost breakdown visual
-    renderBreakdown('pp-breakdown-bar', 'pp-breakdown-legend', 'pp-breakdown', 'pp-breakdown-total', [
-        { label: 'Fabric',     value: fabricCostPc, color: C.fabric },
-        { label: 'Printing',   value: printing,     color: C.printing },
-        { label: 'Wages',      value: wages,        color: C.wages },
-        { label: 'Packaging',  value: packaging,    color: C.packaging },
-        { label: 'Allowances', value: allowances,   color: C.allowances },
-        { label: 'Overheads',  value: overheads,    color: C.overheads },
+    // Breakdown
+    renderBreakdown('u-breakdown-bar', 'u-breakdown-legend', 'u-breakdown', 'u-breakdown-total', [
+        { label: 'Fabric', value: fabricCostPc * qty, color: C.fabric },
+        { label: 'CMT', value: cmtTotalPc * qty, color: C.wages },
+        { label: 'Printing/Sub', value: printingTotalPc * qty, color: C.printing },
+        { label: 'Accessories', value: lumpSumTotal, color: C.accessories },
+        { label: 'Allow/Overheads', value: allowancesTotalPc * qty, color: C.overheads },
     ]);
-
-    recomputePPResults(cp);
-    updatePPSummaryRow();
+    
+    recomputeSP();
     updateResultCard();
+    saveSession();
 };
 
-// Bidirectional SP ↔ Profit % (uses lastEdited instead of dataset.driving)
-function recomputePPResults(cp) {
-    const spInput  = $('pp-sp');
-    const pctInput = $('pp-profit-pct');
-    if (!spInput || !pctInput) return;
-
-    const userSP  = parseFloat(spInput.value);
-    const userPct = parseFloat(pctInput.value);
-    const last    = state.pp.lastEdited;
-
-    if (last === 'sp' && !isNaN(userSP) && spInput.value !== '') {
-        const pct = cp > 0 ? (userSP - cp) / cp * 100 : 0;
-        calculatorStore.updatePP({ sp: userSP, profitPct: pct });
-        pctInput.value = pct.toFixed(1);
-        setProfitBar('pp-profit-bar', 'pp-margin-label', pct);
+function recomputeSP() {
+    const cpPc = state.u.cp || 0;
+    const qty = state.u.qty || 0;
+    
+    const spPcInput = $('u-sp-pc');
+    const spTotalInput = $('u-sp-total');
+    const pctInput = $('u-profit-pct');
+    
+    if (!spPcInput || !spTotalInput || !pctInput) return;
+    
+    const last = state.u.lastEdited;
+    let userSpPc = parseFloat(spPcInput.value);
+    let userSpTotal = parseFloat(spTotalInput.value);
+    let userPct = parseFloat(pctInput.value);
+    
+    let finalSpPc = null;
+    let finalPct = null;
+    let finalTotalSales = 0;
+    
+    if (last === 'sp-pc' && !isNaN(userSpPc) && spPcInput.value !== '') {
+        finalSpPc = userSpPc;
+        finalPct = cpPc > 0 ? (finalSpPc - cpPc) / cpPc * 100 : 0;
+        pctInput.value = finalPct.toFixed(1);
+        if (qty > 0) spTotalInput.value = (finalSpPc * qty).toFixed(2);
+    } else if (last === 'sp-total' && !isNaN(userSpTotal) && spTotalInput.value !== '') {
+        finalSpPc = qty > 0 ? userSpTotal / qty : 0;
+        finalPct = cpPc > 0 ? (finalSpPc - cpPc) / cpPc * 100 : 0;
+        pctInput.value = finalPct.toFixed(1);
+        if (finalSpPc > 0) spPcInput.value = finalSpPc.toFixed(2);
     } else if (last === 'pct' && !isNaN(userPct) && pctInput.value !== '') {
-        const sp = cp > 0 ? cp * (1 + userPct / 100) : 0;
-        calculatorStore.updatePP({ sp: sp, profitPct: userPct });
-        spInput.value = sp > 0 ? sp.toFixed(2) : '';
-        setProfitBar('pp-profit-bar', 'pp-margin-label', userPct);
+        finalPct = userPct;
+        finalSpPc = cpPc > 0 ? cpPc * (1 + userPct / 100) : 0;
+        spPcInput.value = finalSpPc > 0 ? finalSpPc.toFixed(2) : '';
+        if (qty > 0) spTotalInput.value = (finalSpPc * qty).toFixed(2);
     } else {
-        // Default suggestion (not locked in)
-        if (cp > 0) {
-            calculatorStore.updatePP({ sp: cp * 1.33, profitPct: 33 });
+        if (cpPc > 0) {
+            finalPct = 33;
+            finalSpPc = cpPc * 1.33;
             pctInput.placeholder = '33';
+            spPcInput.placeholder = finalSpPc.toFixed(2);
+            if (qty > 0) spTotalInput.placeholder = (finalSpPc * qty).toFixed(2);
         } else {
-            calculatorStore.updatePP({ sp: null, profitPct: null });
-            spInput.placeholder = '';
             pctInput.placeholder = '';
+            spPcInput.placeholder = '';
+            spTotalInput.placeholder = '';
         }
-        setProfitBar('pp-profit-bar', 'pp-margin-label', state.pp.profitPct);
     }
+    
+    finalTotalSales = finalSpPc && qty ? finalSpPc * qty : 0;
+    const profitDone = finalTotalSales - (cpPc * qty);
+    
+    calculatorStore.updateU({ 
+        sp: finalSpPc, 
+        profitPct: finalPct,
+        totalSales: finalTotalSales,
+        profitDone: profitDone
+    });
+    
+    setProfitBar('u-profit-bar', 'u-margin-label', finalPct);
 }
 
-window.onPPSpChange = function() {
-    calculatorStore.updatePP({ lastEdited: 'sp' });
-    // Clear the other field so it can be recalculated
-    const pctInput = $('pp-profit-pct');
-    if (pctInput) pctInput.value = '';
-    calcPP();
+
+window.syncField = function(pcId, totalId, editedField) {
+    const pcEl = $(pcId);
+    const totalEl = $(totalId);
+    const qty = num('shared-qty') || num('u-qty');
+
+    if (qty > 0) {
+        if (editedField === 'pc') {
+            const val = parseFloat(pcEl.value);
+            if (!isNaN(val)) totalEl.value = (val * qty).toFixed(2);
+            else totalEl.value = '';
+        } else if (editedField === 'total') {
+            const val = parseFloat(totalEl.value);
+            if (!isNaN(val)) pcEl.value = (val / qty).toFixed(2);
+            else pcEl.value = '';
+        }
+    }
+    
+    window.calcUnified();
 };
 
-window.onPPProfitPctChange = function() {
-    calculatorStore.updatePP({ lastEdited: 'pct' });
-    const spInput = $('pp-sp');
-    if (spInput) spInput.value = '';
-    calcPP();
-};
-
-// Show totals row in result card when qty is filled (Per Piece tab)
-function updatePPSummaryRow() {
-    if (state.activeTab !== 'pp') return;
-    const s   = state.pp;
-    const row = $('result-summary-row');
-    if (!row) return;
-
-    if (s.qty > 0 && s.cp > 0) {
-        row.classList.remove('hidden');
-        setEl('result-col1-label', 'Fabric Total');
-        setEl('result-total-cost', fmt(s.fabricCostPc * s.qty));
-
-        const revenue = (s.sp || 0) * s.qty;
-        setEl('result-total-sales', revenue > 0 ? fmt(revenue) : '—');
-
-        const profit    = revenue - s.cp * s.qty;
-        const profitEl  = $('result-profit-done');
-        if (profitEl) {
-            if (revenue > 0) {
-                profitEl.textContent = profit >= 0 ? fmt(profit) : '−' + fmt(Math.abs(profit));
-                profitEl.className = 'text-[13px] font-bold ' + (profit >= 0 ? 'text-[#008A00]' : 'text-error');
+window.updateAllTotals = function() {
+    const qty = num('shared-qty') || num('u-qty');
+    const pairs = [
+        ['u-cmt', 'u-cmt-total'],
+        ['u-cutting', 'u-cutting-total'],
+        ['u-fusing', 'u-fusing-total'],
+        ['u-wages', 'u-wages-total'],
+        ['u-packing', 'u-packing-total'],
+        ['u-printing', 'u-printing-total'],
+        ['u-sublimation', 'u-sublimation-total'],
+        ['u-allowances', 'u-allowances-total'],
+        ['u-overheads', 'u-overheads-total']
+    ];
+    
+    pairs.forEach(([pcId, totalId]) => {
+        const pcEl = $(pcId);
+        const totalEl = $(totalId);
+        if (pcEl && totalEl) {
+            const val = parseFloat(pcEl.value);
+            if (!isNaN(val) && qty > 0) {
+                totalEl.value = (val * qty).toFixed(2);
             } else {
-                profitEl.textContent = '—';
-                profitEl.className = 'text-[13px] font-bold text-secondary';
+                totalEl.value = '';
             }
         }
-    } else {
-        row.classList.add('hidden');
-    }
-}
-
-// ══════════════════════════════════════════════════════
-//  ORDER COSTING CALCULATOR
-// ══════════════════════════════════════════════════════
-window.calcOrder = function() {
-    const qty         = num('oc-qty');
-    const fabric      = num('oc-fabric');
-    const acc1        = num('oc-acc1');
-    const acc2        = num('oc-acc2');
-    const acc3        = num('oc-acc3');
-    const pattern     = num('oc-pattern');
-    const stitch      = num('oc-stitch');
-    const sublimation = num('oc-sublimation');
-    const overheads   = num('oc-overheads');
-    const printing    = num('oc-printing');
-
-    const totalCost = fabric + acc1 + acc2 + acc3 + pattern + stitch + sublimation + overheads + printing;
-    const cp        = qty > 0 ? totalCost / qty : 0;
-
-    calculatorStore.updateOC({ qty, fabric, acc1, acc2, acc3, pattern, stitch, sublimation, overheads, printing, totalCost, cp });
-
-    // Cost breakdown visual
-    renderBreakdown('oc-breakdown-bar', 'oc-breakdown-legend', 'oc-breakdown', 'oc-breakdown-total', [
-        { label: 'Fabric',      value: fabric,              color: C.fabric },
-        { label: 'Accessories', value: acc1 + acc2 + acc3,  color: C.accessories },
-        { label: 'Pattern',     value: pattern,             color: C.pattern },
-        { label: 'Stitching',   value: stitch,              color: C.wages },
-        { label: 'Sublimation', value: sublimation,         color: C.sublimation },
-        { label: 'Overheads',   value: overheads,           color: C.overheads },
-        { label: 'Printing',    value: printing,            color: C.printing },
-    ]);
-
-    updateAutoSuggestions();
-    recomputeOCResults(cp, qty, totalCost);
-    updateResultCard();
+    });
 };
 
-function updateAutoSuggestions() {
-    const qty  = num('oc-qty');
-    const sr   = state.prefs.stitchRate;
-    const or   = state.prefs.overheadsRate;
-    const sym  = state.currency;
 
-    const stitchHint = $('oc-stitch-hint');
-    const stitchBtn  = $('oc-stitch-auto-btn');
-    const ohHint     = $('oc-oh-hint');
-    const ohBtn      = $('oc-oh-auto-btn');
-
-    if (qty > 0) {
-        const sd = Math.round(sr * qty);
-        const od = Math.round(or * qty);
-        if (stitchHint) { stitchHint.classList.remove('hidden'); stitchHint.textContent = `Suggested: ${sym}${sr} × ${qty.toLocaleString()} = ${sym}${sd.toLocaleString()}`; }
-        if (stitchBtn)  { stitchBtn.classList.remove('hidden');  stitchBtn.textContent  = `Auto (${sym}${sr}/pc)`; }
-        if (ohHint)     { ohHint.classList.remove('hidden');     ohHint.textContent     = `Suggested: ${sym}${or} × ${qty.toLocaleString()} = ${sym}${od.toLocaleString()}`; }
-        if (ohBtn)      { ohBtn.classList.remove('hidden');      ohBtn.textContent      = `Auto (${sym}${or}/pc)`; }
-    } else {
-        [stitchHint, stitchBtn, ohHint, ohBtn].forEach(el => el?.classList.add('hidden'));
-    }
-}
-
-window.applyStitchDefault = function() {
-    const qty = num('oc-qty');
-    if (qty > 0) {
-        $('oc-stitch').value = Math.round(state.prefs.stitchRate * qty);
-        calcOrder();
-        window.showToast?.(`Stitching auto-filled at ${state.currency}${state.prefs.stitchRate}/pc`, 'info');
-    }
-};
-
-window.applyOverheadsDefault = function() {
-    const qty = num('oc-qty');
-    if (qty > 0) {
-        $('oc-overheads').value = Math.round(state.prefs.overheadsRate * qty);
-        calcOrder();
-        window.showToast?.(`Overheads auto-filled at ${state.currency}${state.prefs.overheadsRate}/pc`, 'info');
-    }
-};
-
-function recomputeOCResults(cp, qty, totalCost) {
-    const spInput  = $('oc-sp');
-    const pctInput = $('oc-profit-pct');
-    if (!spInput || !pctInput) return;
-
-    const userSP  = parseFloat(spInput.value);
-    const userPct = parseFloat(pctInput.value);
-    const last    = state.oc.lastEdited;
-
-    let sp = null, profitPct = null;
-
-    if (last === 'sp' && !isNaN(userSP) && spInput.value !== '') {
-        sp = userSP;
-        profitPct = cp > 0 ? (userSP - cp) / cp * 100 : 0;
-        pctInput.value = profitPct.toFixed(1);
-    } else if (last === 'pct' && !isNaN(userPct) && pctInput.value !== '') {
-        profitPct = userPct;
-        sp = cp > 0 ? cp * (1 + userPct / 100) : 0;
-        spInput.value = sp > 0 ? sp.toFixed(2) : '';
-    } else {
-        if (cp > 0) { profitPct = 30; sp = cp * 1.30; pctInput.placeholder = '30'; }
-    }
-
-    calculatorStore.updateOC({ sp, profitPct });
-
-    const totalSales = sp && qty ? sp * qty : 0;
-    const profitDone = totalSales - totalCost;
-    calculatorStore.updateOC({ totalSales, profitDone });
-
-    // Update summary row (always visible for order tab)
-    if (state.activeTab === 'order') {
-        const row = $('result-summary-row');
-        if (row) row.classList.toggle('hidden', totalCost === 0);
-        setEl('result-col1-label', 'Total Cost');
-        setEl('result-total-cost',  totalCost  > 0 ? fmt(totalCost)  : '—');
-        setEl('result-total-sales', totalSales > 0 ? fmt(totalSales) : '—');
-        const profitEl = $('result-profit-done');
-        if (profitEl) {
-            if (totalSales > 0) {
-                profitEl.textContent = profitDone >= 0 ? fmt(profitDone) : '−' + fmt(Math.abs(profitDone));
-                profitEl.className = 'text-[13px] font-bold ' + (profitDone >= 0 ? 'text-[#008A00]' : 'text-error');
-            } else {
-                profitEl.textContent = '—';
-                profitEl.className = 'text-[13px] font-bold text-secondary';
-            }
+window.onFabricOverride = function(type) {
+    const qty = num('shared-qty') || num('u-qty');
+    const priceKg = num('u-fabric-price-kg');
+    const wastage = num('u-wastage');
+    
+    let targetPc = NaN;
+    
+    if (type === 'pc') {
+        targetPc = parseFloat($('u-fabric-cost-pc').value);
+        if (qty > 0 && !isNaN(targetPc)) {
+            $('u-fabric-cost-total').value = (targetPc * qty).toFixed(2);
+        } else if (isNaN(targetPc)) {
+            $('u-fabric-cost-total').value = '';
+        }
+    } else if (type === 'total') {
+        const targetTotal = parseFloat($('u-fabric-cost-total').value);
+        if (qty > 0 && !isNaN(targetTotal)) {
+            targetPc = targetTotal / qty;
+            $('u-fabric-cost-pc').value = targetPc.toFixed(2);
+        } else if (isNaN(targetTotal)) {
+            $('u-fabric-cost-pc').value = '';
         }
     }
-
-    setProfitBar('oc-profit-bar', 'oc-margin-label', profitPct);
-}
-
-window.onOCSPChange = function() {
-    calculatorStore.updateOC({ lastEdited: 'sp' });
-    const pctInput = $('oc-profit-pct');
-    if (pctInput) pctInput.value = '';
-    calcOrder();
+    
+    if (!isNaN(targetPc) && targetPc > 0 && priceKg > 0) {
+        const pcsPerKg = (priceKg / targetPc) * (1 + wastage / 100);
+        $('u-pcs-per-kg').value = Number(pcsPerKg.toFixed(4));
+    }
+    
+    window.calcUnified();
 };
 
-window.onOCProfitPctChange = function() {
-    calculatorStore.updateOC({ lastEdited: 'pct' });
-    const spInput = $('oc-sp');
-    if (spInput) spInput.value = '';
-    calcOrder();
+window.onUSPChange = function(type) {
+    calculatorStore.updateU({ lastEdited: type });
+    // clear other fields
+    const spPc = $('u-sp-pc'), spTotal = $('u-sp-total'), pct = $('u-profit-pct');
+    if (type === 'sp-pc') { if (spTotal) spTotal.value = ''; if (pct) pct.value = ''; }
+    else if (type === 'sp-total') { if (spPc) spPc.value = ''; if (pct) pct.value = ''; }
+    else if (type === 'pct') { if (spPc) spPc.value = ''; if (spTotal) spTotal.value = ''; }
+    
+    window.calcUnified();
+};
+
+window.onSharedQtyChange = function() {
+    const val = $('shared-qty')?.value || '';
+    const qt = $('u-qty');
+    if (qt) qt.value = val;
+    window.updateAllTotals();
+    window.calcUnified();
 };
 
 // ══════════════════════════════════════════════════════
 //  RESULT CARD  (floating)
 // ══════════════════════════════════════════════════════
 function updateResultCard() {
-    const s         = state.activeTab === 'order' ? state.oc : state.pp;
-    const cp        = s.cp || 0;
-    const sp        = s.sp;
+    const s = state.u;
+    const cp = s.cp || 0;
+    const sp = s.sp;
     const profitPct = s.profitPct;
+    const qty = s.qty || 0;
 
     const cpEl = $('result-cp');
     if (cpEl) {
@@ -529,14 +584,35 @@ function updateResultCard() {
             pctEl.className = 'text-[19px] font-bold transition-all duration-300 text-secondary';
         }
     }
+    
+    // Update summary row
+    const row = $('result-summary-row');
+    if (row) {
+        if (qty > 0 && cp > 0) {
+            row.classList.remove('hidden');
+            setEl('result-total-cost', fmt(s.totalCost));
+            setEl('result-total-sales', s.totalSales > 0 ? fmt(s.totalSales) : '—');
+            const profitEl = $('result-profit-done');
+            if (profitEl) {
+                if (s.totalSales > 0) {
+                    profitEl.textContent = s.profitDone >= 0 ? fmt(s.profitDone) : '−' + fmt(Math.abs(s.profitDone));
+                    profitEl.className = 'text-[13px] font-bold ' + (s.profitDone >= 0 ? 'text-[#008A00]' : 'text-error');
+                } else {
+                    profitEl.textContent = '—';
+                    profitEl.className = 'text-[13px] font-bold text-secondary';
+                }
+            }
+        } else {
+            row.classList.add('hidden');
+        }
+    }
 }
 
 // ══════════════════════════════════════════════════════
-//  RESET  (properly clears readonly fields too)
+//  RESET
 // ══════════════════════════════════════════════════════
 window.resetCalc = function() {
-    // Clear all inputs including readonly ones
-    document.querySelectorAll('#tab-pp input, #tab-order input').forEach(el => {
+    document.querySelectorAll('#unified-calc-form input').forEach(el => {
         if (!el.disabled) {
             const ro = el.hasAttribute('readonly');
             if (ro) el.removeAttribute('readonly');
@@ -547,27 +623,28 @@ window.resetCalc = function() {
 
     calculatorStore.resetCalculator();
 
-    // Reset UI indicators
     ['result-cp','result-sp','result-profit-pct','result-total-cost','result-total-sales','result-profit-done'].forEach(id => setEl(id, '—'));
-    $('pp-profit-bar').style.width = '0%';
-    $('oc-profit-bar').style.width = '0%';
-    setEl('pp-margin-label', '—'); $('pp-margin-label').className = 'font-bold text-secondary';
-    setEl('oc-margin-label', '—'); $('oc-margin-label').className = 'font-bold text-secondary';
-    $('pp-kg-info')?.classList.add('hidden');
+    const bar = $('u-profit-bar');
+    if(bar) bar.style.width = '0%';
+    setEl('u-margin-label', '—');
+    const label = $('u-margin-label');
+    if(label) label.className = 'font-bold text-secondary';
+    $('u-kg-info')?.classList.add('hidden');
     $('result-summary-row')?.classList.add('hidden');
-    $('pp-breakdown')?.classList.add('hidden');
-    $('oc-breakdown')?.classList.add('hidden');
-    $('pp-fabric-badge')?.classList.add('hidden');
-    $('pp-othercosts-badge')?.classList.add('hidden');
+    $('u-breakdown')?.classList.add('hidden');
+    
+    [$('shared-client'), $('u-qty')].forEach(el => { if (el) el.value = ''; });
 
+    try { sessionStorage.removeItem(SESSION_KEY); } catch (_) {}
     window.showToast?.('Calculator cleared', 'info');
 };
 
 // ══════════════════════════════════════════════════════
-//  SAVE DRAFT  (pre-fills style name from client field)
+//  SAVE DRAFT
 // ══════════════════════════════════════════════════════
 window.openSaveDraft = function() {
-    const client = state.activeTab === 'order' ? $('oc-client')?.value : $('pp-client')?.value;
+    const client = $('shared-client')?.value ||
+        (state.activeTab === 'order' ? $('oc-client')?.value : $('pp-client')?.value);
     const styleInput = $('save-style');
     if (styleInput && client && !styleInput.value) styleInput.value = client;
     window.openSheet('saveCostSheet');
@@ -577,18 +654,16 @@ window.openSaveDraft = function() {
 //  QUOTE PREVIEW
 // ══════════════════════════════════════════════════════
 window.openQuotePreview = function() {
-    const isOrder = state.activeTab === 'order';
-    const s       = isOrder ? state.oc : state.pp;
-    const client  = (isOrder ? $('oc-client')?.value : $('pp-client')?.value) || '—';
-
+    const s       = state.u;
+    const client  = $('shared-client')?.value || '—';
+    const qty     = num('shared-qty') || s.qty;
     if (s.cp <= 0) {
         window.showToast?.('Fill in costs first', 'error');
         return;
     }
 
-    const modeLabel   = isOrder ? 'Order Costing' : 'Per Piece';
     const totalRev    = s.sp && s.qty ? s.sp * s.qty : null;
-    const totalProfit = totalRev ? totalRev - (isOrder ? s.totalCost : s.cp * s.qty) : null;
+    const totalProfit = totalRev ? totalRev - s.totalCost : null;
 
     const body = $('quote-preview-body');
     if (!body) return;
@@ -597,7 +672,7 @@ window.openQuotePreview = function() {
         <div class="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/20 rounded-2xl p-5 mb-4">
             <div class="flex justify-between items-start mb-5">
                 <div>
-                    <p class="text-[11px] font-semibold text-secondary uppercase tracking-wider mb-1">${modeLabel}</p>
+                    <p class="text-[11px] font-semibold text-secondary uppercase tracking-wider mb-1">Costing</p>
                     <h2 class="text-[20px] font-bold text-on-surface leading-tight">${client !== '—' ? client : s.garmentType}</h2>
                     <p class="text-[13px] text-secondary mt-0.5">${s.qty > 0 ? s.qty.toLocaleString() + ' pcs · ' : ''}${s.garmentType}</p>
                 </div>
@@ -643,8 +718,8 @@ window.openQuotePreview = function() {
 };
 
 window.copyQuoteToClipboard = function() {
-    const s      = state.activeTab === 'order' ? state.oc : state.pp;
-    const client = (state.activeTab === 'order' ? $('oc-client')?.value : $('pp-client')?.value) || '—';
+    const s      = state.u;
+    const client = $('shared-client')?.value || '—';
 
     const lines = [
         '📋 Garment OS Quote',
@@ -662,9 +737,8 @@ window.copyQuoteToClipboard = function() {
 };
 
 window.downloadQuotePDF = function() {
-    const isOrder = state.activeTab === 'order';
-    const s       = isOrder ? state.oc : state.pp;
-    const client  = (isOrder ? $('oc-client')?.value : $('pp-client')?.value) || 'Valued Customer';
+    const s       = state.u;
+    const client  = $('shared-client')?.value || 'Valued Customer';
     const garment = s.garmentType || 'Garment';
     const qty     = s.qty || 0;
     
@@ -677,84 +751,40 @@ window.downloadQuotePDF = function() {
         return;
     }
     
-    let breakdownHTML = '';
-    if (isOrder) {
-        const accsTotal = (s.acc1 || 0) + (s.acc2 || 0) + (s.acc3 || 0);
-        breakdownHTML = `
-            <tr>
-                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB;">Fabric Cost</td>
-                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${qty > 0 ? fmtFull(s.fabric / qty) : '—'}/pc</td>
-                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${fmtFull(s.fabric)}</td>
-            </tr>
-            <tr>
-                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB;">Accessories & Trims</td>
-                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${qty > 0 ? fmtFull(accsTotal / qty) : '—'}/pc</td>
-                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${fmtFull(accsTotal)}</td>
-            </tr>
-            <tr>
-                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB;">Pattern Design</td>
-                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${qty > 0 ? fmtFull(s.pattern / qty) : '—'}/pc</td>
-                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${fmtFull(s.pattern)}</td>
-            </tr>
-            <tr>
-                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB;">Stitching Labor</td>
-                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${qty > 0 ? fmtFull(s.stitch / qty) : '—'}/pc</td>
-                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${fmtFull(s.stitch)}</td>
-            </tr>
-            <tr>
-                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB;">Sublimation Printing</td>
-                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${qty > 0 ? fmtFull(s.sublimation / qty) : '—'}/pc</td>
-                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${fmtFull(s.sublimation)}</td>
-            </tr>
-            <tr>
-                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB;">Printing / Embroidery</td>
-                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${qty > 0 ? fmtFull(s.printing / qty) : '—'}/pc</td>
-                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${fmtFull(s.printing)}</td>
-            </tr>
-            <tr>
-                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB;">Factory Overheads</td>
-                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${qty > 0 ? fmtFull(s.overheads / qty) : '—'}/pc</td>
-                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${fmtFull(s.overheads)}</td>
-            </tr>
-        `;
-    } else {
-        breakdownHTML = `
+    const accsTotal = (s.acc1 || 0) + (s.acc2 || 0) + (s.acc3 || 0);
+    const cmtTotal = s.cmtMode === 'combined' ? (s.cmt || 0) : ((s.cutting || 0) + (s.fusing || 0) + (s.wages || 0) + (s.packing || 0));
+    
+    const breakdownHTML = `
             <tr>
                 <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB;">Fabric Cost</td>
                 <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${fmtFull(s.fabricCostPc)}/pc</td>
                 <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${qty > 0 ? fmtFull(s.fabricCostPc * qty) : '—'}</td>
             </tr>
             <tr>
-                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB;">Printing / Embroidery</td>
-                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${fmtFull(s.printing)}/pc</td>
-                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${qty > 0 ? fmtFull(s.printing * qty) : '—'}</td>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB;">Making / CMT</td>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${fmtFull(cmtTotal)}/pc</td>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${qty > 0 ? fmtFull(cmtTotal * qty) : '—'}</td>
             </tr>
             <tr>
-                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB;">Wages / Stitching Labor</td>
-                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${fmtFull(s.wages)}/pc</td>
-                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${qty > 0 ? fmtFull(s.wages * qty) : '—'}</td>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB;">Printing & Sublimation</td>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${fmtFull((s.printing || 0) + (s.sublimation || 0))}/pc</td>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${qty > 0 ? fmtFull(((s.printing || 0) + (s.sublimation || 0)) * qty) : '—'}</td>
             </tr>
             <tr>
-                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB;">Packaging</td>
-                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${fmtFull(s.packaging)}/pc</td>
-                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${qty > 0 ? fmtFull(s.packaging * qty) : '—'}</td>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB;">Accessories & Pattern</td>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${qty > 0 ? fmtFull((accsTotal + (s.pattern||0)) / qty) : '—'}/pc</td>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${fmtFull(accsTotal + (s.pattern||0))}</td>
             </tr>
             <tr>
-                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB;">Allowances</td>
-                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${fmtFull(s.allowances)}/pc</td>
-                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${qty > 0 ? fmtFull(s.allowances * qty) : '—'}</td>
-            </tr>
-            <tr>
-                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB;">Factory Overheads</td>
-                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${fmtFull(s.overheads)}/pc</td>
-                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${qty > 0 ? fmtFull(s.overheads * qty) : '—'}</td>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB;">Allowances & Overheads</td>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${fmtFull((s.allowances || 0) + (s.overheads || 0))}/pc</td>
+                <td style="padding: 12px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${qty > 0 ? fmtFull(((s.allowances || 0) + (s.overheads || 0)) * qty) : '—'}</td>
             </tr>
         `;
-    }
 
-    const totalCostVal = isOrder ? s.totalCost : (qty > 0 ? s.cp * qty : s.cp);
-    const totalSalesVal = isOrder ? s.totalSales : (qty > 0 && s.sp ? s.sp * qty : null);
-    const totalProfitVal = isOrder ? s.totalProfit : (totalSalesVal ? totalSalesVal - totalCostVal : null);
+    const totalCostVal = s.totalCost;
+    const totalSalesVal = s.totalSales;
+    const totalProfitVal = s.profitDone;
 
     printWindow.document.write(`
         <!DOCTYPE html>
@@ -804,7 +834,7 @@ window.downloadQuotePDF = function() {
                 </div>
                 <div class="info-section">
                     <h3>Calculation Parameters</h3>
-                    <p><strong>Calculation Mode:</strong> ${isOrder ? 'Order-based cost rollup' : 'Per-piece breakdown'}</p>
+                    <p><strong>Calculation Mode:</strong> Unified</p>
                     <p><strong>Currency:</strong> INR (₹)</p>
                     <p><strong>Status:</strong> Draft Quotation</p>
                 </div>
@@ -951,6 +981,9 @@ async function initModule() {
             <button onclick="copyQuoteToClipboard()" class="flex-grow bg-surface-container-high text-on-surface font-bold text-[14px] py-3 rounded-xl active-scale transition-apple flex items-center justify-center gap-1.5">
                 <span class="material-symbols-outlined text-[17px]">content_copy</span> Copy
             </button>
+            <button onclick="shareQuoteViaWhatsApp()" class="flex-grow bg-[#25D366] text-white font-bold text-[14px] py-3 rounded-xl active-scale transition-apple flex items-center justify-center gap-1.5">
+                <span class="material-symbols-outlined text-[17px]">share</span> WhatsApp
+            </button>
             <button onclick="convertToOrder()" class="flex-grow bg-surface-container-high text-on-surface font-bold text-[14px] py-3 rounded-xl active-scale transition-apple flex items-center justify-center gap-1.5">
                 <span class="material-symbols-outlined text-[17px]">shopping_cart</span> Order
             </button>
@@ -1019,20 +1052,25 @@ async function initModule() {
         const styleRef = $('save-style')?.value;
         const clientId = $('save-client')?.value;
         const status   = $('save-status')?.value;
-        const s = state.activeTab === 'order' ? state.oc : state.pp;
+        const s = state.u;
+        const client = $('shared-client')?.value || '';
 
         await api.saveCosting({
-            styleRef, clientId,
+            styleRef: styleRef || client,
+            clientId,
             totalUnitCost: s.cp  || 0,
             retailPrice:   s.sp  || 0,
             status, currency: state.currency,
-            mode: state.activeTab,
+            mode: 'unified',
             garmentType: s.garmentType,
         });
 
         window.closeSheet('saveCostSheet');
         window.showToast?.(`Costing saved as ${status}`, 'success');
     });
+
+    // Phase 3: restore session after DOM + sheets are ready
+    restoreSession();
 }
 
 if (document.readyState === 'loading') {
@@ -1041,9 +1079,51 @@ if (document.readyState === 'loading') {
     initModule();
 }
 
+
+// ══════════════════════════════════════════════════════
+//  WHATSAPP SHARE  (Phase 5)
+// ══════════════════════════════════════════════════════
+window.shareQuoteViaWhatsApp = function() {
+    const s      = state.u;
+    const client = $('shared-client')?.value || '—';
+    const qty    = num('shared-qty') || s.qty;
+
+    const lines = [
+        '📊 *Garment OS Costing Quote*',
+        `👔 *Client:* ${client}`,
+        `👕 *Garment:* ${s.garmentType}`,
+        qty > 0 ? `📦 *Qty:* ${qty.toLocaleString()} pcs` : '',
+        `💰 *Cost Price (CP):* ${fmtFull(s.cp)}/pc`,
+        s.sp ? `🏷 *Selling Price (SP):* ${fmtFull(s.sp)}/pc` : '',
+        s.profitPct !== null ? `📈 *Profit Margin:* ${s.profitPct.toFixed(1)}%` : '',
+        s.totalCost > 0 ? `💼 *Total Order Cost:* ${fmt(s.totalCost)}` : '',
+        s.totalSales > 0 ? `💵 *Total Revenue:* ${fmt(s.totalSales)}` : '',
+        '',
+        '_Generated by Garment OS_',
+    ].filter(Boolean).join('\n');
+
+    const url = 'https://wa.me/?text=' + encodeURIComponent(lines);
+    window.open(url, '_blank');
+};
+
+// ══════════════════════════════════════════════════════
+//  CONVERT TO ORDER  (Phase 5 — passes draft state)
+// ══════════════════════════════════════════════════════
 window.convertToOrder = function() {
-    window.showToast?.('Order Draft Created! Redirecting...', 'success');
+    const s      = state.u;
+    const client = $('shared-client')?.value || '';
+    try {
+        sessionStorage.setItem('gos_order_draft', JSON.stringify({
+            client,
+            garmentType: s.garmentType,
+            qty: num('shared-qty') || s.qty,
+            cp: s.cp,
+            sp: s.sp,
+        }));
+    } catch (_) {}
+    window.closeSheet?.('quotePreviewSheet');
+    window.showToast?.('Opening Order page with your costing…', 'success');
     setTimeout(() => {
-        window.location.href = 'orders.html?draft=true';
-    }, 1000);
+        window.location.href = 'orders.html?from=costing';
+    }, 900);
 };
