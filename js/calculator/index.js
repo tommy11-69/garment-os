@@ -911,15 +911,25 @@ window.saveRates = function() {
 //  INIT
 // ══════════════════════════════════════════════════════
 async function initModule() {
-    
-
     const sheetsContainer = $('sheets-container');
     if (!sheetsContainer) return;
+
+    let customers = [];
+    try {
+        customers = await api.getCustomers();
+    } catch (e) {
+        console.error("Failed to load customers for calculator:", e);
+    }
+    const customerOptions = [
+        {label: 'Select Client...', value: ''},
+        {label: '+ Create New Customer', value: 'NEW_CUSTOMER'},
+        ...customers.map(c => ({label: c.name, value: c.id}))
+    ];
 
     // ── Save Draft sheet ──
     const saveCostContent = `
         ${TextInput({ label:'Style Name / Reference', id:'save-style', placeholder:'e.g. SS24-TS-01', required:true })}
-        ${SelectInput({ label:'Client / Brand', id:'save-client', options:[{label:'Select Client...'},{label:'Chennai Silks',value:'c-001'},{label:'Arvind Fashions',value:'c-002'}] })}
+        ${SelectInput({ label:'Client / Brand', id:'save-client', options:customerOptions })}
         ${SelectInput({ label:'Save As', id:'save-status', options:[{label:'Draft',value:'Draft'},{label:'Quote (send to client)',value:'Quoted'}] })}
         ${TextareaInput({ label:'Notes', id:'save-notes', rows:2 })}
         <div class="h-10"></div>
@@ -982,6 +992,26 @@ async function initModule() {
         BottomSheet({ id:'quotePreviewSheet', title:'Quote Preview',  content:quoteContent,    footerContent:quoteFooter }),
         BottomSheet({ id:'ratesEditorSheet',  title:'Default Rates',  content:ratesContent,    footerContent:ratesFooter }),
     ].join('');
+
+    const clientSelect = $('save-client');
+    if (clientSelect) {
+        clientSelect.addEventListener('change', (e) => {
+            if (e.target.value === 'NEW_CUSTOMER') {
+                clientSelect.value = '';
+                window.openQuickAddCustomer(async (newCust) => {
+                    let updatedCustomers = [];
+                    try {
+                        updatedCustomers = await api.getCustomers();
+                    } catch (e) {
+                        console.error(e);
+                    }
+                    clientSelect.innerHTML = `<option value="">Select Client...</option><option value="NEW_CUSTOMER">+ Create New Customer</option>` + 
+                        updatedCustomers.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+                    clientSelect.value = newCust.id;
+                });
+            }
+        });
+    }
 
     bindFormValidation('saveCostSheet-content', 'save-cost-submit');
 

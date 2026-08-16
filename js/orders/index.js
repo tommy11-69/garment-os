@@ -13,11 +13,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 1. Render Sheets
     const sheetsContainer = document.getElementById('sheets-container');
     if (sheetsContainer) {
-        sheetsContainer.innerHTML = await getOrderSheetsHTML();
+        try {
+            sheetsContainer.innerHTML = await getOrderSheetsHTML();
+        } catch (e) {
+            console.error("Failed to render order sheets:", e);
+        }
     }
     
     // 2. Load Data
-    await loadOrders();
+    try {
+        await loadOrders();
+    } catch (e) {
+        console.error("Failed to load orders:", e);
+    }
 
     // 3. Bind events
     document.getElementById('orders-search-input')?.addEventListener('input', (e) => {
@@ -157,6 +165,21 @@ window.openCreateWizard = function() {
     document.getElementById('create-order-form')?.reset();
     document.getElementById('calc-grandtotal').textContent = '₹0.00';
     window.openSheet('createOrderSheet');
+
+    const select = document.getElementById('create-customer-select');
+    if (select) {
+        select.onchange = (e) => {
+            if (e.target.value === 'NEW_CUSTOMER') {
+                select.value = '';
+                window.openQuickAddCustomer(async (newCust) => {
+                    const customers = await api.getCustomers();
+                    select.innerHTML = `<option value="">Select Customer</option><option value="NEW_CUSTOMER">+ Create New Customer</option>` + 
+                        customers.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+                    select.value = newCust.id;
+                });
+            }
+        };
+    }
 }
 
 window.goToOrderStep = function(direction) {

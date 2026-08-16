@@ -106,3 +106,91 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
+
+window.openQuickAddCustomer = function (callback) {
+    const existing = document.getElementById('quickAddCustomerSheet-overlay');
+    if (existing) {
+        existing.parentElement.remove();
+    }
+
+    const container = document.createElement('div');
+    container.innerHTML = `
+        <div id="quickAddCustomerSheet-overlay" class="bottom-sheet-overlay" onclick="closeSheet('quickAddCustomerSheet'); setTimeout(() => document.getElementById('quickAddCustomerSheet-overlay').parentElement.remove(), 400)"></div>
+        <div id="quickAddCustomerSheet-content" class="bottom-sheet-content flex flex-col h-[75vh]">
+            <div class="sheet-handle"></div>
+            <div class="px-lg pb-md flex justify-between items-center border-b border-outline-variant/30">
+                <h2 class="text-[20px] font-bold text-on-surface">Quick Add Customer</h2>
+                <button type="button" id="quick-customer-close-x" class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-secondary active-scale transition-apple">
+                    <span class="material-symbols-outlined text-[20px]">close</span>
+                </button>
+            </div>
+            <div class="flex-1 overflow-y-auto p-lg flex flex-col gap-lg bg-background">
+                <form id="quick-customer-form" class="flex flex-col gap-4" onsubmit="event.preventDefault();">
+                    <div>
+                        <label class="text-[14px] font-semibold text-on-surface">Customer Name *</label>
+                        <input type="text" id="quick-cust-name" required class="w-full bg-surface border border-outline-variant rounded-xl px-4 py-3 text-[16px] text-on-surface focus:ring-2 focus:ring-primary/20 outline-none mt-1">
+                    </div>
+                    <div>
+                        <label class="text-[14px] font-semibold text-on-surface">Mobile Number *</label>
+                        <input type="tel" id="quick-cust-mobile" required class="w-full bg-surface border border-outline-variant rounded-xl px-4 py-3 text-[16px] text-on-surface focus:ring-2 focus:ring-primary/20 outline-none mt-1">
+                    </div>
+                    <div>
+                        <label class="text-[14px] font-semibold text-on-surface">Company Name</label>
+                        <input type="text" id="quick-cust-company" class="w-full bg-surface border border-outline-variant rounded-xl px-4 py-3 text-[16px] text-on-surface focus:ring-2 focus:ring-primary/20 outline-none mt-1">
+                    </div>
+                    <div>
+                        <label class="text-[14px] font-semibold text-on-surface">Customer Type</label>
+                        <select id="quick-cust-type" class="w-full bg-surface border border-outline-variant rounded-xl px-4 py-3 text-[16px] text-on-surface focus:ring-2 focus:ring-primary/20 outline-none mt-1">
+                            <option value="Brand">Brand</option>
+                            <option value="Manufacturer">Manufacturer</option>
+                            <option value="Exporter">Exporter</option>
+                            <option value="Retailer">Retailer</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="p-4 border-t border-outline-variant/30 bg-surface-container-lowest safe-bottom flex gap-3">
+                <button type="button" id="quick-customer-cancel-btn" class="flex-1 bg-surface-container-high text-on-surface font-semibold py-3.5 rounded-xl">Cancel</button>
+                <button type="button" id="quick-customer-save-btn" class="flex-1 bg-primary text-white font-semibold py-3.5 rounded-xl shadow-sm">Save Customer</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(container);
+
+    const cleanup = () => {
+        closeSheet('quickAddCustomerSheet');
+        setTimeout(() => container.remove(), 400);
+    };
+
+    container.querySelector('#quick-customer-close-x').onclick = cleanup;
+    container.querySelector('#quick-customer-cancel-btn').onclick = cleanup;
+    
+    container.querySelector('#quick-customer-save-btn').onclick = async () => {
+        const name = container.querySelector('#quick-cust-name').value.trim();
+        const mobile = container.querySelector('#quick-cust-mobile').value.trim();
+        const company = container.querySelector('#quick-cust-company').value.trim();
+        const customerType = container.querySelector('#quick-cust-type').value;
+
+        if (!name || !mobile) {
+            window.showToast?.("Customer Name and Mobile are required.", "error");
+            return;
+        }
+
+        try {
+            window.showToast?.("Adding customer...", "info");
+            const { api } = await import('../js/services/api.js');
+            const newCust = await api.saveCustomer({ name, mobile, company, customerType });
+            cleanup();
+            window.showToast?.("Customer added!", "success");
+            if (callback) callback(newCust);
+        } catch (e) {
+            console.error(e);
+            window.showToast?.(e.message || "Failed to add customer.", "error");
+        }
+    };
+
+    requestAnimationFrame(() => {
+        openSheet('quickAddCustomerSheet');
+    });
+};

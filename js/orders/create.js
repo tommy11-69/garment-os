@@ -23,15 +23,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Populate customers
     await customerStore.loadInitial();
     const customerSelect = qs('co-customer');
-    if (customerSelect) {
-        // Clear existing static options except first
-        customerSelect.innerHTML = '<option value="">Select Customer...</option>';
+    
+    const populateCustomers = () => {
+        if (!customerSelect) return;
+        customerSelect.innerHTML = `
+            <option value="">Select Customer...</option>
+            <option value="NEW_CUSTOMER">+ Create New Customer</option>
+        `;
         customerStore.state.entities.forEach(c => {
             const opt = document.createElement('option');
             opt.value = c.id;
             opt.textContent = c.name;
             customerSelect.appendChild(opt);
         });
+    };
+
+    populateCustomers();
+
+    if (customerSelect) {
+        customerSelect.onchange = (e) => {
+            if (e.target.value === 'NEW_CUSTOMER') {
+                customerSelect.value = '';
+                window.openQuickAddCustomer(async (newCust) => {
+                    await customerStore.loadInitial();
+                    populateCustomers();
+                    customerSelect.value = newCust.id;
+                });
+            }
+        };
     }
 
     // Save action

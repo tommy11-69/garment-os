@@ -3,12 +3,24 @@ import { SelectInput, TextInput, TextareaInput } from '../components/inputs.js';
 import { BottomSheet } from '../components/index.js';
 
 export async function getOrderSheetsHTML() {
-    const [customers, costings] = await Promise.all([
-        api.getCustomers(),
-        api.getCostings()
-    ]);
+    let customers = [];
+    let costings = [];
+    try {
+        const [custRes, costRes] = await Promise.all([
+            api.getCustomers().catch(e => { console.error(e); return []; }),
+            api.getCostings().catch(e => { console.error(e); return []; })
+        ]);
+        customers = custRes || [];
+        costings = costRes || [];
+    } catch (e) {
+        console.error("Failed to fetch data for order sheets:", e);
+    }
 
-    const customerOptions = [{label: 'Select Customer', value: ''}, ...customers.map(c => ({label: c.name, value: c.id}))];
+    const customerOptions = [
+        {label: 'Select Customer', value: ''},
+        {label: '+ Create New Customer', value: 'NEW_CUSTOMER'},
+        ...customers.map(c => ({label: c.name, value: c.id}))
+    ];
     const costingOptions = [{label: 'None (Manual Entry)', value: ''}, ...costings.map(c => ({label: c.styleRef, value: c.id}))];
     const statusOptions = Object.values(api.ORDER_STATUSES || {}).map(s => ({label: s, value: s}));
 

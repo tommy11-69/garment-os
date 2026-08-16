@@ -19,6 +19,7 @@ const Batch = require('./models/Batch');
 const Transaction = require('./models/Transaction');
 const Costing = require('./models/Costing');
 const Shipment = require('./models/Shipment');
+const Quotation = require('./models/Quotation');
 
 const models = {
     customers: Customer,
@@ -27,7 +28,8 @@ const models = {
     batches: Batch,
     transactions: Transaction,
     costings: Costing,
-    shipments: Shipment
+    shipments: Shipment,
+    quotations: Quotation
 };
 
 // Generic CRUD API routes
