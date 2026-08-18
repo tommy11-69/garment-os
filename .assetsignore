@@ -1,0 +1,12 @@
+# Ignore node_modules, backend, git, and build files from static assets upload
+node_modules/
+backend/
+.git/
+.wrangler/
+.env*
+.dev.vars*
+package.json
+package-lock.json
+wrangler.jsonc
+DEPLOYMENT.md
+DESIGN.md

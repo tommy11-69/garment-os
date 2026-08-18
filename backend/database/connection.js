@@ -1,4 +1,13 @@
 const mongoose = require('mongoose');
+const dns = require('dns');
+
+// On Windows, local ISP DNS often blocks MongoDB SRV records (_mongodb._tcp). 
+// Use Google / Cloudflare public DNS for reliable resolution.
+try {
+    dns.setServers(['8.8.8.8', '1.1.1.1']);
+} catch (e) {
+    // Ignore in edge environments where setServers is not applicable
+}
 
 let cachedConnection = null;
 

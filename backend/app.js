@@ -50,7 +50,28 @@ function createApp() {
         app.use(cors());
     }
 
-    app.use(express.json({ limit: '2mb' }));
+    // Native JSON parser middleware for nodejs_compat & standard Express without iconv-lite dependency
+    app.use((req, res, next) => {
+        if (req.body !== undefined) return next();
+        if (req.method === 'GET' || req.method === 'HEAD') return next();
+        
+        let data = '';
+        req.on('data', chunk => {
+            data += chunk.toString();
+        });
+        req.on('end', () => {
+            if (data.trim().length > 0) {
+                try {
+                    req.body = JSON.parse(data);
+                } catch (e) {
+                    return res.status(400).json({ error: 'Invalid JSON payload' });
+                }
+            } else {
+                req.body = {};
+            }
+            next();
+        });
+    });
 
     // Health check endpoint
     app.get('/health', (req, res) => {

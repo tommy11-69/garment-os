@@ -1,13 +1,13 @@
-const { createApp } = require('./app');
-const connectDB = require('./database/connection');
+import { createApp } from './app.js';
+import connectDB from './database/connection.js';
 
 // Initialize Express app
 const app = createApp();
 
 /**
- * Cloudflare Worker Export Handler
+ * Cloudflare Worker ES Module Export Handler
  */
-module.exports = {
+export default {
     async fetch(request, env, ctx) {
         const url = new URL(request.url);
 
@@ -28,7 +28,6 @@ module.exports = {
             }
 
             // Bridge Cloudflare Workers Fetch Request to Express App (nodejs_compat supported)
-            // Express 4 with nodejs_compat can handle requests through standard node http adapter or native fetch dispatch
             return handleExpressRequest(app, request);
         }
 
@@ -45,8 +44,8 @@ module.exports = {
  * Converts standard Web Fetch Request to Node/Express compatible stream and returns Fetch Response
  */
 async function handleExpressRequest(expressApp, request) {
-    const { EventEmitter } = require('events');
-    const { Readable } = require('stream');
+    const { EventEmitter } = await import('node:events');
+    const { Readable } = await import('node:stream');
 
     const url = new URL(request.url);
 

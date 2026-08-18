@@ -2,6 +2,7 @@
   "name": "garment-os",
   "version": "1.0.0",
   "description": "Garment OS Manufacturing Operating System",
+  "main": "backend/worker.js",
   "scripts": {
     "start": "node backend/server.js",
     "dev:backend": "node backend/server.js",
