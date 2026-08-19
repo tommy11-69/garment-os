@@ -285,6 +285,9 @@ export function getQuotationDetailsContentHTML(q) {
                 <button onclick="window.printQuotation('${q.id}')" class="py-3 bg-primary/10 text-primary font-semibold text-[14px] rounded-xl active-scale transition-apple flex items-center justify-center gap-2 col-span-2 shadow-sm">
                     <span class="material-symbols-outlined text-[18px]">print</span> Print / Export PDF
                 </button>
+                <button onclick="window.editQuotation('${q.id}')" class="py-3 bg-primary/10 text-primary font-semibold text-[14px] rounded-xl active-scale transition-apple flex items-center justify-center gap-2 col-span-2 shadow-sm">
+                    <span class="material-symbols-outlined text-[18px]">edit</span> Edit Proposal
+                </button>
                 <button onclick="window.deleteQuotation('${q.id}')" class="py-3 bg-error/10 text-error font-semibold text-[14px] rounded-xl active-scale transition-apple flex items-center justify-center gap-2 col-span-2">
                     <span class="material-symbols-outlined text-[18px]">delete</span> Delete Proposal
                 </button>

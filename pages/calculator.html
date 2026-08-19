@@ -115,28 +115,39 @@
         .garment-chip {
             display: inline-flex;
             align-items: center;
-            gap: 4px;
-            padding: 6px 12px;
-            border-radius: 20px;
-            border: 1.5px solid var(--color-outline-variant, #CAC4D0);
-            background: var(--color-surface, #FFFBFE);
-            font-size: 12px;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: 24px;
+            border: 1px solid rgba(0,0,0,0.08);
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            font-size: 13px;
             font-weight: 600;
             color: var(--color-on-surface-variant, #49454F);
             cursor: pointer;
-            transition: all 0.18s;
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
             -webkit-tap-highlight-color: transparent;
             white-space: nowrap;
+            box-shadow: inset 0 2px 4px rgba(255,255,255,0.6), 0 2px 8px rgba(0,0,0,0.02);
         }
 
         .garment-chip.active {
             background: var(--color-primary, #0071E3);
             border-color: var(--color-primary, #0071E3);
             color: white;
+            box-shadow: 0 4px 12px rgba(0, 113, 227, 0.25), inset 0 2px 4px rgba(255,255,255,0.2);
+            transform: translateY(-1px);
+        }
+
+        .garment-chip:hover:not(.active) {
+            background: rgba(255, 255, 255, 0.95);
+            border-color: rgba(0,0,0,0.15);
+            transform: translateY(-1px);
         }
 
         .garment-chip:active {
-            transform: scale(0.94);
+            transform: scale(0.96) translateY(0);
         }
 
         /* Breakdown bar segments */
@@ -156,6 +167,15 @@
         .breakdown-seg:only-child {
             border-radius: 9999px;
         }
+        body.bg-background {
+            background-color: #f4f5f7;
+            background-image: 
+                radial-gradient(at 0% 0%, hsla(210, 100%, 93%, 1) 0, transparent 50%), 
+                radial-gradient(at 100% 0%, hsla(280, 100%, 93%, 1) 0, transparent 50%),
+                radial-gradient(at 100% 100%, hsla(30, 100%, 93%, 1) 0, transparent 50%),
+                radial-gradient(at 0% 100%, hsla(160, 100%, 93%, 1) 0, transparent 50%);
+            background-attachment: fixed;
+        }
     </style>
 </head>
 
@@ -170,18 +190,14 @@
             <div class="px-xs pt-sm flex justify-between items-start">
                 <div>
                     <h2 class="text-[28px] leading-tight font-semibold tracking-tight text-on-surface mb-1">Costing</h2>
-                    <p class="text-[14px] text-secondary" id="calc-subtitle">Per-piece cost calculator</p>
+                    <p class="text-[14px] text-secondary" id="calc-subtitle">Profit/Cost Calculator</p>
                 </div>
-                <!-- Currency Toggle -->
-                <div
-                    class="flex items-center bg-surface-container-high border border-outline-variant rounded-2xl p-1 gap-1">
-                    <button id="currency-inr"
-                        class="currency-btn active text-[13px] font-bold px-3 py-1.5 rounded-xl transition-all duration-200"
-                        onclick="setCurrency('₹')">₹</button>
-                    <button id="currency-usd"
-                        class="currency-btn text-[13px] font-bold px-3 py-1.5 rounded-xl transition-all duration-200 text-secondary"
-                        onclick="setCurrency('₹')">$</button>
-                </div>
+                <!-- Saved Costings Button -->
+                <button onclick="window.location.href = 'costings.html'" 
+                    class="flex items-center gap-1.5 bg-white/60 backdrop-blur-xl border border-white/50 shadow-sm rounded-xl px-3 py-2 active-scale transition-apple">
+                    <span class="material-symbols-outlined text-[18px] text-primary">folder_open</span>
+                    <span class="text-[13px] font-bold text-on-surface">Saved Costings</span>
+                </button>
             </div>
 
                         <!-- ════════════════════════════════════════ -->
@@ -189,7 +205,7 @@
             <!-- ════════════════════════════════════════ -->
             <form id="unified-calc-form" onsubmit="event.preventDefault();" class="flex flex-col gap-lg">
                 <!-- ── Order Info ── -->
-                <div id="shared-order-info" class="bg-surface-container-lowest border border-outline-variant rounded-[24px] shadow-sm p-md flex flex-col gap-4">
+                <div id="shared-order-info" class="bg-white/60 backdrop-blur-xl border border-white/50 rounded-[28px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-md flex flex-col gap-4">
                     <h3 class="text-[15px] font-bold text-on-surface flex items-center gap-2">
                         <span class="material-symbols-outlined text-[18px] text-secondary">info</span>
                         Garment &amp; Specs
@@ -227,7 +243,7 @@
                 </div>
 
                 <!-- ── Fabric Cost ── -->
-                <div class="bg-surface-container-lowest border border-outline-variant rounded-[24px] shadow-sm overflow-hidden">
+                <div class="bg-white/60 backdrop-blur-xl border border-white/50 rounded-[28px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
                     <button type="button" class="section-toggle w-full flex justify-between items-center p-md" onclick="toggleSection(this)">
                         <div class="flex items-center gap-3">
                             <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
@@ -285,7 +301,7 @@
                 </div>
 
                 <!-- ── Making / CMT ── -->
-                <div class="bg-surface-container-lowest border border-outline-variant rounded-[24px] shadow-sm overflow-hidden">
+                <div class="bg-white/60 backdrop-blur-xl border border-white/50 rounded-[28px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
                     <button type="button" class="section-toggle w-full flex justify-between items-center p-md" onclick="toggleSection(this)">
                         <div class="flex items-center gap-3">
                             <div class="w-10 h-10 rounded-full bg-[#FF9F0A]/10 text-[#FF9F0A] flex items-center justify-center">
@@ -402,7 +418,7 @@
                 </div>
 
                 <!-- ── Printing & Sublimation ── -->
-                <div class="bg-surface-container-lowest border border-outline-variant rounded-[24px] shadow-sm overflow-hidden">
+                <div class="bg-white/60 backdrop-blur-xl border border-white/50 rounded-[28px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
                     <button type="button" class="section-toggle w-full flex justify-between items-center p-md" onclick="toggleSection(this)">
                         <div class="flex items-center gap-3">
                             <div class="w-10 h-10 rounded-full bg-[#AF52DE]/10 text-[#AF52DE] flex items-center justify-center">
@@ -454,7 +470,7 @@
                 </div>
 
                 <!-- ── Accessories & Pattern ── -->
-                <div class="bg-surface-container-lowest border border-outline-variant rounded-[24px] shadow-sm overflow-hidden">
+                <div class="bg-white/60 backdrop-blur-xl border border-white/50 rounded-[28px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
                     <button type="button" class="section-toggle w-full flex justify-between items-center p-md" onclick="toggleSection(this)">
                         <div class="flex items-center gap-3">
                             <div class="w-10 h-10 rounded-full bg-[#34C759]/10 text-[#34C759] flex items-center justify-center">
@@ -531,7 +547,7 @@
                 </div>
 
                 <!-- ── Allowances & Overheads ── -->
-                <div class="bg-surface-container-lowest border border-outline-variant rounded-[24px] shadow-sm overflow-hidden">
+                <div class="bg-white/60 backdrop-blur-xl border border-white/50 rounded-[28px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
                     <button type="button" class="section-toggle w-full flex justify-between items-center p-md" onclick="toggleSection(this)">
                         <div class="flex items-center gap-3">
                             <div class="w-10 h-10 rounded-full bg-[#5856D6]/10 text-[#5856D6] flex items-center justify-center">
@@ -583,7 +599,7 @@
                 </div>
 
                 <!-- ── Selling Price ── -->
-                <div class="bg-surface-container-lowest border border-outline-variant rounded-[24px] shadow-sm p-md flex flex-col gap-4">
+                <div class="bg-white/60 backdrop-blur-xl border border-white/50 rounded-[28px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-md flex flex-col gap-4">
                     <h3 class="text-[15px] font-bold text-on-surface flex items-center gap-2">
                         <span class="material-symbols-outlined text-[18px] text-[#34C759]">sell</span>
                         Selling Price &amp; Margin
@@ -623,7 +639,7 @@
                 </div>
 
                 <!-- ── Cost Breakdown ── -->
-                <div id="u-breakdown" class="bg-surface-container-lowest border border-outline-variant rounded-[24px] shadow-sm p-md hidden flex-col gap-4">
+                <div id="u-breakdown" class="bg-white/60 backdrop-blur-xl border border-white/50 rounded-[28px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-md hidden flex-col gap-4">
                     <div class="flex justify-between items-center">
                         <h3 class="text-[15px] font-bold text-on-surface flex items-center gap-2">
                             <span class="material-symbols-outlined text-[18px] text-secondary">donut_small</span>
@@ -636,6 +652,22 @@
                 </div>
             </form>
 
+            <!-- Actions (Moved here for compact layout) -->
+            <div class="flex gap-2 pt-4 pb-12 w-full">
+                <button onclick="resetCalc()" title="Reset"
+                    class="w-12 h-12 rounded-xl bg-white/60 backdrop-blur-xl border border-white/50 shadow-sm flex items-center justify-center text-secondary active-scale transition-apple flex-shrink-0">
+                    <span class="material-symbols-outlined text-[20px]">restart_alt</span>
+                </button>
+                <button onclick="saveCosting()"
+                    class="flex-1 bg-white/60 backdrop-blur-xl border border-white/50 shadow-sm text-on-surface font-semibold py-3 rounded-xl active-scale transition-apple text-[15px]">
+                    Save Costing
+                </button>
+                <button onclick="openQuotePreview()"
+                    class="flex-1 bg-primary text-on-primary font-semibold py-3 rounded-xl active-scale transition-apple shadow-md shadow-primary/20 text-[15px] flex items-center justify-center gap-1.5">
+                    <span class="material-symbols-outlined text-[18px]">receipt</span>
+                    Quote
+                </button>
+            </div>
 
         </main>
     </div>
@@ -645,8 +677,7 @@
     <!-- FLOATING RESULT CARD                    -->
     <!-- ════════════════════════════════════════ -->
     <div class="floating-results px-md pb-2">
-        <div
-            class="result-card-glow bg-surface/95 backdrop-blur-2xl border border-outline-variant rounded-[28px] overflow-hidden">
+        <div class="dynamic-island overflow-hidden">
 
             <!-- Primary metrics -->
             <div class="flex divide-x divide-outline-variant/40">
@@ -666,39 +697,22 @@
             </div>
 
             <!-- Secondary metrics (order totals / pp totals when qty entered) -->
-            <div id="result-summary-row" class="hidden border-t border-outline-variant/40">
-                <div class="flex divide-x divide-outline-variant/40">
-                    <div class="flex-1 px-3 py-2.5 text-center">
-                        <p class="text-[10px] font-semibold text-secondary uppercase tracking-wider mb-0.5"
+            <div id="result-summary-row" class="hidden md:flex border-t border-outline-variant/20">
+                <div class="flex w-full divide-x divide-outline-variant/20">
+                    <div class="flex-1 px-2 py-2 text-center">
+                        <p class="text-[9px] font-semibold text-secondary uppercase tracking-wider mb-0.5"
                             id="result-col1-label">Total Cost</p>
-                        <p id="result-total-cost" class="text-[13px] font-bold text-on-surface">—</p>
+                        <p id="result-total-cost" class="text-[12px] font-bold text-on-surface">—</p>
                     </div>
-                    <div class="flex-1 px-3 py-2.5 text-center">
-                        <p class="text-[10px] font-semibold text-secondary uppercase tracking-wider mb-0.5">Revenue</p>
-                        <p id="result-total-sales" class="text-[13px] font-bold text-on-surface">—</p>
+                    <div class="flex-1 px-2 py-2 text-center">
+                        <p class="text-[9px] font-semibold text-secondary uppercase tracking-wider mb-0.5">Revenue</p>
+                        <p id="result-total-sales" class="text-[12px] font-bold text-on-surface">—</p>
                     </div>
-                    <div class="flex-1 px-3 py-2.5 text-center">
-                        <p class="text-[10px] font-semibold text-secondary uppercase tracking-wider mb-0.5">Profit</p>
-                        <p id="result-profit-done" class="text-[13px] font-bold text-secondary">—</p>
+                    <div class="flex-1 px-2 py-2 text-center">
+                        <p class="text-[9px] font-semibold text-secondary uppercase tracking-wider mb-0.5">Profit</p>
+                        <p id="result-profit-done" class="text-[12px] font-bold text-[#34C759]">—</p>
                     </div>
                 </div>
-            </div>
-
-            <!-- Actions -->
-            <div class="flex gap-2 p-3 border-t border-outline-variant/40">
-                <button onclick="resetCalc()" title="Reset"
-                    class="w-10 h-10 rounded-xl bg-surface-container-high flex items-center justify-center text-secondary active-scale transition-apple flex-shrink-0">
-                    <span class="material-symbols-outlined text-[20px]">restart_alt</span>
-                </button>
-                <button onclick="openSaveDraft()"
-                    class="flex-1 bg-surface-container-high text-on-surface font-semibold py-2.5 rounded-xl active-scale transition-apple text-[14px]">
-                    Save Draft
-                </button>
-                <button onclick="openQuotePreview()"
-                    class="flex-1 bg-primary text-on-primary font-semibold py-2.5 rounded-xl active-scale transition-apple shadow-sm text-[14px] flex items-center justify-center gap-1.5">
-                    <span class="material-symbols-outlined text-[17px]">receipt</span>
-                    Quote
-                </button>
             </div>
         </div>
     </div>

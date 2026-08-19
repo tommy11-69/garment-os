@@ -96,17 +96,47 @@ export async function getOrderSheetsHTML() {
     
     const filterOrderFooter = `<button onclick="window.applyFilters()" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active-scale transition-apple shadow-sm">Apply Filters</button>`;
 
+    const logPaymentContent = `<div class="flex flex-col gap-4">
+        ${TextInput({ label: 'Amount Received (₹)', id: 'log-payment-amount', type: 'number' })}
+        ${SelectInput({ label: 'Payment Method', id: 'log-payment-method', options: [{label: 'UPI', value: 'UPI'}, {label: 'Cash', value: 'Cash'}, {label: 'Bank Transfer', value: 'Bank Transfer'}] })}
+        ${TextInput({ label: 'Reference / Note (Optional)', id: 'log-payment-note' })}
+    </div><div class="h-10"></div>`;
+
+    const logPaymentFooter = `<button id="log-payment-submit" type="button" onclick="window.submitLogPayment()" class="w-full bg-[#008A00] text-white font-bold text-[16px] py-4 rounded-2xl active-scale transition-apple shadow-sm">Save Payment</button>`;
+
     return `
         <div id="fabActionSheetContainer">${BottomSheet({ id: 'fabActionSheet', title: 'Order Actions', content: fabActionContent, height: 'auto' })}</div>
         <div id="createOrderSheetContainer">${BottomSheet({ id: 'createOrderSheet', title: 'Create Order', content: createOrderContent, footerContent: createOrderFooter })}</div>
         <div id="editOrderSheetContainer">${BottomSheet({ id: 'editOrderSheet', title: 'Edit Order', content: editOrderContent, footerContent: editOrderFooter, height: 'auto' })}</div>
         <div id="filterOrderSheetContainer">${BottomSheet({ id: 'filterOrderSheet', title: 'Filter Orders', content: filterOrderContent, footerContent: filterOrderFooter, height: 'auto' })}</div>
+        <div id="logPaymentSheetContainer">${BottomSheet({ id: 'logPaymentSheet', title: 'Log Payment', content: logPaymentContent, footerContent: logPaymentFooter, height: 'auto' })}</div>
         <div id="orderDetailsSheetContainer">${BottomSheet({ id: 'orderDetailsSheet', customHeader: '<div class="sheet-custom-header"></div>', content: '<div id="orderDetailsSheet-inner-content"></div>', height: '95vh' })}</div>
     `;
 }
 
 export function getOrderDetailsHeader(order) {
     if (!order) return '';
+    
+    // Calculate progress for stepper
+    const stages = ['Draft', 'Cutting', 'Stitching', 'Printing', 'Finished'];
+    const currentIdx = stages.indexOf(order.status) >= 0 ? stages.indexOf(order.status) : (order.status === 'Dispatched' ? 4 : 0);
+    const progress = Math.min((currentIdx / (stages.length - 1)) * 100, 100);
+
+    const stepperHtml = `
+        <div class="mt-4 px-2">
+            <div class="flex justify-between relative mb-2">
+                <div class="absolute top-2.5 left-0 w-full h-1 bg-surface-variant rounded-full -z-10"></div>
+                <div class="absolute top-2.5 left-0 h-1 bg-primary rounded-full -z-10 transition-all duration-500" style="width: ${progress}%"></div>
+                ${stages.map((s, i) => `
+                    <div class="flex flex-col items-center gap-1">
+                        <div class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${i <= currentIdx ? 'bg-primary text-on-primary shadow-sm' : 'bg-surface-container-high text-secondary'}">${i+1}</div>
+                        <span class="text-[9px] font-medium uppercase tracking-wider ${i <= currentIdx ? 'text-primary' : 'text-secondary'}">${s}</span>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+
     return `
         <div class="px-4 py-3 border-b border-outline-variant bg-surface-container-lowest sticky top-0 z-20">
             <div class="flex items-center justify-between mb-2">
@@ -120,7 +150,8 @@ export function getOrderDetailsHeader(order) {
                     <button onclick="window.closeSheet('orderDetailsSheet')" class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-secondary active-scale transition-apple"><span class="material-symbols-outlined text-[20px]">close</span></button>
                 </div>
             </div>
-            <div class="flex gap-4 border-b border-outline-variant/50">
+            ${stepperHtml}
+            <div class="flex gap-4 mt-4 border-b border-outline-variant/50">
                 <button onclick="window.switchOrderTab('overview')" id="od-tab-btn-overview" class="od-tab-btn px-2 py-2 text-[14px] font-semibold text-primary border-b-2 border-primary transition-colors">Overview</button>
                 <button onclick="window.switchOrderTab('timeline')" id="od-tab-btn-timeline" class="od-tab-btn px-2 py-2 text-[14px] font-medium text-secondary border-b-2 border-transparent hover:text-on-surface transition-colors">Timeline</button>
             </div>
@@ -136,6 +167,25 @@ export function getOrderDetailsContent(order) {
         if (c) customerName = c.name;
     }
     
+    const tasks = order.tasks || [];
+    const tasksHtml = tasks.length > 0 ? `
+        <div class="bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant shadow-sm mb-4">
+            <h3 class="text-[14px] font-semibold text-secondary uppercase tracking-wider mb-3">Tasks (${order.status})</h3>
+            <div class="flex flex-col gap-3">
+                ${tasks.map(t => `
+                    <label class="flex items-start gap-3 cursor-pointer group">
+                        <input type="checkbox" onchange="window.toggleOrderTask('${t.id}', this.checked)" ${t.completed ? 'checked' : ''} class="mt-0.5 w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary bg-surface-container">
+                        <span class="text-[14px] font-medium ${t.completed ? 'text-secondary line-through' : 'text-on-surface'} transition-colors">${t.title}</span>
+                    </label>
+                `).join('')}
+            </div>
+        </div>
+    ` : '';
+
+    const paymentReceived = order.paymentReceived || 0;
+    const paymentPending = Math.max((order.value || 0) - paymentReceived, 0);
+    const paymentPct = order.value ? Math.min((paymentReceived / order.value) * 100, 100) : 0;
+
     return `
         <div id="od-tab-overview" class="od-tab-content block p-4">
             <div class="flex gap-2 overflow-x-auto no-scrollbar pb-2 mb-4">
@@ -144,6 +194,9 @@ export function getOrderDetailsContent(order) {
                 <button onclick="window.handleStatusTransition('Printing')" class="shrink-0 px-4 py-2 bg-surface-container-highest text-on-surface text-[13px] font-semibold rounded-lg active-scale">Move to Printing</button>
                 <button onclick="window.handleStatusTransition('Finished')" class="shrink-0 px-4 py-2 bg-[#008A00]/10 text-[#008A00] text-[13px] font-bold rounded-lg active-scale border border-[#008A00]/20">Mark Finished</button>
             </div>
+            
+            ${tasksHtml}
+
             <div class="bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant mb-4 shadow-sm">
                 <div class="flex justify-between items-center mb-3">
                     <h3 class="text-[14px] font-semibold text-secondary uppercase tracking-wider">Specs</h3>
@@ -156,11 +209,28 @@ export function getOrderDetailsContent(order) {
                     <div><p class="text-[12px] text-secondary">Sizes</p><p class="text-[14px] font-medium text-on-surface">${order.sizes || '-'}</p></div>
                 </div>
             </div>
-            <div class="bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant shadow-sm">
-                <h3 class="text-[14px] font-semibold text-secondary uppercase tracking-wider mb-3">Financials</h3>
-                <div class="flex justify-between items-end">
+            
+            <div class="bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant shadow-sm mb-4">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-[14px] font-semibold text-secondary uppercase tracking-wider">Financials</h3>
+                    <span class="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider px-2 py-1 rounded-md ${paymentPending === 0 ? 'bg-[#008A00]/10 text-[#008A00]' : 'bg-[#FF9F0A]/10 text-[#FF9F0A]'}">${paymentPending === 0 ? 'Paid' : 'Pending'}</span>
+                </div>
+                
+                <div class="flex justify-between items-end mb-4">
                     <div><p class="text-[12px] text-secondary">Order Value</p><p class="text-[24px] font-bold text-on-surface">₹${(order.value || 0).toLocaleString()}</p></div>
-                    <div class="text-right"><p class="text-[12px] text-secondary">Payment</p><span class="inline-flex items-center gap-1 text-[13px] font-medium text-amber-600 bg-amber-50 px-2 py-1 rounded-md">${order.paymentStatus || 'Unpaid'}</span></div>
+                </div>
+
+                <div class="w-full bg-surface-variant h-1.5 rounded-full overflow-hidden mb-2">
+                    <div class="h-full ${paymentPending === 0 ? 'bg-[#008A00]' : 'bg-primary'}" style="width: ${paymentPct}%"></div>
+                </div>
+                
+                <div class="flex justify-between items-center text-[13px]">
+                    <div class="flex flex-col"><span class="text-secondary">Paid</span><span class="font-semibold text-on-surface">₹${paymentReceived.toLocaleString()}</span></div>
+                    <div class="flex flex-col text-right"><span class="text-secondary">Due</span><span class="font-semibold ${paymentPending > 0 ? 'text-[#FF9F0A]' : 'text-secondary'}">₹${paymentPending.toLocaleString()}</span></div>
+                </div>
+
+                <div class="mt-4 pt-4 border-t border-outline-variant/50">
+                    <button onclick="window.logPayment()" class="w-full py-3 bg-surface-variant text-on-surface font-semibold text-[14px] rounded-xl active-scale transition-colors">Log Payment</button>
                 </div>
             </div>
         </div>

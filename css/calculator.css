@@ -15,13 +15,28 @@ details[open] summary .material-symbols-outlined.expand-icon {
     left: 0;
     width: 100%;
     z-index: 35;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 @media (min-width: 640px) {
     .floating-results {
         left: 50%;
         transform: translateX(-50%);
-        max-width: 480px;
+        max-width: 520px;
+        bottom: 84px;
     }
+}
+
+/* Floating dynamic island glow */
+.dynamic-island {
+    box-shadow: 
+        0 20px 40px -10px rgba(0, 0, 0, 0.1),
+        0 0 20px 0 rgba(0, 113, 227, 0.15),
+        inset 0 1px 0 rgba(255, 255, 255, 0.6);
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.4);
+    border-radius: 32px;
 }
 
 /* ── Calculator Redesign ── */
@@ -34,31 +49,42 @@ details[open] summary .material-symbols-outlined.expand-icon {
 }
 
 .calc-input {
-    height: 48px;
-    background: var(--color-surface, #FFFBFE);
-    border: 1.5px solid var(--color-outline-variant, #CAC4D0);
-    border-radius: 14px;
-    padding: 0 14px;
+    height: 46px;
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    border-radius: 12px;
+    padding: 0 16px;
     font-size: 15px;
     font-weight: 600;
     color: var(--color-on-surface, #1C1B1F);
-    transition: border-color 0.15s, box-shadow 0.15s;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     outline: none;
     width: 100%;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.02);
 }
 .calc-input:focus {
+    background: rgba(255, 255, 255, 0.95);
     border-color: var(--color-primary, #0071E3);
-    box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.12);
+    box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.15), inset 0 1px 2px rgba(0,0,0,0.01);
+    transform: translateY(-1px);
+}
+.calc-input:hover:not(:focus) {
+    border-color: rgba(0, 0, 0, 0.15);
+    background: rgba(255, 255, 255, 0.85);
 }
 .calc-input[readonly] {
-    background: rgba(0,113,227,0.04);
-    border-color: rgba(0,113,227,0.25);
+    background: rgba(0, 113, 227, 0.03);
+    border-color: rgba(0, 113, 227, 0.15);
     color: var(--color-primary, #0071E3);
     cursor: default;
+    box-shadow: none;
 }
 .calc-input:disabled {
-    opacity: 0.45;
+    opacity: 0.5;
     cursor: not-allowed;
+    background: rgba(0, 0, 0, 0.02);
 }
 .calc-input.pl-8 {
     padding-left: 32px;

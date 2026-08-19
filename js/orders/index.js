@@ -6,6 +6,7 @@ let currentOrders = [];
 let activeOrder = null;
 let currentFilter = 'active';
 let currentSearchQuery = '';
+let currentViewMode = 'list';
 const TOTAL_WIZARD_STEPS = 4;
 window.currentWizardStep = 1;
 
@@ -70,8 +71,9 @@ function renderAnalyticsSummary() {
 }
 
 function renderOrders() {
-    const container = document.getElementById('orders-list');
-    if (!container) return;
+    const listContainer = document.getElementById('orders-list');
+    const kanbanContainer = document.getElementById('orders-kanban');
+    if (!listContainer || !kanbanContainer) return;
 
     let filtered = currentOrders;
 
@@ -92,19 +94,100 @@ function renderOrders() {
         );
     }
 
-    if (filtered.length === 0) {
-        container.innerHTML = `<div class="p-8 text-center text-secondary">
-            <span class="material-symbols-outlined text-[48px] mb-2 opacity-50">inbox</span>
-            <p>No orders found.</p>
-        </div>`;
-        return;
-    }
+    if (currentViewMode === 'list') {
+        listContainer.classList.remove('hidden');
+        kanbanContainer.classList.add('hidden');
+        
+        if (filtered.length === 0) {
+            listContainer.innerHTML = `<div class="p-8 text-center text-secondary">
+                <span class="material-symbols-outlined text-[48px] mb-2 opacity-50">inbox</span>
+                <p>No orders found.</p>
+            </div>`;
+            return;
+        }
 
-    container.innerHTML = filtered.map(o => `
-        <div onclick="window.openOrderDetails('${o.id}')" class="cursor-pointer active-scale transition-apple">
-            ${renderers.orderCard(o)}
-        </div>
-    `).join('');
+        listContainer.innerHTML = filtered.map(o => `
+            <div onclick="window.openOrderDetails('${o.id}')" class="cursor-pointer active-scale transition-apple">
+                ${renderers.orderCard(o)}
+            </div>
+        `).join('');
+    } else {
+        listContainer.classList.add('hidden');
+        kanbanContainer.classList.remove('hidden');
+        renderKanban(filtered);
+    }
+}
+
+function renderKanban(filteredOrders) {
+    const kanbanContainer = document.getElementById('orders-kanban');
+    if (!kanbanContainer) return;
+
+    const stages = ['Draft', 'Cutting', 'Stitching', 'Printing', 'Finished', 'Dispatched'];
+    
+    kanbanContainer.innerHTML = stages.map(stage => {
+        const stageOrders = filteredOrders.filter(o => o.status === stage);
+        
+        // Setup styles based on stage
+        let stageColor = 'bg-surface-variant text-on-surface-variant';
+        let badgeColor = 'bg-surface-container-high text-secondary';
+        
+        if (stage === 'Finished' || stage === 'Dispatched') {
+            stageColor = 'bg-[#008A00]/10 text-[#008A00] border border-[#008A00]/20';
+            badgeColor = 'bg-[#008A00] text-white';
+        } else if (stage === 'Stitching') {
+            stageColor = 'bg-[#FF9F0A]/10 text-[#FF9F0A] border border-[#FF9F0A]/20';
+            badgeColor = 'bg-[#FF9F0A] text-white';
+        } else if (stage === 'Printing') {
+            stageColor = 'bg-[#0A84FF]/10 text-[#0A84FF] border border-[#0A84FF]/20';
+            badgeColor = 'bg-[#0A84FF] text-white';
+        }
+        
+        const columnHeader = `
+            <div class="flex justify-between items-center mb-3">
+                <span class="text-[13px] font-bold uppercase tracking-wider px-2 py-1 rounded-md ${stageColor}">${stage}</span>
+                <span class="text-[12px] font-bold px-2 py-1 rounded-full ${badgeColor}">${stageOrders.length}</span>
+            </div>
+        `;
+
+        const columnCards = stageOrders.map(o => `
+            <div onclick="window.openOrderDetails('${o.id}')" class="cursor-pointer bg-surface-container-lowest p-3 rounded-xl border border-outline-variant shadow-sm active-scale transition-apple mb-2">
+                <div class="flex justify-between items-start mb-2">
+                    <span class="text-[11px] font-semibold text-secondary uppercase">${o.id}</span>
+                    <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-surface-variant text-on-surface-variant">${o.qty}</span>
+                </div>
+                <h4 class="text-[14px] font-bold text-on-surface mb-1 line-clamp-1">${o.product}</h4>
+                <p class="text-[12px] text-secondary line-clamp-1">${api.getCustomerSync?.(o.customerId)?.name || o.customerId}</p>
+            </div>
+        `).join('');
+
+        return `
+            <div class="min-w-[280px] max-w-[280px] snap-center flex flex-col h-full bg-surface-container/30 rounded-2xl p-3 border border-outline-variant/50">
+                ${columnHeader}
+                <div class="flex-1 overflow-y-auto hide-scrollbar flex flex-col gap-1 min-h-[300px]">
+                    ${columnCards}
+                    ${stageOrders.length === 0 ? '<div class="flex-1 flex items-center justify-center p-4 border-2 border-dashed border-outline-variant rounded-xl opacity-50"><p class="text-[12px] text-secondary font-medium">Empty</p></div>' : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+window.setViewMode = function(mode) {
+    currentViewMode = mode;
+    
+    // Update button states
+    const listBtn = document.getElementById('view-list-btn');
+    const kanbanBtn = document.getElementById('view-kanban-btn');
+    
+    if (mode === 'list') {
+        listBtn.className = 'w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center transition-colors';
+        kanbanBtn.className = 'w-8 h-8 rounded-lg text-secondary hover:bg-surface-variant flex items-center justify-center transition-colors';
+    } else {
+        kanbanBtn.className = 'w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center transition-colors';
+        listBtn.className = 'w-8 h-8 rounded-lg text-secondary hover:bg-surface-variant flex items-center justify-center transition-colors';
+    }
+    
+    renderOrders();
 }
 
 window.setFilter = function(filter) {
@@ -352,31 +435,94 @@ window.handleStatusTransition = async function (newStatus) {
         let autoTasks = [];
         if (newStatus === 'Cutting') {
             autoTasks = [
-                { id: `t-cut-1-${Date.now()}`, title: 'Verify fabric quantity & laying', completed: false },
-                { id: `t-cut-2-${Date.now()}`, title: 'Apply marker templates & cut fabrics', completed: false }
+                { title: 'Verify fabric quantity & laying', completed: false },
+                { title: 'Apply marker templates & cut fabrics', completed: false }
             ];
         } else if (newStatus === 'Stitching') {
             autoTasks = [
-                { id: `t-stitch-1-${Date.now()}`, title: 'Assemble front & back panels', completed: false },
-                { id: `t-stitch-2-${Date.now()}`, title: 'Attach collar and sleeves', completed: false }
+                { title: 'Assemble front & back panels', completed: false },
+                { title: 'Attach collar and sleeves', completed: false }
             ];
         } else if (newStatus === 'Printing') {
             autoTasks = [
-                { id: `t-print-1-${Date.now()}`, title: 'Prepare screen/embroidery frames', completed: false },
-                { id: `t-print-2-${Date.now()}`, title: 'Print sample panel & check alignment', completed: false }
+                { title: 'Prepare screen/embroidery frames', completed: false },
+                { title: 'Print sample panel & check alignment', completed: false }
             ];
         }
         
         if (autoTasks.length > 0) {
             for (const t of autoTasks) {
-                await api.updateOrderTask(activeOrder.id, t.id, t);
+                await api.addOrderTask(activeOrder.id, t);
             }
         }
 
         await loadOrders();
-        window.closeSheet('orderDetailsSheet');
+        window.openOrderDetails(activeOrder.id); // Re-open with new data instead of closing
         window.showToast?.(`Status updated to ${newStatus}`, 'success');
     } catch (e) {
+        console.error(e);
         window.showToast?.('Failed to update status', 'error');
     }
 };
+
+window.toggleOrderTask = async function(taskId, isCompleted) {
+    if (!activeOrder) return;
+    try {
+        const task = activeOrder.tasks.find(t => t.id === taskId);
+        if (task) {
+            task.completed = isCompleted;
+            await api.updateOrderTask(activeOrder.id, taskId, task);
+            
+            // Re-render order details locally without closing sheet
+            const activeOrderIdx = currentOrders.findIndex(o => o.id === activeOrder.id);
+            if(activeOrderIdx > -1) {
+                currentOrders[activeOrderIdx] = await api.getOrder(activeOrder.id);
+                activeOrder = currentOrders[activeOrderIdx];
+                const contentEl = document.getElementById('orderDetailsSheet-inner-content');
+                if (contentEl) contentEl.innerHTML = getOrderDetailsContent(activeOrder);
+            }
+        }
+    } catch(e) {
+        window.showToast?.('Failed to update task', 'error');
+    }
+}
+
+window.logPayment = function() {
+    if (!activeOrder) return;
+    const paymentPending = Math.max((activeOrder.value || 0) - (activeOrder.paymentReceived || 0), 0);
+    document.getElementById('log-payment-amount').value = paymentPending || '';
+    document.getElementById('log-payment-note').value = '';
+    window.openSheet('logPaymentSheet');
+}
+
+window.submitLogPayment = async function() {
+    if (!activeOrder) return;
+    
+    const amount = parseFloat(document.getElementById('log-payment-amount').value) || 0;
+    const method = document.getElementById('log-payment-method').value;
+    const note = document.getElementById('log-payment-note').value;
+    
+    if (amount <= 0) {
+        window.showToast?.('Enter a valid amount', 'error');
+        return;
+    }
+
+    try {
+        const newTotal = (activeOrder.paymentReceived || 0) + amount;
+        const isPaid = newTotal >= (activeOrder.value || 0);
+        
+        await api.updateOrder(activeOrder.id, {
+            paymentReceived: newTotal,
+            paymentStatus: isPaid ? 'Paid' : 'Partially Paid'
+        });
+
+        window.showToast?.(`Logged ₹${amount.toLocaleString()} payment`, 'success');
+        window.closeSheet('logPaymentSheet');
+        
+        await loadOrders();
+        window.openOrderDetails(activeOrder.id);
+        
+    } catch (e) {
+        window.showToast?.('Failed to log payment', 'error');
+    }
+}

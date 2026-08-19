@@ -50,16 +50,26 @@
             </div>
 
             <!-- Segmented Control for Active / Completed -->
-            <div id="orders-segmented-control" class="px-xs">
+            <div id="orders-segmented-control" class="px-xs flex flex-col gap-3">
                 <div class="flex p-1 bg-surface-container-lowest border border-outline-variant rounded-xl">
                     <button id="tab-active" onclick="window.setFilter('active')" class="flex-1 py-2 text-[14px] font-semibold rounded-lg bg-surface-variant text-on-surface transition-colors">Active</button>
                     <button id="tab-completed" onclick="window.setFilter('completed')" class="flex-1 py-2 text-[14px] font-semibold rounded-lg text-secondary hover:text-on-surface transition-colors">Completed</button>
+                </div>
+                <div class="flex items-center justify-end gap-2">
+                    <span class="text-[12px] font-medium text-secondary">View:</span>
+                    <button id="view-list-btn" onclick="window.setViewMode('list')" class="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center transition-colors"><span class="material-symbols-outlined text-[18px]">view_list</span></button>
+                    <button id="view-kanban-btn" onclick="window.setViewMode('kanban')" class="w-8 h-8 rounded-lg text-secondary hover:bg-surface-variant flex items-center justify-center transition-colors"><span class="material-symbols-outlined text-[18px]">view_kanban</span></button>
                 </div>
             </div>
 
             <!-- Orders List Container -->
             <div id="orders-list" class="flex flex-col gap-4 px-xs">
                 <!-- Order cards will be rendered here by index.js -->
+            </div>
+
+            <!-- Orders Kanban Container -->
+            <div id="orders-kanban" class="hidden flex gap-4 px-xs pb-4 overflow-x-auto snap-x snap-mandatory no-scrollbar" style="scroll-padding-left: 16px;">
+                <!-- Kanban columns will be rendered here by index.js -->
             </div>
             
         </main>

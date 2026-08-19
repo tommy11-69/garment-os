@@ -2,15 +2,18 @@
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "garment-os",
   "main": "backend/worker.js",
-  "compatibility_date": "2024-09-23",
-  "compatibility_flags": ["nodejs_compat"],
+  "compatibility_date": "2024-11-01",
   "assets": {
     "directory": "./",
     "binding": "ASSETS",
     "html_handling": "auto-trailing-slash",
     "not_found_handling": "single-page-application"
   },
-  "vars": {
-    "NODE_ENV": "production"
-  }
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "garment-os-db",
+      "database_id": "a307df89-71b4-4eed-a45e-54fecb72e614"
+    }
+  ]
 }

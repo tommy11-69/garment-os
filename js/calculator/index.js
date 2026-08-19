@@ -642,12 +642,41 @@ window.resetCalc = function() {
 // ══════════════════════════════════════════════════════
 //  SAVE DRAFT
 // ══════════════════════════════════════════════════════
-window.openSaveDraft = function() {
-    const client = $('shared-client')?.value ||
-        (state.activeTab === 'order' ? $('oc-client')?.value : $('pp-client')?.value);
-    const styleInput = $('save-style');
-    if (styleInput && client && !styleInput.value) styleInput.value = client;
-    window.openSheet('saveCostSheet');
+window.saveCosting = async function() {
+    const s = state.u;
+    const client = $('shared-client')?.value || 'Unnamed Client';
+    
+    if (s.cp <= 0) {
+        window.showToast?.('Fill in costs before saving', 'error');
+        return;
+    }
+    
+    try {
+        window.showToast?.('Saving costing...', 'info');
+        
+        const payload = {
+            clientId: client, // We don't have a strict customer picker here, just free text
+            styleRef: s.garmentType || 'Garment',
+            totalUnitCost: s.cp,
+            retailPrice: s.sp || 0,
+            status: 'Saved',
+            materials: [
+                { name: 'Fabric', cost: s.fabricCostPc || 0 },
+                { name: 'CMT', cost: (s.cmt || 0) + (s.cutting || 0) + (s.fusing || 0) + (s.wages || 0) + (s.packing || 0) },
+                { name: 'Printing', cost: (s.printing || 0) + (s.sublimation || 0) },
+                { name: 'Allowances', cost: (s.allowances || 0) + (s.overheads || 0) }
+            ]
+        };
+        
+        const res = await api.saveCosting(payload);
+        if (res.error) throw new Error(res.error);
+        
+        window.showToast?.('Costing saved successfully!', 'success');
+        
+    } catch (err) {
+        console.error('Error saving costing:', err);
+        window.showToast?.('Failed to save costing', 'error');
+    }
 };
 
 // ══════════════════════════════════════════════════════
@@ -669,29 +698,33 @@ window.openQuotePreview = function() {
     if (!body) return;
 
     body.innerHTML = `
-        <div class="bg-gradient-to-br from-primary/10 via-primary/5 to-transparent border border-primary/20 rounded-2xl p-5 mb-4">
-            <div class="flex justify-between items-start mb-5">
+        <div class="bg-white/60 backdrop-blur-2xl border border-white/60 shadow-xl shadow-black/[0.03] rounded-3xl p-6 mb-5 relative overflow-hidden">
+            <!-- Decorative blur -->
+            <div class="absolute -top-10 -right-10 w-32 h-32 bg-primary/20 blur-3xl rounded-full pointer-events-none"></div>
+            
+            <div class="flex justify-between items-start mb-6 relative z-10">
                 <div>
-                    <p class="text-[11px] font-semibold text-secondary uppercase tracking-wider mb-1">Costing</p>
-                    <h2 class="text-[20px] font-bold text-on-surface leading-tight">${client !== '—' ? client : s.garmentType}</h2>
-                    <p class="text-[13px] text-secondary mt-0.5">${s.qty > 0 ? s.qty.toLocaleString() + ' pcs · ' : ''}${s.garmentType}</p>
+                    <p class="text-[11px] font-bold text-secondary uppercase tracking-wider mb-1">Costing Quote</p>
+                    <h2 class="text-[22px] font-bold text-on-surface leading-tight tracking-tight">${client !== '—' ? client : s.garmentType}</h2>
+                    <p class="text-[14px] text-secondary mt-1 font-medium">${s.qty > 0 ? s.qty.toLocaleString() + ' pcs · ' : ''}${s.garmentType}</p>
                 </div>
-                <div class="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center">
-                    <span class="material-symbols-outlined text-primary text-[24px]">receipt_long</span>
+                <div class="w-12 h-12 bg-white/80 border border-white shadow-sm rounded-2xl flex items-center justify-center flex-shrink-0">
+                    <span class="material-symbols-outlined text-primary text-[22px]">receipt_long</span>
                 </div>
             </div>
-            <div class="grid grid-cols-3 gap-2">
-                <div class="bg-white/60 rounded-xl p-3 text-center">
-                    <p class="text-[10px] font-semibold text-secondary uppercase tracking-wider mb-1">CP / pc</p>
-                    <p class="text-[15px] font-bold text-on-surface">${fmtFull(s.cp)}</p>
+            
+            <div class="grid grid-cols-3 gap-2 relative z-10">
+                <div class="bg-white/80 border border-white/50 rounded-2xl p-3.5 text-center shadow-sm">
+                    <p class="text-[10px] font-bold text-secondary uppercase tracking-wider mb-1">CP / pc</p>
+                    <p class="text-[16px] font-black text-on-surface">${fmtFull(s.cp)}</p>
                 </div>
-                <div class="bg-primary/15 rounded-xl p-3 text-center">
-                    <p class="text-[10px] font-semibold text-secondary uppercase tracking-wider mb-1">SP / pc</p>
-                    <p class="text-[15px] font-bold text-primary">${s.sp ? fmtFull(s.sp) : '—'}</p>
+                <div class="bg-primary/10 border border-primary/10 rounded-2xl p-3.5 text-center shadow-sm">
+                    <p class="text-[10px] font-bold text-primary uppercase tracking-wider mb-1">SP / pc</p>
+                    <p class="text-[16px] font-black text-primary">${s.sp ? fmtFull(s.sp) : '—'}</p>
                 </div>
-                <div class="bg-white/60 rounded-xl p-3 text-center">
-                    <p class="text-[10px] font-semibold text-secondary uppercase tracking-wider mb-1">Profit</p>
-                    <p class="text-[15px] font-bold ${(s.profitPct || 0) >= 0 ? 'profit-positive' : 'profit-negative'}">${s.profitPct !== null ? s.profitPct.toFixed(1) + '%' : '—'}</p>
+                <div class="bg-white/80 border border-white/50 rounded-2xl p-3.5 text-center shadow-sm">
+                    <p class="text-[10px] font-bold text-secondary uppercase tracking-wider mb-1">Profit</p>
+                    <p class="text-[16px] font-black ${(s.profitPct || 0) >= 0 ? 'text-[#34C759]' : 'text-error'}">${s.profitPct !== null ? s.profitPct.toFixed(1) + '%' : '—'}</p>
                 </div>
             </div>
         </div>
@@ -974,21 +1007,21 @@ async function initModule() {
     const quoteContent = `<div id="quote-preview-body" class="min-h-[180px]"><div class="p-8 text-center text-secondary text-[14px]">Fill in costs to preview</div></div>`;
     const quoteFooter  = `
         <button onclick="downloadQuotePDF()" class="w-full bg-primary text-on-primary font-bold text-[15px] py-3.5 rounded-2xl active-scale transition-apple shadow-sm flex items-center justify-center gap-2">
-            <span class="material-symbols-outlined text-[18px]">picture_as_pdf</span> Download PDF Quote
+            <span class="material-symbols-outlined text-[20px]">picture_as_pdf</span> Download PDF
         </button>
         
-        <div class="flex gap-2 w-full mt-2">
-            <button onclick="copyQuoteToClipboard()" class="flex-grow bg-surface-container-high text-on-surface font-bold text-[14px] py-3 rounded-xl active-scale transition-apple flex items-center justify-center gap-1.5">
-                <span class="material-symbols-outlined text-[17px]">content_copy</span> Copy
+        <div class="grid grid-cols-2 gap-2 w-full mt-2">
+            <button onclick="copyQuoteToClipboard()" class="bg-surface-container-high text-on-surface font-semibold text-[14px] py-3 rounded-xl active-scale transition-apple flex items-center justify-center gap-1.5">
+                <span class="material-symbols-outlined text-[18px]">content_copy</span> Copy
             </button>
-            <button onclick="shareQuoteViaWhatsApp()" class="flex-grow bg-[#25D366] text-white font-bold text-[14px] py-3 rounded-xl active-scale transition-apple flex items-center justify-center gap-1.5">
-                <span class="material-symbols-outlined text-[17px]">share</span> WhatsApp
+            <button onclick="shareQuoteViaWhatsApp()" class="bg-[#25D366] text-white font-semibold text-[14px] py-3 rounded-xl active-scale transition-apple flex items-center justify-center gap-1.5 shadow-sm">
+                <span class="material-symbols-outlined text-[18px]">share</span> WhatsApp
             </button>
-            <button onclick="convertToOrder()" class="flex-grow bg-surface-container-high text-on-surface font-bold text-[14px] py-3 rounded-xl active-scale transition-apple flex items-center justify-center gap-1.5">
-                <span class="material-symbols-outlined text-[17px]">shopping_cart</span> Order
+            <button onclick="convertToOrder()" class="bg-surface-container-high text-on-surface font-semibold text-[14px] py-3 rounded-xl active-scale transition-apple flex items-center justify-center gap-1.5">
+                <span class="material-symbols-outlined text-[18px]">shopping_cart</span> Order
             </button>
-            <button onclick="openSaveDraft(); window.closeSheet('quotePreviewSheet');" class="flex-grow bg-surface-container-high text-on-surface font-bold text-[14px] py-3 rounded-xl active-scale transition-apple flex items-center justify-center gap-1.5">
-                <span class="material-symbols-outlined text-[17px]">save</span> Save
+            <button onclick="saveCosting(); window.closeSheet('quotePreviewSheet');" class="bg-surface-container-high text-on-surface font-semibold text-[14px] py-3 rounded-xl active-scale transition-apple flex items-center justify-center gap-1.5">
+                <span class="material-symbols-outlined text-[18px]">save</span> Save
             </button>
         </div>
     `;
