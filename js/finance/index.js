@@ -46,11 +46,28 @@ async function renderSheets() {
         
         document.getElementById('add-trans-submit')?.addEventListener('click', handleAddTransaction);
         document.getElementById('edit-trans-submit')?.addEventListener('click', handleEditTransaction);
+
+        setupCategoryToggle('trans-');
+    }
+}
+
+function setupCategoryToggle(prefix = 'trans-') {
+    const catSelect = document.getElementById(`${prefix}category`);
+    const otherContainer = document.getElementById(`${prefix}other-category-container`);
+    if (catSelect && otherContainer) {
+        catSelect.addEventListener('change', (e) => {
+            if (e.target.value === 'Other') {
+                otherContainer.classList.remove('hidden');
+                document.getElementById(`${prefix}other-category`)?.focus();
+            } else {
+                otherContainer.classList.add('hidden');
+            }
+        });
     }
 }
 
 function renderUI(state) {
-    const { entities, selectedIds, isBulkMode, metrics, loading, error } = state;
+    const { entities, selectedIds, isBulkMode, metrics, loading, error, allTransactions } = state;
     
     renderDashboard(metrics);
     
@@ -68,6 +85,12 @@ function renderUI(state) {
         </div>`;
     } else {
         container.innerHTML = entities.map(t => renderers.transactionCard(t, selectedIds.has(t.id))).join('');
+    }
+
+    // Feed ALL (unfiltered) transactions to the chart engine
+    const allTxns = allTransactions || state.entities || [];
+    if (typeof window.renderFinanceCharts === 'function') {
+        window.renderFinanceCharts(allTxns);
     }
 
     updateBulkToolbar(state);
@@ -210,7 +233,11 @@ async function handleAddTransaction() {
     const date = document.getElementById('trans-date').value;
     const title = document.getElementById('trans-title').value;
     const amount = parseFloat(document.getElementById('trans-amount').value);
-    const category = document.getElementById('trans-category').value;
+    let category = document.getElementById('trans-category').value;
+    if (category === 'Other') {
+        const customCat = document.getElementById('trans-other-category')?.value.trim();
+        if (customCat) category = customCat;
+    }
     const paymentMethod = document.getElementById('trans-method').value;
     const referenceNo = document.getElementById('trans-ref').value;
     const status = document.getElementById('trans-status').value;
@@ -232,6 +259,9 @@ async function handleAddTransaction() {
         document.getElementById('trans-amount').value = '';
         document.getElementById('trans-ref').value = '';
         document.getElementById('trans-notes').value = '';
+        const otherInput = document.getElementById('trans-other-category');
+        if (otherInput) otherInput.value = '';
+        document.getElementById('trans-other-category-container')?.classList.add('hidden');
         
         financeStore.loadTransactions();
     } catch (e) {
@@ -240,16 +270,20 @@ async function handleAddTransaction() {
 }
 
 async function handleEditTransaction() {
-    const id = document.getElementById('trans-id').value;
-    const type = document.getElementById('trans-type').value;
-    const date = document.getElementById('trans-date').value;
-    const title = document.getElementById('trans-title').value;
-    const amount = parseFloat(document.getElementById('trans-amount').value);
-    const category = document.getElementById('trans-category').value;
-    const paymentMethod = document.getElementById('trans-method').value;
-    const referenceNo = document.getElementById('trans-ref').value;
-    const status = document.getElementById('trans-status').value;
-    const notes = document.getElementById('trans-notes').value;
+    const id = document.getElementById('edit-trans-id').value;
+    const type = document.getElementById('edit-trans-type').value;
+    const date = document.getElementById('edit-trans-date').value;
+    const title = document.getElementById('edit-trans-title').value;
+    const amount = parseFloat(document.getElementById('edit-trans-amount').value);
+    let category = document.getElementById('edit-trans-category').value;
+    if (category === 'Other') {
+        const customCat = document.getElementById('edit-trans-other-category')?.value.trim();
+        if (customCat) category = customCat;
+    }
+    const paymentMethod = document.getElementById('edit-trans-method').value;
+    const referenceNo = document.getElementById('edit-trans-ref').value;
+    const status = document.getElementById('edit-trans-status').value;
+    const notes = document.getElementById('edit-trans-notes').value;
 
     window.showToast?.('Updating transaction...', 'info');
     
@@ -260,8 +294,10 @@ async function handleEditTransaction() {
         window.closeSheet('editTransactionSheet');
         window.showToast?.('Transaction updated', 'success');
         
-        financeStore.fetchActiveEntity(id); // update details sheet
         financeStore.loadTransactions(); // refresh list
+        setTimeout(() => {
+            window.openTransactionDetails(id);
+        }, 200);
     } catch (e) {
         window.showToast?.('Failed to update', 'error');
     }
@@ -304,13 +340,18 @@ window.editTransaction = function() {
     const t = financeStore.getState().activeEntity;
     if (!t) return;
     
+    window.closeSheet('transactionDetailsSheet');
+
     const editContainer = document.getElementById('edit-trans-container');
     if (editContainer) {
-        editContainer.innerHTML = getAddTransactionSheetHTML(t);
+        editContainer.innerHTML = getAddTransactionSheetHTML(t, 'edit-trans-');
         // rebind validation since content changed
         bindFormValidation('editTransactionSheet-content', 'edit-trans-submit');
+        setupCategoryToggle('edit-trans-');
     }
-    window.openSheet('editTransactionSheet');
+    setTimeout(() => {
+        window.openSheet('editTransactionSheet');
+    }, 150);
 };
 
 window.duplicateTransaction = async function() {

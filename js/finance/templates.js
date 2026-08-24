@@ -1,6 +1,6 @@
 import { TextInput, SelectInput, TextareaInput } from '../components/inputs.js';
 
-export function getAddTransactionSheetHTML(transaction = null) {
+export function getAddTransactionSheetHTML(transaction = null, prefix = 'trans-') {
     const isEdit = !!transaction;
     
     const types = [
@@ -10,6 +10,8 @@ export function getAddTransactionSheetHTML(transaction = null) {
     
     const categories = [
         { label: 'Fabric Purchase', value: 'Fabric Purchase' },
+        { label: 'Stitching', value: 'Stitching' },
+        { label: 'Own Expenses', value: 'Own Expenses' },
         { label: 'Accessories', value: 'Accessories' },
         { label: 'Printing', value: 'Printing' },
         { label: 'Embroidery', value: 'Embroidery' },
@@ -32,6 +34,12 @@ export function getAddTransactionSheetHTML(transaction = null) {
         { label: 'Other', value: 'Other' }
     ];
 
+    const knownCategories = new Set(categories.map(c => c.value));
+    const currentCat = isEdit ? (transaction.category || 'Fabric Purchase') : 'Fabric Purchase';
+    const isOther = isEdit && !knownCategories.has(currentCat) || currentCat === 'Other';
+    const selectedDropdownCat = isOther ? 'Other' : currentCat;
+    const otherCustomValue = isOther && currentCat !== 'Other' ? currentCat : (isEdit ? (transaction.otherCategory || '') : '');
+
     const paymentMethods = [
         { label: 'Cash', value: 'Cash' },
         { label: 'UPI', value: 'UPI' },
@@ -48,28 +56,32 @@ export function getAddTransactionSheetHTML(transaction = null) {
 
     return `
         <div class="flex flex-col gap-4">
-            <input type="hidden" id="trans-id" value="${isEdit ? transaction.id : ''}">
+            <input type="hidden" id="${prefix}id" value="${isEdit ? transaction.id : ''}">
             
             <div class="grid grid-cols-2 gap-4">
-                ${SelectInput({ label: 'Type', id: 'trans-type', options: types, value: isEdit ? transaction.type : 'Expense', required: true })}
-                ${TextInput({ label: 'Date', id: 'trans-date', type: 'date', value: isEdit ? transaction.date : new Date().toISOString().split('T')[0], required: true })}
+                ${SelectInput({ label: 'Type', id: `${prefix}type`, options: types, value: isEdit ? transaction.type : 'Expense', required: true })}
+                ${TextInput({ label: 'Date', id: `${prefix}date`, type: 'date', value: isEdit ? transaction.date : new Date().toISOString().split('T')[0], required: true })}
             </div>
 
-            ${TextInput({ label: 'Title', id: 'trans-title', placeholder: 'e.g. Fabric from Supplier X', value: isEdit ? transaction.title : '', required: true })}
+            ${TextInput({ label: 'Title', id: `${prefix}title`, placeholder: 'e.g. Fabric from Supplier X', value: isEdit ? transaction.title : '', required: true })}
             
             <div class="grid grid-cols-2 gap-4">
-                ${TextInput({ label: 'Amount (₹)', id: 'trans-amount', type: 'number', step: '0.01', placeholder: '0.00', value: isEdit ? transaction.amount : '', required: true })}
-                ${SelectInput({ label: 'Category', id: 'trans-category', options: categories, value: isEdit ? transaction.category : 'Fabric Purchase', required: true })}
+                ${TextInput({ label: 'Amount (₹)', id: `${prefix}amount`, type: 'number', step: '0.01', placeholder: '0.00', value: isEdit ? transaction.amount : '', required: true })}
+                ${SelectInput({ label: 'Category', id: `${prefix}category`, options: categories, value: selectedDropdownCat, required: true })}
+            </div>
+
+            <div id="${prefix}other-category-container" class="${isOther ? '' : 'hidden'}">
+                ${TextInput({ label: 'Specify Category Name', id: `${prefix}other-category`, placeholder: 'Enter custom category (e.g. Packaging, Utilities)', value: otherCustomValue })}
             </div>
 
             <div class="grid grid-cols-2 gap-4">
-                ${SelectInput({ label: 'Payment Method', id: 'trans-method', options: paymentMethods, value: isEdit ? transaction.paymentMethod : 'Bank Transfer', required: true })}
-                ${TextInput({ label: 'Reference No.', id: 'trans-ref', placeholder: 'Cheque/Txn ID', value: isEdit ? transaction.referenceNo : '' })}
+                ${SelectInput({ label: 'Payment Method', id: `${prefix}method`, options: paymentMethods, value: isEdit ? (transaction.paymentMethod || 'Bank Transfer') : 'Bank Transfer', required: true })}
+                ${TextInput({ label: 'Reference No.', id: `${prefix}ref`, placeholder: 'Cheque/Txn ID', value: isEdit ? transaction.referenceNo : '' })}
             </div>
 
-            ${SelectInput({ label: 'Status', id: 'trans-status', options: statuses, value: isEdit ? transaction.status : 'Completed', required: true })}
+            ${SelectInput({ label: 'Status', id: `${prefix}status`, options: statuses, value: isEdit ? transaction.status : 'Completed', required: true })}
             
-            ${TextareaInput({ label: 'Notes', id: 'trans-notes', placeholder: 'Additional details...', rows: 2, value: isEdit ? transaction.notes : '' })}
+            ${TextareaInput({ label: 'Notes', id: `${prefix}notes`, placeholder: 'Additional details...', rows: 2, value: isEdit ? transaction.notes : '' })}
 
             <div class="bg-surface-container rounded-2xl p-4 flex items-center justify-center border border-dashed border-outline-variant text-secondary text-[13px] font-medium cursor-pointer active-bg">
                 <span class="material-symbols-outlined mr-2 text-[18px]">attach_file</span> Attachments (Future Ready)

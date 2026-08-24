@@ -15,7 +15,7 @@ function updateGreeting() {
     let greet = 'Good morning';
     if (hour >= 12 && hour < 17) greet = 'Good afternoon';
     else if (hour >= 17) greet = 'Good evening';
-    greetingEl.textContent = `${greet}, Udhayaa Bro😘`;
+    greetingEl.textContent = `${greet}, Udhayaa `;
 }
 
 function renderUI(state) {

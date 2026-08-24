@@ -40,9 +40,14 @@ async function loadCostings() {
                             <h3 class="text-[16px] font-bold text-on-surface">${c.clientId || 'Unnamed Client'}</h3>
                             <p class="text-[13px] text-secondary">${c.styleRef || 'Garment'}</p>
                         </div>
-                        <span class="text-[11px] text-secondary bg-surface-container-high px-2 py-1 rounded-md font-medium">
-                            ${date}
-                        </span>
+                        <div class="flex items-center gap-1.5" onclick="event.stopPropagation()">
+                            <span class="text-[11px] text-secondary bg-surface-container-high px-2 py-1 rounded-md font-medium">
+                                ${date}
+                            </span>
+                            <button type="button" onclick="printCosting('${c.id}')" title="Print Costing" class="w-7 h-7 rounded-full bg-primary/10 hover:bg-primary/20 flex items-center justify-center text-primary active-scale transition-apple">
+                                <span class="material-symbols-outlined text-[16px]">print</span>
+                            </button>
+                        </div>
                     </div>
                     <div class="grid grid-cols-3 gap-2 mt-1 pt-3 border-t border-outline-variant/30">
                         <div>
@@ -70,7 +75,228 @@ async function loadCostings() {
     }
 }
 
-// Attach to window so onclick works
+// Navigate to calculator with all saved inputs loaded
+window.navigateToCalculator = function(c, autoPrint = false) {
+    let uState = {};
+    if (c.uData && typeof c.uData === 'object') {
+        uState = { ...c.uData };
+    } else if (typeof c.uData === 'string' && c.uData) {
+        try { uState = JSON.parse(c.uData); } catch (_) {}
+    }
+
+    // Default fallbacks from top-level properties if not in uData
+    if (!uState.garmentType) uState.garmentType = c.styleRef || c.garmentType || 'T-Shirt';
+    if (!uState.cp)          uState.cp = c.totalUnitCost || 0;
+    if (!uState.sp)          uState.sp = c.retailPrice || 0;
+
+    // NOTE: we no longer reconstruct from materials[] since uData now contains
+    // the complete calculator state for all records saved after this fix.
+
+    const draft = {
+        sharedClient: c.clientId || uState.clientName || '',
+        autoPrint: !!autoPrint,
+        u: uState
+    };
+
+    sessionStorage.setItem('gos_calc_v2_draft', JSON.stringify(draft));
+    
+    // Close sheet if open
+    window.closeSheet?.('costingDetailSheet');
+    
+    setTimeout(() => {
+        const dest = autoPrint ? 'calculator.html?action=print' : 'calculator.html';
+        window.location.href = dest;
+    }, 200);
+};
+
+// Print a saved costing by navigating to the calculator
+window.printCosting = async function(id) {
+    try {
+        window.showToast?.('Opening calculator for print...', 'info');
+        const c = await api.getCostingById(id);
+        if (!c || c.error) {
+            window.showToast?.('Costing not found', 'error');
+            return;
+        }
+        window.navigateToCalculator(c, true);
+    } catch (e) {
+        console.error(e);
+        window.showToast?.('Failed to open costing for print', 'error');
+    }
+};
+
+// ── Detail Sheet HTML Builder ──────────────────────────────────────
+function buildDetailHTML(c, sheetId) {
+    // Resolve uData — could be parsed JSON or raw object from API
+    let u = {};
+    if (c.uData && typeof c.uData === 'object') {
+        u = c.uData;
+    } else if (typeof c.uData === 'string' && c.uData) {
+        try { u = JSON.parse(c.uData); } catch (_) {}
+    }
+
+    const hasUData = u && Object.keys(u).length > 2;
+
+    const rs = (v) => v > 0 ? '₹' + Number(v).toFixed(2) : '—';
+    const qty = u.qty || 0;
+    const cp  = u.cp || c.totalUnitCost || 0;
+    const sp  = u.sp || c.retailPrice || 0;
+    const profitPct = (cp > 0 && sp > 0) ? (((sp - cp) / cp) * 100) : null;
+    const profitAmt = sp > 0 ? (sp - cp) : null;
+    const profitColor = (profitPct !== null && profitPct >= 0) ? '#34C759' : '#FF3B30';
+    const dateStr = new Date(c.createdAt || c.date || Date.now()).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+
+    // ── Helper: a two-column field row
+    const fieldRow = (label, val, sub = '') => `
+        <div class="flex justify-between items-center py-3 border-b border-outline-variant/15 last:border-0">
+            <span class="text-[13px] text-secondary font-medium tracking-wide">${label}</span>
+            <div class="text-right">
+                <span class="text-[14px] font-bold text-on-surface">${val}</span>
+                ${sub ? `<span class="text-[11px] text-secondary ml-1 font-medium">${sub}</span>` : ''}
+            </div>
+        </div>`;
+
+    // ── Helper: section card wrapper
+    const card = (icon, title, color, body) => `
+        <div class="bg-white border border-outline-variant/30 rounded-[20px] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex-shrink-0">
+            <div class="flex items-center gap-2 px-5 py-3.5 border-b border-outline-variant/15" style="background: ${color}0A;">
+                <span class="material-symbols-outlined text-[18px]" style="color:${color};">${icon}</span>
+                <h3 class="text-[13px] font-bold uppercase tracking-widest" style="color:${color};">${title}</h3>
+            </div>
+            <div class="px-5 pb-2 pt-1">${body}</div>
+        </div>`;
+
+    // ── 1. Order Summary Card
+    const profitPc   = sp > 0 ? (sp - cp) : null;
+    const totalProfit = (profitPc !== null && qty > 0) ? profitPc * qty : null;
+    const summaryCard = card('analytics', 'Order Summary', '#0071E3', `
+        <div class="grid grid-cols-2 gap-2 py-3">
+            <div class="bg-blue-50 rounded-xl p-3 text-center">
+                <p class="text-[10px] font-semibold text-secondary uppercase tracking-wider mb-1">CP / pc</p>
+                <p class="text-[15px] font-bold text-on-surface">${rs(cp)}</p>
+            </div>
+            <div class="bg-blue-50/50 rounded-xl p-3 text-center">
+                <p class="text-[10px] font-semibold text-secondary uppercase tracking-wider mb-1">SP / pc</p>
+                <p class="text-[15px] font-bold text-primary">${sp > 0 ? rs(sp) : '—'}</p>
+            </div>
+            <div class="rounded-xl p-3 text-center" style="background:${profitColor}18;">
+                <p class="text-[10px] font-semibold text-secondary uppercase tracking-wider mb-1">Profit / pc</p>
+                <p class="text-[15px] font-bold" style="color:${profitColor};">${profitPc !== null ? rs(profitPc) : '—'}</p>
+            </div>
+            <div class="rounded-xl p-3 text-center" style="background:${profitColor}10;">
+                <p class="text-[10px] font-semibold text-secondary uppercase tracking-wider mb-1">Total Profit</p>
+                <p class="text-[15px] font-bold" style="color:${profitColor};">${totalProfit !== null ? '₹' + Math.abs(totalProfit).toLocaleString('en-IN', {maximumFractionDigits:0}) : '—'}</p>
+            </div>
+        </div>
+    `);
+
+
+    if (!hasUData) {
+        // ── Fallback for old records without uData
+        const materialsHTML = (c.materials || []).map(m => fieldRow(m.name, rs(m.cost || 0))).join('') ||
+            '<p class="text-[13px] text-secondary py-3 text-center">No detailed breakdown saved.<br>Re-save from the calculator to see full details.</p>';
+        const fallbackCard = card('receipt_long', 'Cost Breakdown', '#8E8E93', materialsHTML);
+        return `${summaryCard}${fallbackCard}`;
+    }
+
+    // ── 2. Fabric Card
+    const fabricBody = [
+        u.fabricPriceKg > 0 ? fieldRow('Fabric Price / kg', rs(u.fabricPriceKg)) : '',
+        u.pcsPerKg > 0 ? fieldRow('Pcs per kg', u.pcsPerKg + ' pcs') : '',
+        u.wastage > 0 ? fieldRow('Wastage', u.wastage + '%') : '',
+        fieldRow('Fabric Cost / pc', rs(u.fabricCostPc)),
+        qty > 0 && u.fabricCostPc > 0 ? fieldRow('Total Fabric Cost', rs(u.fabricCostPc * qty), `(${qty} pcs)`) : '',
+    ].filter(Boolean).join('');
+    const fabricCard = u.fabricCostPc > 0 ? card('bolt', 'Fabric', '#0071E3', fabricBody) : '';
+
+    // ── 3. CMT Card
+    const isSeparateCMT = u.cmtMode === 'separate';
+    let cmtBody = '';
+    if (isSeparateCMT) {
+        cmtBody = [
+            u.cutting > 0 ? fieldRow('Cutting / pc', rs(u.cutting)) : '',
+            u.fusing > 0 ? fieldRow('Fusing / pc', rs(u.fusing)) : '',
+            u.wages > 0 ? fieldRow('Wages / pc', rs(u.wages)) : '',
+            u.packing > 0 ? fieldRow('Packing / pc', rs(u.packing)) : '',
+        ].filter(Boolean).join('');
+        const cmtTotal = (u.cutting||0)+(u.fusing||0)+(u.wages||0)+(u.packing||0);
+        if (cmtTotal > 0) cmtBody += fieldRow('CMT Total / pc', rs(cmtTotal));
+    } else {
+        cmtBody = u.cmt > 0 ? fieldRow('CMT Rate / pc', rs(u.cmt)) : '';
+    }
+    const cmtTotal = isSeparateCMT
+        ? (u.cutting||0)+(u.fusing||0)+(u.wages||0)+(u.packing||0)
+        : (u.cmt||0);
+    const cmtCard = cmtTotal > 0 ? card('content_cut', `CMT (${isSeparateCMT ? 'Separate' : 'Combined'})`, '#AF52DE', cmtBody) : '';
+
+    // ── 4. Printing & Sublimation Card
+    const printBody = [
+        u.printing > 0 ? fieldRow('Printing / pc', rs(u.printing)) : '',
+        u.sublimation > 0 ? fieldRow('Sublimation / pc', rs(u.sublimation)) : '',
+        (u.printing > 0 || u.sublimation > 0) ? fieldRow('Total Printing / pc', rs((u.printing||0)+(u.sublimation||0))) : '',
+    ].filter(Boolean).join('');
+    const printCard = (u.printing > 0 || u.sublimation > 0) ? card('print', 'Printing & Sublimation', '#FF9F0A', printBody) : '';
+
+    // ── 5. Allowances & Overheads Card
+    const allowBody = [
+        u.allowances > 0 ? fieldRow('Allowances / pc', rs(u.allowances)) : '',
+        u.overheads > 0 ? fieldRow('Overheads / pc', rs(u.overheads)) : '',
+        (u.allowances > 0 || u.overheads > 0) ? fieldRow('Total / pc', rs((u.allowances||0)+(u.overheads||0))) : '',
+    ].filter(Boolean).join('');
+    const allowCard = (u.allowances > 0 || u.overheads > 0) ? card('percent', 'Allowances & Overheads', '#FFD60A', allowBody) : '';
+
+    // ── 6. Accessories Card
+    const lumpSum = (u.acc1||0)+(u.acc2||0)+(u.acc3||0)+(u.pattern||0);
+    const lumpPerPc = qty > 0 ? lumpSum / qty : 0;
+    const accBody = [
+        u.acc1 > 0 ? fieldRow('Accessory 1 (order total)', rs(u.acc1)) : '',
+        u.acc2 > 0 ? fieldRow('Accessory 2 (order total)', rs(u.acc2)) : '',
+        u.acc3 > 0 ? fieldRow('Accessory 3 (order total)', rs(u.acc3)) : '',
+        u.pattern > 0 ? fieldRow('Pattern (order total)', rs(u.pattern)) : '',
+        lumpSum > 0 ? fieldRow('Total Lump Sum', rs(lumpSum)) : '',
+        lumpPerPc > 0 ? fieldRow('Per Piece (derived)', rs(lumpPerPc), `÷ ${qty} pcs`) : '',
+    ].filter(Boolean).join('');
+    const accCard = lumpSum > 0 ? card('category', 'Accessories & Pattern', '#FF3B30', accBody) : '';
+
+    // ── 7. Visual Cost Breakdown Bar
+    const items = [
+        { label: 'Fabric', value: (u.fabricCostPc||0) * qty, color: '#0071E3' },
+        { label: 'CMT', value: cmtTotal * qty, color: '#AF52DE' },
+        { label: 'Printing', value: ((u.printing||0)+(u.sublimation||0)) * qty, color: '#FF9F0A' },
+        { label: 'Allow.', value: ((u.allowances||0)+(u.overheads||0)) * qty, color: '#FFD60A' },
+        { label: 'Accessories', value: lumpSum, color: '#FF3B30' },
+    ].filter(i => i.value > 0);
+    const totalCostAll = items.reduce((s, i) => s + i.value, 0);
+    const barHTML = items.map((i, idx) => {
+        const pct = (i.value / totalCostAll * 100).toFixed(2);
+        const isFirst = idx === 0, isLast = idx === items.length - 1;
+        const radius = isFirst && isLast ? '9999px' : isFirst ? '9999px 0 0 9999px' : isLast ? '0 9999px 9999px 0' : '0';
+        return `<div title="${i.label}: ₹${i.value.toFixed(2)} (${parseFloat(pct).toFixed(1)}%)" style="width:${pct}%;background:${i.color};border-radius:${radius};height:100%;"></div>`;
+    }).join('');
+    const legendHTML = items.map(i => {
+        const pct = (i.value / totalCostAll * 100).toFixed(1);
+        return `<div class="flex items-center justify-between">
+            <div class="flex items-center gap-2">
+                <div class="w-2.5 h-2.5 rounded-sm flex-shrink-0" style="background:${i.color};"></div>
+                <span class="text-[12px] text-on-surface">${i.label}</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="text-[11px] text-secondary">${pct}%</span>
+                <span class="text-[12px] font-bold text-on-surface">₹${i.value.toFixed(2)}</span>
+            </div>
+        </div>`;
+    }).join('');
+    const breakdownCard = totalCostAll > 0 ? card('bar_chart', 'Cost Breakdown', '#5856D6', `
+        <div class="py-3">
+            <div style="height:10px;display:flex;border-radius:9999px;overflow:hidden;margin-bottom:12px;">${barHTML}</div>
+            <div class="flex flex-col gap-2">${legendHTML}</div>
+        </div>
+    `) : '';
+
+    return `${summaryCard}${fabricCard}${cmtCard}${printCard}${allowCard}${accCard}${breakdownCard}`;
+}
+
+// ── Open Costing Sheet ─────────────────────────────────────────────
 window.openCosting = async function(id) {
     try {
         window.showToast?.('Loading costing details...', 'info');
@@ -79,100 +305,81 @@ window.openCosting = async function(id) {
         if (c && !c.error) {
             // Clean up any old costing sheets from DOM
             const existing = document.getElementById('costingDetailSheet-overlay');
-            if (existing) {
-                existing.parentElement.remove();
-            }
-            
-            const materialsList = (c.materials || []).map(m => `
-                <div class="flex justify-between items-center py-3 border-b border-outline-variant/30 text-[14px]">
-                    <span class="text-secondary font-medium">${m.name}</span>
-                    <span class="text-on-surface font-bold">₹${(m.cost || 0).toFixed(2)}</span>
-                </div>
-            `).join('') || '<p class="text-[14px] text-secondary py-3">No material details saved.</p>';
-            
-            const cp = c.totalUnitCost || 0;
-            const sp = c.retailPrice || 0;
-            const profit = (cp > 0 && sp > 0) ? (((sp - cp) / cp) * 100).toFixed(1) + '%' : '—';
-            const profitClass = (cp > 0 && sp > 0 && (sp - cp) >= 0) ? 'text-[#34C759]' : 'text-error';
-            
-            const container = document.createElement('div');
+            if (existing) existing.parentElement.remove();
+
             const sheetId = 'costingDetailSheet';
-            
+            const dateStr = new Date(c.createdAt || c.date || Date.now()).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+
+            const container = document.createElement('div');
             container.innerHTML = `
                 <div id="${sheetId}-overlay" class="bottom-sheet-overlay"></div>
-                <div id="${sheetId}-content" class="bottom-sheet-content flex flex-col h-[75vh]">
+                <div id="${sheetId}-content" class="bottom-sheet-content flex flex-col" style="height:88vh;max-height:88vh;">
                     <div class="sheet-handle"></div>
-                    <div class="px-lg pb-md flex justify-between items-center border-b border-outline-variant/30">
-                        <div>
-                            <h2 class="text-[20px] font-bold text-on-surface">${c.clientId || 'Unnamed Client'}</h2>
-                            <p class="text-[13px] text-secondary">${c.styleRef || 'Garment'}</p>
+
+                    <!-- Header -->
+                    <div class="px-4 pb-3 pt-1 flex justify-between items-start border-b border-outline-variant/30 flex-shrink-0">
+                        <div class="flex-1 min-w-0">
+                            <h2 class="text-[18px] font-bold text-on-surface truncate">${c.clientId || 'Unnamed Client'}</h2>
+                            <p class="text-[12px] text-secondary">${c.styleRef || 'Garment'} &bull; ${dateStr} &bull; <span class="font-medium">${c.status || 'Saved'}</span></p>
                         </div>
-                        <div class="flex items-center gap-2">
-                            <button type="button" id="costing-delete-btn" class="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center text-red-500 active-scale transition-apple hover:bg-red-100">
-                                <span class="material-symbols-outlined text-[20px]">delete</span>
+                        <div class="flex items-center gap-2 flex-shrink-0 ml-3">
+                            <button type="button" id="costing-print-btn" title="Print / Export PDF"
+                                class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary active-scale transition-apple hover:bg-primary/20">
+                                <span class="material-symbols-outlined text-[18px]">print</span>
                             </button>
-                            <button type="button" id="costing-close-x" class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-secondary active-scale transition-apple">
+                            <button type="button" id="costing-delete-btn" title="Delete"
+                                class="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center text-red-500 active-scale transition-apple hover:bg-red-100">
+                                <span class="material-symbols-outlined text-[18px]">delete</span>
+                            </button>
+                            <button type="button" id="costing-close-x"
+                                class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-secondary active-scale transition-apple">
                                 <span class="material-symbols-outlined text-[20px]">close</span>
                             </button>
                         </div>
                     </div>
-                    
-                    <div class="flex-1 overflow-y-auto p-lg flex flex-col gap-5 bg-[#f4f5f7]">
-                        <!-- Financial Summary Card -->
-                        <div class="bg-white border border-outline-variant/30 rounded-2xl p-5 shadow-sm">
-                            <h3 class="text-[11px] font-bold text-secondary uppercase tracking-wider mb-3">Summary</h3>
-                            <div class="grid grid-cols-3 gap-2">
-                                <div class="bg-surface-container-low rounded-xl p-3 text-center">
-                                    <p class="text-[10px] font-semibold text-secondary uppercase tracking-wider mb-1">CP/pc</p>
-                                    <p class="text-[14px] font-bold text-on-surface">₹${cp.toFixed(2)}</p>
-                                </div>
-                                <div class="bg-primary/5 rounded-xl p-3 text-center">
-                                    <p class="text-[10px] font-semibold text-secondary uppercase tracking-wider mb-1">SP/pc</p>
-                                    <p class="text-[14px] font-bold text-primary">₹${sp > 0 ? sp.toFixed(2) : '—'}</p>
-                                </div>
-                                <div class="bg-surface-container-low rounded-xl p-3 text-center">
-                                    <p class="text-[10px] font-semibold text-secondary uppercase tracking-wider mb-1">Margin</p>
-                                    <p class="text-[14px] font-bold ${profitClass}">${profit}</p>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- Cost Breakdown Card -->
-                        <div class="bg-white border border-outline-variant/30 rounded-2xl p-5 shadow-sm">
-                            <h3 class="text-[11px] font-bold text-secondary uppercase tracking-wider mb-2">Cost Breakdown</h3>
-                            <div class="flex flex-col">
-                                ${materialsList}
-                            </div>
-                        </div>
+
+                    <!-- Scrollable Body -->
+                    <div class="flex-1 overflow-y-auto px-4 py-5 flex flex-col gap-5" style="background:#f4f5f7;">
+                        ${buildDetailHTML(c, sheetId)}
                     </div>
-                    
-                    <div class="p-4 border-t border-outline-variant/30 bg-white safe-bottom flex gap-3">
-                        <button type="button" id="costing-close-btn" class="flex-1 bg-surface-container-high text-on-surface font-semibold py-3.5 rounded-xl active-scale transition-apple">
+
+                    <!-- Footer Actions -->
+                    <div class="p-4 border-t border-outline-variant/30 bg-white safe-bottom flex gap-3 flex-shrink-0">
+                        <button type="button" id="costing-close-btn"
+                            class="flex-1 bg-surface-container-high text-on-surface font-semibold py-3.5 rounded-xl active-scale transition-apple text-[14px]">
                             Close
                         </button>
-                        <button type="button" id="costing-edit-btn" class="flex-1 bg-primary text-white font-semibold py-3.5 rounded-xl shadow-sm active-scale transition-apple flex items-center justify-center gap-1.5">
-                            <span class="material-symbols-outlined text-[18px]">edit</span>
-                            Proceed to Edit
+                        <button type="button" id="costing-print-footer-btn"
+                            class="flex-1 bg-primary/10 text-primary font-semibold py-3.5 rounded-xl active-scale transition-apple flex items-center justify-center gap-1.5 text-[14px]">
+                            <span class="material-symbols-outlined text-[16px]">print</span>
+                            Print / PDF
+                        </button>
+                        <button type="button" id="costing-edit-btn"
+                            class="flex-[1.2] bg-primary text-white font-semibold py-3.5 rounded-xl shadow-sm active-scale transition-apple flex items-center justify-center gap-1.5 text-[14px]">
+                            <span class="material-symbols-outlined text-[16px]">edit</span>
+                            Edit
                         </button>
                     </div>
                 </div>
             `;
-            
+
             document.body.appendChild(container);
-            
+
             const cleanup = () => {
                 window.closeSheet(sheetId);
                 setTimeout(() => container.remove(), 400);
             };
-            
+
             container.querySelector(`#${sheetId}-overlay`).onclick = cleanup;
             container.querySelector('#costing-close-x').onclick = cleanup;
             container.querySelector('#costing-close-btn').onclick = cleanup;
-            
+            container.querySelector('#costing-print-btn').onclick = () => window.navigateToCalculator(c, true);
+            container.querySelector('#costing-print-footer-btn').onclick = () => window.navigateToCalculator(c, true);
+            container.querySelector('#costing-edit-btn').onclick = () => window.navigateToCalculator(c, false);
+
             container.querySelector('#costing-delete-btn').onclick = async () => {
-                const confirmed = confirm("Are you sure you want to delete this costing?");
+                const confirmed = confirm('Are you sure you want to delete this costing?');
                 if (!confirmed) return;
-                
                 try {
                     window.showToast?.('Deleting costing...', 'info');
                     await api.deleteCosting(c.id);
@@ -184,28 +391,9 @@ window.openCosting = async function(id) {
                     window.showToast?.('Error deleting costing', 'error');
                 }
             };
-            
-            container.querySelector('#costing-edit-btn').onclick = () => {
-                const draft = {
-                    sharedClient: c.clientId || '',
-                    u: {
-                        garmentType: c.styleRef || 'T-Shirt',
-                        cp: c.totalUnitCost || 0,
-                        sp: c.retailPrice || 0,
-                    }
-                };
-                sessionStorage.setItem('gos_calc_v2_draft', JSON.stringify(draft));
-                window.closeSheet(sheetId);
-                setTimeout(() => {
-                    container.remove();
-                    window.location.href = 'calculator.html';
-                }, 400);
-            };
-            
-            requestAnimationFrame(() => {
-                window.openSheet(sheetId);
-            });
-            
+
+            requestAnimationFrame(() => window.openSheet(sheetId));
+
         } else {
             window.showToast?.('Costing not found', 'error');
         }
@@ -218,3 +406,4 @@ window.openCosting = async function(id) {
 document.addEventListener('DOMContentLoaded', () => {
     loadCostings();
 });
+

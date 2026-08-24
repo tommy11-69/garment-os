@@ -48,11 +48,24 @@ class OrderStore extends BaseStore {
         }
     }
 
-    async createOrder(data) {
-        const newOrder = await orderRepository.create(data);
+    async create(data) {
+        // Ensure JSON fields are serialised for storage
+        const payload = { ...data };
+        if (payload.stageData && typeof payload.stageData === 'object') {
+            payload.stageData = JSON.stringify(payload.stageData);
+        }
+        if (payload.phases && Array.isArray(payload.phases)) {
+            payload.phases = JSON.stringify(payload.phases);
+        }
+        const newOrder = await orderRepository.create(payload);
         await this.loadOrders();
         return newOrder;
     }
+
+    async createOrder(data) {
+        return this.create(data);
+    }
+
 
     async updateOrder(id, data) {
         const updated = await orderRepository.update(id, data);

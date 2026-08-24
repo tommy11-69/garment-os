@@ -48,12 +48,28 @@ class OrderRepository extends BaseRepository {
         if (order.customerId) {
             const customer = customers.find(c => c.id === order.customerId);
             if (customer) {
-                order.customerName = customer.name; // Keep in sync
-                order._customer = customer; // Attach full object for UI
+                order.customerName = customer.name;
+                order._customer = customer;
             }
         }
+        // Parse JSON fields that are stored as strings
+        this._parseStageData(order);
         return order;
     }
+
+    _parseStageData(order) {
+        if (order.stageData && typeof order.stageData === 'string') {
+            try { order.stageData = JSON.parse(order.stageData); } catch { order.stageData = {}; }
+        }
+        if (!order.stageData || typeof order.stageData !== 'object') order.stageData = {};
+
+        if (order.phases && typeof order.phases === 'string') {
+            try { order.phases = JSON.parse(order.phases); } catch { order.phases = []; }
+        }
+        if (!Array.isArray(order.phases)) order.phases = [];
+        return order;
+    }
+
 
     // Additional specific methods
     async addTimelineEvent(id, event) {

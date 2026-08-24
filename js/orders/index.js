@@ -7,8 +7,7 @@ let activeOrder = null;
 let currentFilter = 'active';
 let currentSearchQuery = '';
 let currentViewMode = 'list';
-const TOTAL_WIZARD_STEPS = 4;
-window.currentWizardStep = 1;
+
 
 document.addEventListener('DOMContentLoaded', async () => {
     // 1. Render Sheets
@@ -34,8 +33,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         renderOrders();
     });
 
-    bindWizardCalculations();
-    bindCostingAutoFill();
+    // Stage filter chip events from orders.html
+    document.addEventListener('stageFilterChanged', () => renderOrders());
 
     // Open from URL if present
     const params = new URLSearchParams(window.location.search);
@@ -44,7 +43,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function loadOrders() {
-    currentOrders = await api.getOrders();
+    const raw = await api.getOrders();
+    // Ensure stageData and phases are parsed objects (not raw JSON strings)
+    currentOrders = raw.map(o => {
+        if (o.stageData && typeof o.stageData === 'string') {
+            try { o.stageData = JSON.parse(o.stageData); } catch { o.stageData = {}; }
+        }
+        if (!o.stageData || typeof o.stageData !== 'object') o.stageData = {};
+        if (o.phases && typeof o.phases === 'string') {
+            try { o.phases = JSON.parse(o.phases); } catch { o.phases = []; }
+        }
+        if (!Array.isArray(o.phases)) o.phases = [];
+        return o;
+    });
     renderOrders();
     renderAnalyticsSummary();
 }
@@ -55,11 +66,11 @@ function renderAnalyticsSummary() {
 
     const activeOrders = currentOrders.filter(o => !['Dispatched', 'Delivered', 'Closed', 'Archived'].includes(o.status));
     
-    const totalValue = activeOrders.reduce((sum, o) => sum + (o.value || 0), 0);
-    const pendingUnits = activeOrders.reduce((sum, o) => sum + (o.qty || 0), 0);
-    const cuttingCount = activeOrders.filter(o => o.status === 'Cutting').length;
+    const totalValue    = activeOrders.reduce((sum, o) => sum + (o.value || 0), 0);
+    const pendingUnits  = activeOrders.reduce((sum, o) => sum + (o.qty || 0), 0);
+    const cuttingCount  = activeOrders.filter(o => o.status === 'Cutting').length;
     const stitchingCount = activeOrders.filter(o => o.status === 'Stitching').length;
-    const printingCount = activeOrders.filter(o => o.status === 'Printing').length;
+    const printingCount = activeOrders.filter(o => (o.status || '').includes('Printing')).length;
 
     container.innerHTML = getOrdersAnalyticsHTML({
         totalValue,
@@ -71,8 +82,9 @@ function renderAnalyticsSummary() {
 }
 
 function renderOrders() {
-    const listContainer = document.getElementById('orders-list');
+    const listContainer   = document.getElementById('orders-list');
     const kanbanContainer = document.getElementById('orders-kanban');
+    const emptyCTA        = document.getElementById('orders-empty-cta');
     if (!listContainer || !kanbanContainer) return;
 
     let filtered = currentOrders;
@@ -84,33 +96,40 @@ function renderOrders() {
         filtered = filtered.filter(o => ['Dispatched', 'Delivered', 'Closed', 'Archived'].includes(o.status));
     }
 
+    // Stage chip filter
+    const stageFilter = (typeof window.getStageFilter === 'function') ? window.getStageFilter() : 'all';
+    if (stageFilter && stageFilter !== 'all') {
+        filtered = filtered.filter(o => o.status === stageFilter);
+    }
+
     // Search
     if (currentSearchQuery) {
-        filtered = filtered.filter(o => 
-            (o.id && o.id.toLowerCase().includes(currentSearchQuery)) ||
+        filtered = filtered.filter(o =>
+            (o.id      && o.id.toLowerCase().includes(currentSearchQuery)) ||
             (o.product && o.product.toLowerCase().includes(currentSearchQuery)) ||
-            (o.customerId && o.customerId.toLowerCase().includes(currentSearchQuery)) ||
-            (o.status && o.status.toLowerCase().includes(currentSearchQuery))
+            (o.customerName && o.customerName.toLowerCase().includes(currentSearchQuery)) ||
+            (o.customerId   && o.customerId.toLowerCase().includes(currentSearchQuery)) ||
+            (o.status       && o.status.toLowerCase().includes(currentSearchQuery))
         );
     }
+
+    // Empty CTA — show when there are zero orders at all (not just filtered)
+    if (emptyCTA) emptyCTA.classList.toggle('hidden', currentOrders.length > 0);
 
     if (currentViewMode === 'list') {
         listContainer.classList.remove('hidden');
         kanbanContainer.classList.add('hidden');
         
         if (filtered.length === 0) {
-            listContainer.innerHTML = `<div class="p-8 text-center text-secondary">
-                <span class="material-symbols-outlined text-[48px] mb-2 opacity-50">inbox</span>
-                <p>No orders found.</p>
+            listContainer.innerHTML = `<div class="p-8 text-center">
+                <span class="material-symbols-outlined text-[48px] mb-3 block text-secondary opacity-40">inbox</span>
+                <p class="text-[15px] font-semibold text-on-surface">No orders here</p>
+                <p class="text-[13px] text-secondary mt-1">Try a different filter or stage</p>
             </div>`;
             return;
         }
 
-        listContainer.innerHTML = filtered.map(o => `
-            <div onclick="window.openOrderDetails('${o.id}')" class="cursor-pointer active-scale transition-apple">
-                ${renderers.orderCard(o)}
-            </div>
-        `).join('');
+        listContainer.innerHTML = filtered.map(o => renderers.orderCard(o)).join('');
     } else {
         listContainer.classList.add('hidden');
         kanbanContainer.classList.remove('hidden');
@@ -122,7 +141,7 @@ function renderKanban(filteredOrders) {
     const kanbanContainer = document.getElementById('orders-kanban');
     if (!kanbanContainer) return;
 
-    const stages = ['Draft', 'Cutting', 'Stitching', 'Printing', 'Finished', 'Dispatched'];
+    const stages = ['Fabric', 'Cutting', 'Stitching', 'Printing/Embroidery', 'Ironing & Packing', 'Dispatched'];
     
     kanbanContainer.innerHTML = stages.map(stage => {
         const stageOrders = filteredOrders.filter(o => o.status === stage);
@@ -239,31 +258,11 @@ window.switchOrderTab = function(tabId) {
     }
 }
 
-// ==========================================
-// CREATE WIZARD LOGIC
-// ==========================================
+// Navigate directly to the full create-order wizard page
 window.openCreateWizard = function() {
-    window.currentWizardStep = 1;
-    window.goToOrderStep(0); // init
-    document.getElementById('create-order-form')?.reset();
-    document.getElementById('calc-grandtotal').textContent = '₹0.00';
-    window.openSheet('createOrderSheet');
+    window.location.href = 'create-order.html';
+};
 
-    const select = document.getElementById('create-customer-select');
-    if (select) {
-        select.onchange = (e) => {
-            if (e.target.value === 'NEW_CUSTOMER') {
-                select.value = '';
-                window.openQuickAddCustomer(async (newCust) => {
-                    const customers = await api.getCustomers();
-                    select.innerHTML = `<option value="">Select Customer</option><option value="NEW_CUSTOMER">+ Create New Customer</option>` + 
-                        customers.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
-                    select.value = newCust.id;
-                });
-            }
-        };
-    }
-}
 
 window.goToOrderStep = function(direction) {
     let nextStep = window.currentWizardStep + direction;
@@ -443,10 +442,15 @@ window.handleStatusTransition = async function (newStatus) {
                 { title: 'Assemble front & back panels', completed: false },
                 { title: 'Attach collar and sleeves', completed: false }
             ];
-        } else if (newStatus === 'Printing') {
+        } else if (newStatus === 'Printing/Embroidery') {
             autoTasks = [
                 { title: 'Prepare screen/embroidery frames', completed: false },
                 { title: 'Print sample panel & check alignment', completed: false }
+            ];
+        } else if (newStatus === 'Ironing & Packing') {
+            autoTasks = [
+                { title: 'Iron all pieces', completed: false },
+                { title: 'Pack and label boxes', completed: false }
             ];
         }
         
@@ -462,6 +466,56 @@ window.handleStatusTransition = async function (newStatus) {
     } catch (e) {
         console.error(e);
         window.showToast?.('Failed to update status', 'error');
+    }
+};
+
+window.updateProductStage = async function(orderId, productIdx, newStage) {
+    const order = currentOrders.find(o => o.id === orderId);
+    if (!order) return;
+    
+    // Create products array if missing (for legacy orders)
+    if (!order.products || order.products.length === 0) {
+        order.products = [{
+            name: order.product || 'Garment',
+            category: 'Adults',
+            qty: order.qty || 0,
+            status: order.status || 'Fabric',
+            sizes: order.stageData?.cutting?.sizes || {}
+        }];
+    }
+    
+    order.products[productIdx].status = newStage;
+    
+    // Set overall status based on lowest active product stage
+    const STAGE_ORDER = ['Fabric', 'Cutting', 'Stitching', 'Printing/Embroidery', 'Ironing & Packing', 'Dispatch'];
+    let lowestIdx = STAGE_ORDER.length - 1;
+    order.products.forEach(p => {
+        const idx = STAGE_ORDER.indexOf(p.status || 'Fabric');
+        if (idx !== -1 && idx < lowestIdx) {
+            lowestIdx = idx;
+        }
+    });
+    const overallStatus = STAGE_ORDER[lowestIdx];
+    
+    try {
+        window.showToast?.(`Updating stage of ${order.products[productIdx].name} to ${newStage}...`, 'info');
+        await orderStore.updateOrder(orderId, {
+            products: order.products,
+            status: overallStatus
+        });
+        
+        window.showToast?.('Stage updated successfully', 'success');
+        
+        // Re-render order details locally without closing sheet
+        const activeOrderIdx = currentOrders.findIndex(o => o.id === orderId);
+        if (activeOrderIdx > -1) {
+            activeOrder = currentOrders[activeOrderIdx];
+            const contentEl = document.getElementById('orderDetailsSheet-inner-content');
+            if (contentEl) contentEl.innerHTML = getOrderDetailsContent(activeOrder);
+        }
+    } catch (e) {
+        console.error(e);
+        window.showToast?.('Failed to update product stage', 'error');
     }
 };
 

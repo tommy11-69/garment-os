@@ -36,21 +36,24 @@ function restoreSession() {
         if (!raw) return;
         const d = JSON.parse(raw);
 
-        if ($('shared-client') && d.sharedClient) $('shared-client').value = d.sharedClient;
-        
+        // Restore client name — prefer explicit sharedClient, fall back to uData.clientName
+        const clientName = d.sharedClient || d.u?.clientName || '';
+        if ($('shared-client') && clientName) $('shared-client').value = clientName;
+
         if (d.u) {
             calculatorStore.updateU(d.u);
             const u = d.u;
-            
+
             // Restore garment chip
             if (u.garmentType) {
                 const chips = document.querySelectorAll('#shared-garment-chips .garment-chip');
                 chips.forEach(b => b.classList.toggle('active', b.dataset.type === u.garmentType));
             }
-            
+
             // Rehydrate DOM inputs from state
-            const setVal = (id, v) => { const el = $(id); if (el && v) el.value = v; };
+            const setVal = (id, v) => { const el = $(id); if (el && (v || v === 0) && v !== 0) el.value = v; };
             setVal('u-qty', u.qty);
+            setVal('shared-qty', u.qty);  // keep shared qty input in sync too
             setVal('u-pcs-per-kg', u.pcsPerKg);
             setVal('u-fabric-price-kg', u.fabricPriceKg);
             setVal('u-wastage', u.wastage);
@@ -67,14 +70,32 @@ function restoreSession() {
             setVal('u-acc2', u.acc2);
             setVal('u-acc3', u.acc3);
             setVal('u-pattern', u.pattern);
-            
+
+            // Restore derived fabric cost fields (readonly display inputs)
+            if (u.fabricCostPc > 0) {
+                const pcEl = $('u-fabric-cost-pc');
+                if (pcEl) {
+                    pcEl.removeAttribute('readonly');
+                    pcEl.value = u.fabricCostPc.toFixed(2);
+                    pcEl.setAttribute('readonly', '');
+                }
+                if (u.qty > 0) {
+                    const totalEl = $('u-fabric-cost-total');
+                    if (totalEl) {
+                        totalEl.removeAttribute('readonly');
+                        totalEl.value = (u.fabricCostPc * u.qty).toFixed(2);
+                        totalEl.setAttribute('readonly', '');
+                    }
+                }
+            }
+
             // SP fields
             if (u.sp) {
                 if (u.lastEdited === 'sp-pc') setVal('u-sp-pc', u.sp);
                 else if (u.lastEdited === 'sp-total' && u.qty > 0) setVal('u-sp-total', u.sp * u.qty);
                 else setVal('u-sp-pc', u.sp);
             }
-            
+
             if (u.cmtMode === 'separate') {
                 const btn = document.querySelector('button[onclick="setCMTMode(\'separate\')"]');
                 if (btn) btn.click();
@@ -82,12 +103,21 @@ function restoreSession() {
                 const btn = document.querySelector('button[onclick="setCMTMode(\'combined\')"]');
                 if (btn) btn.click();
             }
-            
+
             window.updateAllTotals();
             window.calcUnified();
+
+            // Auto-trigger print if requested via URL
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('action') === 'print' || d.autoPrint) {
+                setTimeout(() => {
+                    window.downloadQuotePDF?.();
+                }, 300);
+            }
         }
     } catch (_) {}
 }
+
 
 // ══════════════════════════════════════════════════════
 //  HELPERS
@@ -640,39 +670,66 @@ window.resetCalc = function() {
 };
 
 // ══════════════════════════════════════════════════════
+//  COSTING PAYLOAD BUILDER  (shared by both save paths)
+// ══════════════════════════════════════════════════════
+function buildCostingPayload(s, client, overrides = {}) {
+    // Full granular materials list — one entry per individual input.
+    // Nothing is collapsed into buckets so every value can be restored exactly.
+    const materials = [
+        { name: 'Fabric Cost/pc',  unit: 'per pc', cost: s.fabricCostPc  || 0 },
+        { name: 'Fabric Price/kg', unit: 'per kg', cost: s.fabricPriceKg || 0 },
+        { name: 'Pcs per kg',      unit: 'count',  cost: s.pcsPerKg      || 0 },
+        { name: 'Wastage',         unit: '%',       cost: s.wastage       || 0 },
+        // CMT — only save whichever mode is active
+        { name: 'CMT (combined)',  unit: 'per pc',  cost: s.cmtMode === 'combined' ? (s.cmt    || 0) : 0 },
+        { name: 'Cutting',         unit: 'per pc',  cost: s.cmtMode === 'separate' ? (s.cutting|| 0) : 0 },
+        { name: 'Fusing',          unit: 'per pc',  cost: s.cmtMode === 'separate' ? (s.fusing || 0) : 0 },
+        { name: 'Wages',           unit: 'per pc',  cost: s.cmtMode === 'separate' ? (s.wages  || 0) : 0 },
+        { name: 'Packing',         unit: 'per pc',  cost: s.cmtMode === 'separate' ? (s.packing|| 0) : 0 },
+        { name: 'Printing',        unit: 'per pc',  cost: s.printing     || 0 },
+        { name: 'Sublimation',     unit: 'per pc',  cost: s.sublimation  || 0 },
+        { name: 'Allowances',      unit: 'per pc',  cost: s.allowances   || 0 },
+        { name: 'Overheads',       unit: 'per pc',  cost: s.overheads    || 0 },
+        { name: 'Accessory 1',     unit: 'lump',    cost: s.acc1         || 0 },
+        { name: 'Accessory 2',     unit: 'lump',    cost: s.acc2         || 0 },
+        { name: 'Accessory 3',     unit: 'lump',    cost: s.acc3         || 0 },
+        { name: 'Pattern',         unit: 'lump',    cost: s.pattern      || 0 },
+    ].filter(m => m.cost > 0);
+
+    return {
+        styleRef:      s.garmentType || 'Garment',
+        clientId:      client,
+        clientName:    client,
+        garmentType:   s.garmentType || 'T-Shirt',
+        currency:      state.currency || '₹',
+        mode:          'unified',
+        totalUnitCost: s.cp          || 0,
+        retailPrice:   s.sp          || 0,
+        // Full calculator state — restored exactly when user clicks Edit
+        uData: { ...s, clientName: client },
+        materials,
+        ...overrides,
+    };
+}
+
+// ══════════════════════════════════════════════════════
 //  SAVE DRAFT
 // ══════════════════════════════════════════════════════
 window.saveCosting = async function() {
     const s = state.u;
     const client = $('shared-client')?.value || 'Unnamed Client';
-    
+
     if (s.cp <= 0) {
         window.showToast?.('Fill in costs before saving', 'error');
         return;
     }
-    
+
     try {
         window.showToast?.('Saving costing...', 'info');
-        
-        const payload = {
-            clientId: client, // We don't have a strict customer picker here, just free text
-            styleRef: s.garmentType || 'Garment',
-            totalUnitCost: s.cp,
-            retailPrice: s.sp || 0,
-            status: 'Saved',
-            materials: [
-                { name: 'Fabric', cost: s.fabricCostPc || 0 },
-                { name: 'CMT', cost: (s.cmt || 0) + (s.cutting || 0) + (s.fusing || 0) + (s.wages || 0) + (s.packing || 0) },
-                { name: 'Printing', cost: (s.printing || 0) + (s.sublimation || 0) },
-                { name: 'Allowances', cost: (s.allowances || 0) + (s.overheads || 0) }
-            ]
-        };
-        
+        const payload = buildCostingPayload(s, client, { status: 'Saved' });
         const res = await api.saveCosting(payload);
         if (res.error) throw new Error(res.error);
-        
         window.showToast?.('Costing saved successfully!', 'success');
-        
     } catch (err) {
         console.error('Error saving costing:', err);
         window.showToast?.('Failed to save costing', 'error');
@@ -840,7 +897,20 @@ window.downloadQuotePDF = function() {
                 .summary-card h4 { margin: 5px 0 0 0; font-size: 20px; font-weight: bold; color: #111827; }
                 .footer { text-align: center; font-size: 12px; color: #9CA3AF; border-top: 1px solid #E5E7EB; padding-top: 20px; margin-top: 50px; }
                 @media print {
-                    body { padding: 0; }
+                    @page { margin: 15mm; size: A4; }
+                    body { padding: 0; font-size: 13px !important; line-height: 1.4; }
+                    .header { padding-bottom: 10px; margin-bottom: 15px; }
+                    .title { font-size: 20px; }
+                    .info-grid { gap: 20px; margin-bottom: 15px; }
+                    .info-section h3 { margin-bottom: 5px; font-size: 12px; }
+                    .info-section p { font-size: 13px; margin: 2px 0; }
+                    table { margin-bottom: 15px; }
+                    th, td { padding: 6px 8px !important; font-size: 12px !important; }
+                    h3 { font-size: 13px !important; margin-bottom: 10px !important; }
+                    .summary-box { padding: 12px; gap: 10px; margin-bottom: 15px !important; }
+                    .summary-card h4 { font-size: 16px; margin-top: 2px; }
+                    .summary-card p { font-size: 10px; }
+                    .footer { margin-top: 20px; padding-top: 10px; }
                     .no-print { display: none; }
                 }
             </style>
@@ -1088,18 +1158,26 @@ async function initModule() {
         const s = state.u;
         const client = $('shared-client')?.value || '';
 
-        await api.saveCosting({
-            styleRef: styleRef || client,
-            clientId,
-            totalUnitCost: s.cp  || 0,
-            retailPrice:   s.sp  || 0,
-            status, currency: state.currency,
-            mode: 'unified',
-            garmentType: s.garmentType,
-        });
+        const displayName = styleRef || client;
+        await api.saveCosting(
+            buildCostingPayload(s, clientId || displayName, {
+                styleRef:  styleRef || s.garmentType || 'Garment',
+                clientId:  clientId || displayName,
+                clientName: displayName,
+                status,
+                uData: { ...s, clientName: displayName },
+            })
+        );
 
+        // Clear session persistence and reset calculator
+        sessionStorage.removeItem('gos_calc_v2_draft');
+        
         window.closeSheet('saveCostSheet');
         window.showToast?.(`Costing saved as ${status}`, 'success');
+        
+        setTimeout(() => {
+            window.location.reload();
+        }, 1000);
     });
 
     // Phase 3: restore session after DOM + sheets are ready

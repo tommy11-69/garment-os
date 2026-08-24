@@ -17,3 +17,6 @@ INSERT OR IGNORE INTO inventory (id, name, sku, quantity, unit, status, statusCo
 
 INSERT OR IGNORE INTO batches (id, orderId, description, phase, progress, progressColor, expenses, consumptions) VALUES
 ('B-8092', 'ORD-992', 'Organic Tees • 5k units', 'Cutting', 45, 'bg-primary', '["txn-004"]', '[{"invId":"inv-001","actualConsumption":150,"date":"2026-10-15"}]');
+
+INSERT OR IGNORE INTO users (id, username, password_hash) VALUES 
+('u-admin', 'admin', '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9');

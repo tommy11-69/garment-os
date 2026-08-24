@@ -20,9 +20,10 @@ class FinanceStore extends BaseStore {
 
     getState() {
         const state = super.getState();
-        const metrics = this._calculateMetrics(state.entities);
+        const metrics = this._calculateMetrics(this._allEntities || state.entities);
         return {
             ...state,
+            allTransactions: this._allEntities || state.entities,
             currentSearch: this.currentSearch,
             currentFilters: this.currentFilters,
             currentSort: this.currentSort,
@@ -92,11 +93,12 @@ class FinanceStore extends BaseStore {
     async loadTransactions() {
         this.setState({ loading: true });
         try {
-            const results = await financeRepository.searchTransactions(
-                this.currentSearch,
-                this.currentFilters,
-                this.currentSort
-            );
+            // Fetch all (for charts) and filtered (for list) in parallel
+            const [allResults, results] = await Promise.all([
+                financeRepository.searchTransactions('', {type:'all',status:'all',paymentMethod:'all',category:'all',dateRange:'all'}, this.currentSort),
+                financeRepository.searchTransactions(this.currentSearch, this.currentFilters, this.currentSort)
+            ]);
+            this._allEntities = allResults;
             this.setState({ entities: results, loading: false });
         } catch (err) {
             this.setState({ error: err, loading: false });

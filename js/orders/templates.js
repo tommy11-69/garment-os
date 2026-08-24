@@ -116,20 +116,31 @@ export async function getOrderSheetsHTML() {
 
 export function getOrderDetailsHeader(order) {
     if (!order) return '';
-    
-    // Calculate progress for stepper
-    const stages = ['Draft', 'Cutting', 'Stitching', 'Printing', 'Finished'];
-    const currentIdx = stages.indexOf(order.status) >= 0 ? stages.indexOf(order.status) : (order.status === 'Dispatched' ? 4 : 0);
-    const progress = Math.min((currentIdx / (stages.length - 1)) * 100, 100);
+
+    // Workflow-aware stage sequence for the stepper
+    const STAGE_SEQS = {
+        default:             ['Fabric', 'Cutting', 'Stitching', 'Print', 'Iron', 'Dispatch'],
+        print_before_stitch: ['Fabric', 'Cutting', 'Print', 'Stitching', 'Iron', 'Dispatch'],
+        wash_before_stitch:  ['Fabric', 'Cutting', 'Wash', 'Stitching', 'Print', 'Iron', 'Dispatch'],
+    };
+    const wf     = order.workflowType || 'default';
+    const stages = STAGE_SEQS[wf] || STAGE_SEQS.default;
+    const status = order.status || '';
+    let currentIdx = stages.findIndex(s => status.toLowerCase().includes(s.toLowerCase()));
+    if (currentIdx < 0) currentIdx = 0;
+    if (['Dispatched','Delivered','Closed','Archived'].includes(status)) currentIdx = stages.length - 1;
+    const progress = stages.length > 1 ? Math.min((currentIdx / (stages.length - 1)) * 100, 100) : 0;
 
     const stepperHtml = `
-        <div class="mt-4 px-2">
+        <div class="mt-4 px-1">
             <div class="flex justify-between relative mb-2">
                 <div class="absolute top-2.5 left-0 w-full h-1 bg-surface-variant rounded-full -z-10"></div>
                 <div class="absolute top-2.5 left-0 h-1 bg-primary rounded-full -z-10 transition-all duration-500" style="width: ${progress}%"></div>
                 ${stages.map((s, i) => `
                     <div class="flex flex-col items-center gap-1">
-                        <div class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${i <= currentIdx ? 'bg-primary text-on-primary shadow-sm' : 'bg-surface-container-high text-secondary'}">${i+1}</div>
+                        <div class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${i <= currentIdx ? 'bg-primary text-on-primary shadow-sm' : 'bg-surface-container-high text-secondary'}">
+                            ${i < currentIdx ? '<span class="material-symbols-outlined text-[12px]">check</span>' : i+1}
+                        </div>
                         <span class="text-[9px] font-medium uppercase tracking-wider ${i <= currentIdx ? 'text-primary' : 'text-secondary'}">${s}</span>
                     </div>
                 `).join('')}
@@ -151,9 +162,10 @@ export function getOrderDetailsHeader(order) {
                 </div>
             </div>
             ${stepperHtml}
-            <div class="flex gap-4 mt-4 border-b border-outline-variant/50">
-                <button onclick="window.switchOrderTab('overview')" id="od-tab-btn-overview" class="od-tab-btn px-2 py-2 text-[14px] font-semibold text-primary border-b-2 border-primary transition-colors">Overview</button>
-                <button onclick="window.switchOrderTab('timeline')" id="od-tab-btn-timeline" class="od-tab-btn px-2 py-2 text-[14px] font-medium text-secondary border-b-2 border-transparent hover:text-on-surface transition-colors">Timeline</button>
+            <div class="flex gap-4 mt-4 border-b border-outline-variant/50 overflow-x-auto no-scrollbar">
+                <button onclick="window.switchOrderTab('overview')" id="od-tab-btn-overview" class="od-tab-btn shrink-0 px-2 py-2 text-[14px] font-semibold text-primary border-b-2 border-primary transition-colors">Overview</button>
+                <button onclick="window.switchOrderTab('production')" id="od-tab-btn-production" class="od-tab-btn shrink-0 px-2 py-2 text-[14px] font-medium text-secondary border-b-2 border-transparent hover:text-on-surface transition-colors">Production</button>
+                <button onclick="window.switchOrderTab('timeline')" id="od-tab-btn-timeline" class="od-tab-btn shrink-0 px-2 py-2 text-[14px] font-medium text-secondary border-b-2 border-transparent hover:text-on-surface transition-colors">Timeline</button>
             </div>
         </div>
     `;
@@ -191,22 +203,72 @@ export function getOrderDetailsContent(order) {
             <div class="flex gap-2 overflow-x-auto no-scrollbar pb-2 mb-4">
                 <button onclick="window.handleStatusTransition('Cutting')" class="shrink-0 px-4 py-2 bg-surface-container-highest text-on-surface text-[13px] font-semibold rounded-lg active-scale">Move to Cutting</button>
                 <button onclick="window.handleStatusTransition('Stitching')" class="shrink-0 px-4 py-2 bg-surface-container-highest text-on-surface text-[13px] font-semibold rounded-lg active-scale">Move to Stitching</button>
-                <button onclick="window.handleStatusTransition('Printing')" class="shrink-0 px-4 py-2 bg-surface-container-highest text-on-surface text-[13px] font-semibold rounded-lg active-scale">Move to Printing</button>
-                <button onclick="window.handleStatusTransition('Finished')" class="shrink-0 px-4 py-2 bg-[#008A00]/10 text-[#008A00] text-[13px] font-bold rounded-lg active-scale border border-[#008A00]/20">Mark Finished</button>
+                <button onclick="window.handleStatusTransition('Printing/Embroidery')" class="shrink-0 px-4 py-2 bg-surface-container-highest text-on-surface text-[13px] font-semibold rounded-lg active-scale">Move to Printing</button>
+                <button onclick="window.handleStatusTransition('Ironing & Packing')" class="shrink-0 px-4 py-2 bg-surface-container-highest text-on-surface text-[13px] font-semibold rounded-lg active-scale">Move to Ironing</button>
+                <button onclick="window.handleStatusTransition('Dispatched')" class="shrink-0 px-4 py-2 bg-[#008A00]/10 text-[#008A00] text-[13px] font-bold rounded-lg active-scale border border-[#008A00]/20">Mark Dispatched</button>
             </div>
             
             ${tasksHtml}
 
             <div class="bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant mb-4 shadow-sm">
-                <div class="flex justify-between items-center mb-3">
-                    <h3 class="text-[14px] font-semibold text-secondary uppercase tracking-wider">Specs</h3>
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-[14px] font-semibold text-secondary uppercase tracking-wider">Products &amp; Specs</h3>
                     <span class="px-2 py-1 rounded-md text-[12px] font-bold bg-surface-variant text-on-surface-variant">${order.qty} pcs</span>
                 </div>
-                <div class="grid grid-cols-2 gap-y-3">
-                    <div><p class="text-[12px] text-secondary">Customer</p><p class="text-[14px] font-medium text-on-surface">${customerName}</p></div>
-                    <div><p class="text-[12px] text-secondary">Delivery Date</p><p class="text-[14px] font-medium text-on-surface">${order.deliveryDate || 'Not set'}</p></div>
-                    <div><p class="text-[12px] text-secondary">Fabric</p><p class="text-[14px] font-medium text-on-surface">${order.fabric || '-'}</p></div>
-                    <div><p class="text-[12px] text-secondary">Sizes</p><p class="text-[14px] font-medium text-on-surface">${order.sizes || '-'}</p></div>
+                <div class="flex flex-col gap-3 mb-4">
+                    <div class="grid grid-cols-2 gap-y-2 pb-3 border-b border-outline-variant/30 text-[13px]">
+                        <div><span class="text-secondary">Customer:</span> <span class="font-semibold text-on-surface">${customerName}</span></div>
+                        <div><span class="text-secondary">Delivery:</span> <span class="font-semibold text-on-surface">${order.deliveryDate || 'Not set'}</span></div>
+                    </div>
+                </div>
+                <div class="flex flex-col gap-4">
+                    ${(() => {
+                        if (order.products && order.products.length > 0) {
+                            return order.products.map((p, pIdx) => {
+                                const isKids = p.category === 'Kids';
+                                const sizeKeys = isKids
+                                    ? ['24', '26', '28', '30', '32', '34', '36', '38']
+                                    : ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'XXXXL'];
+                                
+                                const sizesHtml = sizeKeys.map(k => `
+                                    <div class="text-center bg-surface-container/60 rounded-lg py-1 px-0.5 border border-outline-variant/30">
+                                        <p class="text-[9px] font-bold text-secondary uppercase leading-none">${k}</p>
+                                        <p class="text-[12px] font-bold text-on-surface mt-0.5">${p.sizes[k] || 0}</p>
+                                    </div>
+                                `).join('');
+
+                                const stages = ['Fabric', 'Cutting', 'Stitching', 'Printing/Embroidery', 'Ironing & Packing', 'Dispatch'];
+                                const stageOptions = stages.map(s => `
+                                    <option value="${s}" ${p.status === s ? 'selected' : ''}>${s}</option>
+                                `).join('');
+
+                                return `
+                                    <div class="border-b border-outline-variant/30 last:border-0 pb-4 last:pb-0">
+                                        <div class="flex justify-between items-start gap-3 mb-2.5">
+                                            <div>
+                                                <h4 class="text-[14px] font-bold text-on-surface leading-tight">${p.name || 'Unnamed Product'}</h4>
+                                                <span class="inline-block text-[11px] font-semibold text-secondary mt-0.5 bg-surface-variant/40 px-1.5 py-0.5 rounded">${p.category} Category · ${p.qty} pcs</span>
+                                            </div>
+                                            <select onchange="window.updateProductStage('${order.id}', ${pIdx}, this.value)" class="text-[12px] font-bold text-primary bg-primary/10 border-0 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-primary/20">
+                                                ${stageOptions}
+                                            </select>
+                                        </div>
+                                        <div class="grid grid-cols-8 gap-1">
+                                            ${sizesHtml}
+                                        </div>
+                                    </div>
+                                `;
+                            }).join('');
+                        } else {
+                            // Legacy single product orders fallback
+                            return `
+                                <div class="grid grid-cols-2 gap-y-3">
+                                    <div><p class="text-[12px] text-secondary">Fabric</p><p class="text-[14px] font-medium text-on-surface">${order.fabric || '-'}</p></div>
+                                    <div><p class="text-[12px] text-secondary">Sizes</p><p class="text-[14px] font-medium text-on-surface">${order.sizes || '-'}</p></div>
+                                </div>
+                            `;
+                        }
+                    })()}
                 </div>
             </div>
             
@@ -234,6 +296,9 @@ export function getOrderDetailsContent(order) {
                 </div>
             </div>
         </div>
+        <div id="od-tab-production" class="od-tab-content hidden p-4">
+            ${renderProductionDataTab(order)}
+        </div>
         <div id="od-tab-timeline" class="od-tab-content hidden p-4">
             <div class="flex flex-col gap-4">
                 ${(order.timeline || []).map(t => `<div class="flex gap-4"><div class="flex flex-col items-center"><div class="w-3 h-3 rounded-full bg-primary"></div><div class="w-px h-full bg-outline-variant my-1"></div></div><div class="pb-4"><p class="text-[14px] font-semibold text-on-surface">${t.status || t.title || 'Updated'}</p><p class="text-[12px] text-secondary">${new Date(t.timestamp || t.date).toLocaleString()} • ${t.user || 'System'}</p></div></div>`).join('')}
@@ -242,6 +307,89 @@ export function getOrderDetailsContent(order) {
         </div>
         <div class="h-20"></div>
     `;
+}
+
+// ─── Production Data Tab ──────────────────────────────────────────────────────
+function renderProductionDataTab(order) {
+    const sd = (order.stageData && typeof order.stageData === 'object') ? order.stageData : {};
+    const fabric  = sd.fabric  || {};
+    const cutting = sd.cutting || {};
+    const print   = sd.printing || {};
+    const stitch  = sd.stitching || {};
+    const iron    = sd.ironingPacking || {};
+    const dispatch = sd.dispatch || {};
+    const wash    = sd.wash || null;
+
+    const wf = (order.workflowType || 'default').replace(/_/g, ' ');
+
+    // Fabric card
+    const fabricCard = `
+        <div class="bg-surface-container-lowest border border-outline-variant rounded-2xl p-4 mb-3">
+            <div class="flex items-center gap-2 mb-3">
+                <span class="material-symbols-outlined text-[18px] text-primary">texture</span>
+                <h4 class="text-[13px] font-bold text-secondary uppercase tracking-wider">Fabric</h4>
+            </div>
+            <div class="grid grid-cols-2 gap-y-2.5">
+                <div><p class="text-[11px] text-secondary">Type</p><p class="text-[14px] font-semibold text-on-surface">${fabric.type || '-'} ${fabric.subType ? '— '+fabric.subType : ''}</p></div>
+                <div><p class="text-[11px] text-secondary">GSM</p><p class="text-[14px] font-semibold text-on-surface">${fabric.gsm || '-'}</p></div>
+                <div><p class="text-[11px] text-secondary">Dia</p><p class="text-[14px] font-semibold text-on-surface">${fabric.dia ? fabric.dia+' in' : '-'}</p></div>
+                <div><p class="text-[11px] text-secondary">Total Kg</p><p class="text-[14px] font-semibold text-on-surface">${fabric.totalKg ? fabric.totalKg+' kg' : '-'}</p></div>
+                <div><p class="text-[11px] text-secondary">Rate/Kg</p><p class="text-[14px] font-semibold text-on-surface">${fabric.ratePerKg ? 'Rs.'+fabric.ratePerKg : '-'}</p></div>
+                <div><p class="text-[11px] text-secondary">Total Cost</p><p class="text-[14px] font-bold text-primary">${fabric.totalCost ? 'Rs.'+(+fabric.totalCost).toLocaleString('en-IN') : '-'}</p></div>
+                <div class="col-span-2"><p class="text-[11px] text-secondary">Pcs/Kg</p><p class="text-[14px] font-semibold text-on-surface">${fabric.pcsPerKg ? (+fabric.pcsPerKg).toFixed(2) : '-'}</p></div>
+            </div>
+        </div>`;
+
+    // Cutting card — size breakdown
+    const sizes = cutting.sizes || {};
+    const sizeKeys = ['XS','S','M','L','XL','XXL','XXXL'];
+    const sizesHtml = sizeKeys.some(k => sizes[k] > 0)
+        ? `<div class="grid grid-cols-7 gap-1 mt-2">
+            ${sizeKeys.map(k => `<div class="text-center"><p class="text-[10px] font-bold text-secondary uppercase">${k}</p><p class="text-[13px] font-bold text-on-surface">${sizes[k] || 0}</p></div>`).join('')}
+           </div>`
+        : '<p class="text-[13px] text-secondary italic">No size data recorded</p>';
+
+    const cuttingCard = `
+        <div class="bg-surface-container-lowest border border-outline-variant rounded-2xl p-4 mb-3">
+            <div class="flex items-center gap-2 mb-3">
+                <span class="material-symbols-outlined text-[18px] text-primary">content_cut</span>
+                <h4 class="text-[13px] font-bold text-secondary uppercase tracking-wider">Cutting</h4>
+            </div>
+            ${sizesHtml}
+        </div>`;
+
+    // Wash card (only if present)
+    const washCard = wash ? `
+        <div class="bg-surface-container-lowest border border-outline-variant rounded-2xl p-4 mb-3">
+            <div class="flex items-center gap-2 mb-3">
+                <span class="material-symbols-outlined text-[18px] text-primary">local_laundry_service</span>
+                <h4 class="text-[13px] font-bold text-secondary uppercase tracking-wider">Wash</h4>
+            </div>
+            <p class="text-[14px] font-semibold text-on-surface">${wash.type || '-'}</p>
+            ${wash.notes ? `<p class="text-[13px] text-secondary mt-1">${wash.notes}</p>` : ''}
+        </div>` : '';
+
+    // Printing card
+    const printCard = `
+        <div class="bg-surface-container-lowest border border-outline-variant rounded-2xl p-4 mb-3">
+            <div class="flex items-center gap-2 mb-3">
+                <span class="material-symbols-outlined text-[18px] text-primary">${print.type === 'Embroidery' ? 'embroidery' : 'print'}</span>
+                <h4 class="text-[13px] font-bold text-secondary uppercase tracking-wider">Printing / Embroidery</h4>
+            </div>
+            <div class="grid grid-cols-2 gap-y-2">
+                <div><p class="text-[11px] text-secondary">Type</p><p class="text-[14px] font-semibold text-on-surface">${print.type || '-'}</p></div>
+                ${print.printingSubType ? `<div><p class="text-[11px] text-secondary">Method</p><p class="text-[14px] font-semibold text-on-surface">${print.printingSubType}</p></div>` : ''}
+            </div>
+            ${print.notes ? `<p class="text-[13px] text-secondary mt-2">${print.notes}</p>` : ''}
+        </div>`;
+
+    // Workflow badge
+    const wfBadge = `<div class="flex items-center gap-2 mb-4">
+        <span class="text-[11px] font-bold text-secondary uppercase tracking-wider">Workflow:</span>
+        <span class="px-2.5 py-1 rounded-md text-[11px] font-bold bg-primary/10 text-primary capitalize">${wf}</span>
+    </div>`;
+
+    return wfBadge + fabricCard + cuttingCard + washCard + printCard;
 }
 
 export function getOrdersAnalyticsHTML({ totalValue, pendingUnits, cuttingCount, stitchingCount, printingCount }) {

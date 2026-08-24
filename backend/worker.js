@@ -9,9 +9,9 @@ const ALLOWED_TABLES = new Set([
 
 // Columns that store JSON arrays/objects as TEXT in D1
 const JSON_COLUMNS = {
-    orders: ['sizes', 'colours', 'timeline', 'tasks', 'expenses', 'activityLog'],
+    orders: ['sizes', 'colours', 'timeline', 'tasks', 'expenses', 'activityLog', 'stageData', 'products'],
     batches: ['expenses', 'consumptions'],
-    costings: ['materials'],
+    costings: ['materials', 'uData'],
     quotations: ['items']
 };
 
@@ -102,6 +102,74 @@ export default {
         // API routes
         if (url.pathname.startsWith('/api/')) {
             try {
+                // Auth Login Endpoint
+                if (url.pathname === '/api/auth/login') {
+                    if (request.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
+                    const body = await request.json();
+                    if (!body.username || !body.password) return json({ error: 'Username and password required' }, 400);
+
+                    // Basic SHA-256
+                    const buffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(body.password));
+                    const hash = Array.from(new Uint8Array(buffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+
+                    const user = await env.DB.prepare('SELECT id FROM users WHERE username = ? AND password_hash = ?')
+                        .bind(body.username, hash).first();
+
+                    if (!user) return json({ error: 'Invalid credentials' }, 401);
+
+                    const token = crypto.randomUUID();
+                    const expiresAt = Date.now() + (60 * 60 * 1000); // 1 hour
+                    await env.DB.prepare('INSERT INTO sessions (token, userId, expiresAt) VALUES (?, ?, ?)')
+                        .bind(token, user.id, expiresAt).run();
+
+                    return json({ success: true, token, userId: user.id });
+                }
+
+                // Auth Middleware for all other API routes
+                const authHeader = request.headers.get('Authorization');
+                if (!authHeader || !authHeader.startsWith('Bearer ')) {
+                    return json({ error: 'Unauthorized: No token provided' }, 401);
+                }
+                const token = authHeader.split(' ')[1];
+                const session = await env.DB.prepare('SELECT * FROM sessions WHERE token = ? AND expiresAt > ?')
+                    .bind(token, Date.now()).first();
+                if (!session) {
+                    return json({ error: 'Unauthorized: Invalid or expired token' }, 401);
+                }
+
+                // Auth Credentials Update Endpoint
+                if (url.pathname === '/api/auth/credentials') {
+                    if (request.method !== 'PUT') return json({ error: 'Method not allowed' }, 405);
+                    const body = await request.json();
+                    
+                    let updateSql = [];
+                    let bindVars = [];
+
+                    if (body.username) {
+                        updateSql.push('username = ?');
+                        bindVars.push(body.username.trim());
+                    }
+                    if (body.password) {
+                        const buffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(body.password));
+                        const hash = Array.from(new Uint8Array(buffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+                        updateSql.push('password_hash = ?');
+                        bindVars.push(hash);
+                    }
+
+                    if (updateSql.length > 0) {
+                        bindVars.push(session.userId);
+                        await env.DB.prepare(`UPDATE users SET ${updateSql.join(', ')} WHERE id = ?`).bind(...bindVars).run();
+                        
+                        // Log out user completely across all sessions if password changed
+                        if (body.password) {
+                             await env.DB.prepare('DELETE FROM sessions WHERE userId = ?').bind(session.userId).run();
+                        }
+                    }
+
+                    return json({ success: true });
+                }
+
+                // Normal API handling
                 const parts = url.pathname.replace(/^\/api\//, '').split('/');
                 const table = parts[0];
                 const id = parts[1] ? decodeURIComponent(parts[1]) : null;

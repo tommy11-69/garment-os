@@ -4,125 +4,417 @@
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
     <title>Create Order - Garment OS</title>
-    
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com" rel="preconnect"/>
     <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-    
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <script src="../js/tailwind.config.js"></script>
-    
     <link rel="stylesheet" href="../css/layout.css">
     <link rel="stylesheet" href="../css/typography.css">
     <link rel="stylesheet" href="../css/utilities.css">
+    <style>
+        .workflow-card { transition: all .2s; border: 2px solid transparent; }
+        .workflow-card.selected { border-color: #0A84FF; background: rgba(10,132,255,.06); }
+        .workflow-card.selected .wf-check { display: flex; }
+        .wf-check { display: none; }
+        .print-subtype-btn { transition: all .2s; cursor: pointer; }
+        .size-row-input { min-width: 0; }
+        .size-row-input:focus { outline: none; background: rgba(10,132,255,.05); }
+        .wizard-step { animation: slideIn .25s ease; }
+        @keyframes slideIn { from { opacity:0; transform:translateX(16px); } to { opacity:1; transform:translateX(0); } }
+    </style>
 </head>
 <body class="font-body text-body antialiased bg-background">
 
-    <div class="fixed top-0 left-0 right-0 h-16 bg-surface/80 backdrop-blur-md border-b border-outline-variant z-40 flex items-center justify-between px-4">
-        <div class="flex items-center gap-3">
-            <button onclick="window.history.back()" class="w-10 h-10 rounded-full bg-surface-variant flex items-center justify-center text-on-surface active-scale transition-apple">
-                <span class="material-symbols-outlined text-[20px]">arrow_back</span>
-            </button>
-            <h1 class="text-[18px] font-bold text-on-surface">New Order</h1>
+<!-- Fixed Top Bar -->
+<div class="fixed top-0 left-0 right-0 h-16 bg-surface/90 backdrop-blur-md border-b border-outline-variant z-40 flex items-center justify-between px-4">
+    <div class="flex items-center gap-3">
+        <button onclick="window.history.back()" class="w-10 h-10 rounded-full bg-surface-variant flex items-center justify-center text-on-surface active-scale transition-apple">
+            <span class="material-symbols-outlined text-[20px]">arrow_back</span>
+        </button>
+        <div>
+            <h1 class="text-[17px] font-bold text-on-surface leading-tight">New Order</h1>
+            <p class="text-[12px] text-secondary leading-none" id="co-step-label">Step 1 of 7</p>
         </div>
-        <button id="save-order-btn" class="px-4 py-2 bg-primary text-white font-bold text-[14px] rounded-xl active-scale transition-apple shadow-sm">
-            Save
+    </div>
+    <button id="co-save-btn" onclick="window.coSaveOrder()" class="hidden px-4 py-2 bg-[#008A00] text-white font-bold text-[14px] rounded-xl active-scale transition-apple shadow-sm">
+        Save Order
+    </button>
+</div>
+
+<!-- Progress Bar -->
+<div class="fixed top-16 left-0 right-0 h-1 bg-surface-variant z-40">
+    <div id="co-progress-bar" class="h-full bg-primary transition-all duration-400" style="width:0%"></div>
+</div>
+
+<div class="mobile-wrapper" style="margin-top:68px;padding-bottom:120px;">
+<main class="p-4 flex flex-col gap-0">
+
+<!-- STEP 1 — Order Details -->
+<div id="co-step-1" class="wizard-step flex flex-col gap-5">
+    <div>
+        <h2 class="text-[22px] font-bold text-on-surface">Order Details</h2>
+        <p class="text-[14px] text-secondary mt-0.5">Customer, product and workflow type</p>
+    </div>
+
+    <div class="flex flex-col gap-1.5">
+        <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Customer *</label>
+        <select id="co-customer" class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple">
+            <option value="">Select Customer...</option>
+            <option value="NEW_CUSTOMER">+ Create New Customer</option>
+        </select>
+    </div>
+
+    <input type="hidden" id="co-product">
+    <input type="hidden" id="co-qty" value="0">
+
+    <div class="flex flex-col gap-1.5">
+        <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Delivery Date *</label>
+        <input type="date" id="co-delivery" required
+            class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple">
+    </div>
+
+    <div class="flex flex-col gap-2">
+        <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Products &amp; Size Breakdowns *</label>
+        <div id="co-products-container" class="flex flex-col gap-4"></div>
+        <button type="button" onclick="window.coAddProduct()" class="w-full py-3.5 border-2 border-dashed border-primary/30 hover:border-primary/50 text-primary font-bold text-[14px] rounded-2xl flex items-center justify-center gap-1.5 active-scale transition-all bg-primary/5">
+            <span class="material-symbols-outlined text-[18px]">add</span> Add Another Product
         </button>
     </div>
 
-    <div class="mobile-wrapper mt-16 pb-32">
-        <main id="main-content-area" class="p-4 flex flex-col gap-6">
-            
-            <!-- Customer Details -->
-            <section>
-                <h3 class="text-[14px] font-semibold text-secondary uppercase tracking-wider mb-3">Customer Details</h3>
-                <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-4 space-y-4">
-                    <div>
-                        <label class="block text-[13px] font-medium text-secondary mb-1">Select Customer</label>
-                        <select id="co-customer" class="w-full bg-surface-variant border-transparent rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple">
-                            <option value="">Select Customer...</option>
-                            <option value="c-001">Chennai Silks</option>
-                            <option value="c-002">Arvind Fashions</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-[13px] font-medium text-secondary mb-1">Customer Reference No.</label>
-                        <input type="text" id="co-ref" class="w-full bg-surface-variant border-transparent rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple" placeholder="e.g. PO-12938">
-                    </div>
-                </div>
-            </section>
-            
-            <!-- Product Details -->
-            <section>
-                <h3 class="text-[14px] font-semibold text-secondary uppercase tracking-wider mb-3">Product Specifications</h3>
-                <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-4 space-y-4">
-                    <div>
-                        <label class="block text-[13px] font-medium text-secondary mb-1">Garment Type</label>
-                        <select id="co-garment" class="w-full bg-surface-variant border-transparent rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple">
-                            <option value="T-Shirt">T-Shirt</option>
-                            <option value="Polo">Polo</option>
-                            <option value="Hoodie">Hoodie</option>
-                            <option value="Shorts">Shorts</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-[13px] font-medium text-secondary mb-1">Fabric GSM</label>
-                        <input type="number" id="co-gsm" class="w-full bg-surface-variant border-transparent rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple" placeholder="e.g. 180">
-                    </div>
-                    <div>
-                        <label class="block text-[13px] font-medium text-secondary mb-1">Color / Variant</label>
-                        <input type="text" id="co-color" class="w-full bg-surface-variant border-transparent rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple" placeholder="e.g. Navy Blue">
-                    </div>
-                </div>
-            </section>
-            
-            <!-- Quantities & Financials -->
-            <section>
-                <h3 class="text-[14px] font-semibold text-secondary uppercase tracking-wider mb-3">Quantities & Financials</h3>
-                <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-4 space-y-4">
-                    <div class="grid grid-cols-2 gap-3">
-                        <div>
-                            <label class="block text-[13px] font-medium text-secondary mb-1">Total Qty</label>
-                            <input type="number" id="co-qty" class="w-full bg-surface-variant border-transparent rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple" placeholder="0">
-                        </div>
-                        <div>
-                            <label class="block text-[13px] font-medium text-secondary mb-1">Price per pc</label>
-                            <div class="relative">
-                                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-secondary font-semibold">₹</span>
-                                <input type="number" id="co-price" class="w-full bg-surface-variant border-transparent rounded-xl pl-8 pr-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple" placeholder="0.00">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="p-3 bg-surface-variant/50 rounded-xl flex justify-between items-center">
-                        <span class="text-[14px] font-medium text-on-surface">Total Order Value</span>
-                        <span id="co-total-val" class="text-[16px] font-bold text-primary">₹0.00</span>
-                    </div>
-                </div>
-            </section>
+    <div class="flex flex-col gap-2">
+        <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Workflow Type *</label>
 
-            <!-- Delivery & Priority -->
-            <section>
-                <h3 class="text-[14px] font-semibold text-secondary uppercase tracking-wider mb-3">Delivery</h3>
-                <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant p-4 space-y-4">
-                    <div>
-                        <label class="block text-[13px] font-medium text-secondary mb-1">Delivery Date</label>
-                        <input type="date" id="co-date" class="w-full bg-surface-variant border-transparent rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple">
-                    </div>
-                    <div class="flex items-center justify-between p-2">
-                        <div>
-                            <p class="text-[15px] font-medium text-on-surface">Expedited Order</p>
-                            <p class="text-[12px] text-secondary">Mark as high priority</p>
-                        </div>
-                        <input type="checkbox" id="co-expedited" class="w-6 h-6 rounded-md border-outline text-[#FF9F0A] focus:ring-[#FF9F0A] bg-transparent cursor-pointer">
-                    </div>
+        <div class="workflow-card selected rounded-2xl p-4 bg-surface-container-lowest cursor-pointer" data-wf="default" onclick="window.coSelectWorkflow('default')">
+            <div class="flex items-start justify-between">
+                <div class="flex-1">
+                    <p class="text-[15px] font-bold text-on-surface">Default</p>
+                    <p class="text-[12px] text-secondary mt-0.5 leading-relaxed">Fabric - Cutting - Stitching - Printing - Ironing - Dispatch</p>
                 </div>
-            </section>
-        </main>
+                <div class="wf-check w-6 h-6 rounded-full bg-primary items-center justify-center shrink-0 ml-3 mt-0.5">
+                    <span class="material-symbols-outlined text-white text-[14px]">check</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="workflow-card rounded-2xl p-4 bg-surface-container-lowest cursor-pointer" data-wf="print_before_stitch" onclick="window.coSelectWorkflow('print_before_stitch')">
+            <div class="flex items-start justify-between">
+                <div class="flex-1">
+                    <p class="text-[15px] font-bold text-on-surface">Print Before Stitch</p>
+                    <p class="text-[12px] text-secondary mt-0.5 leading-relaxed">Fabric - Cutting - Printing - Stitching - Ironing - Dispatch</p>
+                </div>
+                <div class="wf-check w-6 h-6 rounded-full bg-primary items-center justify-center shrink-0 ml-3 mt-0.5">
+                    <span class="material-symbols-outlined text-white text-[14px]">check</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="workflow-card rounded-2xl p-4 bg-surface-container-lowest cursor-pointer" data-wf="wash_before_stitch" onclick="window.coSelectWorkflow('wash_before_stitch')">
+            <div class="flex items-start justify-between">
+                <div class="flex-1">
+                    <p class="text-[15px] font-bold text-on-surface">Wash Before Stitch</p>
+                    <p class="text-[12px] text-secondary mt-0.5 leading-relaxed">Fabric - Cutting - Wash - Stitching - Printing - Ironing - Dispatch</p>
+                </div>
+                <div class="wf-check w-6 h-6 rounded-full bg-primary items-center justify-center shrink-0 ml-3 mt-0.5">
+                    <span class="material-symbols-outlined text-white text-[14px]">check</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- STEP 2 — Fabric -->
+<div id="co-step-2" class="wizard-step hidden flex flex-col gap-5">
+    <div>
+        <h2 class="text-[22px] font-bold text-on-surface">Fabric</h2>
+        <p class="text-[14px] text-secondary mt-0.5">Material type, weight and cost</p>
+    </div>
+
+    <div class="flex flex-col gap-2">
+        <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Fabric Type *</label>
+        <div class="flex gap-2">
+            <button id="ft-btn-cotton" onclick="window.coSwitchFabricType('Cotton')"
+                class="flex-1 py-3 rounded-xl border-2 border-primary bg-primary text-white font-semibold text-[15px] transition-all active-scale">
+                Cotton
+            </button>
+            <button id="ft-btn-poly" onclick="window.coSwitchFabricType('Polyester')"
+                class="flex-1 py-3 rounded-xl border-2 border-outline-variant bg-surface-container-lowest text-secondary font-semibold text-[15px] transition-all active-scale">
+                Polyester
+            </button>
+        </div>
+    </div>
+
+    <div class="flex flex-col gap-1.5">
+        <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Sub-type</label>
+        <select id="co-fabric-subtype" class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple">
+        </select>
+    </div>
+
+    <div class="grid grid-cols-2 gap-3">
+        <div class="flex flex-col gap-1.5">
+            <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">GSM *</label>
+            <input type="number" id="co-gsm" placeholder="e.g. 180"
+                class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple placeholder:text-secondary">
+        </div>
+        <div class="flex flex-col gap-1.5">
+            <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Dia (inches)</label>
+            <input type="number" id="co-dia" placeholder="e.g. 72"
+                class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple placeholder:text-secondary">
+        </div>
+    </div>
+
+    <div class="flex flex-col gap-1.5">
+        <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Total Fabric Purchased (kg) *</label>
+        <input type="number" id="co-fabric-kg" step="0.1" placeholder="e.g. 120"
+            class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple placeholder:text-secondary">
+    </div>
+
+    <div class="flex flex-col gap-1.5">
+        <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Rate per kg (Rs.)</label>
+        <div class="relative">
+            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-secondary font-bold">Rs.</span>
+            <input type="number" id="co-fabric-rate" step="0.01" placeholder="0.00"
+                class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl pl-10 pr-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple placeholder:text-secondary">
+        </div>
+    </div>
+
+    <!-- Pcs/Kg auto-calc + override -->
+    <div class="bg-primary/5 border border-primary/20 rounded-2xl p-4">
+        <div class="flex items-center justify-between mb-3">
+            <div>
+                <p class="text-[14px] font-bold text-on-surface">Pcs / Kg</p>
+                <p class="text-[12px] text-secondary">Auto: Qty div Fabric Kg</p>
+            </div>
+            <span id="co-pcs-kg-display" class="text-[24px] font-bold text-primary">-</span>
+        </div>
+        <div class="flex flex-col gap-1">
+            <label class="text-[11px] font-semibold text-secondary uppercase tracking-wider">Override (optional)</label>
+            <input type="number" id="co-pcs-kg-override" step="0.01" placeholder="Leave blank to use auto"
+                class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-2.5 text-[14px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple placeholder:text-secondary">
+        </div>
+    </div>
+
+    <div class="bg-surface-container-lowest border border-outline-variant rounded-2xl p-4 flex justify-between items-center">
+        <div>
+            <p class="text-[13px] text-secondary">Total Fabric Cost</p>
+            <p id="co-fabric-total-cost" class="text-[20px] font-bold text-on-surface">Rs. 0</p>
+        </div>
+        <span class="material-symbols-outlined text-[28px] text-secondary">receipt_long</span>
+    </div>
+</div>
+
+<!-- STEP 3 — Cutting -->
+<div id="co-step-3" class="wizard-step hidden flex flex-col gap-5">
+    <div>
+        <h2 class="text-[22px] font-bold text-on-surface">Cutting</h2>
+        <p class="text-[14px] text-secondary mt-0.5">Size-wise quantity breakdown</p>
+    </div>
+
+    <div class="grid grid-cols-3 gap-2">
+        <div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-3 text-center">
+            <p class="text-[11px] text-secondary font-medium uppercase tracking-wide">Total Kg</p>
+            <p id="cut-total-kg" class="text-[16px] font-bold text-on-surface mt-0.5">-</p>
+        </div>
+        <div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-3 text-center">
+            <p class="text-[11px] text-secondary font-medium uppercase tracking-wide">Pcs/Kg</p>
+            <p id="cut-pcs-kg" class="text-[16px] font-bold text-on-surface mt-0.5">-</p>
+        </div>
+        <div class="bg-primary/10 border border-primary/20 rounded-xl p-3 text-center">
+            <p class="text-[11px] text-primary font-medium uppercase tracking-wide">Order Qty</p>
+            <p id="cut-order-qty" class="text-[16px] font-bold text-primary mt-0.5">-</p>
+        </div>
+    </div>
+
+    <div class="flex flex-col gap-2">
+        <div class="flex flex-col gap-2">
+            <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Consolidated Cutting Specs</label>
+            <div id="co-cutting-summary-container" class="flex flex-col gap-3 bg-surface-container rounded-2xl p-4 border border-outline-variant/60"></div>
+        </div>
+    </div>
+</div>
+
+<!-- STEP Wash (wash_before_stitch only) -->
+<div id="co-step-wash" class="wizard-step hidden flex flex-col gap-5">
+    <div>
+        <h2 class="text-[22px] font-bold text-on-surface">Wash</h2>
+        <p class="text-[14px] text-secondary mt-0.5">Washing stage details</p>
+    </div>
+    <div class="flex flex-col gap-1.5">
+        <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Wash Type</label>
+        <select id="co-wash-type" class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple">
+            <option value="">Select wash type</option>
+            <option>Stone Wash</option>
+            <option>Enzyme Wash</option>
+            <option>Acid Wash</option>
+            <option>Sand Wash</option>
+            <option>Bleach Wash</option>
+            <option>Silicon Wash</option>
+            <option>Other</option>
+        </select>
+    </div>
+    <div class="flex flex-col gap-1.5">
+        <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Notes</label>
+        <textarea id="co-wash-notes" rows="3" placeholder="Wash instructions, vendor notes"
+            class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple placeholder:text-secondary resize-none"></textarea>
+    </div>
+</div>
+
+<!-- STEP Stitching -->
+<div id="co-step-stitching" class="wizard-step hidden flex flex-col gap-5">
+    <div>
+        <h2 class="text-[22px] font-bold text-on-surface">Stitching &amp; Size Breakdown</h2>
+        <p class="text-[14px] text-secondary mt-0.5">Define size quantities for each product</p>
     </div>
     
-    <div id="toast-container" class="fixed top-4 left-0 right-0 z-50 flex flex-col gap-2 items-center pointer-events-none px-4"></div>
+    <div id="co-stitching-sizes-container" class="flex flex-col gap-4"></div>
     
-    <script type="module" src="../js/orders/create.js"></script>
+    <div class="flex flex-col gap-1.5">
+        <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Notes / Instructions</label>
+        <textarea id="co-stitch-notes" rows="4" placeholder="Stitching instructions, stitch type, thread color"
+            class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple placeholder:text-secondary resize-none"></textarea>
+    </div>
+    <div class="flex flex-col gap-1.5">
+        <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Expected Completion</label>
+        <input type="date" id="co-stitch-date" class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple">
+    </div>
+</div>
+
+<!-- STEP Printing / Embroidery -->
+<div id="co-step-printing" class="wizard-step hidden flex flex-col gap-5">
+    <div>
+        <h2 class="text-[22px] font-bold text-on-surface">Printing / Embroidery</h2>
+        <p class="text-[14px] text-secondary mt-0.5">Decoration method</p>
+    </div>
+
+    <div class="flex flex-col gap-2">
+        <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Type *</label>
+        <div class="flex gap-2 p-1 bg-surface-variant rounded-xl">
+            <button id="pt-btn-printing" onclick="window.coSelectPrintType('Printing')"
+                class="flex-1 py-2.5 rounded-lg text-[14px] font-bold bg-primary text-white transition-all">
+                Printing
+            </button>
+            <button id="pt-btn-embroidery" onclick="window.coSelectPrintType('Embroidery')"
+                class="flex-1 py-2.5 rounded-lg text-[14px] font-semibold text-secondary transition-all">
+                Embroidery
+            </button>
+        </div>
+    </div>
+
+    <div id="co-print-subtype-section" class="flex flex-col gap-2">
+        <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Printing Method *</label>
+        <button id="ps-btn-dtf" onclick="window.coSelectPrintSubtype('DTF')"
+            class="print-subtype-btn flex items-center gap-3 p-4 rounded-xl bg-primary text-white border-2 border-primary text-left w-full">
+            <span class="material-symbols-outlined text-[22px]">print</span>
+            <div>
+                <p class="text-[14px] font-bold">DTF</p>
+                <p class="text-[12px] opacity-80">Direct-to-Film transfer</p>
+            </div>
+        </button>
+        <button id="ps-btn-sublimation" onclick="window.coSelectPrintSubtype('Sublimation')"
+            class="print-subtype-btn flex items-center gap-3 p-4 rounded-xl bg-surface-container-lowest border-2 border-outline-variant text-on-surface text-left w-full">
+            <span class="material-symbols-outlined text-[22px]">blur_on</span>
+            <div>
+                <p class="text-[14px] font-bold">Sublimation</p>
+                <p class="text-[12px] text-secondary">Heat-transfer sublimation dye</p>
+            </div>
+        </button>
+        <button id="ps-btn-screen" onclick="window.coSelectPrintSubtype('Screen Printing')"
+            class="print-subtype-btn flex items-center gap-3 p-4 rounded-xl bg-surface-container-lowest border-2 border-outline-variant text-on-surface text-left w-full">
+            <span class="material-symbols-outlined text-[22px]">layers</span>
+            <div>
+                <p class="text-[14px] font-bold">Screen Printing</p>
+                <p class="text-[12px] text-secondary">Traditional screen / stencil print</p>
+            </div>
+        </button>
+    </div>
+
+    <div id="co-embroidery-section" class="hidden flex-col gap-1.5">
+        <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Embroidery Notes</label>
+        <textarea id="co-embroidery-notes" rows="3" placeholder="Thread colors, design details, placement"
+            class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple placeholder:text-secondary resize-none"></textarea>
+    </div>
+
+    <div id="co-print-notes-section" class="flex flex-col gap-1.5">
+        <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Notes</label>
+        <textarea id="co-print-notes" rows="3" placeholder="Colors, placement, artwork reference"
+            class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple placeholder:text-secondary resize-none"></textarea>
+    </div>
+</div>
+
+<!-- STEP Ironing and Packing -->
+<div id="co-step-ironing" class="wizard-step hidden flex flex-col gap-5">
+    <div>
+        <h2 class="text-[22px] font-bold text-on-surface">Ironing and Packing</h2>
+        <p class="text-[14px] text-secondary mt-0.5">Finishing and packaging details</p>
+    </div>
+    <div class="flex flex-col gap-1.5">
+        <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Notes</label>
+        <textarea id="co-iron-notes" rows="4" placeholder="Folding style, packing type, label instructions"
+            class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple placeholder:text-secondary resize-none"></textarea>
+    </div>
+    <div class="flex flex-col gap-1.5">
+        <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Expected Completion</label>
+        <input type="date" id="co-iron-date" class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple">
+    </div>
+</div>
+
+<!-- STEP Dispatch -->
+<div id="co-step-dispatch" class="wizard-step hidden flex flex-col gap-5">
+    <div>
+        <h2 class="text-[22px] font-bold text-on-surface">Dispatch</h2>
+        <p class="text-[14px] text-secondary mt-0.5">Shipping and logistics details</p>
+    </div>
+
+    <div class="flex flex-col gap-1.5">
+        <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Courier / Transport</label>
+        <input type="text" id="co-dispatch-courier" placeholder="e.g. DTDC, Blue Dart, Own Vehicle"
+            class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple placeholder:text-secondary">
+    </div>
+
+    <div class="grid grid-cols-2 gap-3">
+        <div class="flex flex-col gap-1.5">
+            <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Tracking No.</label>
+            <input type="text" id="co-dispatch-tracking" placeholder="-"
+                class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple placeholder:text-secondary">
+        </div>
+        <div class="flex flex-col gap-1.5">
+            <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">No. of Boxes</label>
+            <input type="number" id="co-dispatch-boxes" min="0" placeholder="0"
+                class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple placeholder:text-secondary">
+        </div>
+    </div>
+
+    <div class="flex flex-col gap-1.5">
+        <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Dispatch Date</label>
+        <input type="date" id="co-dispatch-date" class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple">
+    </div>
+
+    <!-- Summary before save -->
+    <div class="bg-surface-container-lowest border border-outline-variant rounded-2xl p-4">
+        <h3 class="text-[13px] font-bold text-secondary uppercase tracking-wider mb-3">Order Summary</h3>
+        <div id="co-summary-content" class="flex flex-col gap-2 text-[14px]"></div>
+    </div>
+</div>
+
+</main>
+</div>
+
+<!-- Bottom Nav Buttons -->
+<div class="fixed bottom-0 left-0 right-0 bg-surface/90 backdrop-blur-md border-t border-outline-variant px-4 py-3 flex gap-3 z-40">
+    <button id="co-btn-back" onclick="window.coGoBack()"
+        class="hidden flex-1 py-4 bg-surface-container-high text-on-surface font-bold text-[15px] rounded-2xl active-scale transition-apple">
+        Back
+    </button>
+    <button id="co-btn-next" onclick="window.coGoNext()"
+        class="flex-1 py-4 bg-primary text-white font-bold text-[15px] rounded-2xl active-scale transition-apple shadow-md">
+        Next Step
+    </button>
+</div>
+
+<div id="toast-container" class="fixed top-20 left-0 right-0 z-50 flex flex-col gap-2 items-center pointer-events-none px-4"></div>
+<script src="../js/utils/sheet.js"></script>
+<script src="../js/app.js"></script>
+<script type="module" src="../js/orders/create.js"></script>
 </body>
 </html>

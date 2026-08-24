@@ -424,6 +424,24 @@ window.printQuotation = async function (id) {
         const q = await api.getQuotation(id);
         if (!q) return;
 
+        // Fetch full customer details if available
+        let customerInfo = {
+            name: q.customerName,
+            gst: "N/A",
+            address: "",
+            city: ""
+        };
+        
+        if (q.customerId) {
+            const cust = await api.getCustomer(q.customerId);
+            if (cust) {
+                customerInfo.name = cust.name || q.customerName;
+                customerInfo.gst = cust.gst || "N/A";
+                customerInfo.address = cust.address || "";
+                customerInfo.city = cust.city || "";
+            }
+        }
+
         // Calculate totals
         const totalQty = q.items.reduce((sum, item) => sum + item.qty, 0);
         const subtotal = q.items.reduce((sum, item) => sum + (item.qty * item.rate), 0);
@@ -432,19 +450,19 @@ window.printQuotation = async function (id) {
 
         const amountInWords = numberToWords(Math.round(grandTotal));
 
-        // HSN is hardcoded to 6109 per the screenshot since we don't collect it yet
+        // HSN is hardcoded to 6109
         const itemsHtml = q.items.map((item, idx) => {
             const gstAmount = item.qty * (item.taxPerPc || 0);
             const gstPercent = (item.rate > 0 && item.taxPerPc > 0) ? ((item.taxPerPc / item.rate) * 100).toFixed(1) : "0.0";
             return `
-            <tr>
-                <td class="text-center">${idx + 1}</td>
-                <td>${item.name}</td>
-                <td class="text-center">6109</td>
-                <td class="text-right">${item.qty}</td>
+            <tr class="item-row">
+                <td class="text-center text-secondary">${idx + 1}</td>
+                <td class="font-medium">${item.name}</td>
+                <td class="text-center text-secondary">6109</td>
+                <td class="text-center">${item.qty}</td>
                 <td class="text-right">₹ ${(item.rate).toFixed(1)}</td>
-                <td class="text-right">₹ ${gstAmount.toFixed(1)} (${gstPercent}%)</td>
-                <td class="text-right">₹ ${(item.total).toFixed(1)}</td>
+                <td class="text-right text-secondary">₹ ${gstAmount.toFixed(1)} (${gstPercent}%)</td>
+                <td class="text-right font-semibold">₹ ${(item.total).toFixed(1)}</td>
             </tr>
             `;
         }).join('');
@@ -457,262 +475,315 @@ window.printQuotation = async function (id) {
         <!DOCTYPE html>
         <html>
         <head>
-            <title>Proforma_Invoice_${q.id}</title>
+            <title>Quotation_${q.id}</title>
+            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
             <style>
-                @page { size: A4; margin: 10mm; }
+                @page { size: A4; margin: 12mm 15mm; }
                 body {
-                    font-family: Arial, sans-serif;
-                    font-size: 11px;
-                    color: #000;
+                    font-family: 'Inter', sans-serif;
+                    font-size: 12px;
+                    color: #1e293b;
                     margin: 0;
                     padding: 0;
+                    background: #fff;
+                    line-height: 1.5;
                 }
+                * { box-sizing: border-box; }
+                
                 .text-center { text-align: center; }
                 .text-right { text-align: right; }
-                .text-bold { font-weight: bold; }
+                .text-left { text-align: left; }
+                .font-medium { font-weight: 500; }
+                .font-semibold { font-weight: 600; }
+                .font-bold { font-weight: 700; }
+                .text-secondary { color: #64748b; }
+                .text-primary { color: #0f172a; }
                 
+                .header-section {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: flex-start;
+                    border-bottom: 2px solid #e2e8f0;
+                    padding-bottom: 20px;
+                    margin-bottom: 30px;
+                }
+                .logo-container {
+                    width: 90px;
+                }
+                .logo-container img {
+                    max-width: 100%;
+                    height: auto;
+                }
+                .company-details {
+                    text-align: right;
+                }
+                .company-name {
+                    font-size: 24px;
+                    font-weight: 800;
+                    color: #0f172a;
+                    margin-bottom: 4px;
+                    letter-spacing: -0.5px;
+                }
+                
+                .doc-title-container {
+                    margin-bottom: 30px;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: flex-end;
+                }
+                .doc-title {
+                    font-size: 28px;
+                    font-weight: 800;
+                    color: #0f172a;
+                    text-transform: uppercase;
+                    letter-spacing: 1px;
+                }
+                
+                .grid-2 {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 30px;
+                    margin-bottom: 30px;
+                }
+                
+                .info-box {
+                    background: #f8fafc;
+                    border: 1px solid #e2e8f0;
+                    border-radius: 8px;
+                    padding: 15px;
+                }
+                .info-label {
+                    font-size: 10px;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                    color: #64748b;
+                    font-weight: 600;
+                    margin-bottom: 8px;
+                }
+                
+                .table-container {
+                    margin-bottom: 30px;
+                    border-radius: 8px;
+                    overflow: hidden;
+                    border: 1px solid #e2e8f0;
+                }
                 table {
                     width: 100%;
                     border-collapse: collapse;
                 }
-                td, th {
-                    border: 1px solid #000;
-                    padding: 4px;
-                    vertical-align: top;
+                th {
+                    background: #f8fafc;
+                    padding: 12px 10px;
+                    font-size: 11px;
+                    font-weight: 600;
+                    color: #475569;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                    border-bottom: 2px solid #e2e8f0;
                 }
-                
-                .header-container {
-                    border: 1px solid #000;
+                td {
+                    padding: 12px 10px;
+                    border-bottom: 1px solid #e2e8f0;
+                }
+                .item-row:last-child td {
                     border-bottom: none;
                 }
-                .page-title {
-                    text-align: center;
-                    font-size: 14px;
-                    font-weight: bold;
-                    margin: 10px 0;
-                }
                 
-                .company-header {
+                .totals-container {
+                    display: flex;
+                    justify-content: flex-end;
+                    margin-bottom: 40px;
+                }
+                .totals-box {
+                    width: 320px;
+                    background: #f8fafc;
+                    border-radius: 8px;
+                    padding: 20px;
+                    border: 1px solid #e2e8f0;
+                }
+                .total-row {
                     display: flex;
                     justify-content: space-between;
-                    padding: 10px;
+                    margin-bottom: 10px;
+                    font-size: 13px;
                 }
-                .logo-placeholder {
-                    width: 60px;
-                    height: 60px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    font-size: 32px;
-                    font-weight: bold;
-                    color: #FF8C00;
-                }
-                .logo-placeholder span:first-child { color: #000; font-size: 40px; margin-right: -10px; z-index: 10; }
-                
-                .company-details {
-                    text-align: right;
-                    line-height: 1.3;
-                }
-                .company-name {
-                    font-size: 16px;
-                    font-weight: bold;
-                    margin-bottom: 2px;
-                }
-                
-                .meta-table td {
-                    width: 50%;
-                }
-                .meta-title {
-                    font-weight: bold;
-                    border-bottom: 1px solid #000;
-                    padding-bottom: 2px;
-                    margin-bottom: 4px;
-                    display: block;
-                }
-                
-                .items-table th {
-                    text-align: center;
-                    font-weight: bold;
-                }
-                .items-table td {
-                    padding: 4px 6px;
-                }
-                
-                .summary-table {
-                    border-top: none;
-                }
-                
-                .tax-breakdown th, .tax-breakdown td {
-                    text-align: right;
-                }
-                .tax-breakdown th:first-child, .tax-breakdown td:first-child {
-                    text-align: left;
+                .total-row.grand {
+                    border-top: 2px solid #e2e8f0;
+                    padding-top: 15px;
+                    margin-top: 10px;
+                    margin-bottom: 0;
+                    font-size: 18px;
+                    font-weight: 800;
+                    color: #0f172a;
                 }
                 
                 .footer-grid {
                     display: grid;
-                    grid-template-columns: 1fr 1fr 1fr;
+                    grid-template-columns: 2fr 1fr;
+                    gap: 40px;
+                    border-top: 2px solid #e2e8f0;
+                    padding-top: 30px;
                 }
-                .footer-grid > div {
-                    border: 1px solid #000;
-                    border-top: none;
-                    border-right: none;
-                    padding: 8px;
-                }
-                .footer-grid > div:last-child {
-                    border-right: 1px solid #000;
+                .footer-box h4 {
+                    font-size: 13px;
+                    color: #0f172a;
+                    margin: 0 0 10px 0;
+                    font-weight: 700;
                 }
                 
-                .qr-placeholder {
-                    width: 70px;
-                    height: 70px;
-                    background: #f0f0f0;
-                    border: 1px solid #ccc;
-                    display: inline-block;
-                    margin-right: 10px;
-                    margin-top: 5px;
+                .terms-list {
+                    padding-left: 15px;
+                    margin: 0;
+                    color: #475569;
+                    font-size: 11px;
+                }
+                .terms-list li {
+                    margin-bottom: 6px;
+                }
+                
+                .sign-box {
+                    text-align: center;
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                }
+                .sign-line {
+                    width: 100%;
+                    border-bottom: 1px solid #cbd5e1;
+                    margin-top: 60px;
+                    margin-bottom: 10px;
+                }
+                .sign-text {
+                    font-size: 11px;
+                    font-weight: 600;
+                    color: #64748b;
+                }
+                
+                .amount-words {
+                    font-style: italic;
+                    color: #64748b;
+                    margin-top: 10px;
+                    text-align: right;
                 }
             </style>
         </head>
         <body>
-            <div class="page-title">Proforma Invoice</div>
             
-            <div class="header-container">
-                <div class="company-header">
-                    <div class="logo-placeholder">
-                        <span>U</span><span>T</span>
+            <div class="header-section">
+                <div class="logo-container">
+                    <img src="/assets/logo-primary.webp" alt="Udhayaa Textiles Logo" onerror="this.outerHTML='<div style=\\'font-size:32px; font-weight:800; color:#0f172a;\\'>UDHAYAA</div>'"/>
+                </div>
+                <div class="company-details">
+                    <div class="company-name" style="white-space: nowrap;">
+                        <span style="color:#0f172a;">Udhayaa </span>
+                        <span style="color:#FF6B00;">Textiles</span>
                     </div>
-                    <div class="company-details">
-                        <div class="company-name">Udhayaa Textiles</div>
-                        <div>63/A Senthur Nagar, Ellapalayam Road, Periyasemur, Erode</div>
-                        <div>Phone no.: 7708333813 Email: info.udhayaatextiles@gmail.com</div>
-                        <div>State: 33-Tamil Nadu</div>
-                        <div style="font-size: 9px; margin-top: 4px;">TERMS AND CONDITION: All rates quoted are valid for 7 days</div>
+                    <div class="text-secondary">63/A Senthur Nagar, Ellapalayam Road</div>
+                    <div class="text-secondary">Periyasemur, Erode, Tamil Nadu 638004</div>
+                    <div class="text-secondary" style="margin-top: 4px;">Phone: +91 77083 33813</div>
+                    <div class="text-secondary">Email: info@udhayaatextiles.com</div>
+                </div>
+            </div>
+            
+            <div class="doc-title-container">
+                <div class="doc-title">Proforma Invoice</div>
+                <div class="text-right">
+                    <div class="font-semibold text-primary" style="font-size: 14px;">Quotation #: ${q.id}</div>
+                    <div class="text-secondary">Date: ${q.date}</div>
+                    <div class="text-secondary">Valid For: 7 Days</div>
+                </div>
+            </div>
+            
+            <div class="grid-2">
+                <div class="info-box">
+                    <div class="info-label">Estimate For</div>
+                    <div class="font-bold text-primary" style="font-size: 15px; margin-bottom: 4px;">${customerInfo.name}</div>
+                    <div class="text-secondary">GST: ${customerInfo.gst}</div>
+                    ${customerInfo.address ? `<div class="text-secondary">${customerInfo.address}</div>` : ''}
+                    ${customerInfo.city ? `<div class="text-secondary">${customerInfo.city}</div>` : ''}
+                </div>
+                
+                <div class="info-box" style="background: transparent; border-color: transparent; padding: 0;">
+                    <div class="info-box" style="height: 100%;">
+                        <div class="info-label">Bank Details</div>
+                        <div class="text-primary font-medium" style="margin-bottom: 2px;">Indian Overseas Bank</div>
+                        <div class="text-secondary">Branch: Erode Periasemur</div>
+                        <div class="text-secondary">A/C Name: Udhayaa Textiles</div>
+                        <div class="text-primary font-bold" style="margin-top: 6px;">A/C No: 134601000036234</div>
+                        <div class="text-primary font-bold">IFSC: IOBA0001346</div>
+                        <div class="text-primary font-bold">UPI Id: info.udhayaatextiles-2@okhdfcbank</div>
                     </div>
                 </div>
             </div>
             
-            <table class="meta-table">
-                <tr>
-                    <td>
-                        <span class="meta-title">Estimate For</span>
-                        <div class="text-bold">${q.customerName}</div>
-                        <div>ABN: 53 528 564 753</div>
-                        <div>45 Rothon drive, rochdale south - 4123, Brisbane</div>
-                    </td>
-                    <td>
-                        <span class="meta-title text-right" style="display:block;">Estimate Details</span>
-                        <div class="text-right">Estimate No.: ${q.id}</div>
-                        <div class="text-right">Date: ${q.date}</div>
-                    </td>
-                </tr>
-            </table>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;" class="text-center">#</th>
+                            <th class="text-left">Item Description</th>
+                            <th style="width: 80px;" class="text-center">HSN</th>
+                            <th style="width: 70px;" class="text-center">Qty</th>
+                            <th style="width: 100px;" class="text-right">Price</th>
+                            <th style="width: 120px;" class="text-right">GST</th>
+                            <th style="width: 120px;" class="text-right">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${itemsHtml}
+                    </tbody>
+                </table>
+            </div>
             
-            <table class="items-table" style="border-top: none;">
-                <tr>
-                    <th style="width: 30px;">#</th>
-                    <th>Item Name</th>
-                    <th style="width: 60px;">HSN/ SAC</th>
-                    <th style="width: 60px;">Quantity</th>
-                    <th style="width: 70px;">Price/ Unit</th>
-                    <th style="width: 100px;">GST</th>
-                    <th style="width: 80px;">Amount</th>
-                </tr>
-                ${itemsHtml}
-                <tr class="text-bold" style="background-color: #f9f9f9;">
-                    <td colspan="3">Total</td>
-                    <td class="text-right">${totalQty}</td>
-                    <td></td>
-                    <td class="text-right">₹ ${tax.toFixed(1)}</td>
-                    <td class="text-right">₹ ${grandTotal.toFixed(1)}</td>
-                </tr>
-            </table>
-            
-            <table class="summary-table" style="border-top: none;">
-                <tr>
-                    <td style="width: 50%; border-right: 1px solid #000; border-bottom: none; vertical-align: top;">
-                        <div class="text-center text-bold" style="border-bottom: 1px solid #000; margin: -4px -4px 4px -4px; padding: 4px;">Estimate order Amount In Words</div>
-                        <div class="text-center" style="margin: 10px 0;">${amountInWords}</div>
-                        
-                        <table class="tax-breakdown" style="width: 100%; border: none; margin-top: 15px;">
-                            <tr>
-                                <th style="border:none; border-bottom: 1px solid #000; border-top: 1px solid #000;">Tax type</th>
-                                <th style="border:none; border-bottom: 1px solid #000; border-top: 1px solid #000;">Taxable amount</th>
-                                <th style="border:none; border-bottom: 1px solid #000; border-top: 1px solid #000;">Rate</th>
-                                <th style="border:none; border-bottom: 1px solid #000; border-top: 1px solid #000;">Tax amount</th>
-                            </tr>
-                            <tr>
-                                <td style="border:none;">SGST</td>
-                                <td style="border:none;">₹ ${subtotal.toFixed(1)}</td>
-                                <td style="border:none;">2.5%</td>
-                                <td style="border:none;">₹ ${sgst}</td>
-                            </tr>
-                            <tr>
-                                <td style="border:none;">CGST</td>
-                                <td style="border:none;">₹ ${subtotal.toFixed(1)}</td>
-                                <td style="border:none;">2.5%</td>
-                                <td style="border:none;">₹ ${cgst}</td>
-                            </tr>
-                        </table>
-                    </td>
-                    <td style="width: 50%; padding: 0;">
-                        <table style="width: 100%; border: none; height: 100%;">
-                            <tr>
-                                <td colspan="2" class="text-bold" style="border: none; border-bottom: 1px solid #000; padding: 4px;">Amounts</td>
-                            </tr>
-                            <tr>
-                                <td style="border: none; padding: 10px 4px;">Sub Total</td>
-                                <td class="text-right" style="border: none; padding: 10px 4px;">₹ ${subtotal.toFixed(1)}</td>
-                            </tr>
-                            <tr>
-                                <td class="text-bold" style="border: none; border-top: 1px solid #000; padding: 10px 4px;">Total</td>
-                                <td class="text-right text-bold" style="border: none; border-top: 1px solid #000; padding: 10px 4px;">₹ ${grandTotal.toFixed(1)}</td>
-                            </tr>
-                        </table>
-                    </td>
-                </tr>
-            </table>
+            <div class="totals-container">
+                <div>
+                    <div class="totals-box">
+                        <div class="total-row">
+                            <span class="text-secondary">Subtotal</span>
+                            <span class="font-medium">₹ ${subtotal.toFixed(2)}</span>
+                        </div>
+                        <div class="total-row">
+                            <span class="text-secondary">CGST (2.5%)</span>
+                            <span class="font-medium">₹ ${cgst}</span>
+                        </div>
+                        <div class="total-row">
+                            <span class="text-secondary">SGST (2.5%)</span>
+                            <span class="font-medium">₹ ${sgst}</span>
+                        </div>
+                        <div class="total-row grand">
+                            <span>Total</span>
+                            <span>₹ ${grandTotal.toFixed(2)}</span>
+                        </div>
+                    </div>
+                    <div class="amount-words">Amount in words: ${amountInWords}</div>
+                </div>
+            </div>
             
             <div class="footer-grid">
-                <div>
-                    <div class="text-bold">Bank Details</div>
-                    <div style="display: flex; margin-top: 5px;">
-                        <div class="qr-placeholder">
-                            <div style="width: 100%; height: 100%; display: flex; align-items:center; justify-content:center; flex-direction:column; color:#888;">
-                                <div style="font-size:10px;">[QR CODE]</div>
-                            </div>
-                        </div>
-                        <div style="font-size: 9px; line-height: 1.4;">
-                            Name: Indian Overseas Bank, Erode Periasemur<br>
-                            Account No.: 134601000036234<br>
-                            IFSC code: IOBA0001346<br>
-                            Account Holder's Name: Udhayaa Textiles
-                        </div>
-                    </div>
-                    <div style="margin-top: 5px; color:#00a368; font-size:9px; font-weight:bold; border: 1px solid #00a368; display:inline-block; padding:1px 3px; border-radius:2px;">UPI CLICK TO PAY</div>
+                <div class="footer-box">
+                    <h4>Terms & Conditions</h4>
+                    <ul class="terms-list">
+                        <li><strong>Advance Payment:</strong> 50% of the total order value to be paid in advance to confirm the order.</li>
+                        <li><strong>Fabric In House:</strong> 20% to be paid once dyeing is completed.</li>
+                        <li><strong>On Completion:</strong> 30% to be paid after order completion, before delivery/dispatch.</li>
+                        <li>All quoted rates are valid for 7 days from the date of quotation.</li>
+                    </ul>
                 </div>
-                <div>
-                    <div class="text-bold">Terms and conditions</div>
-                    <div style="font-size: 9px; line-height: 1.4; margin-top: 5px;">
-                        Terms & Conditions<br><br>
-                        - Quotation Validity: All quoted rates are valid for 7 days from the date of quotation.<br><br>
-                        - Payment Terms:<br><br>
-                        1. Advance: 50% of the total order value to be paid in advance to confirm the order.<br><br>
-                        2. FABRIC IN HOUSE: 20% to be paid once dyeing is completed.<br><br>
-                        3. On Completion: 30% to be paid after order completion, before delivery/dispatch.
-                    </div>
-                </div>
-                <div style="text-align: center; display: flex; flex-direction: column; justify-content: space-between;">
-                    <div class="text-right">For: Udhayaa Textiles</div>
-                    <div style="margin: 20px auto; width: 120px; height: 40px; background: #e0e0e0; display:flex; align-items:center; justify-content:center; font-family: 'Brush Script MT', cursive; font-size: 20px; color: #444;">N.Udhayaa.</div>
-                    <div class="text-bold text-right" style="font-size: 10px;">Authorized Signatory</div>
+                
+                <div class="sign-box">
+                    <div style="flex-grow: 1;"></div>
+                    <div class="sign-line"></div>
+                    <div class="sign-text">For Udhayaa Textiles</div>
+                    <div class="sign-text" style="font-weight: 400; font-size: 9px; margin-top: 2px;">Authorized Signatory</div>
                 </div>
             </div>
             
             <script>
                 window.onload = function() {
-                    window.print();
-                    // window.close() is handled manually by user now to prevent premature closing if print dialog is cancelled
+                    // Give images a moment to load before printing
+                    setTimeout(function() {
+                        window.print();
+                    }, 500);
                 }
             </script>
         </body>

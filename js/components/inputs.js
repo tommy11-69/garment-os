@@ -69,8 +69,12 @@ export function TextInput({ label, id, placeholder = '', type = 'text', value = 
     </div>`;
 }
 
-export function SelectInput({ label, id, options = [], required = false, helperText = '', validationType = '' }) {
-    const opts = options.map(opt => `<option value="${opt.value || opt.label}">${opt.label}</option>`).join('');
+export function SelectInput({ label, id, options = [], value = '', required = false, helperText = '', validationType = '' }) {
+    const opts = options.map(opt => {
+        const optVal = opt.value !== undefined ? opt.value : opt.label;
+        const isSelected = String(optVal) === String(value);
+        return `<option value="${optVal}" ${isSelected ? 'selected' : ''}>${opt.label}</option>`;
+    }).join('');
     const valAttr = validationType ? `data-validation="${validationType}"` : '';
     const describedBy = `${helperText ? id + '-helper ' : ''}${id}-error`.trim();
     

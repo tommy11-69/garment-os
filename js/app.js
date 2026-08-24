@@ -25,6 +25,15 @@ async function loadComponent(url, targetId, callback) {
  * Initialize the application
  */
 function initApp() {
+    // ── Authentication Guard ──
+    const token = localStorage.getItem('gos_token');
+    const isLoginPage = window.location.pathname.includes('/auth/login.html');
+    
+    if (!token && !isLoginPage) {
+        window.location.replace('../auth/login.html');
+        return;
+    }
+
     // Determine current page from URL
     const path = window.location.pathname;
     let currentPage = path.split('/').pop().replace('.html', '');
@@ -179,7 +188,7 @@ window.openQuickAddCustomer = function (callback) {
 
         try {
             window.showToast?.("Adding customer...", "info");
-            const { api } = await import('../js/services/api.js');
+            const { api } = await import('/js/services/api.js');
             const newCust = await api.saveCustomer({ name, mobile, company, customerType });
             cleanup();
             window.showToast?.("Customer added!", "success");

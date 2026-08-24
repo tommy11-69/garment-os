@@ -70,6 +70,12 @@ CREATE TABLE IF NOT EXISTS orders (
     paymentReceived REAL DEFAULT 0,
     fabric TEXT DEFAULT '',
     activityLog TEXT DEFAULT '[]',
+    products TEXT DEFAULT '[]',
+    -- Production workflow fields
+    workflowType TEXT DEFAULT 'default',
+    -- 'default' | 'print_before_stitch' | 'wash_before_stitch'
+    stageData TEXT DEFAULT '{}',
+    -- JSON blob: { fabric:{}, cutting:{}, stitching:{}, wash:{}, printing:{}, ironingPacking:{}, dispatch:{} }
     createdAt TEXT DEFAULT (datetime('now')),
     updatedAt TEXT DEFAULT (datetime('now'))
 );
@@ -112,6 +118,10 @@ CREATE TABLE IF NOT EXISTS transactions (
     date TEXT DEFAULT '',
     category TEXT DEFAULT '',
     status TEXT DEFAULT '',
+    paymentMethod TEXT DEFAULT '',
+    referenceNo TEXT DEFAULT '',
+    notes TEXT DEFAULT '',
+    createdBy TEXT DEFAULT 'Admin',
     description TEXT DEFAULT '',
     refId TEXT DEFAULT '',
     title TEXT DEFAULT '',
@@ -136,6 +146,7 @@ CREATE TABLE IF NOT EXISTS costings (
     status TEXT DEFAULT 'Draft',
     date TEXT DEFAULT '',
     materials TEXT DEFAULT '[]',
+    uData TEXT DEFAULT '',
     createdAt TEXT DEFAULT (datetime('now')),
     updatedAt TEXT DEFAULT (datetime('now'))
 );
@@ -169,4 +180,19 @@ CREATE TABLE IF NOT EXISTS quotations (
     notes TEXT DEFAULT '',
     createdAt TEXT DEFAULT (datetime('now')),
     updatedAt TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS users (
+    _rowid INTEGER PRIMARY KEY AUTOINCREMENT,
+    id TEXT UNIQUE NOT NULL,
+    username TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    createdAt TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS sessions (
+    token TEXT PRIMARY KEY,
+    userId TEXT NOT NULL,
+    expiresAt INTEGER NOT NULL,
+    createdAt TEXT DEFAULT (datetime('now'))
 );

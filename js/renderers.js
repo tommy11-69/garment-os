@@ -1,6 +1,60 @@
 import { ProgressBar } from './components/index.js';
 
+// ─── Stage Pipeline Helper ────────────────────────────────────────────────────
+const STAGE_SEQUENCES = {
+    default:             ['Fabric', 'Cutting', 'Stitching', 'Printing/Embroidery', 'Ironing & Packing', 'Dispatch'],
+    print_before_stitch: ['Fabric', 'Cutting', 'Printing/Embroidery', 'Stitching', 'Ironing & Packing', 'Dispatch'],
+    wash_before_stitch:  ['Fabric', 'Cutting', 'Wash', 'Stitching', 'Printing/Embroidery', 'Ironing & Packing', 'Dispatch'],
+};
+
+// Short labels for the pipeline chips
+const STAGE_SHORT = {
+    'Fabric': 'Fabric',
+    'Cutting': 'Cutting',
+    'Stitching': 'Stitch',
+    'Printing/Embroidery': 'Print',
+    'Wash': 'Wash',
+    'Ironing & Packing': 'Iron',
+    'Dispatch': 'Dispatch',
+};
+
+function renderStagePipeline(order) {
+    const wf     = order.workflowType || 'default';
+    const stages = STAGE_SEQUENCES[wf] || STAGE_SEQUENCES.default;
+    const status = order.status || '';
+
+    // Find active index — match order.status loosely against stage names
+    let activeIdx = stages.findIndex(s =>
+        status.toLowerCase().includes(s.toLowerCase().split('/')[0]) ||
+        s.toLowerCase().includes(status.toLowerCase())
+    );
+    if (activeIdx < 0) activeIdx = 0;
+    if (['Dispatched', 'Delivered', 'Closed', 'Archived'].includes(status)) activeIdx = stages.length;
+
+    const chips = stages.map((s, i) => {
+        const isDone   = i < activeIdx;
+        const isActive = i === activeIdx;
+        const chipCls  = isDone
+            ? 'bg-[#008A00] text-white'
+            : isActive
+                ? 'bg-primary text-white'
+                : 'bg-surface-variant text-secondary';
+        const icon = isDone ? '<span class="material-symbols-outlined text-[10px] leading-none">check</span>' : '';
+        return `<span class="shrink-0 px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wide ${chipCls} flex items-center gap-0.5">${icon}${STAGE_SHORT[s] || s}</span>`;
+    });
+
+    // Connector dots between chips
+    const pipelineItems = chips.reduce((arr, chip, i) => {
+        arr.push(chip);
+        if (i < chips.length - 1) arr.push(`<span class="text-outline-variant text-[10px] shrink-0">›</span>`);
+        return arr;
+    }, []);
+
+    return `<div class="flex items-center gap-1 flex-wrap mt-3 pt-3 border-t border-outline-variant/50">${pipelineItems.join('')}</div>`;
+}
+
 export const renderers = {
+
     customerCard(customer, isBulkMode = false, isSelected = false) {
         const avatarHtml = customer.avatar 
             ? `<img class="w-full h-full object-cover" src="${customer.avatar}" alt="${customer.name}"/>`
@@ -85,11 +139,13 @@ export const renderers = {
                         </div>
                         <span class="px-2.5 py-1 rounded-full text-[11px] font-medium shrink-0 ml-2 ${order.statusColor}">${order.status}</span>
                     </div>
-                    ${ProgressBar({ label: `${order.progressPercentage}% Complete`, secondaryLabel: order.progressLabel, percentage: order.progressPercentage, colorClass: order.progressColor })}
+                    ${ProgressBar({ label: `${order.progressPercentage}% Complete`, secondaryLabel: order.progressLabel, percentage: order.progressPercentage, color: order.progressColor })}
+                    ${renderStagePipeline(order)}
                 </div>
             </div>
         `;
     },
+
     
     dashboardOrderCard(order) {
         return `

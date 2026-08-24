@@ -1,4 +1,5 @@
-export function ProgressBar({ label = '', secondaryLabel = '', percentage = 0, color = 'primary' }) {
+export function ProgressBar({ label = '', secondaryLabel = '', percentage = 0, color = 'primary', colorClass }) {
+    const actualColor = colorClass || color;
     const colorStyles = {
         primary: 'bg-primary',
         success: 'bg-[#008A00]',
@@ -6,7 +7,7 @@ export function ProgressBar({ label = '', secondaryLabel = '', percentage = 0, c
         error: 'bg-error'
     };
     
-    const barColor = colorStyles[color] || colorStyles.primary;
+    const barColor = colorStyles[actualColor] || (actualColor && actualColor.startsWith('bg-') ? actualColor : colorStyles.primary);
     
     let header = '';
     if (label || secondaryLabel) {
@@ -16,7 +17,7 @@ export function ProgressBar({ label = '', secondaryLabel = '', percentage = 0, c
                 ${label ? `<span class="text-body-bold text-on-surface block">${label}</span>` : ''}
                 ${secondaryLabel ? `<span class="text-[13px] text-secondary">${secondaryLabel}</span>` : ''}
             </div>
-            <span class="text-[13px] font-medium ${color === 'warning' ? 'text-[#FF9F0A]' : 'text-primary'}">${percentage}%</span>
+            <span class="text-[13px] font-medium ${actualColor === 'warning' || actualColor === 'bg-[#FF9F0A]' ? 'text-[#FF9F0A]' : 'text-primary'}">${percentage}%</span>
         </div>`;
     }
 

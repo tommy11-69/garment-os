@@ -18,6 +18,52 @@
     <link rel="stylesheet" href="../css/layout.css">
     <link rel="stylesheet" href="../css/typography.css">
     <link rel="stylesheet" href="../css/utilities.css">
+
+    <style>
+        /* Stage filter chips scroll */
+        .stage-chips-row { 
+            display: flex; 
+            gap: 8px; 
+            overflow-x: auto; 
+            padding-bottom: 2px;
+            scrollbar-width: none;
+        }
+        .stage-chips-row::-webkit-scrollbar { display: none; }
+        .stage-chip {
+            flex-shrink: 0;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            border: 1.5px solid transparent;
+            transition: all 0.18s ease;
+            white-space: nowrap;
+        }
+        .stage-chip.active {
+            background: var(--color-primary, #0A84FF);
+            color: white;
+            border-color: var(--color-primary, #0A84FF);
+        }
+        .stage-chip.inactive {
+            background: transparent;
+            border-color: rgba(0,0,0,0.1);
+            color: #6b7280;
+        }
+        /* New order shortcut button */
+        .new-order-shortcut {
+            background: linear-gradient(135deg, var(--color-primary, #0A84FF) 0%, #5AC8FA 100%);
+            border-radius: 18px;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            cursor: pointer;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            box-shadow: 0 4px 16px rgba(10,132,255,0.25);
+        }
+        .new-order-shortcut:active { transform: scale(0.97); }
+    </style>
 </head>
 <body class="font-body text-body antialiased bg-background">
 
@@ -27,20 +73,42 @@
         <main id="main-content-area" class="flex-1 p-md flex flex-col gap-lg pb-[100px]">
             
             <!-- Header -->
-            <div class="px-xs pt-sm">
-                <h2 class="text-[28px] leading-tight font-semibold tracking-tight text-on-surface mb-1">Orders</h2>
-                <p class="text-[14px] text-secondary">Manage customer orders and production</p>
+            <div class="px-xs pt-sm flex items-start justify-between">
+                <div>
+                    <h2 class="text-[28px] leading-tight font-semibold tracking-tight text-on-surface mb-1">Orders</h2>
+                    <p class="text-[14px] text-secondary">Track production across all stages</p>
+                </div>
+                <!-- Quick new order button in header -->
+                <button onclick="window.location.href='create-order.html'"
+                    class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white shadow-md active-scale transition-apple shrink-0 mt-1"
+                    id="header-new-order-btn">
+                    <span class="material-symbols-outlined text-[22px]">add</span>
+                </button>
             </div>
 
             <!-- Analytics Summary Container -->
             <div id="orders-analytics-container" class="px-xs"></div>
-            
-            <!-- Search & Filter Container -->
+
+            <!-- New Order Shortcut Banner (shown when 0 active orders) -->
+            <div id="orders-empty-cta" class="hidden px-xs">
+                <div class="new-order-shortcut" onclick="window.location.href='create-order.html'">
+                    <div class="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-white text-[26px]">add_circle</span>
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-white font-bold text-[16px] leading-tight">Create New Order</p>
+                        <p class="text-white/70 text-[13px] mt-0.5">Fabric, cutting, stitching and more</p>
+                    </div>
+                    <span class="material-symbols-outlined text-white/60 text-[20px]">chevron_right</span>
+                </div>
+            </div>
+
+            <!-- Search & Filter -->
             <div id="orders-search-container" class="px-xs">
                 <div class="flex items-center gap-3">
                     <div class="relative flex-1">
                         <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary">search</span>
-                        <input id="orders-search-input" type="text" placeholder="Search orders..."
+                        <input id="orders-search-input" type="text" placeholder="Search orders, customers..."
                             class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl pl-11 pr-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple placeholder:text-secondary">
                     </div>
                     <button onclick="window.openSheet('filterOrderSheet')" class="w-11 h-11 shrink-0 rounded-xl bg-surface-container-lowest border border-outline-variant flex items-center justify-center text-secondary active-scale transition-apple" id="orders-filter-btn">
@@ -49,27 +117,43 @@
                 </div>
             </div>
 
-            <!-- Segmented Control for Active / Completed -->
+            <!-- Active / Completed tabs + View toggle -->
             <div id="orders-segmented-control" class="px-xs flex flex-col gap-3">
                 <div class="flex p-1 bg-surface-container-lowest border border-outline-variant rounded-xl">
                     <button id="tab-active" onclick="window.setFilter('active')" class="flex-1 py-2 text-[14px] font-semibold rounded-lg bg-surface-variant text-on-surface transition-colors">Active</button>
                     <button id="tab-completed" onclick="window.setFilter('completed')" class="flex-1 py-2 text-[14px] font-semibold rounded-lg text-secondary hover:text-on-surface transition-colors">Completed</button>
                 </div>
+
+                <!-- Stage filter chips (scrollable) -->
+                <div class="stage-chips-row" id="stage-chips-row">
+                    <button class="stage-chip active" data-stage="all" onclick="window.setStageFilter('all')">All Stages</button>
+                    <button class="stage-chip inactive" data-stage="Fabric" onclick="window.setStageFilter('Fabric')">Fabric</button>
+                    <button class="stage-chip inactive" data-stage="Cutting" onclick="window.setStageFilter('Cutting')">Cutting</button>
+                    <button class="stage-chip inactive" data-stage="Stitching" onclick="window.setStageFilter('Stitching')">Stitching</button>
+                    <button class="stage-chip inactive" data-stage="Printing/Embroidery" onclick="window.setStageFilter('Printing/Embroidery')">Printing</button>
+                    <button class="stage-chip inactive" data-stage="Ironing & Packing" onclick="window.setStageFilter('Ironing & Packing')">Ironing</button>
+                </div>
+
+                <!-- View mode toggle -->
                 <div class="flex items-center justify-end gap-2">
                     <span class="text-[12px] font-medium text-secondary">View:</span>
-                    <button id="view-list-btn" onclick="window.setViewMode('list')" class="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center transition-colors"><span class="material-symbols-outlined text-[18px]">view_list</span></button>
-                    <button id="view-kanban-btn" onclick="window.setViewMode('kanban')" class="w-8 h-8 rounded-lg text-secondary hover:bg-surface-variant flex items-center justify-center transition-colors"><span class="material-symbols-outlined text-[18px]">view_kanban</span></button>
+                    <button id="view-list-btn" onclick="window.setViewMode('list')" class="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center transition-colors">
+                        <span class="material-symbols-outlined text-[18px]">view_list</span>
+                    </button>
+                    <button id="view-kanban-btn" onclick="window.setViewMode('kanban')" class="w-8 h-8 rounded-lg text-secondary hover:bg-surface-variant flex items-center justify-center transition-colors">
+                        <span class="material-symbols-outlined text-[18px]">view_kanban</span>
+                    </button>
                 </div>
             </div>
 
             <!-- Orders List Container -->
             <div id="orders-list" class="flex flex-col gap-4 px-xs">
-                <!-- Order cards will be rendered here by index.js -->
+                <!-- Order cards rendered by index.js -->
             </div>
 
             <!-- Orders Kanban Container -->
             <div id="orders-kanban" class="hidden flex gap-4 px-xs pb-4 overflow-x-auto snap-x snap-mandatory no-scrollbar" style="scroll-padding-left: 16px;">
-                <!-- Kanban columns will be rendered here by index.js -->
+                <!-- Kanban columns rendered by index.js -->
             </div>
             
         </main>
@@ -79,7 +163,7 @@
     <div id="bottom-nav-container"></div>
     
     <!-- FAB for New Order -->
-    <div id="fab-container" data-icon="add" data-action="window.openSheet('fabActionSheet')"></div>
+    <div id="fab-container" data-icon="add" data-action="window.location.href='create-order.html'"></div>
     
     <!-- Bottom Sheets Container -->
     <div id="sheets-container"></div>
@@ -87,5 +171,27 @@
     <script type="module" src="../js/orders/index.js"></script>
     <script src="../js/utils/sheet.js"></script>
     <script src="../js/app.js"></script>
+
+    <script>
+        // Stage filter chip logic (runs after index.js initialises window.setFilter)
+        let currentStageFilter = 'all';
+
+        window.setStageFilter = function(stage) {
+            currentStageFilter = stage;
+
+            // Update chip styles
+            document.querySelectorAll('.stage-chip').forEach(btn => {
+                const isActive = btn.dataset.stage === stage;
+                btn.className = 'stage-chip ' + (isActive ? 'active' : 'inactive');
+            });
+
+            // Re-render with stage filter applied
+            // We patch into the existing renderOrders by triggering a custom event
+            document.dispatchEvent(new CustomEvent('stageFilterChanged', { detail: { stage } }));
+        };
+
+        // Expose current stage filter for index.js to read
+        window.getStageFilter = function() { return currentStageFilter; };
+    </script>
 </body>
 </html>
