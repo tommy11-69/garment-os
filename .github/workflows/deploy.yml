@@ -1,0 +1,30 @@
+name: Deploy Garment OS to Hostinger
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  web-deploy:
+    name: Deploy to Hostinger via FTP
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🚚 Get latest code
+        uses: actions/checkout@v4
+
+      - name: 📂 Sync files to Hostinger Subdomain
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          server-dir: public_html/garment-os/
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            backend/node_modules/**
+            d1_remote_backup.sql
+            backup.sql
+            *.log
