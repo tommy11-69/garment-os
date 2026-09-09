@@ -191,6 +191,130 @@ export const api = {
         return await db.insert('customers', newCustomer);
     },
 
+    // -- VENDORS --
+    
+    async _enrichVendorStats(v, transactions = null) {
+        if (!transactions) {
+            transactions = await db.getCollection('transactions');
+        }
+        const vTrans = transactions.filter(t => t.refId === v.id);
+        const totalPurchases = vTrans.filter(t => t.type === 'Purchase').reduce((sum, t) => sum + (t.amount || 0), 0);
+        // Payments sent to vendor
+        const totalPaid = vTrans.filter(t => t.type === 'Payment' && t.isNegative).reduce((sum, t) => sum + (t.amount || 0), 0);
+        const outstandingPayable = Math.max(0, totalPurchases - totalPaid);
+        
+        const sorted = [...vTrans].sort((a,b) => new Date(b.date) - new Date(a.date));
+        const lastPurchaseDate = sorted.find(t => t.type === 'Purchase')?.date || null;
+        
+        return {
+            ...v,
+            totalPurchases,
+            totalPaid,
+            outstandingPayable,
+            lastPurchaseDate,
+            transactionCount: vTrans.length
+        };
+    },
+
+    async getVendors() { 
+        const [vendors, transactions] = await Promise.all([
+            db.getCollection('vendors'),
+            db.getCollection('transactions')
+        ]);
+        return Promise.all(vendors.map(v => this._enrichVendorStats(v, transactions))); 
+    },
+
+    async getVendor(id) {
+        const v = await db.getById('vendors', id); 
+        return v ? await this._enrichVendorStats(v) : null;
+    },
+
+    async updateVendor(id, data) {
+        const updated = await db.update('vendors', id, data);
+        return await this._enrichVendorStats(updated);
+    },
+
+    async archiveVendor(id) {
+        return await this.updateVendor(id, { status: 'Archived', statusColor: 'bg-surface-variant text-secondary', isActive: 0 });
+    },
+
+    async restoreVendor(id) {
+        return await this.updateVendor(id, { status: 'Active', statusColor: 'bg-[#008A00]/10 text-[#008A00]', isActive: 1 });
+    },
+
+    async deleteVendor(id) {
+        return await db.delete('vendors', id);
+    },
+    
+    async searchVendors(query) {
+        const all = await this.getVendors();
+        const q = query.toLowerCase();
+        return all.filter(v => 
+            v.name.toLowerCase().includes(q) || 
+            (v.contactPerson && v.contactPerson.toLowerCase().includes(q)) ||
+            (v.id && v.id.toLowerCase().includes(q)) ||
+            (v.phone && v.phone.includes(q)) ||
+            (v.email && v.email.toLowerCase().includes(q)) ||
+            (v.city && v.city.toLowerCase().includes(q))
+        );
+    },
+
+    async filterVendors(filters) {
+        const all = await this.getVendors();
+        return all.filter(v => {
+            if (filters.status && filters.status !== 'All') {
+                if (filters.status === 'Active' && !v.isActive) return false;
+                if (filters.status === 'Inactive' && v.isActive) return false;
+            }
+            if (filters.vendorType && filters.vendorType !== 'All') {
+                if (v.vendorType !== filters.vendorType) return false;
+            }
+            if (filters.city && v.city !== filters.city) return false;
+            return true;
+        });
+    },
+
+    async saveVendor(data) {
+        const vendors = await db.getCollection('vendors');
+        const nameLower = data.name.trim().toLowerCase();
+        
+        const duplicate = vendors.find(v => {
+            if (v.name.trim().toLowerCase() === nameLower) return true;
+            if (v.phone && data.phone && v.phone === data.phone) return true;
+            if (v.gstin && data.gstin && v.gstin === data.gstin) return true;
+            return false;
+        });
+
+        if (duplicate) {
+            throw new Error('Duplicate vendor found (Name, Phone, or GSTIN matches an existing record).');
+        }
+
+        const newVendor = {
+            id: data.id || `v-${Date.now()}`,
+            name: data.name.trim(),
+            contactPerson: data.contactPerson || '',
+            phone: data.phone || '',
+            email: data.email || '',
+            address: data.address || '',
+            city: data.city || '',
+            state: data.state || '',
+            pincode: data.pincode || '',
+            gstin: data.gstin || '',
+            vendorType: data.vendorType || 'Other',
+            paymentTerms: data.paymentTerms || '',
+            bankName: data.bankName || '',
+            accountNumber: data.accountNumber || '',
+            ifsc: data.ifsc || '',
+            upiId: data.upiId || '',
+            notes: data.notes || '',
+            isActive: data.isActive !== false,
+            status: data.isActive === false ? 'Inactive' : 'Active',
+            statusColor: data.isActive === false ? 'bg-surface-variant text-secondary' : 'bg-[#008A00]/10 text-[#008A00]'
+        };
+
+        return await db.insert('vendors', newVendor);
+    },
+
     // -- ORDERS --
     
     async saveOrder(orderData) {

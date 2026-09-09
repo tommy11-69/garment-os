@@ -4,7 +4,7 @@
 // ── Config ──────────────────────────────────────────────────────────
 const ALLOWED_TABLES = new Set([
     'customers', 'orders', 'inventory', 'batches',
-    'transactions', 'costings', 'shipments', 'quotations'
+    'transactions', 'costings', 'shipments', 'quotations', 'vendors'
 ]);
 
 // Columns that store JSON arrays/objects as TEXT in D1
@@ -105,24 +105,55 @@ export default {
                 // Auth Login Endpoint
                 if (url.pathname === '/api/auth/login') {
                     if (request.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
-                    const body = await request.json();
-                    if (!body.username || !body.password) return json({ error: 'Username and password required' }, 400);
+                    
+                    try {
+                        let body;
+                        try {
+                            body = await request.json();
+                        } catch (e) {
+                            return json({ error: 'Invalid JSON payload' }, 400);
+                        }
+                        
+                        if (!body.username || !body.password) {
+                            return json({ error: 'Username and password required' }, 400);
+                        }
 
-                    // Basic SHA-256
-                    const buffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(body.password));
-                    const hash = Array.from(new Uint8Array(buffer)).map(b => b.toString(16).padStart(2, '0')).join('');
+                        let user = null;
+                        let userType = null;
 
-                    const user = await env.DB.prepare('SELECT id FROM users WHERE username = ? AND password_hash = ?')
-                        .bind(body.username, hash).first();
+                        // Check for developer/admin hardcoded credentials first
+                        if (body.username === 'admin' && body.password === '2906') {
+                            // Developer login - use a virtual user ID
+                            user = { id: 'dev-admin', type: 'developer' };
+                            userType = 'developer';
+                        } else {
+                            // Check client credentials in database
+                            const buffer = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(body.password));
+                            const hash = Array.from(new Uint8Array(buffer)).map(b => b.toString(16).padStart(2, '0')).join('');
 
-                    if (!user) return json({ error: 'Invalid credentials' }, 401);
+                            const dbUser = await env.DB.prepare('SELECT id FROM users WHERE username = ? AND password_hash = ?')
+                                .bind(body.username, hash).first();
 
-                    const token = crypto.randomUUID();
-                    const expiresAt = Date.now() + (60 * 60 * 1000); // 1 hour
-                    await env.DB.prepare('INSERT INTO sessions (token, userId, expiresAt) VALUES (?, ?, ?)')
-                        .bind(token, user.id, expiresAt).run();
+                            if (dbUser) {
+                                user = dbUser;
+                                userType = 'client';
+                            }
+                        }
 
-                    return json({ success: true, token, userId: user.id });
+                        if (!user) return json({ error: 'Invalid credentials' }, 401);
+
+                        const token = crypto.randomUUID();
+                        const expiresAt = Date.now() + (60 * 60 * 1000); // 1 hour
+                        
+                        // Store all sessions in the database (both client and developer)
+                        await env.DB.prepare('INSERT INTO sessions (token, userId, expiresAt) VALUES (?, ?, ?)')
+                            .bind(token, user.id, expiresAt).run();
+
+                        return json({ success: true, token, userId: user.id, userType });
+                    } catch (loginError) {
+                        console.error('Login error:', loginError);
+                        return json({ error: 'Authentication service error: ' + loginError.message }, 500);
+                    }
                 }
 
                 // Auth Middleware for all other API routes
@@ -140,6 +171,12 @@ export default {
                 // Auth Credentials Update Endpoint
                 if (url.pathname === '/api/auth/credentials') {
                     if (request.method !== 'PUT') return json({ error: 'Method not allowed' }, 405);
+                    
+                    // Prevent developer users from updating credentials
+                    if (session.userId === 'dev-admin') {
+                        return json({ error: 'Developer credentials are hardcoded and cannot be changed' }, 403);
+                    }
+                    
                     const body = await request.json();
                     
                     let updateSql = [];

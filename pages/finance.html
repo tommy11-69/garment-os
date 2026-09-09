@@ -1,6 +1,13 @@
 <!DOCTYPE html>
 <html class="light" lang="en">
 <head>
+    <!-- Favicon & PWA Icons -->
+    <link rel="icon" type="image/png" sizes="192x192" href="../assets/icon-192.png">
+    <link rel="icon" type="image/webp" href="../assets/logo-primary.webp">
+    <link rel="apple-touch-icon" sizes="180x180" href="../assets/apple-touch-icon.png">
+    <link rel="manifest" href="../manifest.json">
+    <meta name="theme-color" content="#0059b5">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -85,9 +92,9 @@
                 </div>
                 <!-- Period selector -->
                 <div class="flex items-center gap-1 p-1 bg-surface-container-lowest border border-outline-variant rounded-xl mt-1">
-                    <button class="period-pill active text-[11px] font-bold px-2.5 py-1.5 rounded-lg" data-period="week" onclick="window.finSetPeriod('week')">W</button>
-                    <button class="period-pill inactive text-[11px] font-bold px-2.5 py-1.5 rounded-lg" data-period="month" onclick="window.finSetPeriod('month')">M</button>
-                    <button class="period-pill inactive text-[11px] font-bold px-2.5 py-1.5 rounded-lg" data-period="year" onclick="window.finSetPeriod('year')">Y</button>
+                    <button class="period-pill active text-[11px] font-bold px-2.5 py-1.5 rounded-lg" data-period="7d" onclick="window.finSetPeriod('7d')">7D</button>
+                    <button class="period-pill inactive text-[11px] font-bold px-2.5 py-1.5 rounded-lg" data-period="1m" onclick="window.finSetPeriod('1m')">1M</button>
+                    <button class="period-pill inactive text-[11px] font-bold px-2.5 py-1.5 rounded-lg" data-period="3m" onclick="window.finSetPeriod('3m')">3M</button>
                 </div>
             </div>
 
@@ -199,7 +206,7 @@
     (function() {
         // ─── State ────────────────────────────────────────────────────────────
         let _transactions = [];
-        let _period = 'week';
+        let _period = '7d';
 
         window.finSetPeriod = function(period) {
             _period = period;
@@ -221,7 +228,7 @@
         const DAY_MS = 86400000;
 
         function getPeriodDays() {
-            return _period === 'year' ? 365 : _period === 'month' ? 30 : 7;
+            return _period === '3m' ? 90 : _period === '1m' ? 30 : 7;
         }
 
         function getPeriodTransactions(txns) {
@@ -238,9 +245,9 @@
                 const key = d.toISOString().split('T')[0];
                 const dayTxns = txns.filter(t => t.date === key);
                 buckets.push({
-                    label: _period === 'year'
-                        ? d.toLocaleString('en', { month: 'short' })
-                        : _period === 'month'
+                    label: _period === '3m'
+                        ? d.getDate() === 1 || i % 15 === 0 ? d.toLocaleString('en', { month: 'short' }) + ' ' + d.getDate() : ''
+                        : _period === '1m'
                             ? d.getDate() + ''
                             : d.toLocaleString('en', { weekday: 'short' }),
                     income:   dayTxns.filter(t => t.type === 'Income').reduce((s, t) => s + +t.amount, 0),
@@ -270,13 +277,13 @@
         // ─── Area Chart ───────────────────────────────────────────────────────
         function renderAreaChart(txns) {
             const days   = getPeriodDays();
-            const data   = groupByDate(txns, Math.min(days, 14));
+            const data   = groupByDate(txns, Math.min(days, 90));
             const svg    = document.getElementById('area-chart-svg');
             const labels = document.getElementById('area-chart-labels');
             const sub    = document.getElementById('area-chart-subtitle');
             if (!svg || !labels) return;
 
-            sub.textContent = _period === 'week' ? 'Last 7 days' : _period === 'month' ? 'Last 30 days' : 'Last 365 days';
+            sub.textContent = _period === '7d' ? 'Last 7 days' : _period === '1m' ? 'Last 1 month' : 'Last 3 months';
 
             const W = 340, H = 160, PAD = { t: 10, b: 30, l: 8, r: 8 };
             const cW = W - PAD.l - PAD.r;
@@ -439,7 +446,8 @@
                     transform="rotate(-90 ${CX} ${CY})"
                     onmouseenter="window._finTooltip(event,'${cat}','${fmt(val)} (${Math.round(pct*100)}%)')"
                     onmouseleave="window._finHideTooltip()"
-                    style="cursor:pointer"
+                    onclick="window.openCategoryBreakdown('${cat}')"
+                    style="cursor:pointer;transition:opacity .15s;"
                 />`;
                 offset += dash;
                 return seg;
@@ -452,11 +460,17 @@
 
             legend.innerHTML = sorted.map(([cat, val], i) => {
                 const pct = Math.round(val / total * 100);
+                const color = CAT_COLORS[i % CAT_COLORS.length];
                 return `
-                    <div class="flex items-center gap-2 min-w-0">
-                        <div style="width:8px;height:8px;border-radius:50%;background:${CAT_COLORS[i % CAT_COLORS.length]};flex-shrink:0;"></div>
+                    <div
+                        onclick="window.openCategoryBreakdown('${cat}')"
+                        class="flex items-center gap-2 min-w-0 py-1 px-1.5 rounded-xl cursor-pointer active:bg-surface-container transition-colors"
+                        style="-webkit-tap-highlight-color: transparent;"
+                    >
+                        <div style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0;"></div>
                         <span class="text-[12px] text-on-surface font-medium truncate flex-1">${cat}</span>
                         <span class="text-[12px] font-bold text-on-surface shrink-0">${pct}%</span>
+                        <span style="font-size:14px;color:#9ca3af;flex-shrink:0;font-family:'Material Symbols Outlined';">chevron_right</span>
                     </div>`;
             }).join('');
         }

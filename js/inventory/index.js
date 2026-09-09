@@ -95,7 +95,7 @@ window.openItemDetails = async function(id) {
     if (!item) return;
 
     const container = document.getElementById('sheets-container');
-    const existing = document.getElementById('itemDetailsSheet');
+    const existing = document.getElementById('itemDetailsSheet-content');
     if (existing) {
         existing.remove();
         const overlay = document.getElementById('itemDetailsSheet-overlay');

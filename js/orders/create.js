@@ -36,6 +36,7 @@ const WORKFLOW_STEPS = {
     default:             ['co-step-1', 'co-step-2', 'co-step-3', 'co-step-stitching', 'co-step-printing', 'co-step-ironing', 'co-step-dispatch'],
     print_before_stitch: ['co-step-1', 'co-step-2', 'co-step-3', 'co-step-printing', 'co-step-stitching', 'co-step-ironing', 'co-step-dispatch'],
     wash_before_stitch:  ['co-step-1', 'co-step-2', 'co-step-3', 'co-step-wash', 'co-step-stitching', 'co-step-printing', 'co-step-ironing', 'co-step-dispatch'],
+    direct_fulfillment:  ['co-step-1', 'co-step-procurement', 'co-step-dispatch'],
 };
 
 const STEP_TITLES = {
@@ -46,6 +47,7 @@ const STEP_TITLES = {
     'co-step-stitching':'Stitching',
     'co-step-printing': 'Printing / Embroidery',
     'co-step-ironing':  'Ironing & Packing',
+    'co-step-procurement':'Procurement',
     'co-step-dispatch': 'Dispatch',
 };
 
@@ -502,6 +504,11 @@ function validateCurrentStep() {
         }
     }
 
+    if (id === 'co-step-procurement') {
+        if (!val('co-vendor-name')) { showToast('Please enter a vendor name', 'error'); return false; }
+        if (num('co-purchase-cost') <= 0) { showToast('Please enter purchase cost', 'error'); return false; }
+    }
+
     return true;
 }
 
@@ -553,11 +560,17 @@ function buildSummary() {
         ['Total Qty', `${num('co-qty')} pcs`],
         ['Delivery', val('co-delivery') || 'Not set'],
         ['Workflow', coState.workflowType.replace(/_/g, ' ')],
-        ['Fabric', `${coState.fabricType} - ${val('co-fabric-subtype')}, ${num('co-gsm')} GSM`],
-        ['Fabric Kg', `${fabricKg} kg @ Rs.${num('co-fabric-rate')}/kg`],
-        ['Pcs/Kg', pcsKg > 0 ? pcsKg.toFixed(2) : '-'],
-        ['Decoration', coState.printType === 'Printing' ? `${coState.printSubtype}` : 'Embroidery'],
     ];
+
+    if (coState.workflowType === 'direct_fulfillment') {
+        rows.push(['Vendor', val('co-vendor-name') || '-']);
+        rows.push(['Purchase Cost', `Rs. ${num('co-purchase-cost')}`]);
+    } else {
+        rows.push(['Fabric', `${coState.fabricType} - ${val('co-fabric-subtype')}, ${num('co-gsm')} GSM`]);
+        rows.push(['Fabric Kg', `${fabricKg} kg @ Rs.${num('co-fabric-rate')}/kg`]);
+        rows.push(['Pcs/Kg', pcsKg > 0 ? pcsKg.toFixed(2) : '-']);
+        rows.push(['Decoration', coState.printType === 'Printing' ? `${coState.printSubtype}` : 'Embroidery']);
+    }
 
     container.innerHTML = rows.map(([k, v]) => `
         <div class="flex justify-between items-center py-1 border-b border-outline-variant/40 last:border-0">
@@ -581,11 +594,25 @@ window.coSaveOrder = async function() {
         name: p.name.trim(),
         category: p.category,
         qty: p.qty,
-        status: 'Fabric', // Each product starts at the Fabric stage
+        status: coState.workflowType === 'direct_fulfillment' ? 'Procurement' : 'Fabric', // Each product starts at the first stage
         sizes: { ...p.sizes }
     }));
 
-    const stageData = {
+    const isDirect = coState.workflowType === 'direct_fulfillment';
+    
+    const stageData = isDirect ? {
+        procurement: {
+            vendorName: val('co-vendor-name'),
+            purchaseCost: num('co-purchase-cost'),
+            expectedArrival: val('co-arrival-date'),
+        },
+        dispatch: {
+            courier:      val('co-dispatch-courier'),
+            trackingNo:   val('co-dispatch-tracking'),
+            boxes:        num('co-dispatch-boxes'),
+            dispatchDate: val('co-dispatch-date'),
+        }
+    } : {
         fabric: {
             type:          coState.fabricType,
             subType:       val('co-fabric-subtype'),
@@ -641,6 +668,7 @@ window.coSaveOrder = async function() {
         'co-step-stitching':'Stitching',
         'co-step-printing': 'Printing/Embroidery',
         'co-step-ironing':  'Ironing & Packing',
+        'co-step-procurement': 'Procurement',
         'co-step-dispatch': 'Dispatch',
     };
     const phases = steps()
@@ -656,8 +684,9 @@ window.coSaveOrder = async function() {
         workflowType: coState.workflowType,
         stageData,
         phases,
-        status:       'Fabric',
+        status:       coState.workflowType === 'direct_fulfillment' ? 'Procurement' : 'Fabric',
         progress:     0,
+        incurredCost: coState.workflowType === 'direct_fulfillment' ? num('co-purchase-cost') : 0,
         paymentStatus: 'Unpaid',
         paymentReceived: 0,
         tasks: [],

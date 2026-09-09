@@ -13,6 +13,8 @@ export function FilterBar({ categories = [], activeCategory = '' }) {
     const pills = categories.map(cat => {
         const isActive = cat.id === activeCategory;
         const activeClasses = 'bg-primary text-on-primary border-primary';
+
+        
         const inactiveClasses = 'bg-surface-container-lowest text-secondary border-outline-variant hover:border-primary/50';
         
         return `<button role="tab" aria-selected="${isActive}" class="px-4 py-1.5 rounded-full border text-[13px] font-medium whitespace-nowrap transition-colors ${isActive ? activeClasses : inactiveClasses}" data-category="${cat.id}">
@@ -56,10 +58,12 @@ export function TextInput({ label, id, placeholder = '', type = 'text', value = 
     
     return `
     <div class="flex flex-col gap-2 relative group">
-        <label class="text-[14px] font-semibold text-on-surface flex justify-between" for="${id}">
-            <span>${label}${required ? ' <span class="text-error" aria-hidden="true">*</span>' : ''}</span>
+        <div class="flex items-center justify-between gap-2">
+            <label class="text-[14px] font-semibold text-on-surface" for="${id}">
+                ${label}${required ? ' <span class="text-error" aria-hidden="true">*</span>' : ''}
+            </label>
             <span class="text-[12px] text-error font-medium opacity-0 transition-opacity" id="${id}-error" aria-live="polite"></span>
-        </label>
+        </div>
         <div class="relative">
             ${icon ? `<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-secondary transition-colors" id="${id}-icon" aria-hidden="true">${icon}</span>` : ''}
             <input type="${type}" id="${id}" name="${id}" placeholder="${placeholder}" value="${value}" ${required ? 'required aria-required="true"' : ''} ${minAttr} ${maxAttr} ${patternAttr} ${valAttr} aria-describedby="${describedBy}"
@@ -80,10 +84,12 @@ export function SelectInput({ label, id, options = [], value = '', required = fa
     
     return `
     <div class="flex flex-col gap-2 relative group">
-        <label class="text-[14px] font-semibold text-on-surface flex justify-between" for="${id}">
-            <span>${label}${required ? ' <span class="text-error" aria-hidden="true">*</span>' : ''}</span>
+        <div class="flex items-center justify-between gap-2">
+            <label class="text-[14px] font-semibold text-on-surface" for="${id}">
+                ${label}${required ? ' <span class="text-error" aria-hidden="true">*</span>' : ''}
+            </label>
             <span class="text-[12px] text-error font-medium opacity-0 transition-opacity" id="${id}-error" aria-live="polite"></span>
-        </label>
+        </div>
         <select id="${id}" name="${id}" ${required ? 'required aria-required="true"' : ''} ${valAttr} aria-describedby="${describedBy}"
                 class="w-full bg-surface border border-outline-variant rounded-xl px-4 py-3 text-[16px] text-on-surface focus:ring-2 focus:ring-primary/20 outline-none appearance-none cursor-pointer transition-apple group-[.is-invalid]:border-error group-[.is-invalid]:focus:ring-error/20 group-[.is-invalid]:focus:border-error">
             ${opts}
@@ -98,12 +104,49 @@ export function TextareaInput({ label, id, placeholder = '', rows = 3, value = '
     
     return `
     <div class="flex flex-col gap-2 relative group">
-        <label class="text-[14px] font-semibold text-on-surface flex justify-between" for="${id}">
-            <span>${label}${required ? ' <span class="text-error" aria-hidden="true">*</span>' : ''}</span>
+        <div class="flex items-center justify-between gap-2">
+            <label class="text-[14px] font-semibold text-on-surface" for="${id}">
+                ${label}${required ? ' <span class="text-error" aria-hidden="true">*</span>' : ''}
+            </label>
             <span class="text-[12px] text-error font-medium opacity-0 transition-opacity" id="${id}-error" aria-live="polite"></span>
-        </label>
+        </div>
         <textarea id="${id}" name="${id}" rows="${rows}" placeholder="${placeholder}" ${required ? 'required aria-required="true"' : ''} ${valAttr} aria-describedby="${describedBy}"
                   class="w-full bg-surface border border-outline-variant rounded-xl px-4 py-3 text-[16px] focus:ring-2 focus:ring-primary/20 outline-none resize-none transition-apple group-[.is-invalid]:border-error group-[.is-invalid]:focus:ring-error/20 group-[.is-invalid]:focus:border-error">${value}</textarea>
+        ${helperText ? `<p class="text-[12px] text-secondary pl-1" id="${id}-helper">${helperText}</p>` : ''}
+    </div>`;
+}
+
+export function SearchableSelectInput({ label, id, options = [], value = '', required = false, helperText = '', validationType = '' }) {
+    const valAttr = validationType ? `data-validation="${validationType}"` : '';
+    const describedBy = `${helperText ? id + '-helper ' : ''}${id}-error`.trim();
+    const selectedOption = options.find(opt => String(opt.value || opt.label) === String(value));
+    const displayValue = selectedOption?.label || '';
+
+    return `
+    <div class="flex flex-col gap-2 w-full relative group">
+        <div class="flex items-center justify-between gap-2">
+            <label class="text-[14px] font-semibold text-on-surface" for="${id}">
+                ${label}${required ? ' <span class="text-error" aria-hidden="true">*</span>' : ''}
+            </label>
+            <span class="text-[12px] text-error font-medium opacity-0 transition-opacity" id="${id}-error" aria-live="polite"></span>
+        </div>
+        <div class="relative w-full" style="z-index: 100;">
+            <input type="hidden" id="${id}" name="${id}" value="${value}" ${required ? 'required aria-required="true"' : ''} ${valAttr} aria-describedby="${describedBy}">
+            <div class="flex items-center gap-2 bg-surface border border-outline-variant rounded-xl px-4 py-3 text-[16px] text-on-surface focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-apple cursor-pointer group-[.is-invalid]:border-error group-[.is-invalid]:focus-within:ring-error/20 group-[.is-invalid]:focus-within:border-error" id="${id}-display">
+                <span class="material-symbols-outlined text-secondary flex-shrink-0" aria-hidden="true">search</span>
+                <input type="text" id="${id}-input" class="flex-1 w-full min-w-0 bg-transparent outline-none focus:outline-none border-none focus:ring-0 text-[16px] text-on-surface placeholder:text-secondary" placeholder="Type to search..." autocomplete="off">
+            </div>
+            <div id="${id}-dropdown" class="absolute top-full left-0 right-0 mt-1 bg-surface border border-outline-variant rounded-xl shadow-2xl max-h-80 overflow-y-auto hidden" style="z-index: 9999;">
+                ${options.map(opt => {
+                    const optVal = opt.value !== undefined ? opt.value : opt.label;
+                    const isSelected = String(optVal) === String(value);
+                    return `<div class="px-4 py-3 text-[15px] text-on-surface cursor-pointer transition-colors hover:bg-surface-container-highest flex items-center justify-between gap-3 ${isSelected ? 'bg-surface-container text-primary font-semibold' : ''}" data-value="${optVal}" data-label="${opt.label}">
+                        <span class="flex-1">${opt.label}</span>
+                        ${isSelected ? '<span class="material-symbols-outlined text-primary text-[18px] flex-shrink-0" aria-hidden="true">done</span>' : ''}
+                    </div>`;
+                }).join('')}
+            </div>
+        </div>
         ${helperText ? `<p class="text-[12px] text-secondary pl-1" id="${id}-helper">${helperText}</p>` : ''}
     </div>`;
 }

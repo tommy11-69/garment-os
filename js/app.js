@@ -21,6 +21,39 @@ async function loadComponent(url, targetId, callback) {
     }
 }
 
+// ── Subtle Top Progress Bar Controller (Non-blocking) ─────
+function initTopProgressBar() {
+    if (document.getElementById('top-progress-bar')) return;
+    const bar = document.createElement('div');
+    bar.id = 'top-progress-bar';
+    bar.className = 'fixed top-0 left-0 h-[2.5px] bg-[#0071E3] z-[99999] transition-all duration-300 pointer-events-none opacity-0';
+    bar.style.width = '0%';
+    document.body.appendChild(bar);
+}
+
+window.startSubtleLoading = function() {
+    initTopProgressBar();
+    const bar = document.getElementById('top-progress-bar');
+    if (bar) {
+        bar.style.width = '30%';
+        bar.classList.remove('opacity-0');
+        bar.classList.add('opacity-100');
+        setTimeout(() => { if (bar && bar.style.width === '30%') bar.style.width = '75%'; }, 150);
+    }
+};
+
+window.finishSubtleLoading = function() {
+    const bar = document.getElementById('top-progress-bar');
+    if (bar) {
+        bar.style.width = '100%';
+        setTimeout(() => {
+            bar.classList.remove('opacity-100');
+            bar.classList.add('opacity-0');
+            setTimeout(() => { bar.style.width = '0%'; }, 300);
+        }, 200);
+    }
+};
+
 /**
  * Initialize the application
  */

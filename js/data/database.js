@@ -108,6 +108,7 @@ function recalculateOrderProgress(order) {
         default:             ['Fabric', 'Cutting', 'Stitching', 'Printing/Embroidery', 'Ironing & Packing', 'Dispatch'],
         print_before_stitch: ['Fabric', 'Cutting', 'Printing/Embroidery', 'Stitching', 'Ironing & Packing', 'Dispatch'],
         wash_before_stitch:  ['Fabric', 'Cutting', 'Wash', 'Stitching', 'Printing/Embroidery', 'Ironing & Packing', 'Dispatch'],
+        direct_fulfillment:  ['Procurement', 'Dispatch'],
     };
 
     const wf = order.workflowType || 'default';

@@ -3,10 +3,12 @@ import { api } from '../services/api.js';
 import { renderers } from '../renderers.js';
 import { BottomSheet } from '../components/index.js';
 import { bindFormValidation } from '../utils/formHandler.js';
+import { SearchableSelectInput } from '../components/inputs.js';
 import { 
     getAddTransactionSheetHTML, getAddTransactionFooterHTML,
     getTransactionDetailsHeader, getTransactionDetailsContent,
-    getFilterSheetHTML, getFilterFooterHTML
+    getFilterSheetHTML, getFilterFooterHTML,
+    getCategoriesByType, getCategoryBreakdownSheetContent
 } from './templates.js';
 
 async function initModule() {
@@ -47,7 +49,43 @@ async function renderSheets() {
         document.getElementById('add-trans-submit')?.addEventListener('click', handleAddTransaction);
         document.getElementById('edit-trans-submit')?.addEventListener('click', handleEditTransaction);
 
+        setupTypeChange('trans-');
         setupCategoryToggle('trans-');
+        setupSearchableSelects('trans-');
+    }
+}
+
+function setupTypeChange(prefix = 'trans-') {
+    const typeSelect = document.getElementById(`${prefix}type`);
+    const categoryContainer = document.getElementById(`${prefix}category-container`);
+    
+    if (typeSelect && categoryContainer) {
+        typeSelect.addEventListener('change', (e) => {
+            const selectedType = e.target.value;
+            const categories = getCategoriesByType(selectedType);
+            
+            // Create new category input
+            const newCategoryHTML = SearchableSelectInput({ 
+                label: 'Category', 
+                id: `${prefix}category`, 
+                options: categories, 
+                value: categories[0].value, 
+                required: true 
+            });
+            
+            // Replace the old category input
+            categoryContainer.innerHTML = newCategoryHTML;
+            
+            // Reset other category container
+            const otherContainer = document.getElementById(`${prefix}other-category-container`);
+            if (otherContainer) {
+                otherContainer.classList.add('hidden');
+            }
+            
+            // Re-setup handlers for new category select
+            setupSearchableSelects(prefix);
+            setupCategoryToggle(prefix);
+        });
     }
 }
 
@@ -62,6 +100,69 @@ function setupCategoryToggle(prefix = 'trans-') {
             } else {
                 otherContainer.classList.add('hidden');
             }
+        });
+    }
+}
+
+function setupSearchableSelects(prefix = 'trans-') {
+    const fieldId = `${prefix}category`;
+    const hiddenInput = document.getElementById(fieldId);
+    const displayDiv = document.getElementById(`${fieldId}-display`);
+    const searchInput = document.getElementById(`${fieldId}-input`);
+    const dropdown = document.getElementById(`${fieldId}-dropdown`);
+    const items = dropdown?.querySelectorAll('[data-value]');
+
+    if (!hiddenInput || !searchInput || !dropdown || !items) return;
+
+    // Open dropdown on input focus
+    searchInput.addEventListener('focus', () => {
+        dropdown.classList.remove('hidden');
+        searchInput.value = '';
+        filterItems('');
+    });
+
+    // Filter items on input
+    searchInput.addEventListener('input', (e) => {
+        filterItems(e.target.value);
+    });
+
+    // Close on outside click
+    document.addEventListener('click', (e) => {
+        if (!displayDiv?.contains(e.target) && !dropdown?.contains(e.target)) {
+            dropdown.classList.add('hidden');
+        }
+    });
+
+    // Handle item selection
+    items.forEach(item => {
+        item.addEventListener('click', () => {
+            const value = item.getAttribute('data-value');
+            const label = item.getAttribute('data-label');
+            hiddenInput.value = value;
+            searchInput.value = label;
+            dropdown.classList.add('hidden');
+
+            // Trigger change event
+            hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
+            
+            // Update the visual state - update all items' visual feedback
+            allItems.forEach(itemEl => {
+                const itemVal = itemEl.getAttribute('data-value');
+                if (itemVal === value) {
+                    itemEl.classList.add('bg-surface-container', 'text-primary', 'font-semibold');
+                } else {
+                    itemEl.classList.remove('bg-surface-container', 'text-primary', 'font-semibold');
+                }
+            });
+        });
+    });
+
+    function filterItems(query) {
+        const normalizedQuery = query.toLowerCase();
+        items.forEach(item => {
+            const label = item.getAttribute('data-label').toLowerCase();
+            const matches = label.includes(normalizedQuery);
+            item.style.display = matches ? '' : 'none';
         });
     }
 }
@@ -318,7 +419,7 @@ window.openTransactionDetails = async function(id) {
     if (!t) return;
 
     const container = document.getElementById('sheets-container');
-    const existing = document.getElementById('transactionDetailsSheet');
+    const existing = document.getElementById('transactionDetailsSheet-content');
     if (existing) {
         existing.remove(); 
         const overlay = document.getElementById('transactionDetailsSheet-overlay');
@@ -336,6 +437,125 @@ window.openTransactionDetails = async function(id) {
     setTimeout(() => window.openSheet('transactionDetailsSheet'), 50);
 };
 
+window.saveDetailNotes = async function(id) {
+    const notes = document.getElementById('detail-notes-input').value;
+    window.showToast?.('Saving notes...', 'info');
+    try {
+        await api.updateTransaction(id, { notes });
+        window.showToast?.('Notes updated', 'success');
+        document.getElementById('save-detail-notes-btn')?.classList.add('hidden');
+        await financeStore.loadTransactions();
+        await financeStore.fetchActiveEntity(id);
+    } catch (e) {
+        window.showToast?.('Failed to update notes', 'error');
+    }
+};
+
+window.toggleAddAmountForm = function(id) {
+    const form = document.getElementById('add-amount-form');
+    if (!form) return;
+    form.classList.toggle('hidden');
+    if (!form.classList.contains('hidden')) {
+        document.getElementById('sub-amount')?.focus();
+    }
+};
+
+window.addExpenseSubEntry = async function(id) {
+    const amount = parseFloat(document.getElementById('sub-amount')?.value);
+    const date = document.getElementById('sub-date')?.value;
+    const note = document.getElementById('sub-note')?.value?.trim() || '';
+    const paymentMethod = document.getElementById('sub-method')?.value || 'Cash';
+
+    if (!amount || amount <= 0) {
+        window.showToast?.('Please enter a valid amount', 'error');
+        return;
+    }
+    if (!date) {
+        window.showToast?.('Please select a date', 'error');
+        return;
+    }
+
+    const t = financeStore.getState().activeEntity;
+    if (!t) return;
+
+    // Parse existing subEntries
+    let existing = [];
+    if (t.subEntries) {
+        try {
+            existing = typeof t.subEntries === 'string' ? JSON.parse(t.subEntries) : (Array.isArray(t.subEntries) ? t.subEntries : []);
+        } catch { existing = []; }
+    }
+
+    const newEntry = { amount, date, note, paymentMethod };
+    const updated = [...existing, newEntry];
+
+    const btn = document.querySelector('#add-amount-form button[onclick*="addExpenseSubEntry"]');
+    if (btn) btn.textContent = 'Saving...';
+    
+    try {
+        await api.updateTransaction(id, { subEntries: JSON.stringify(updated) });
+        window.showToast?.('Payment added successfully!', 'success');
+        await financeStore.loadTransactions();
+        // Re-open details sheet to reflect the new entry
+        setTimeout(() => window.openTransactionDetails(id), 200);
+    } catch (e) {
+        window.showToast?.('Failed to add payment', 'error');
+        if (btn) btn.innerHTML = '<span class="material-symbols-outlined text-[16px] align-middle mr-1">add</span> Save Payment';
+    }
+};
+
+window.openCategoryBreakdown = function(category) {
+    const state = financeStore.getState();
+    const allTxns = state.allTransactions || state.entities || [];
+
+    // Compute total expenses across the period for the % calculation
+    const totalExpenses = allTxns
+        .filter(t => t.type === 'Expense')
+        .reduce((s, t) => {
+            let sub = 0;
+            if (t.subEntries) {
+                try {
+                    const entries = typeof t.subEntries === 'string' ? JSON.parse(t.subEntries) : (Array.isArray(t.subEntries) ? t.subEntries : []);
+                    sub = entries.reduce((ss, se) => ss + parseFloat(se.amount || 0), 0);
+                } catch { sub = 0; }
+            }
+            return s + parseFloat(t.amount) + sub;
+        }, 0);
+
+    const container = document.getElementById('sheets-container');
+    const existing = document.getElementById('categoryBreakdownSheet-content');
+    if (existing) {
+        existing.remove();
+        const overlay = document.getElementById('categoryBreakdownSheet-overlay');
+        if (overlay) overlay.remove();
+    }
+
+    const sheetHTML = BottomSheet({
+        id: 'categoryBreakdownSheet',
+        customHeader: `
+            <div class="px-lg pb-md flex justify-between items-center border-b border-outline-variant/30">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl bg-error/10 flex items-center justify-center">
+                        <span class="material-symbols-outlined text-error text-[18px]">donut_small</span>
+                    </div>
+                    <div>
+                        <h2 class="text-[18px] font-bold text-on-surface">${category}</h2>
+                        <p class="text-[12px] text-secondary">Expense Category Breakdown</p>
+                    </div>
+                </div>
+                <button onclick="window.closeSheet('categoryBreakdownSheet')" class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-secondary active-scale transition-apple">
+                    <span class="material-symbols-outlined text-[20px]">close</span>
+                </button>
+            </div>
+        `,
+        content: getCategoryBreakdownSheetContent(category, allTxns, totalExpenses),
+        height: '88vh'
+    });
+
+    container.insertAdjacentHTML('beforeend', sheetHTML);
+    setTimeout(() => window.openSheet('categoryBreakdownSheet'), 50);
+};
+
 window.editTransaction = function() {
     const t = financeStore.getState().activeEntity;
     if (!t) return;
@@ -347,7 +567,9 @@ window.editTransaction = function() {
         editContainer.innerHTML = getAddTransactionSheetHTML(t, 'edit-trans-');
         // rebind validation since content changed
         bindFormValidation('editTransactionSheet-content', 'edit-trans-submit');
+        setupTypeChange('edit-trans-');
         setupCategoryToggle('edit-trans-');
+        setupSearchableSelects('edit-trans-');
     }
     setTimeout(() => {
         window.openSheet('editTransactionSheet');

@@ -39,6 +39,13 @@ export class BaseStore {
     setState(newState) {
         this.state = { ...this.state, ...newState };
         this.notify();
+        if (typeof window !== 'undefined') {
+            if (newState.loading === true && window.startSubtleLoading) {
+                window.startSubtleLoading();
+            } else if (newState.loading === false && window.finishSubtleLoading) {
+                window.finishSubtleLoading();
+            }
+        }
     }
 
     async loadPage(page = 1, append = false) {

@@ -1,4 +1,38 @@
-import { TextInput, SelectInput, TextareaInput } from '../components/inputs.js';
+import { TextInput, SelectInput, TextareaInput, SearchableSelectInput } from '../components/inputs.js';
+
+// Category definitions by type
+const INCOME_CATEGORIES = [
+    { label: 'Partial', value: 'Partial' },
+    { label: 'Advance', value: 'Advance' },
+    { label: 'Balance', value: 'Balance' },
+    { label: 'Other', value: 'Other' }
+];
+
+const EXPENSE_CATEGORIES = [
+    { label: 'Fabric Purchase', value: 'Fabric Purchase' },
+    { label: 'Stitching', value: 'Stitching' },
+    { label: 'Own Expenses', value: 'Own Expenses' },
+    { label: 'Accessories', value: 'Accessories' },
+    { label: 'Printing', value: 'Printing' },
+    { label: 'Embroidery', value: 'Embroidery' },
+    { label: 'Transport', value: 'Transport' },
+    { label: 'Salary', value: 'Salary' },
+    { label: 'Rent', value: 'Rent' },
+    { label: 'Electricity', value: 'Electricity' },
+    { label: 'Internet', value: 'Internet' },
+    { label: 'Fuel', value: 'Fuel' },
+    { label: 'Marketing', value: 'Marketing' },
+    { label: 'Office Expense', value: 'Office Expense' },
+    { label: 'Maintenance', value: 'Maintenance' },
+    { label: 'Sampling', value: 'Sampling' },
+    { label: 'Machine Repair', value: 'Machine Repair' },
+    { label: 'Cutting', value: 'Cutting' },
+    { label: 'Other', value: 'Other' }
+];
+
+export function getCategoriesByType(type) {
+    return type === 'Income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
+}
 
 export function getAddTransactionSheetHTML(transaction = null, prefix = 'trans-') {
     const isEdit = !!transaction;
@@ -8,41 +42,18 @@ export function getAddTransactionSheetHTML(transaction = null, prefix = 'trans-'
         { label: 'Expense', value: 'Expense' }
     ];
     
-    const categories = [
-        { label: 'Fabric Purchase', value: 'Fabric Purchase' },
-        { label: 'Stitching', value: 'Stitching' },
-        { label: 'Own Expenses', value: 'Own Expenses' },
-        { label: 'Accessories', value: 'Accessories' },
-        { label: 'Printing', value: 'Printing' },
-        { label: 'Embroidery', value: 'Embroidery' },
-        { label: 'Transport', value: 'Transport' },
-        { label: 'Salary', value: 'Salary' },
-        { label: 'Rent', value: 'Rent' },
-        { label: 'Electricity', value: 'Electricity' },
-        { label: 'Internet', value: 'Internet' },
-        { label: 'Fuel', value: 'Fuel' },
-        { label: 'Marketing', value: 'Marketing' },
-        { label: 'Office Expense', value: 'Office Expense' },
-        { label: 'Maintenance', value: 'Maintenance' },
-        { label: 'Sampling', value: 'Sampling' },
-        { label: 'Machine Repair', value: 'Machine Repair' },
-        { label: 'Customer Payment', value: 'Customer Payment' },
-        { label: 'Advance Received', value: 'Advance Received' },
-        { label: 'Order Payment', value: 'Order Payment' },
-        { label: 'Refund Received', value: 'Refund Received' },
-        { label: 'Investment', value: 'Investment' },
-        { label: 'Other', value: 'Other' }
-    ];
+    const transactionType = isEdit ? transaction.type : 'Expense';
+    const categories = getCategoriesByType(transactionType);
 
     const knownCategories = new Set(categories.map(c => c.value));
-    const currentCat = isEdit ? (transaction.category || 'Fabric Purchase') : 'Fabric Purchase';
+    const currentCat = isEdit ? (transaction.category || categories[0].value) : categories[0].value;
     const isOther = isEdit && !knownCategories.has(currentCat) || currentCat === 'Other';
     const selectedDropdownCat = isOther ? 'Other' : currentCat;
     const otherCustomValue = isOther && currentCat !== 'Other' ? currentCat : (isEdit ? (transaction.otherCategory || '') : '');
 
     const paymentMethods = [
-        { label: 'Cash', value: 'Cash' },
         { label: 'UPI', value: 'UPI' },
+        { label: 'Cash', value: 'Cash' },
         { label: 'Bank Transfer', value: 'Bank Transfer' },
         { label: 'Cheque', value: 'Cheque' },
         { label: 'Card', value: 'Card' }
@@ -59,7 +70,7 @@ export function getAddTransactionSheetHTML(transaction = null, prefix = 'trans-'
             <input type="hidden" id="${prefix}id" value="${isEdit ? transaction.id : ''}">
             
             <div class="grid grid-cols-2 gap-4">
-                ${SelectInput({ label: 'Type', id: `${prefix}type`, options: types, value: isEdit ? transaction.type : 'Expense', required: true })}
+                ${SelectInput({ label: 'Type', id: `${prefix}type`, options: types, value: transactionType, required: true })}
                 ${TextInput({ label: 'Date', id: `${prefix}date`, type: 'date', value: isEdit ? transaction.date : new Date().toISOString().split('T')[0], required: true })}
             </div>
 
@@ -67,7 +78,9 @@ export function getAddTransactionSheetHTML(transaction = null, prefix = 'trans-'
             
             <div class="grid grid-cols-2 gap-4">
                 ${TextInput({ label: 'Amount (₹)', id: `${prefix}amount`, type: 'number', step: '0.01', placeholder: '0.00', value: isEdit ? transaction.amount : '', required: true })}
-                ${SelectInput({ label: 'Category', id: `${prefix}category`, options: categories, value: selectedDropdownCat, required: true })}
+                <div id="${prefix}category-container" class="searchable-select-wrapper overflow-visible">
+                    ${SearchableSelectInput({ label: 'Category', id: `${prefix}category`, options: categories, value: selectedDropdownCat, required: true })}
+                </div>
             </div>
 
             <div id="${prefix}other-category-container" class="${isOther ? '' : 'hidden'}">
@@ -105,7 +118,18 @@ export function getTransactionDetailsHeader(t) {
     if(!t) return '';
     const isIncome = t.type === 'Income';
     const color = isIncome ? 'text-[#008A00]' : 'text-error';
-    const amountStr = (isIncome ? '+' : '-') + '₹' + parseFloat(t.amount).toLocaleString(undefined, {minimumFractionDigits:2});
+
+    // Sum subEntries into total displayed amount
+    let subTotal = 0;
+    if (t.subEntries) {
+        try {
+            const entries = typeof t.subEntries === 'string' ? JSON.parse(t.subEntries) : (Array.isArray(t.subEntries) ? t.subEntries : []);
+            subTotal = entries.reduce((s, se) => s + parseFloat(se.amount || 0), 0);
+        } catch { subTotal = 0; }
+    }
+    const displayAmount = parseFloat(t.amount) + subTotal;
+    const amountStr = (isIncome ? '+' : '-') + '₹' + displayAmount.toLocaleString(undefined, {minimumFractionDigits:2});
+    const hasAdds = subTotal > 0;
     const statusColor = t.status === 'Completed' ? 'bg-[#008A00]/10 text-[#008A00]' : (t.status === 'Pending' ? 'bg-[#FF9F0A]/10 text-[#FF9F0A]' : 'bg-surface-variant text-secondary');
 
     return `
@@ -114,6 +138,7 @@ export function getTransactionDetailsHeader(t) {
                 <span class="text-[13px] font-bold text-secondary mb-1 block">${t.id}</span>
                 <h2 class="text-[22px] font-bold text-on-surface leading-tight mb-2">${t.title}</h2>
                 <span class="text-[24px] font-bold ${color}">${amountStr}</span>
+                ${hasAdds ? `<span class="inline-block ml-1.5 text-[12px] text-secondary font-medium">(+\u20b9${subTotal.toLocaleString(undefined, {minimumFractionDigits:2})} adds)</span>` : ''}
                 <span class="inline-block ml-3 px-3 py-1 rounded-full text-[12px] font-medium ${statusColor} align-text-bottom">${t.status}</span>
             </div>
             <div class="flex gap-2">
@@ -134,8 +159,117 @@ export function getTransactionDetailsHeader(t) {
     `;
 }
 
+
 export function getTransactionDetailsContent(t) {
     if(!t) return '';
+    const isExpense = t.type === 'Expense';
+
+    // Parse subEntries (stored as JSON or already an array)
+    let subEntries = [];
+    if (t.subEntries) {
+        try {
+            subEntries = typeof t.subEntries === 'string' ? JSON.parse(t.subEntries) : (Array.isArray(t.subEntries) ? t.subEntries : []);
+        } catch { subEntries = []; }
+    }
+    const hasSubEntries = subEntries.length > 0;
+
+    // Build instalments timeline
+    const instalmentsHTML = hasSubEntries ? `
+        <div class="pt-4 border-t border-outline-variant/30">
+            <div class="flex items-center justify-between mb-3">
+                <span class="text-[12px] font-semibold text-secondary uppercase tracking-wider">Payment Instalments</span>
+                <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-error/10 text-error">${subEntries.length} entries</span>
+            </div>
+            <div class="flex flex-col gap-3">
+                <!-- original entry -->
+                <div class="flex items-start gap-3">
+                    <div class="flex flex-col items-center shrink-0">
+                        <div class="w-2.5 h-2.5 rounded-full bg-on-surface-variant mt-1"></div>
+                        <div class="w-px flex-1 bg-outline-variant/50 mt-1 min-h-[16px]"></div>
+                    </div>
+                    <div class="flex-1 min-w-0 pb-2">
+                        <div class="flex justify-between items-center">
+                            <span class="text-[13px] font-semibold text-on-surface">Initial Entry</span>
+                            <span class="text-[13px] font-bold text-on-surface">₹${parseFloat(t.amount).toLocaleString()}</span>
+                        </div>
+                        <span class="text-[11px] text-secondary">${t.date} · ${t.paymentMethod || 'N/A'}</span>
+                    </div>
+                </div>
+                <!-- sub entries -->
+                ${subEntries.map((se, idx) => `
+                    <div class="flex items-start gap-3">
+                        <div class="flex flex-col items-center shrink-0">
+                            <div class="w-2.5 h-2.5 rounded-full bg-error mt-1"></div>
+                            ${idx < subEntries.length - 1 ? '<div class="w-px flex-1 bg-outline-variant/50 mt-1 min-h-[16px]"></div>' : ''}
+                        </div>
+                        <div class="flex-1 min-w-0 pb-2">
+                            <div class="flex justify-between items-center">
+                                <span class="text-[13px] font-semibold text-error">${se.note || 'Additional Payment'}</span>
+                                <span class="text-[13px] font-bold text-error">+₹${parseFloat(se.amount).toLocaleString()}</span>
+                            </div>
+                            <span class="text-[11px] text-secondary">${se.date} · ${se.paymentMethod || 'N/A'}</span>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    ` : '';
+
+    // Add Amount inline form (Expense only)
+    const addAmountHTML = isExpense ? `
+        <div class="pt-4 border-t border-outline-variant/30">
+            <button
+                id="toggle-add-amount-btn"
+                onclick="window.toggleAddAmountForm('${t.id}')"
+                class="w-full flex items-center justify-center gap-2 py-3 rounded-2xl border-2 border-dashed border-outline-variant text-secondary text-[14px] font-semibold active-bg transition-apple hover:border-primary hover:text-primary"
+            >
+                <span class="material-symbols-outlined text-[18px]">add_circle</span>
+                Add Amount to this Expense
+            </button>
+
+            <div id="add-amount-form" class="hidden mt-4 bg-surface-container/50 rounded-2xl p-4 border border-outline-variant flex flex-col gap-3">
+                <p class="text-[13px] font-semibold text-on-surface">Log Additional Payment</p>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="flex flex-col gap-1">
+                        <label class="text-[11px] font-semibold text-secondary uppercase tracking-wider">Amount (₹) *</label>
+                        <input type="number" id="sub-amount" step="0.01" placeholder="0.00"
+                            class="bg-surface border border-outline-variant rounded-xl px-3 py-2.5 text-[14px] text-on-surface outline-none focus:ring-2 focus:ring-primary/20 transition-apple" />
+                    </div>
+                    <div class="flex flex-col gap-1">
+                        <label class="text-[11px] font-semibold text-secondary uppercase tracking-wider">Date *</label>
+                        <input type="date" id="sub-date" value="${new Date().toISOString().split('T')[0]}"
+                            class="bg-surface border border-outline-variant rounded-xl px-3 py-2.5 text-[14px] text-on-surface outline-none focus:ring-2 focus:ring-primary/20 transition-apple" />
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-1">
+                    <label class="text-[11px] font-semibold text-secondary uppercase tracking-wider">Note</label>
+                    <input type="text" id="sub-note" placeholder="e.g. 2nd instalment, remaining balance..."
+                        class="bg-surface border border-outline-variant rounded-xl px-3 py-2.5 text-[14px] text-on-surface outline-none focus:ring-2 focus:ring-primary/20 transition-apple" />
+                </div>
+
+                <div class="flex flex-col gap-1">
+                    <label class="text-[11px] font-semibold text-secondary uppercase tracking-wider">Payment Method</label>
+                    <select id="sub-method" class="bg-surface border border-outline-variant rounded-xl px-3 py-2.5 text-[14px] text-on-surface outline-none focus:ring-2 focus:ring-primary/20 transition-apple">
+                        <option value="Cash">Cash</option>
+                        <option value="UPI">UPI</option>
+                        <option value="Bank Transfer" selected>Bank Transfer</option>
+                        <option value="Cheque">Cheque</option>
+                        <option value="Card">Card</option>
+                    </select>
+                </div>
+
+                <div class="flex gap-2 pt-1">
+                    <button onclick="window.toggleAddAmountForm('${t.id}')" class="flex-1 py-2.5 rounded-xl border border-outline-variant text-secondary text-[13px] font-semibold active-bg transition-apple">Cancel</button>
+                    <button onclick="window.addExpenseSubEntry('${t.id}')" class="flex-[2] py-2.5 rounded-xl bg-error text-white text-[13px] font-bold active-scale transition-apple shadow-sm">
+                        <span class="material-symbols-outlined text-[16px] align-middle mr-1">add</span> Save Payment
+                    </button>
+                </div>
+            </div>
+        </div>
+    ` : '';
+
     return `
         <div class="p-4 space-y-6">
             <div class="grid grid-cols-2 gap-y-6">
@@ -165,14 +299,20 @@ export function getTransactionDetailsContent(t) {
                 </div>
             </div>
 
-            ${t.notes ? `
-            <div class="pt-4 border-t border-outline-variant/30">
-                <span class="block text-[12px] text-secondary mb-2">Notes</span>
-                <p class="text-[14px] text-on-surface leading-relaxed whitespace-pre-wrap">${t.notes}</p>
-            </div>` : ''}
+            ${instalmentsHTML}
+
+            ${addAmountHTML}
 
             <div class="pt-4 border-t border-outline-variant/30">
-                <span class="block text-[12px] text-secondary mb-4">Audit History (Placeholder)</span>
+                <div class="flex justify-between items-center mb-2">
+                    <span class="block text-[12px] text-secondary">Notes</span>
+                    <button id="save-detail-notes-btn" onclick="window.saveDetailNotes('${t.id}')" class="text-[12px] text-primary font-bold hover:underline hidden">Save</button>
+                </div>
+                <textarea id="detail-notes-input" class="w-full bg-surface border border-outline-variant rounded-xl px-3 py-2 text-[14px] text-on-surface focus:ring-2 focus:ring-primary/20 outline-none resize-none transition-apple placeholder:text-secondary/60" placeholder="Add notes..." rows="3" oninput="document.getElementById('save-detail-notes-btn').classList.remove('hidden')">${t.notes || ''}</textarea>
+            </div>
+
+            <div class="pt-4 border-t border-outline-variant/30">
+                <span class="block text-[12px] text-secondary mb-4">Audit History</span>
                 <div class="flex gap-3 mb-3">
                     <div class="w-2 h-2 rounded-full bg-surface-variant mt-1.5 shrink-0"></div>
                     <div>
@@ -238,6 +378,124 @@ export function getFilterFooterHTML() {
             <button onclick="window.applyFilters()" class="flex-[2] bg-primary text-on-primary font-bold text-[15px] py-3.5 rounded-2xl active-scale transition-apple shadow-sm">
                 Apply Filters
             </button>
+        </div>
+    `;
+}
+
+// ─── Category Breakdown Sheet ─────────────────────────────────────────────────
+
+export function getCategoryBreakdownSheetContent(category, txns, totalExpenses) {
+    const fmt = n => '₹' + parseFloat(n).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    // Filter & sort transactions for this category
+    const catTxns = txns
+        .filter(t => t.type === 'Expense' && (t.category || 'Other') === category)
+        .sort((a, b) => parseFloat(b.amount) - parseFloat(a.amount));
+
+    const catTotal = catTxns.reduce((s, t) => {
+        let sub = 0;
+        if (t.subEntries) {
+            try {
+                const entries = typeof t.subEntries === 'string' ? JSON.parse(t.subEntries) : (Array.isArray(t.subEntries) ? t.subEntries : []);
+                sub = entries.reduce((ss, se) => ss + parseFloat(se.amount || 0), 0);
+            } catch { sub = 0; }
+        }
+        return s + parseFloat(t.amount) + sub;
+    }, 0);
+
+    const pct = totalExpenses > 0 ? Math.round((catTotal / totalExpenses) * 100) : 0;
+    const biggest = catTxns[0];
+    const biggestTotal = biggest ? (() => {
+        let sub = 0;
+        if (biggest.subEntries) {
+            try {
+                const entries = typeof biggest.subEntries === 'string' ? JSON.parse(biggest.subEntries) : (Array.isArray(biggest.subEntries) ? biggest.subEntries : []);
+                sub = entries.reduce((ss, se) => ss + parseFloat(se.amount || 0), 0);
+            } catch { sub = 0; }
+        }
+        return parseFloat(biggest.amount) + sub;
+    })() : 0;
+
+    const insightText = catTxns.length === 0
+        ? `No ${category} expenses in this period.`
+        : catTxns.length === 1
+            ? `${category} has ${pct}% share of total expenses. Only one transaction logged — ${fmt(biggestTotal)} on ${biggest.date}.`
+            : `${category} accounts for ${pct}% of your total expenses (${catTxns.length} transactions). The biggest single charge was ${fmt(biggestTotal)} on ${biggest.date}.`;
+
+    const txnRows = catTxns.map(t => {
+        let sub = 0;
+        let subCount = 0;
+        if (t.subEntries) {
+            try {
+                const entries = typeof t.subEntries === 'string' ? JSON.parse(t.subEntries) : (Array.isArray(t.subEntries) ? t.subEntries : []);
+                sub = entries.reduce((ss, se) => ss + parseFloat(se.amount || 0), 0);
+                subCount = entries.length;
+            } catch { sub = 0; }
+        }
+        const tTotal = parseFloat(t.amount) + sub;
+        const statusColor = t.status === 'Completed' ? 'bg-[#008A00]/10 text-[#008A00]' : (t.status === 'Pending' ? 'bg-[#FF9F0A]/10 text-[#FF9F0A]' : 'bg-surface-variant text-secondary');
+
+        return `
+            <div
+                onclick="window.closeSheet('categoryBreakdownSheet'); setTimeout(() => window.openTransactionDetails('${t.id}'), 200);"
+                class="flex items-center gap-3 py-3 px-3 rounded-2xl active-bg transition-apple cursor-pointer border border-transparent hover:border-outline-variant"
+            >
+                <div class="w-10 h-10 rounded-xl bg-error/10 flex items-center justify-center shrink-0">
+                    <span class="material-symbols-outlined text-error text-[18px]">payments</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-[14px] font-semibold text-on-surface truncate">${t.title}</p>
+                    <div class="flex items-center gap-2 mt-0.5">
+                        <span class="text-[11px] text-secondary">${t.date}</span>
+                        ${t.paymentMethod ? `<span class="text-[10px] font-medium text-secondary bg-surface-variant px-1.5 py-0.5 rounded-md">${t.paymentMethod}</span>` : ''}
+                        ${subCount > 0 ? `<span class="text-[10px] font-bold text-primary bg-primary/10 px-1.5 py-0.5 rounded-md">${subCount} adds</span>` : ''}
+                    </div>
+                    ${t.notes ? `<p class="text-[11px] text-secondary italic mt-0.5 truncate">${t.notes}</p>` : ''}
+                </div>
+                <div class="text-right shrink-0">
+                    <p class="text-[15px] font-bold text-error">-${fmt(tTotal)}</p>
+                    ${subCount > 0 ? `<p class="text-[10px] text-secondary">${fmt(parseFloat(t.amount))} + adds</p>` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    return `
+        <div class="flex flex-col">
+            <!-- Insight card -->
+            <div class="mx-4 mt-4 mb-2 bg-error/5 border border-error/15 rounded-2xl p-4 flex gap-3">
+                <div class="w-8 h-8 rounded-xl bg-error/10 flex items-center justify-center shrink-0 mt-0.5">
+                    <span class="material-symbols-outlined text-error text-[18px]">auto_awesome</span>
+                </div>
+                <p class="text-[13px] text-on-surface leading-relaxed">${insightText}</p>
+            </div>
+
+            <!-- Stats row -->
+            <div class="mx-4 grid grid-cols-3 gap-3 mb-4">
+                <div class="bg-surface-container rounded-2xl p-3 text-center">
+                    <p class="text-[20px] font-bold text-error">${pct}%</p>
+                    <p class="text-[10px] text-secondary font-medium mt-0.5">of expenses</p>
+                </div>
+                <div class="bg-surface-container rounded-2xl p-3 text-center">
+                    <p class="text-[20px] font-bold text-on-surface">${catTxns.length}</p>
+                    <p class="text-[10px] text-secondary font-medium mt-0.5">transactions</p>
+                </div>
+                <div class="bg-surface-container rounded-2xl p-3 text-center">
+                    <p class="text-[13px] font-bold text-on-surface leading-tight">${fmt(catTotal)}</p>
+                    <p class="text-[10px] text-secondary font-medium mt-0.5">total spent</p>
+                </div>
+            </div>
+
+            <!-- Transaction list -->
+            <div class="px-4 mb-2">
+                <p class="text-[12px] font-semibold text-secondary uppercase tracking-wider mb-2">Transactions</p>
+                ${catTxns.length === 0
+                    ? `<div class="py-8 flex flex-col items-center text-secondary"><span class="material-symbols-outlined text-[40px] mb-2 opacity-40">receipt_long</span><p class="text-[14px]">No transactions in this period</p></div>`
+                    : `<div class="flex flex-col divide-y divide-outline-variant/30">${txnRows}</div>`
+                }
+            </div>
+
+            <div class="h-8"></div>
         </div>
     `;
 }

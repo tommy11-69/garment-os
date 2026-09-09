@@ -122,6 +122,7 @@ export function getOrderDetailsHeader(order) {
         default:             ['Fabric', 'Cutting', 'Stitching', 'Print', 'Iron', 'Dispatch'],
         print_before_stitch: ['Fabric', 'Cutting', 'Print', 'Stitching', 'Iron', 'Dispatch'],
         wash_before_stitch:  ['Fabric', 'Cutting', 'Wash', 'Stitching', 'Print', 'Iron', 'Dispatch'],
+        direct_fulfillment:  ['Procurement', 'Dispatch'],
     };
     const wf     = order.workflowType || 'default';
     const stages = STAGE_SEQS[wf] || STAGE_SEQS.default;
@@ -237,7 +238,7 @@ export function getOrderDetailsContent(order) {
                                     </div>
                                 `).join('');
 
-                                const stages = ['Fabric', 'Cutting', 'Stitching', 'Printing/Embroidery', 'Ironing & Packing', 'Dispatch'];
+                                const stages = order.workflowType === 'direct_fulfillment' ? ['Procurement', 'Dispatch', 'Delivered'] : ['Fabric', 'Cutting', 'Stitching', 'Printing/Embroidery', 'Ironing & Packing', 'Dispatch'];
                                 const stageOptions = stages.map(s => `
                                     <option value="${s}" ${p.status === s ? 'selected' : ''}>${s}</option>
                                 `).join('');
@@ -322,6 +323,29 @@ function renderProductionDataTab(order) {
 
     const wf = (order.workflowType || 'default').replace(/_/g, ' ');
 
+    // Workflow badge
+    const wfBadge = `<div class="flex items-center gap-2 mb-4">
+        <span class="text-[11px] font-bold text-secondary uppercase tracking-wider">Workflow:</span>
+        <span class="px-2.5 py-1 rounded-md text-[11px] font-bold bg-primary/10 text-primary capitalize">${wf}</span>
+    </div>`;
+
+    if (order.workflowType === 'direct_fulfillment') {
+        const procurement = sd.procurement || {};
+        return wfBadge + `
+            <div class="bg-surface-container-lowest border border-outline-variant rounded-2xl p-4 mb-3">
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="material-symbols-outlined text-[18px] text-primary">shopping_cart</span>
+                    <h4 class="text-[13px] font-bold text-secondary uppercase tracking-wider">Procurement</h4>
+                </div>
+                <div class="grid grid-cols-2 gap-y-2.5">
+                    <div><p class="text-[11px] text-secondary">Vendor</p><p class="text-[14px] font-semibold text-on-surface">${procurement.vendorName || '-'}</p></div>
+                    <div><p class="text-[11px] text-secondary">Purchase Cost</p><p class="text-[14px] font-bold text-primary">${procurement.purchaseCost ? 'Rs.'+(+procurement.purchaseCost).toLocaleString('en-IN') : '-'}</p></div>
+                    <div><p class="text-[11px] text-secondary">Arrival Date</p><p class="text-[14px] font-semibold text-on-surface">${procurement.expectedArrival || '-'}</p></div>
+                </div>
+            </div>
+        `;
+    }
+
     // Fabric card
     const fabricCard = `
         <div class="bg-surface-container-lowest border border-outline-variant rounded-2xl p-4 mb-3">
@@ -382,12 +406,6 @@ function renderProductionDataTab(order) {
             </div>
             ${print.notes ? `<p class="text-[13px] text-secondary mt-2">${print.notes}</p>` : ''}
         </div>`;
-
-    // Workflow badge
-    const wfBadge = `<div class="flex items-center gap-2 mb-4">
-        <span class="text-[11px] font-bold text-secondary uppercase tracking-wider">Workflow:</span>
-        <span class="px-2.5 py-1 rounded-md text-[11px] font-bold bg-primary/10 text-primary capitalize">${wf}</span>
-    </div>`;
 
     return wfBadge + fabricCard + cuttingCard + washCard + printCard;
 }

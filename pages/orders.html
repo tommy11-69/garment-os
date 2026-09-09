@@ -1,6 +1,13 @@
 <!DOCTYPE html>
 <html class="light" lang="en">
 <head>
+    <!-- Favicon & PWA Icons -->
+    <link rel="icon" type="image/png" sizes="192x192" href="../assets/icon-192.png">
+    <link rel="icon" type="image/webp" href="../assets/logo-primary.webp">
+    <link rel="apple-touch-icon" sizes="180x180" href="../assets/apple-touch-icon.png">
+    <link rel="manifest" href="../manifest.json">
+    <meta name="theme-color" content="#0059b5">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -127,6 +134,7 @@
                 <!-- Stage filter chips (scrollable) -->
                 <div class="stage-chips-row" id="stage-chips-row">
                     <button class="stage-chip active" data-stage="all" onclick="window.setStageFilter('all')">All Stages</button>
+                    <button class="stage-chip inactive" data-stage="Procurement" onclick="window.setStageFilter('Procurement')">Procurement</button>
                     <button class="stage-chip inactive" data-stage="Fabric" onclick="window.setStageFilter('Fabric')">Fabric</button>
                     <button class="stage-chip inactive" data-stage="Cutting" onclick="window.setStageFilter('Cutting')">Cutting</button>
                     <button class="stage-chip inactive" data-stage="Stitching" onclick="window.setStageFilter('Stitching')">Stitching</button>

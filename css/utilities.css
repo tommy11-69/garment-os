@@ -105,6 +105,11 @@
     margin: 12px auto 24px;
 }
 
+/* Bottom Sheet Content - Allow dropdowns to escape overflow clipping */
+.bottom-sheet-content > div[class*="flex"] {
+    overflow: visible !important;
+}
+
 /* Transitions & Touch States */
 .transition-apple {
     transition-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
@@ -144,4 +149,17 @@
         rgba(255,255,255,0.06) 75%
     );
     background-size: 200% 100%;
+}
+
+/* Searchable Select Wrapper - Ensure dropdowns aren't clipped by overflow */
+.searchable-select-wrapper {
+    overflow: visible !important;
+    position: relative;
+    z-index: 100;
+}
+
+/* Dropdown positioning */
+[id$="-dropdown"] {
+    position: absolute !important;
+    z-index: 9999 !important;
 }

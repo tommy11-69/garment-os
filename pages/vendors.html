@@ -12,12 +12,12 @@
     <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Garment OS - Customers</title>
+    <title>Garment OS - Vendors</title>
     
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com" rel="preconnect"/>
     <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
     
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <script src="../js/tailwind.config.js"></script>
@@ -34,47 +34,46 @@
         <main id="main-content-area" class="flex-1 p-md flex flex-col gap-lg">
             
             <div class="px-xs pt-sm">
-                <h2 class="text-[28px] leading-tight font-semibold tracking-tight text-on-surface mb-1">Customers</h2>
-                <p class="text-body text-secondary">24 Active Partners</p>
+                <h2 class="text-[28px] leading-tight font-semibold tracking-tight text-on-surface mb-1">Vendors</h2>
+                <p id="vendors-count" class="text-body text-secondary">Manage suppliers and vendor relationships</p>
             </div>
             
             <!-- Mobile Search & Filter -->
             <div class="flex gap-2 w-full">
                 <div class="relative flex-1">
                     <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
-                    <input class="w-full bg-surface-container-lowest border border-outline-variant rounded-2xl py-3 pl-12 pr-4 font-body text-[16px] text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary/20 transition-apple shadow-sm" placeholder="Search..." type="text"/>
+                    <input id="vendor-search" class="w-full bg-surface-container-lowest border border-outline-variant rounded-2xl py-3 pl-12 pr-4 font-body text-[16px] text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary/20 transition-apple shadow-sm" placeholder="Search..." type="text"/>
                 </div>
                 <button class="w-[50px] h-[50px] rounded-2xl bg-surface-container-lowest border border-outline-variant shadow-sm flex items-center justify-center text-secondary active:bg-surface-variant transition-colors">
                     <span class="material-symbols-outlined">tune</span>
                 </button>
             </div>
 
-            <!-- Customer Cards List -->
-            <div class="flex flex-col gap-md">
-                
-                <!-- Customers will be injected here -->
-                <div id="customers-list-container" class="flex flex-col gap-md min-h-[200px]"></div>
+            <!-- Segmented Control for Active / Inactive -->
+            <div class="flex p-1 bg-surface-container rounded-[16px] border border-outline-variant/50">
+                <button id="filter-active" class="flex-1 py-2 rounded-[12px] text-[13px] font-semibold bg-surface-container-lowest text-on-surface shadow-sm transition-all" onclick="window.setFilter('status', 'Active')">Active</button>
+                <button id="filter-inactive" class="flex-1 py-2 rounded-[12px] text-[13px] font-semibold text-secondary transition-all" onclick="window.setFilter('status', 'Inactive')">Inactive</button>
+                <button id="filter-all" class="flex-1 py-2 rounded-[12px] text-[13px] font-semibold text-secondary transition-all" onclick="window.setFilter('status', 'All')">All</button>
+            </div>
 
+            <!-- Vendor Cards List -->
+            <div class="flex flex-col gap-md">
+                <div id="vendors-list-container" class="flex flex-col gap-md min-h-[200px]"></div>
             </div>
             
             <div class="h-6"></div>
         </main>
     </div>
     
-    <!-- Floating Action Button for Add Customer -->
-    <div id="fab-container" data-icon="add" data-action="openSheet('addCustomerSheet')"></div>
+    <!-- Floating Action Button for Add Vendor -->
+    <div id="fab-container" data-icon="add" data-action="openSheet('addVendorSheet')"></div>
 
     <div id="bottom-nav-container"></div>
 
-    <!-- ========================================== -->
     <!-- BOTTOM SHEETS -->
-    <!-- ========================================== -->
-
-    <!-- Add Customer Sheet -->
     <div id="sheets-container"></div>
     
-    <script type="module" src="../js/customers/index.js"></script>
-
+    <script type="module" src="../js/vendors/index.js"></script>
     <script src="../js/utils/sheet.js"></script>
     <script src="../js/app.js"></script>
 </body>

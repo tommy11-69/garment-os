@@ -1,6 +1,13 @@
 <!DOCTYPE html>
 <html class="light" lang="en">
 <head>
+    <!-- Favicon & PWA Icons -->
+    <link rel="icon" type="image/png" sizes="192x192" href="../assets/icon-192.png">
+    <link rel="icon" type="image/webp" href="../assets/logo-primary.webp">
+    <link rel="apple-touch-icon" sizes="180x180" href="../assets/apple-touch-icon.png">
+    <link rel="manifest" href="../manifest.json">
+    <meta name="theme-color" content="#0059b5">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -53,6 +60,18 @@
                             <div class="flex-1">
                                 <h3 class="text-[17px] font-semibold text-on-surface">Inventory</h3>
                                 <p class="text-[14px] text-secondary">Fabric, yarn, accessories, alerts</p>
+                            </div>
+                            <span class="material-symbols-outlined text-outline-variant group-active:text-secondary transition-colors">chevron_right</span>
+                        </a>
+                    </li>
+                    <li>
+                        <a href="vendors.html" class="flex items-center gap-md p-lg active:bg-surface-variant transition-colors group">
+                            <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+                                <span class="material-symbols-outlined text-[20px]">storefront</span>
+                            </div>
+                            <div class="flex-1">
+                                <h3 class="text-[17px] font-semibold text-on-surface">Vendors</h3>
+                                <p class="text-[14px] text-secondary">Manage suppliers, purchases, payments</p>
                             </div>
                             <span class="material-symbols-outlined text-outline-variant group-active:text-secondary transition-colors">chevron_right</span>
                         </a>

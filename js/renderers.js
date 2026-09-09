@@ -331,51 +331,7 @@ export const renderers = {
         `;
     },
 
-    transactionCard(t, isSelected = false) {
-        const isIncome = t.type === 'Income';
-        const color = isIncome ? 'text-[#008A00]' : 'text-error';
-        const bg = isIncome ? 'bg-[#008A00]/10' : 'bg-error/10';
-        const icon = isIncome ? 'arrow_downward' : 'arrow_upward';
-        const amountStr = (isIncome ? '+' : '-') + '₹' + parseFloat(t.amount).toLocaleString(undefined, {minimumFractionDigits:2});
-        
-        const statusColor = t.status === 'Completed' ? 'bg-[#008A00]/10 text-[#008A00]' : 
-                            (t.status === 'Pending' ? 'bg-[#FF9F0A]/10 text-[#FF9F0A]' : 'bg-surface-variant text-secondary');
 
-        return `
-            <div class="relative bg-surface-container-lowest rounded-[24px] border ${isSelected ? 'border-primary shadow-sm bg-primary/5' : 'border-outline-variant shadow-sm'} p-md mb-3 flex items-start gap-4 transition-colors">
-                <div class="absolute left-4 top-1/2 -translate-y-1/2 flex items-center justify-center">
-                    <input type="checkbox" 
-                           ${isSelected ? 'checked' : ''} 
-                           onchange="window.toggleTransactionSelection('${t.id}')"
-                           class="w-5 h-5 rounded-md border-outline text-primary focus:ring-primary focus:ring-offset-0 bg-transparent transition-apple cursor-pointer z-10"
-                           onclick="event.stopPropagation()">
-                </div>
-                
-                <div class="flex-1 ml-8 flex items-start gap-3 cursor-pointer" onclick="window.openTransactionDetails('${t.id}')">
-                    <div class="w-10 h-10 rounded-full ${bg} flex items-center justify-center shrink-0">
-                        <span class="material-symbols-outlined text-[20px] ${color}">${icon}</span>
-                    </div>
-                    
-                    <div class="flex-1 min-w-0">
-                        <div class="flex justify-between items-start mb-0.5">
-                            <h4 class="text-[15px] font-bold text-on-surface truncate pr-2">${t.title}</h4>
-                            <span class="text-[15px] font-bold ${color} whitespace-nowrap">${amountStr}</span>
-                        </div>
-                        
-            <div>
-                <div class="flex justify-between items-end mb-2">
-                    <div>
-                        <span class="text-body-bold text-on-surface block">Batch #${batch.id}</span>
-                        <span class="text-[13px] text-secondary">${batch.description}</span>
-                    </div>
-                    <span class="text-[13px] font-medium text-primary">${batch.phase} ${batch.progress}%</span>
-                </div>
-                <div class="relative w-full h-2.5 bg-surface-container rounded-full overflow-hidden">
-                    <div class="absolute top-0 left-0 h-full ${batch.progressColor} rounded-full" style="width: ${batch.progress}%;"></div>
-                </div>
-            </div>
-        `;
-    },
 
     inventoryCard(item) {
         return `
@@ -526,55 +482,51 @@ export const renderers = {
         `;
     },
 
-    transactionCard(t, isSelected = false) {
+    transactionCard(t) {
         const isIncome = t.type === 'Income';
         const color = isIncome ? 'text-[#008A00]' : 'text-error';
         const bg = isIncome ? 'bg-[#008A00]/10' : 'bg-error/10';
         const icon = isIncome ? 'arrow_downward' : 'arrow_upward';
-        const amountStr = (isIncome ? '+' : '-') + '₹' + parseFloat(t.amount).toLocaleString(undefined, {minimumFractionDigits:2});
+        const amountStr = (isIncome ? '+' : '-') + '₹' + parseFloat(t.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         
-        const statusColor = t.status === 'Completed' ? 'bg-[#008A00]/10 text-[#008A00]' : 
-                            (t.status === 'Pending' ? 'bg-[#FF9F0A]/10 text-[#FF9F0A]' : 'bg-surface-variant text-secondary');
+        const statusBg = t.status === 'Completed' ? 'bg-[#008A00]/10 text-[#008A00]' : 
+                         (t.status === 'Pending' ? 'bg-[#FF9F0A]/10 text-[#FF9F0A]' : 'bg-surface-variant text-secondary');
 
         return `
-            <div class="relative bg-surface-container-lowest rounded-[24px] border ${isSelected ? 'border-primary shadow-sm bg-primary/5' : 'border-outline-variant shadow-sm'} p-md mb-3 flex items-start gap-4 transition-colors">
-                <div class="absolute left-4 top-1/2 -translate-y-1/2 flex items-center justify-center">
-                    <input type="checkbox" 
-                           ${isSelected ? 'checked' : ''} 
-                           onchange="window.toggleTransactionSelection('${t.id}')"
-                           class="w-5 h-5 rounded-md border-outline text-primary focus:ring-primary focus:ring-offset-0 bg-transparent transition-apple cursor-pointer z-10"
-                           onclick="event.stopPropagation()">
-                </div>
-                
-                <div class="flex-1 ml-8 flex items-start gap-3 cursor-pointer" onclick="window.openTransactionDetails('${t.id}')">
-                    <div class="w-10 h-10 rounded-full ${bg} flex items-center justify-center shrink-0">
+            <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant/60 p-4 mb-3 shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:shadow-sm transition-all cursor-pointer active-scale" onclick="window.openTransactionDetails('${t.id}')">
+                <div class="flex items-start gap-3.5">
+                    <div class="w-11 h-11 rounded-full ${bg} flex items-center justify-center shrink-0 mt-0.5">
                         <span class="material-symbols-outlined text-[20px] ${color}">${icon}</span>
                     </div>
                     
                     <div class="flex-1 min-w-0">
-                        <div class="flex justify-between items-start mb-0.5">
-                            <h4 class="text-[15px] font-bold text-on-surface truncate pr-2">${t.title}</h4>
-                            <span class="text-[15px] font-bold ${color} whitespace-nowrap">${amountStr}</span>
+                        <div class="flex justify-between items-baseline mb-1.5 gap-2">
+                            <h4 class="text-[15px] font-bold text-on-surface truncate tracking-tight">${t.title}</h4>
+                            <span class="text-[16px] font-extrabold ${color} whitespace-nowrap shrink-0">${amountStr}</span>
                         </div>
                         
-                        <div class="flex items-center gap-2 mb-1.5 flex-wrap">
-                            <span class="text-[12px] font-medium px-2 py-0.5 rounded-md bg-surface-container text-on-surface-variant">${t.category}</span>
-                            <span class="text-[12px] font-medium px-2 py-0.5 rounded-md ${statusColor}">${t.status}</span>
+                        <div class="flex items-center gap-2 mb-2.5 flex-wrap">
+                            <span class="text-[12px] font-semibold px-2.5 py-1 rounded-lg bg-surface-variant/80 text-on-surface-variant">${t.category}</span>
+                            <span class="text-[12px] font-semibold px-2.5 py-1 rounded-lg ${statusBg}">${t.status}</span>
                         </div>
                         
-                        <div class="flex items-center justify-between text-[11px] text-secondary">
+                        ${t.notes ? `
+                        <p class="text-[13px] text-secondary mb-2.5 italic line-clamp-2 bg-surface-variant/30 px-3 py-1.5 rounded-lg border-l-2 border-primary/30">
+                            "${t.notes}"
+                        </p>` : ''}
+                        
+                        <div class="flex items-center justify-between text-[12px] text-secondary font-medium pt-1 border-t border-outline-variant/20">
                             <div class="flex items-center gap-1.5">
-                                <span class="material-symbols-outlined text-[14px]">calendar_today</span>
+                                <span class="material-symbols-outlined text-[15px]">calendar_today</span>
                                 <span>${t.date}</span>
-                                <span>•</span>
-                                <span>${t.paymentMethod}</span>
+                                <span class="text-outline-variant">•</span>
+                                <span>${t.paymentMethod || 'Bank Transfer'}</span>
                             </div>
-                            <span class="truncate max-w-[80px]">${t.referenceNo || ''}</span>
+                            ${t.referenceNo ? `<span class="text-[11px] text-secondary/80 font-mono">#${t.referenceNo}</span>` : ''}
                         </div>
                     </div>
                 </div>
-            </div>
-        `;
+            </div>`;
     },
 
     dashboardCustomerCard(c) {

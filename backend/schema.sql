@@ -31,6 +31,32 @@ CREATE TABLE IF NOT EXISTS customers (
     updatedAt TEXT DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS vendors (
+    _rowid INTEGER PRIMARY KEY AUTOINCREMENT,
+    id TEXT UNIQUE NOT NULL,
+    name TEXT NOT NULL,
+    contactPerson TEXT DEFAULT '',
+    phone TEXT DEFAULT '',
+    email TEXT DEFAULT '',
+    address TEXT DEFAULT '',
+    city TEXT DEFAULT '',
+    state TEXT DEFAULT '',
+    pincode TEXT DEFAULT '',
+    gstin TEXT DEFAULT '',
+    vendorType TEXT DEFAULT 'Other',
+    paymentTerms TEXT DEFAULT '',
+    bankName TEXT DEFAULT '',
+    accountNumber TEXT DEFAULT '',
+    ifsc TEXT DEFAULT '',
+    upiId TEXT DEFAULT '',
+    notes TEXT DEFAULT '',
+    status TEXT DEFAULT 'Active',
+    statusColor TEXT DEFAULT 'bg-[#008A00]/10 text-[#008A00]',
+    isActive INTEGER DEFAULT 1,
+    createdAt TEXT DEFAULT (datetime('now')),
+    updatedAt TEXT DEFAULT (datetime('now'))
+);
+
 CREATE TABLE IF NOT EXISTS orders (
     _rowid INTEGER PRIMARY KEY AUTOINCREMENT,
     id TEXT UNIQUE NOT NULL,
@@ -132,6 +158,7 @@ CREATE TABLE IF NOT EXISTS transactions (
     iconColor TEXT DEFAULT '',
     linkedBatchId TEXT DEFAULT '',
     linkedOrderId TEXT DEFAULT '',
+    subEntries TEXT DEFAULT '',
     createdAt TEXT DEFAULT (datetime('now')),
     updatedAt TEXT DEFAULT (datetime('now'))
 );

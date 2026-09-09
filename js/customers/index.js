@@ -283,7 +283,7 @@ window.openCustomerDetails = async function(id) {
     if (!customer) return;
 
     const container = document.getElementById('sheets-container');
-    const existing = document.getElementById('customerDetailsSheet');
+    const existing = document.getElementById('customerDetailsSheet-content');
     if (existing) {
         existing.remove(); 
         const overlay = document.getElementById('customerDetailsSheet-overlay');
@@ -310,7 +310,7 @@ window.openEditCustomer = async function(id) {
     window.closeSheet('customerDetailsSheet');
 
     const container = document.getElementById('sheets-container');
-    const existing = document.getElementById('editCustomerSheet');
+    const existing = document.getElementById('editCustomerSheet-content');
     if (existing) {
         existing.remove();
         const overlay = document.getElementById('editCustomerSheet-overlay');
