@@ -125,17 +125,20 @@ $method = $_SERVER['REQUEST_METHOD'];
 $rawInput = file_get_contents('php://input');
 $body = json_decode($rawInput, true) ?: [];
 
+// Auto-migrate sessions table if expiresAt is still INT
+try {
+    $colInfo = $pdo->query("SHOW COLUMNS FROM `sessions` LIKE 'expiresAt'")->fetch();
+    if ($colInfo && strpos(strtolower($colInfo['Type']), 'bigint') === false) {
+        $pdo->exec("ALTER TABLE `sessions` MODIFY `expiresAt` BIGINT NOT NULL");
+    }
+} catch (Exception $e) { /* ignore if already modified */ }
+
 // ── Route: /api/health ───────────────────────────────────────────────
 if ($relPath === 'health') {
-    $colStmt = $pdo->query("SHOW COLUMNS FROM `sessions`");
-    $sessCols = $colStmt->fetchAll();
-    $latestSession = $pdo->query("SELECT * FROM `sessions` ORDER BY `createdAt` DESC LIMIT 1")->fetch();
     jsonResponse([
         'status' => 'healthy',
         'timestamp' => date('c'),
-        'db' => 'MariaDB',
-        'sessions_schema' => $sessCols,
-        'latest_session' => $latestSession
+        'db' => 'MariaDB'
     ]);
 }
 
