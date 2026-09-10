@@ -245,7 +245,7 @@ INSERT INTO `users` (`_rowid`,`id`,`username`,`password_hash`,`createdAt`) VALUE
 CREATE TABLE sessions (
     `token` VARCHAR(191) PRIMARY KEY,
     userId LONGTEXT NOT NULL,
-    expiresAt INT NOT NULL,
+    expiresAt BIGINT NOT NULL,
     createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 INSERT INTO `sessions` (`token`,`userId`,`expiresAt`,`createdAt`) VALUES('c02b5a77-493a-41fc-8a43-d8eba50bef10','u-admin',1787570956892,'2026-08-24 10:29:16');

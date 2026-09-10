@@ -6,6 +6,9 @@
     RewriteCond %{HTTP:Authorization} ^(.*)
     RewriteRule .* - [e:HTTP_AUTHORIZATION:%1]
 
+    # Additional LiteSpeed / Apache rules for Authorization header
+    SetEnvIf Authorization "(.*)" HTTP_AUTHORIZATION=$1
+
     # Route all /api/* requests to api/index.php
     RewriteRule ^api/(.*)$ api/index.php [QSA,L]
     RewriteRule ^api$ api/index.php [QSA,L]

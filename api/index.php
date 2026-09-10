@@ -168,17 +168,20 @@ if ($relPath === 'auth/login') {
 }
 
 // ── Auth Token Verification for all other API endpoints ──────────────
-$authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? '';
+$authHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
 if (!$authHeader && function_exists('apache_request_headers')) {
     $headers = apache_request_headers();
     $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? '';
+}
+if (!$authHeader && isset($_SERVER['PHP_AUTH_BEARER'])) {
+    $authHeader = 'Bearer ' . $_SERVER['PHP_AUTH_BEARER'];
 }
 
 if (!$authHeader || !str_starts_with($authHeader, 'Bearer ')) {
     jsonResponse(['error' => 'Unauthorized: No token provided'], 401);
 }
 
-$token = substr($authHeader, 7);
+$token = trim(substr($authHeader, 7));
 $nowMs = round(microtime(true) * 1000);
 $stmt = $pdo->prepare('SELECT * FROM sessions WHERE `token` = ? AND `expiresAt` > ?');
 $stmt->execute([$token, $nowMs]);
