@@ -359,7 +359,7 @@ if ($method === 'POST') {
     $values = array_map(fn($c) => $data[$c], $insertCols);
 
     $stmt = $pdo->prepare("INSERT INTO `{$table}` ({$colsList}) VALUES ({$placeholders})");
-    $stmt->execute($values);
+    $stmt->execute(array_values($values));
 
     $fetchStmt = $pdo->prepare("SELECT * FROM `{$table}` WHERE `id` = ?");
     $fetchStmt->execute([$data['id']]);
@@ -383,7 +383,7 @@ if ($method === 'PUT') {
     $values[] = $id;
 
     $stmt = $pdo->prepare("UPDATE `{$table}` SET {$setList} WHERE `id` = ?");
-    $stmt->execute($values);
+    $stmt->execute(array_values($values));
 
     $fetchStmt = $pdo->prepare("SELECT * FROM `{$table}` WHERE `id` = ?");
     $fetchStmt->execute([$id]);
