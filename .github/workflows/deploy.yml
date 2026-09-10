@@ -25,6 +25,9 @@ jobs:
             **/.git*/**
             **/node_modules/**
             backend/node_modules/**
+            backend/database/**
+            backend/scripts/**
             d1_remote_backup.sql
+            backend/mariadb_backup.sql
             backup.sql
             *.log
