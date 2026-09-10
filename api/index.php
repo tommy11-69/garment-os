@@ -134,13 +134,43 @@ $method = $_SERVER['REQUEST_METHOD'];
 $rawInput = file_get_contents('php://input');
 $body = json_decode($rawInput, true) ?: [];
 
-// Auto-migrate sessions table if expiresAt is still INT
+// Auto-migrate schema fixes
 try {
+    // 1. Ensure sessions expiresAt is BIGINT
     $colInfo = $pdo->query("SHOW COLUMNS FROM `sessions` LIKE 'expiresAt'")->fetch();
     if ($colInfo && strpos(strtolower($colInfo['Type']), 'bigint') === false) {
         $pdo->exec("ALTER TABLE `sessions` MODIFY `expiresAt` BIGINT NOT NULL");
     }
-} catch (Exception $e) { /* ignore if already modified */ }
+
+    // 2. Ensure vendors table exists
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `vendors` (
+        `_rowid` INT AUTO_INCREMENT PRIMARY KEY,
+        `id` VARCHAR(191) UNIQUE NOT NULL,
+        `name` LONGTEXT NOT NULL,
+        `contactPerson` LONGTEXT DEFAULT '',
+        `phone` LONGTEXT DEFAULT '',
+        `email` LONGTEXT DEFAULT '',
+        `address` LONGTEXT DEFAULT '',
+        `city` LONGTEXT DEFAULT '',
+        `state` LONGTEXT DEFAULT '',
+        `pincode` LONGTEXT DEFAULT '',
+        `gstin` LONGTEXT DEFAULT '',
+        `vendorType` LONGTEXT DEFAULT 'Other',
+        `paymentTerms` LONGTEXT DEFAULT '',
+        `bankName` LONGTEXT DEFAULT '',
+        `accountNumber` LONGTEXT DEFAULT '',
+        `ifsc` LONGTEXT DEFAULT '',
+        `upiId` LONGTEXT DEFAULT '',
+        `notes` LONGTEXT DEFAULT '',
+        `status` LONGTEXT DEFAULT 'Active',
+        `statusColor` LONGTEXT DEFAULT 'bg-[#008A00]/10 text-[#008A00]',
+        `isActive` INT DEFAULT 1,
+        `createdAt` DATETIME DEFAULT CURRENT_TIMESTAMP,
+        `updatedAt` DATETIME DEFAULT CURRENT_TIMESTAMP
+    )");
+} catch (Exception $e) { /* ignore */ }
+
+try {
 
 // ── Route: /api/health ───────────────────────────────────────────────
 if ($relPath === 'health') {
@@ -374,3 +404,9 @@ if ($method === 'DELETE') {
 }
 
 jsonResponse(['error' => 'Method not allowed'], 405);
+
+} catch (PDOException $pe) {
+    jsonResponse(['error' => 'Database Query Error: ' . $pe->getMessage()], 500);
+} catch (Throwable $e) {
+    jsonResponse(['error' => 'Server Error: ' . $e->getMessage()], 500);
+}
