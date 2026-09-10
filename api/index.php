@@ -65,11 +65,20 @@ function hydrateRow($table, $row) {
     
     $jsonCols = JSON_COLUMNS[$table] ?? [];
     foreach ($jsonCols as $col) {
-        if (isset($row[$col]) && is_string($row[$col])) {
-            $decoded = json_decode($row[$col], true);
-            if (json_last_error() === JSON_ERROR_NONE) {
-                $row[$col] = $decoded;
+        if (isset($row[$col])) {
+            if (is_string($row[$col])) {
+                $raw = $row[$col];
+                // Clean up any stray backticks that were converted in regex dumps
+                if (strpos($raw, '`') !== false) {
+                    $raw = str_replace('`', '"', $raw);
+                }
+                $decoded = json_decode($raw, true);
+                $row[$col] = (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) ? $decoded : [];
+            } elseif (!is_array($row[$col])) {
+                $row[$col] = [];
             }
+        } else {
+            $row[$col] = [];
         }
     }
     // Booleans

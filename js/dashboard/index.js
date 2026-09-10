@@ -102,8 +102,12 @@ function renderUI(state) {
     const activities = [];
     if (orders) {
         orders.forEach(o => {
-            if (o.timeline) {
-                o.timeline.forEach(t => {
+            let timeline = o.timeline;
+            if (typeof timeline === 'string') {
+                try { timeline = JSON.parse(timeline); } catch (e) { timeline = []; }
+            }
+            if (Array.isArray(timeline)) {
+                timeline.forEach(t => {
                     activities.push({
                         title: t.status || t.title || 'Order Update',
                         message: `Order ${o.id} (${o.product}) - ${t.title || t.status}`,
