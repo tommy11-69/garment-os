@@ -127,7 +127,16 @@ $body = json_decode($rawInput, true) ?: [];
 
 // ── Route: /api/health ───────────────────────────────────────────────
 if ($relPath === 'health') {
-    jsonResponse(['status' => 'healthy', 'timestamp' => date('c'), 'db' => 'MariaDB']);
+    $colStmt = $pdo->query("SHOW COLUMNS FROM `sessions`");
+    $sessCols = $colStmt->fetchAll();
+    $latestSession = $pdo->query("SELECT * FROM `sessions` ORDER BY `createdAt` DESC LIMIT 1")->fetch();
+    jsonResponse([
+        'status' => 'healthy',
+        'timestamp' => date('c'),
+        'db' => 'MariaDB',
+        'sessions_schema' => $sessCols,
+        'latest_session' => $latestSession
+    ]);
 }
 
 // ── Route: /api/auth/login ───────────────────────────────────────────
