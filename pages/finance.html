@@ -235,6 +235,20 @@
 
             <!-- ── Balance Sheet View ── -->
             <div id="balance-sheet-view" class="hidden flex-col gap-4 animate-fade-in">
+                <!-- Period Status Header -->
+                <div class="flex items-center justify-between px-1">
+                    <span class="text-[13px] font-bold text-on-surface uppercase tracking-wider">Statement Summary</span>
+                    <div id="bs-period-selector" class="flex items-center gap-0.5 p-1 bg-surface-container-lowest border border-outline-variant rounded-xl shrink-0">
+                        <button class="period-pill active text-[11px] font-bold px-2.5 py-1 rounded-lg" data-period="7d" onclick="window.finSetPeriod('7d')">7D</button>
+                        <button class="period-pill inactive text-[11px] font-bold px-2.5 py-1 rounded-lg" data-period="1m" onclick="window.finSetPeriod('1m')">1M</button>
+                        <button class="period-pill inactive text-[11px] font-bold px-2.5 py-1 rounded-lg" data-period="3m" onclick="window.finSetPeriod('3m')">3M</button>
+                        <button class="period-pill inactive text-[11px] font-bold px-2.5 py-1 rounded-lg flex items-center gap-1 active-scale" data-period="custom" onclick="window.openCustomDateFilter()" title="Custom Date Range">
+                            <span class="material-symbols-outlined text-[14px] leading-none">calendar_month</span>
+                            <span class="hidden sm:inline">Custom</span>
+                        </button>
+                    </div>
+                </div>
+
                 <!-- Assets -->
                 <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant p-lg shadow-sm">
                     <h3 class="text-[16px] font-bold text-on-surface mb-4">Assets</h3>
@@ -286,10 +300,14 @@
                 </div>
 
                 <!-- Equity / Net Worth -->
-                <div class="bg-primary/5 rounded-[24px] border border-primary/20 p-lg shadow-sm mt-2">
-                    <p class="text-[13px] font-semibold text-primary uppercase tracking-wider mb-1">Net Worth (Equity)</p>
-                    <div id="bs-equity" class="text-[32px] font-bold tracking-tight text-primary">₹0.00</div>
-                    <p class="text-[12px] text-secondary mt-1">Total Assets minus Total Liabilities</p>
+                <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant p-lg shadow-sm">
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="text-[13px] font-semibold text-primary uppercase tracking-wider mb-1">Net Worth (Equity)</p>
+                            <div id="bs-equity" class="text-[32px] font-bold tracking-tight text-primary">₹0.00</div>
+                            <p class="text-[12px] text-secondary mt-1">Total Assets minus Total Liabilities</p>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -368,7 +386,7 @@
             if (balanceSheetView) { balanceSheetView.classList.remove('hidden'); balanceSheetView.classList.add('flex'); }
             if (tabCashFlow) { tabCashFlow.classList.remove('bg-primary', 'text-white', 'shadow-sm'); tabCashFlow.classList.add('text-secondary', 'hover:text-on-surface'); }
             if (tabBalanceSheet) { tabBalanceSheet.classList.add('bg-primary', 'text-white', 'shadow-sm'); tabBalanceSheet.classList.remove('text-secondary', 'hover:text-on-surface'); }
-            if (periodSelector) periodSelector.classList.add('hidden');
+            if (periodSelector) periodSelector.classList.remove('hidden'); // Keep period selector visible for Balance Sheet too!
             if (fab) fab.classList.add('hidden');
         }
     };
@@ -411,6 +429,9 @@
                 el.classList.toggle('inactive', !isActive);
             });
             if (_transactions.length) renderAllCharts(_transactions);
+            if (typeof window.onFinancePeriodChanged === 'function') {
+                window.onFinancePeriodChanged(period, customRange);
+            }
         };
 
         // Called by finance/index.js after data loads

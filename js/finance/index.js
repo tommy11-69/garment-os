@@ -503,22 +503,97 @@ function renderDashboard(metrics) {
     `;
 }
 
+window._currentFinancePeriod = '7d';
+window._currentFinanceCustomRange = null;
+
+function getActivePeriodBounds() {
+    const period = window._currentFinancePeriod || '7d';
+    const custom = window._currentFinanceCustomRange;
+    const now = new Date();
+    let startDateStr = null;
+    let endDateStr = now.toISOString().split('T')[0];
+    let label = 'Last 7 Days';
+
+    if (period === '7d') {
+        const d = new Date(now.getTime() - 7 * 86400000);
+        startDateStr = d.toISOString().split('T')[0];
+        label = 'Last 7 Days';
+    } else if (period === '1m') {
+        const d = new Date(now.getTime() - 30 * 86400000);
+        startDateStr = d.toISOString().split('T')[0];
+        label = 'Last 30 Days (1M)';
+    } else if (period === '3m') {
+        const d = new Date(now.getTime() - 90 * 86400000);
+        startDateStr = d.toISOString().split('T')[0];
+        label = 'Last 90 Days (3M)';
+    } else if (period === 'custom' && custom && custom.startDate && custom.endDate) {
+        startDateStr = custom.startDate;
+        endDateStr = custom.endDate;
+        const sD = new Date(startDateStr + 'T00:00:00');
+        const eD = new Date(endDateStr + 'T00:00:00');
+        label = `${sD.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })} – ${eD.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}`;
+    }
+
+    return { period, startDateStr, endDateStr, label };
+}
+
 function renderBalanceSheet(metrics) {
-    const formatMoney = (amount) => '₹' + parseFloat(amount).toLocaleString(undefined, {minimumFractionDigits: 2});
-    
-    // Calculate Values
-    const cash = metrics.currentBalance || 0;
-    const ar = metrics.pendingReceivables || 0;
-    // Inventory value: auto-computed from real data (quantity × unitCost per item)
+    const formatMoney = (amount) => '₹' + parseFloat(amount || 0).toLocaleString(undefined, {minimumFractionDigits: 2});
+    const bounds = getActivePeriodBounds();
+
+    const allTxns = financeStore.getState().allTransactions || [];
+
+    // 1. Calculate Opening Cash Balance (historical: all completed txns BEFORE startDateStr)
+    let openingCash = 0;
+    if (bounds.startDateStr) {
+        const priorTxns = allTxns.filter(t => t.status === 'Completed' && (t.date || '').split('T')[0] < bounds.startDateStr);
+        openingCash = priorTxns.reduce((s, t) => t.type === 'Income' ? s + parseFloat(t.amount || 0) : s - parseFloat(t.amount || 0), 0);
+    }
+
+    // 2. Period completed cash txns (between startDateStr and endDateStr)
+    const periodCashTxns = allTxns.filter(t => {
+        if (t.status !== 'Completed') return false;
+        const d = (t.date || '').split('T')[0];
+        if (bounds.startDateStr && d < bounds.startDateStr) return false;
+        if (bounds.endDateStr && d > bounds.endDateStr) return false;
+        return true;
+    });
+
+    const periodNetCash = periodCashTxns.reduce((s, t) => t.type === 'Income' ? s + parseFloat(t.amount || 0) : s - parseFloat(t.amount || 0), 0);
+    const cash = openingCash + periodNetCash;
+
+    // 3. Accounts Receivable in period range (Pending Income)
+    const periodArTxns = allTxns.filter(t => {
+        if (t.status !== 'Pending' || t.type !== 'Income') return false;
+        const d = (t.date || '').split('T')[0];
+        if (bounds.startDateStr && d < bounds.startDateStr) return false;
+        if (bounds.endDateStr && d > bounds.endDateStr) return false;
+        return true;
+    });
+    const ar = periodArTxns.reduce((s, t) => s + parseFloat(t.amount || 0), 0);
+
+    // 4. Inventory value: auto-computed from real data (quantity × unitCost per item)
     const inventoryItems = window.financeInventory || [];
     const inventoryValue = inventoryItems.reduce((s, i) => s + ((i.quantity || 0) * (i.unitCost || 0)), 0);
-    const ap = metrics.pendingPayments || 0;
-    
+
+    // 5. Accounts Payable in period range (Pending Expense)
+    const periodApTxns = allTxns.filter(t => {
+        if (t.status !== 'Pending' || t.type !== 'Expense') return false;
+        const d = (t.date || '').split('T')[0];
+        if (bounds.startDateStr && d < bounds.startDateStr) return false;
+        if (bounds.endDateStr && d > bounds.endDateStr) return false;
+        return true;
+    });
+    const ap = periodApTxns.reduce((s, t) => s + parseFloat(t.amount || 0), 0);
+
     const totalAssets = cash + ar + inventoryValue;
     const totalLiabilities = ap;
     const equity = totalAssets - totalLiabilities;
 
     // Update DOM
+    const bsPeriodBadge = document.getElementById('bs-period-badge');
+    if (bsPeriodBadge) bsPeriodBadge.textContent = bounds.label;
+
     const bsCash = document.getElementById('bs-cash');
     const bsAr = document.getElementById('bs-ar');
     const bsInventory = document.getElementById('bs-inventory');
@@ -539,7 +614,6 @@ function renderBalanceSheet(metrics) {
 
     if (bsEquity) {
         bsEquity.textContent = formatMoney(equity);
-        // Change color based on positive/negative
         if (equity < 0) {
             bsEquity.classList.remove('text-primary');
             bsEquity.classList.add('text-error');
@@ -693,6 +767,13 @@ async function handleEditTransaction() {
 // WINDOW EXPORTS (For UI Events)
 // ==========================================
 
+window.onFinancePeriodChanged = function(period, customRange) {
+    window._currentFinancePeriod = period;
+    window._currentFinanceCustomRange = customRange;
+    const metrics = financeStore.getState().metrics || {};
+    renderBalanceSheet(metrics);
+};
+
 window.openBsDetail = function(type) {
     const sheet = document.getElementById('bs-detail-sheet');
     const titleEl = document.getElementById('bs-detail-title');
@@ -701,6 +782,7 @@ window.openBsDetail = function(type) {
 
     const allTxns = financeStore.getState().allTransactions || [];
     const parties = window.financeParties || { customers: [], vendors: [] };
+    const bounds = getActivePeriodBounds();
 
     const titles = {
         cash: 'Cash & Bank Balance',
@@ -710,18 +792,46 @@ window.openBsDetail = function(type) {
     };
 
     let items = [];
+    let openingBalance = 0;
+
     if (type === 'cash') {
-        items = allTxns.filter(t => t.status === 'Completed');
+        if (bounds.startDateStr) {
+            const priorTxns = allTxns.filter(t => t.status === 'Completed' && (t.date || '').split('T')[0] < bounds.startDateStr);
+            openingBalance = priorTxns.reduce((s, t) => t.type === 'Income' ? s + parseFloat(t.amount || 0) : s - parseFloat(t.amount || 0), 0);
+        }
+        items = allTxns.filter(t => {
+            if (t.status !== 'Completed') return false;
+            const d = (t.date || '').split('T')[0];
+            if (bounds.startDateStr && d < bounds.startDateStr) return false;
+            if (bounds.endDateStr && d > bounds.endDateStr) return false;
+            return true;
+        });
     } else if (type === 'receivable') {
-        items = allTxns.filter(t => t.status === 'Pending' && t.type === 'Income');
+        items = allTxns.filter(t => {
+            if (t.status !== 'Pending' || t.type !== 'Income') return false;
+            const d = (t.date || '').split('T')[0];
+            if (bounds.startDateStr && d < bounds.startDateStr) return false;
+            if (bounds.endDateStr && d > bounds.endDateStr) return false;
+            return true;
+        });
     } else if (type === 'payable') {
-        items = allTxns.filter(t => t.status === 'Pending' && t.type === 'Expense');
+        items = allTxns.filter(t => {
+            if (t.status !== 'Pending' || t.type !== 'Expense') return false;
+            const d = (t.date || '').split('T')[0];
+            if (bounds.startDateStr && d < bounds.startDateStr) return false;
+            if (bounds.endDateStr && d > bounds.endDateStr) return false;
+            return true;
+        });
     } else if (type === 'inventory') {
         items = window.financeInventory || [];
     }
 
-    // Running balance data for cash ledger (starts from ₹0 — first transaction)
-    const runningBalanceData = (type === 'cash') ? { openingBalance: 0 } : null;
+    const runningBalanceData = {
+        openingBalance,
+        periodLabel: bounds.label,
+        startDate: bounds.startDateStr,
+        endDate: bounds.endDateStr
+    };
 
     // Store current detail for PDF export
     window._bsDetailType = type;
@@ -762,7 +872,8 @@ window.exportBsDetailPDF = function() {
     let tableHTML = '';
     if (type === 'cash') {
         const sorted = [...items].sort((a, b) => new Date(a.date) - new Date(b.date));
-        let bal = runningData?.openingBalance || 0;
+        const opBal = runningData?.openingBalance || 0;
+        let bal = opBal;
         const rows = sorted.map(t => {
             const amt = parseFloat(t.amount || 0);
             const isInc = t.type === 'Income';
@@ -773,9 +884,9 @@ window.exportBsDetailPDF = function() {
         });
         const tD = rows.reduce((s, r) => s + r.debit, 0);
         const tC = rows.reduce((s, r) => s + r.credit, 0);
-        const closing = rows.length ? rows[rows.length - 1].balance : 0;
+        const closing = rows.length ? rows[rows.length - 1].balance : opBal;
         tableHTML = `<table><thead><tr><th>Date</th><th>Description</th><th>Category</th><th class="num">Debit (−)</th><th class="num">Credit (+)</th><th class="num">Balance</th></tr></thead>
-        <tbody><tr class="sub"><td>—</td><td colspan="4"><em>Opening Balance</em></td><td class="num">${fmt(0)}</td></tr>
+        <tbody><tr class="sub"><td>—</td><td colspan="4"><em>Opening Balance</em></td><td class="num"><strong>${fmt(opBal)}</strong></td></tr>
         ${rows.map(r => `<tr><td>${r.date}</td><td><strong>${r.title}</strong></td><td>${r.category}</td>
             <td class="num debit">${r.debit > 0 ? fmt(r.debit) : '—'}</td>
             <td class="num credit">${r.credit > 0 ? fmt(r.credit) : '—'}</td>
@@ -832,7 +943,7 @@ window.exportBsDetailPDF = function() {
     </style></head>
     <body>
     <h1>${titles[type]}</h1>
-    <p class="meta">Generated: ${today.toLocaleDateString('en-IN', { day:'numeric', month:'long', year:'numeric' })} · ${items.length} entries · GarmentOS Finance</p>
+    <p class="meta">Generated: ${today.toLocaleDateString('en-IN', { day:'numeric', month:'long', year:'numeric' })} · Period: ${runningData?.periodLabel || 'All'} · ${items.length} entries · GarmentOS Finance</p>
     ${tableHTML}
     <script>setTimeout(() => { window.print(); }, 400);<\/script>
     </body></html>`);
@@ -874,7 +985,7 @@ window.toggleFinanceView = function(view) {
         tabBalanceSheet.classList.add('bg-primary', 'text-white', 'shadow-sm');
         tabBalanceSheet.classList.remove('text-secondary', 'hover:text-on-surface');
         
-        if (periodSelector) periodSelector.classList.add('hidden');
+        if (periodSelector) periodSelector.classList.remove('hidden'); // Keep period selector visible for Balance Sheet too!
         if (fab) fab.classList.add('hidden'); // Hide FAB since transactions aren't added here
     }
 };

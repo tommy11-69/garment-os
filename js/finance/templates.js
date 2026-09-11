@@ -198,13 +198,6 @@ export function getBalanceSheetDetailHTML(type, items = [], parties = { customer
     const today = new Date();
     const daysSince = (dateStr) => Math.floor((today - new Date(dateStr)) / 86400000);
 
-    if (items.length === 0) {
-        return `<div class="flex flex-col items-center justify-center py-16 text-secondary">
-            <span class="material-symbols-outlined text-[48px] mb-3 opacity-40">receipt_long</span>
-            <p class="text-[15px] font-medium">No entries found</p>
-        </div>`;
-    }
-
     // ── 1. CASH LEDGER ──────────────────────────────────────────────────────
     if (type === 'cash') {
         const sorted = [...items].sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -220,7 +213,7 @@ export function getBalanceSheetDetailHTML(type, items = [], parties = { customer
             return { ...t, debit, credit, balance };
         });
 
-        const closingBalance = rows.length > 0 ? rows[rows.length - 1].balance : 0;
+        const closingBalance = rows.length > 0 ? rows[rows.length - 1].balance : openingBalance;
         const totalDebits   = rows.reduce((s, r) => s + r.debit, 0);
         const totalCredits  = rows.reduce((s, r) => s + r.credit, 0);
 
@@ -282,6 +275,13 @@ export function getBalanceSheetDetailHTML(type, items = [], parties = { customer
                     </tfoot>
                 </table>
             </div>
+        </div>`;
+    }
+
+    if (items.length === 0) {
+        return `<div class="flex flex-col items-center justify-center py-16 text-secondary">
+            <span class="material-symbols-outlined text-[48px] mb-3 opacity-40">receipt_long</span>
+            <p class="text-[15px] font-medium">No entries found for this period</p>
         </div>`;
     }
 
