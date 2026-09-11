@@ -25,22 +25,34 @@ class FinanceRepository extends BaseRepository {
 
         // 2. Filter by Type (Income/Expense)
         if (filters.type && filters.type !== 'all') {
-            collection = collection.filter(t => t.type.toLowerCase() === filters.type.toLowerCase());
+            const filterType = filters.type.toLowerCase();
+            collection = collection.filter(t => {
+                const tType = (t.type || '').toLowerCase();
+                if (filterType === 'expense') {
+                    return tType === 'expense' || tType === 'payment' || t.isNegative === 1 || t.isNegative === true;
+                } else if (filterType === 'income') {
+                    return tType === 'income' || (tType !== 'expense' && tType !== 'payment' && !t.isNegative);
+                }
+                return tType === filterType;
+            });
         }
 
         // 3. Filter by Status
         if (filters.status && filters.status !== 'all') {
-            collection = collection.filter(t => t.status.toLowerCase() === filters.status.toLowerCase());
+            const filterStatus = filters.status.toLowerCase();
+            collection = collection.filter(t => (t.status || '').toLowerCase() === filterStatus);
         }
 
         // 4. Filter by Payment Method
         if (filters.paymentMethod && filters.paymentMethod !== 'all') {
-            collection = collection.filter(t => t.paymentMethod.toLowerCase() === filters.paymentMethod.toLowerCase());
+            const filterMethod = filters.paymentMethod.toLowerCase();
+            collection = collection.filter(t => (t.paymentMethod || '').toLowerCase() === filterMethod);
         }
 
         // 5. Filter by Category
         if (filters.category && filters.category !== 'all') {
-            collection = collection.filter(t => t.category.toLowerCase() === filters.category.toLowerCase());
+            const filterCat = filters.category.toLowerCase();
+            collection = collection.filter(t => (t.category || '').toLowerCase() === filterCat);
         }
 
         // 6. Filter by Date Range (Today, Week, Month, Custom)

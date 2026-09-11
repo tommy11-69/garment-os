@@ -1228,12 +1228,15 @@ window.selectFilterPill = function(category, value, el) {
 };
 
 window.setQuickFilter = function(val) {
+    const current = financeStore.getState().currentFilters || {};
     if (val === 'all') {
         financeStore.setFilters({ type: 'all', status: 'all' });
     } else if (val === 'Income' || val === 'Expense') {
-        financeStore.setFilters({ type: val });
+        const nextType = (current.type && current.type.toLowerCase() === val.toLowerCase()) ? 'all' : val;
+        financeStore.setFilters({ type: nextType });
     } else if (val === 'Pending' || val === 'Completed') {
-        financeStore.setFilters({ status: val });
+        const nextStatus = (current.status && current.status.toLowerCase() === val.toLowerCase()) ? 'all' : val;
+        financeStore.setFilters({ status: nextStatus });
     }
 };
 
