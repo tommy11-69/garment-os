@@ -13,6 +13,7 @@ import {
 } from './templates.js';
 
 async function initModule() {
+    window.financeStore = financeStore;
     financeStore.subscribe(renderUI);
 
     const searchInput = document.getElementById('transaction-search-input');
@@ -149,7 +150,7 @@ function setupSearchableSelects(prefix = 'trans-') {
             hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
             
             // Update the visual state - update all items' visual feedback
-            allItems.forEach(itemEl => {
+            items.forEach(itemEl => {
                 const itemVal = itemEl.getAttribute('data-value');
                 if (itemVal === value) {
                     itemEl.classList.add('bg-surface-container', 'text-primary', 'font-semibold');
