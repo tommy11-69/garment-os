@@ -1,6 +1,6 @@
 import { financeStore } from '../stores/FinanceStore.js';
 import { api } from '../services/api.js';
-import { renderers } from '../renderers.js?v=2.1';
+import { renderers } from '../renderers.js?v=3.0';
 import { BottomSheet } from '../components/index.js';
 import { bindFormValidation } from '../utils/formHandler.js';
 import { SearchableSelectInput } from '../components/inputs.js';
@@ -11,7 +11,7 @@ import {
     getCategoriesByType, getCategoryBreakdownSheetContent,
     getCustomDateSheetHTML, getCustomDateFooterHTML,
     getBalanceSheetDetailHTML
-} from './templates.js?v=2.1';
+} from './templates.js?v=3.0';
 
 async function initModule() {
     window.financeStore = financeStore;
