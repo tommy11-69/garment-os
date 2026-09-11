@@ -16,7 +16,7 @@ export function getApiBaseUrl() {
         
         // If loaded on a static dev server port like 8000, 3000, 5500 while backend is on 5000:
         if ((hostname === 'localhost' || hostname === '127.0.0.1') && port && port !== '5000' && port !== '8787') {
-            return 'http://localhost:5000/api';
+            return 'http://localhost:8787/api';
         }
     }
 

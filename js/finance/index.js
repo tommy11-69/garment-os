@@ -286,6 +286,7 @@ function renderUI(state) {
     const { entities, selectedIds, isBulkMode, metrics, loading, error, allTransactions } = state;
     
     renderDashboard(metrics);
+    renderBalanceSheet(metrics);
     
     const container = document.getElementById('transactions-list');
     if (!container) return;
@@ -380,6 +381,51 @@ function renderDashboard(metrics) {
             </div>
         </div>
     `;
+}
+
+function renderBalanceSheet(metrics) {
+    const formatMoney = (amount) => '₹' + parseFloat(amount).toLocaleString(undefined, {minimumFractionDigits: 2});
+    
+    // Calculate Values
+    const cash = metrics.currentBalance || 0;
+    const ar = metrics.pendingReceivables || 0;
+    const inventoryValue = 150000; // Mock Placeholder Value
+    const ap = metrics.pendingPayments || 0;
+    
+    const totalAssets = cash + ar + inventoryValue;
+    const totalLiabilities = ap;
+    const equity = totalAssets - totalLiabilities;
+
+    // Update DOM
+    const bsCash = document.getElementById('bs-cash');
+    const bsAr = document.getElementById('bs-ar');
+    const bsInventory = document.getElementById('bs-inventory');
+    const bsTotalAssets = document.getElementById('bs-total-assets');
+    
+    const bsAp = document.getElementById('bs-ap');
+    const bsTotalLiabilities = document.getElementById('bs-total-liabilities');
+    
+    const bsEquity = document.getElementById('bs-equity');
+
+    if (bsCash) bsCash.textContent = formatMoney(cash);
+    if (bsAr) bsAr.textContent = formatMoney(ar);
+    if (bsInventory) bsInventory.textContent = formatMoney(inventoryValue);
+    if (bsTotalAssets) bsTotalAssets.textContent = formatMoney(totalAssets);
+
+    if (bsAp) bsAp.textContent = formatMoney(ap);
+    if (bsTotalLiabilities) bsTotalLiabilities.textContent = formatMoney(totalLiabilities);
+
+    if (bsEquity) {
+        bsEquity.textContent = formatMoney(equity);
+        // Change color based on positive/negative
+        if (equity < 0) {
+            bsEquity.classList.remove('text-primary');
+            bsEquity.classList.add('text-error');
+        } else {
+            bsEquity.classList.remove('text-error');
+            bsEquity.classList.add('text-primary');
+        }
+    }
 }
 
 function updateBulkToolbar(state) {
@@ -522,6 +568,39 @@ async function handleEditTransaction() {
 // ==========================================
 // WINDOW EXPORTS (For UI Events)
 // ==========================================
+
+window.toggleFinanceView = function(view) {
+    const cashFlowView = document.getElementById('cash-flow-view');
+    const balanceSheetView = document.getElementById('balance-sheet-view');
+    const tabCashFlow = document.getElementById('tab-cash-flow');
+    const tabBalanceSheet = document.getElementById('tab-balance-sheet');
+    const periodSelector = document.getElementById('cash-flow-period-selector');
+    const fab = document.getElementById('fab-container');
+
+    if (view === 'cash-flow') {
+        cashFlowView.classList.remove('hidden');
+        cashFlowView.classList.add('flex');
+        balanceSheetView.classList.add('hidden');
+        balanceSheetView.classList.remove('flex');
+        
+        tabCashFlow.className = "px-4 py-1.5 text-[13px] font-bold rounded-lg bg-primary text-white transition-all shadow-sm";
+        tabBalanceSheet.className = "px-4 py-1.5 text-[13px] font-bold rounded-lg text-secondary hover:text-on-surface transition-all";
+        
+        if (periodSelector) periodSelector.classList.remove('hidden');
+        if (fab) fab.classList.remove('hidden'); // Show FAB
+    } else {
+        cashFlowView.classList.add('hidden');
+        cashFlowView.classList.remove('flex');
+        balanceSheetView.classList.remove('hidden');
+        balanceSheetView.classList.add('flex');
+
+        tabCashFlow.className = "px-4 py-1.5 text-[13px] font-bold rounded-lg text-secondary hover:text-on-surface transition-all";
+        tabBalanceSheet.className = "px-4 py-1.5 text-[13px] font-bold rounded-lg bg-primary text-white transition-all shadow-sm";
+        
+        if (periodSelector) periodSelector.classList.add('hidden');
+        if (fab) fab.classList.add('hidden'); // Hide FAB since transactions aren't added here
+    }
+};
 
 window.openTransactionDetails = async function(id) {
     if (financeStore.getState().isBulkMode) {

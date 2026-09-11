@@ -1,0 +1,18 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "garment-os",
+	"main": "backend/worker.js",
+	"compatibility_date": "2024-11-01",
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "garment-os-db",
+			"database_id": "e61fe8ff-2e21-4170-a0d2-1cc83d089fad"
+		},
+		{
+			"binding": "garment_os_db",
+			"database_name": "garment-os-db",
+			"database_id": "e61fe8ff-2e21-4170-a0d2-1cc83d089fad"
+		}
+	]
+}
