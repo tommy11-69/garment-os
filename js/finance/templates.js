@@ -34,7 +34,77 @@ export function getCategoriesByType(type) {
     return type === 'Income' ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
 }
 
-export function getAddTransactionSheetHTML(transaction = null, prefix = 'trans-') {
+export function FormSegmentedControl({ id, options = [], value = '' }) {
+    const tabs = options.map(opt => {
+        const isActive = opt.value === value;
+        return `
+            <button type="button" 
+                class="flex-1 py-2 text-[14px] font-bold rounded-xl transition-all ${isActive ? 'bg-surface shadow-sm text-on-surface' : 'text-secondary hover:text-on-surface'}"
+                onclick="document.getElementById('${id}').value='${opt.value}'; this.parentElement.querySelectorAll('button').forEach(b => { b.classList.remove('bg-surface', 'shadow-sm', 'text-on-surface'); b.classList.add('text-secondary'); }); this.classList.remove('text-secondary'); this.classList.add('bg-surface', 'shadow-sm', 'text-on-surface'); document.getElementById('${id}').dispatchEvent(new Event('change', { bubbles: true }));">
+                ${opt.label}
+            </button>
+        `;
+    }).join('');
+
+    return `
+    <div class="flex bg-surface-container-lowest p-1.5 rounded-[16px] border border-outline-variant w-full relative mb-2">
+        <input type="hidden" id="${id}" value="${value}">
+        ${tabs}
+    </div>`;
+}
+
+export function HeroAmountInput({ id, value = '' }) {
+    return `
+    <div class="flex flex-col items-center justify-center py-6 mb-2">
+        <label class="text-[12px] font-bold text-secondary uppercase tracking-widest mb-3">Amount</label>
+        <div class="relative flex items-center justify-center">
+            <span class="text-[36px] font-bold text-on-surface mr-1 -mt-1">₹</span>
+            <input type="number" step="0.01" id="${id}" value="${value}" required placeholder="0.00"
+                   class="bg-transparent border-none outline-none focus:ring-0 text-[56px] font-bold text-on-surface text-center w-full max-w-[240px] placeholder:text-outline-variant/50 tracking-tight p-0 [&::-webkit-inner-spin-button]:appearance-none"
+                   style="-moz-appearance: textfield;">
+        </div>
+    </div>`;
+}
+
+export function RadioPillsInput({ label, id, options = [], value = '' }) {
+    const pills = options.map(opt => {
+        const isActive = opt.value === value;
+        let colorClass = 'bg-primary border-primary text-white';
+        let inactiveColorClass = 'bg-surface-container-lowest border-outline-variant text-secondary hover:border-primary/50';
+        
+        if (opt.value === 'Completed') colorClass = 'bg-[#008A00] border-[#008A00] text-white';
+        if (opt.value === 'Pending') colorClass = 'bg-[#FF9F0A] border-[#FF9F0A] text-white';
+        if (opt.value === 'Cancelled') colorClass = 'bg-error border-error text-white';
+
+        return `
+            <button type="button" 
+                class="px-4 py-2 text-[13px] font-bold rounded-xl border transition-all ${isActive ? colorClass : inactiveColorClass}"
+                data-val="${opt.value}"
+                onclick="
+                    document.getElementById('${id}').value='${opt.value}'; 
+                    const container = this.closest('.radio-pills-container');
+                    container.querySelectorAll('button').forEach(b => { 
+                        b.className = 'px-4 py-2 text-[13px] font-bold rounded-xl border transition-all bg-surface-container-lowest border-outline-variant text-secondary hover:border-primary/50'; 
+                    }); 
+                    this.className = 'px-4 py-2 text-[13px] font-bold rounded-xl border transition-all ${colorClass.replace(/'/g, "\\'")}';
+                    document.getElementById('${id}').dispatchEvent(new Event('change', { bubbles: true }));
+                ">
+                ${opt.label}
+            </button>
+        `;
+    }).join('');
+
+    return `
+    <div class="flex flex-col gap-2.5 relative group radio-pills-container mt-1">
+        <label class="text-[14px] font-semibold text-on-surface">${label}</label>
+        <input type="hidden" id="${id}" value="${value}">
+        <div class="flex flex-wrap gap-2">
+            ${pills}
+        </div>
+    </div>`;
+}
+
+export function getAddTransactionSheetHTML(transaction = null, prefix = 'trans-', parties = { customers: [], vendors: [] }) {
     const isEdit = !!transaction;
     
     const types = [
@@ -65,42 +135,51 @@ export function getAddTransactionSheetHTML(transaction = null, prefix = 'trans-'
         { label: 'Cancelled', value: 'Cancelled' }
     ];
 
+    const partiesList = transactionType === 'Income' ? parties.customers : parties.vendors;
+    const partyOptions = partiesList ? partiesList.map(p => ({ label: p.name, value: p.id })) : [];
+    partyOptions.unshift({ label: 'None', value: '' });
+    const currentParty = isEdit ? (transaction.refId || '') : '';
+
     return `
-        <div class="flex flex-col gap-4">
+        <div class="flex flex-col gap-4 px-1">
             <input type="hidden" id="${prefix}id" value="${isEdit ? transaction.id : ''}">
             
-            <div class="grid grid-cols-2 gap-4">
-                ${SelectInput({ label: 'Type', id: `${prefix}type`, options: types, value: transactionType, required: true })}
-                ${TextInput({ label: 'Date', id: `${prefix}date`, type: 'date', value: isEdit ? transaction.date : new Date().toISOString().split('T')[0], required: true })}
-            </div>
+            ${FormSegmentedControl({ id: `${prefix}type`, options: types, value: transactionType })}
+            
+            ${HeroAmountInput({ id: `${prefix}amount`, value: isEdit ? transaction.amount : '' })}
 
-            ${TextInput({ label: 'Title', id: `${prefix}title`, placeholder: 'e.g. Fabric from Supplier X', value: isEdit ? transaction.title : '', required: true })}
+            ${TextInput({ label: 'Title', id: `${prefix}title`, placeholder: 'What was this for?', value: isEdit ? transaction.title : '', required: true })}
+            
+            <div id="${prefix}party-container" class="searchable-select-wrapper overflow-visible">
+                ${SearchableSelectInput({ label: transactionType === 'Income' ? 'Customer (Optional)' : 'Vendor (Optional)', id: `${prefix}refId`, options: partyOptions, value: currentParty })}
+            </div>
             
             <div class="grid grid-cols-2 gap-4">
-                ${TextInput({ label: 'Amount (₹)', id: `${prefix}amount`, type: 'number', step: '0.01', placeholder: '0.00', value: isEdit ? transaction.amount : '', required: true })}
+                ${TextInput({ label: 'Date', id: `${prefix}date`, type: 'date', value: isEdit ? transaction.date : new Date().toISOString().split('T')[0], required: true })}
                 <div id="${prefix}category-container" class="searchable-select-wrapper overflow-visible">
                     ${SearchableSelectInput({ label: 'Category', id: `${prefix}category`, options: categories, value: selectedDropdownCat, required: true })}
                 </div>
             </div>
 
             <div id="${prefix}other-category-container" class="${isOther ? '' : 'hidden'}">
-                ${TextInput({ label: 'Specify Category Name', id: `${prefix}other-category`, placeholder: 'Enter custom category (e.g. Packaging, Utilities)', value: otherCustomValue })}
+                ${TextInput({ label: 'Specify Category Name', id: `${prefix}other-category`, placeholder: 'e.g. Packaging, Utilities', value: otherCustomValue })}
             </div>
 
-            <div class="grid grid-cols-2 gap-4">
-                ${SelectInput({ label: 'Payment Method', id: `${prefix}method`, options: paymentMethods, value: isEdit ? (transaction.paymentMethod || 'UPI') : 'UPI', required: true })}
+            ${RadioPillsInput({ label: 'Payment Method', id: `${prefix}method`, options: paymentMethods, value: isEdit ? (transaction.paymentMethod || 'UPI') : 'UPI' })}
+            
+            ${RadioPillsInput({ label: 'Status', id: `${prefix}status`, options: statuses, value: isEdit ? transaction.status : 'Completed' })}
+            
+            <div class="grid grid-cols-1 gap-4 mt-2">
                 ${TextInput({ label: 'Reference No.', id: `${prefix}ref`, placeholder: 'Cheque/Txn ID', value: isEdit ? transaction.referenceNo : '' })}
             </div>
 
-            ${SelectInput({ label: 'Status', id: `${prefix}status`, options: statuses, value: isEdit ? transaction.status : 'Completed', required: true })}
-            
             ${TextareaInput({ label: 'Notes', id: `${prefix}notes`, placeholder: 'Additional details...', rows: 2, value: isEdit ? transaction.notes : '' })}
 
-            <div class="bg-surface-container rounded-2xl p-4 flex items-center justify-center border border-dashed border-outline-variant text-secondary text-[13px] font-medium cursor-pointer active-bg">
+            <div class="bg-surface-container rounded-2xl p-4 flex items-center justify-center border border-dashed border-outline-variant text-secondary text-[13px] font-medium cursor-pointer active-bg mt-2">
                 <span class="material-symbols-outlined mr-2 text-[18px]">attach_file</span> Attachments (Future Ready)
             </div>
 
-            <div class="h-4"></div>
+            <div class="h-2"></div>
         </div>
     `;
 }

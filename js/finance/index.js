@@ -37,8 +37,13 @@ async function renderSheets() {
     const sheetsContainer = document.getElementById('sheets-container');
     if (sheetsContainer) {
         const state = financeStore.getState();
+        
+        // Fetch parties for transaction form
+        const [customers, vendors] = await Promise.all([api.getCustomers(), api.getVendors()]);
+        window.financeParties = { customers, vendors };
+
         const sheetsHTML = [
-            BottomSheet({ id: 'addTransactionSheet', title: 'New Transaction', content: getAddTransactionSheetHTML(), footerContent: getAddTransactionFooterHTML(false), isForm: true }),
+            BottomSheet({ id: 'addTransactionSheet', title: 'New Transaction', content: getAddTransactionSheetHTML(null, 'trans-', window.financeParties), footerContent: getAddTransactionFooterHTML(false), isForm: true }),
             BottomSheet({ id: 'editTransactionSheet', title: 'Edit Transaction', content: '<div id="edit-trans-container"></div>', footerContent: getAddTransactionFooterHTML(true), isForm: true }),
             BottomSheet({ id: 'filterSheet', title: 'Filters', content: getFilterSheetHTML(state.currentFilters), footerContent: getFilterFooterHTML(), isForm: false }),
             BottomSheet({ id: 'customDateSheet', title: 'Custom Date Range', content: getCustomDateSheetHTML(), footerContent: getCustomDateFooterHTML(), isForm: false })
@@ -62,23 +67,39 @@ async function renderSheets() {
 function setupTypeChange(prefix = 'trans-') {
     const typeSelect = document.getElementById(`${prefix}type`);
     const categoryContainer = document.getElementById(`${prefix}category-container`);
+    const partyContainer = document.getElementById(`${prefix}party-container`);
     
-    if (typeSelect && categoryContainer) {
+    if (typeSelect) {
         typeSelect.addEventListener('change', (e) => {
             const selectedType = e.target.value;
-            const categories = getCategoriesByType(selectedType);
             
-            // Create new category input
-            const newCategoryHTML = SearchableSelectInput({ 
-                label: 'Category', 
-                id: `${prefix}category`, 
-                options: categories, 
-                value: categories[0].value, 
-                required: true 
-            });
-            
-            // Replace the old category input
-            categoryContainer.innerHTML = newCategoryHTML;
+            // Category Dropdown
+            if (categoryContainer) {
+                const categories = getCategoriesByType(selectedType);
+                const newCategoryHTML = SearchableSelectInput({ 
+                    label: 'Category', 
+                    id: `${prefix}category`, 
+                    options: categories, 
+                    value: categories[0].value, 
+                    required: true 
+                });
+                categoryContainer.innerHTML = newCategoryHTML;
+            }
+
+            // Party Dropdown
+            if (partyContainer && window.financeParties) {
+                const partiesList = selectedType === 'Income' ? window.financeParties.customers : window.financeParties.vendors;
+                const options = partiesList.map(p => ({ label: p.name, value: p.id }));
+                options.unshift({ label: 'None', value: '' });
+                
+                const newPartyHTML = SearchableSelectInput({
+                    label: selectedType === 'Income' ? 'Customer (Optional)' : 'Vendor (Optional)',
+                    id: `${prefix}refId`,
+                    options: options,
+                    value: ''
+                });
+                partyContainer.innerHTML = newPartyHTML;
+            }
             
             // Reset other category container
             const otherContainer = document.getElementById(`${prefix}other-category-container`);
@@ -389,7 +410,7 @@ function renderBalanceSheet(metrics) {
     // Calculate Values
     const cash = metrics.currentBalance || 0;
     const ar = metrics.pendingReceivables || 0;
-    const inventoryValue = 150000; // Mock Placeholder Value
+    const inventoryValue = 0; // Value calculation pending backend updates
     const ap = metrics.pendingPayments || 0;
     
     const totalAssets = cash + ar + inventoryValue;
@@ -504,6 +525,7 @@ async function handleAddTransaction() {
     const referenceNo = document.getElementById('trans-ref').value;
     const status = document.getElementById('trans-status').value;
     const notes = document.getElementById('trans-notes').value;
+    const refId = document.getElementById('trans-refId')?.value || '';
     
     if(!title || !amount) return;
 
@@ -511,7 +533,7 @@ async function handleAddTransaction() {
     
     try {
         await api.createTransaction({
-            type, date, title, amount, category, paymentMethod, referenceNo, status, notes, createdBy: 'Admin'
+            type, date, title, amount, category, paymentMethod, referenceNo, status, notes, createdBy: 'Admin', refId
         });
         window.closeSheet('addTransactionSheet');
         window.showToast?.('Transaction added successfully!', 'success');
@@ -546,12 +568,13 @@ async function handleEditTransaction() {
     const referenceNo = document.getElementById('edit-trans-ref').value;
     const status = document.getElementById('edit-trans-status').value;
     const notes = document.getElementById('edit-trans-notes').value;
+    const refId = document.getElementById('edit-trans-refId')?.value || '';
 
     window.showToast?.('Updating transaction...', 'info');
     
     try {
         await api.updateTransaction(id, {
-            type, date, title, amount, category, paymentMethod, referenceNo, status, notes
+            type, date, title, amount, category, paymentMethod, referenceNo, status, notes, refId
         });
         window.closeSheet('editTransactionSheet');
         window.showToast?.('Transaction updated', 'success');
@@ -758,7 +781,7 @@ window.editTransaction = function() {
 
     const editContainer = document.getElementById('edit-trans-container');
     if (editContainer) {
-        editContainer.innerHTML = getAddTransactionSheetHTML(t, 'edit-trans-');
+        editContainer.innerHTML = getAddTransactionSheetHTML(t, 'edit-trans-', window.financeParties);
         // rebind validation since content changed
         bindFormValidation('editTransactionSheet-content', 'edit-trans-submit');
         setupTypeChange('edit-trans-');
