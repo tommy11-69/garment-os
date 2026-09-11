@@ -622,8 +622,8 @@ window.toggleFinanceView = function(view) {
         balanceSheetView.classList.add('hidden');
         balanceSheetView.classList.remove('flex');
         
-        tabCashFlow.className = "px-4 py-1.5 text-[13px] font-bold rounded-lg bg-primary text-white transition-all shadow-sm";
-        tabBalanceSheet.className = "px-4 py-1.5 text-[13px] font-bold rounded-lg text-secondary hover:text-on-surface transition-all";
+        tabCashFlow.className = "flex-1 px-4 py-1.5 text-[13px] font-bold rounded-lg bg-primary text-white transition-all shadow-sm";
+        tabBalanceSheet.className = "flex-1 px-4 py-1.5 text-[13px] font-bold rounded-lg text-secondary hover:text-on-surface transition-all";
         
         if (periodSelector) periodSelector.classList.remove('hidden');
         if (fab) fab.classList.remove('hidden'); // Show FAB
@@ -633,8 +633,8 @@ window.toggleFinanceView = function(view) {
         balanceSheetView.classList.remove('hidden');
         balanceSheetView.classList.add('flex');
 
-        tabCashFlow.className = "px-4 py-1.5 text-[13px] font-bold rounded-lg text-secondary hover:text-on-surface transition-all";
-        tabBalanceSheet.className = "px-4 py-1.5 text-[13px] font-bold rounded-lg bg-primary text-white transition-all shadow-sm";
+        tabCashFlow.className = "flex-1 px-4 py-1.5 text-[13px] font-bold rounded-lg text-secondary hover:text-on-surface transition-all";
+        tabBalanceSheet.className = "flex-1 px-4 py-1.5 text-[13px] font-bold rounded-lg bg-primary text-white transition-all shadow-sm";
         
         if (periodSelector) periodSelector.classList.add('hidden');
         if (fab) fab.classList.add('hidden'); // Hide FAB since transactions aren't added here

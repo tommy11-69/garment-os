@@ -84,23 +84,24 @@
         <main id="main-content-area" class="flex-1 p-md flex flex-col gap-lg pb-32">
             
             <!-- Header -->
-            <div class="px-xs pt-sm flex items-start justify-between">
-                <div>
-                    <h2 class="text-[28px] leading-tight font-semibold tracking-tight text-on-surface mb-1">Finance</h2>
-                    <div class="flex p-1 bg-surface-container-lowest border border-outline-variant rounded-xl mt-2 w-fit">
-                        <button id="tab-cash-flow" onclick="window.toggleFinanceView('cash-flow')" class="px-4 py-1.5 text-[13px] font-bold rounded-lg bg-primary text-white transition-all shadow-sm">Cash Flow</button>
-                        <button id="tab-balance-sheet" onclick="window.toggleFinanceView('balance-sheet')" class="px-4 py-1.5 text-[13px] font-bold rounded-lg text-secondary hover:text-on-surface transition-all">Balance Sheet</button>
+            <div class="px-xs pt-sm flex flex-col gap-3">
+                <div class="flex items-center justify-between gap-2">
+                    <h2 class="text-[28px] leading-tight font-semibold tracking-tight text-on-surface">Finance</h2>
+                    <!-- Period selector -->
+                    <div id="cash-flow-period-selector" class="flex items-center gap-0.5 p-1 bg-surface-container-lowest border border-outline-variant rounded-xl shrink-0">
+                        <button class="period-pill active text-[11px] font-bold px-2.5 py-1.5 rounded-lg" data-period="7d" onclick="window.finSetPeriod('7d')">7D</button>
+                        <button class="period-pill inactive text-[11px] font-bold px-2.5 py-1.5 rounded-lg" data-period="1m" onclick="window.finSetPeriod('1m')">1M</button>
+                        <button class="period-pill inactive text-[11px] font-bold px-2.5 py-1.5 rounded-lg" data-period="3m" onclick="window.finSetPeriod('3m')">3M</button>
+                        <button id="custom-period-btn" class="period-pill inactive text-[11px] font-bold px-2.5 py-1.5 rounded-lg flex items-center gap-1 active-scale" data-period="custom" onclick="window.openCustomDateFilter()" title="Custom Date Range">
+                            <span class="material-symbols-outlined text-[15px] leading-none">calendar_month</span>
+                            <span id="custom-period-label" class="hidden sm:inline">Custom</span>
+                        </button>
                     </div>
                 </div>
-                <!-- Period selector -->
-                <div id="cash-flow-period-selector" class="flex items-center gap-1 p-1 bg-surface-container-lowest border border-outline-variant rounded-xl mt-1">
-                    <button class="period-pill active text-[11px] font-bold px-2.5 py-1.5 rounded-lg" data-period="7d" onclick="window.finSetPeriod('7d')">7D</button>
-                    <button class="period-pill inactive text-[11px] font-bold px-2.5 py-1.5 rounded-lg" data-period="1m" onclick="window.finSetPeriod('1m')">1M</button>
-                    <button class="period-pill inactive text-[11px] font-bold px-2.5 py-1.5 rounded-lg" data-period="3m" onclick="window.finSetPeriod('3m')">3M</button>
-                    <button id="custom-period-btn" class="period-pill inactive text-[11px] font-bold px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 active-scale" data-period="custom" onclick="window.openCustomDateFilter()" title="Custom Date Range">
-                        <span class="material-symbols-outlined text-[15px] leading-none">calendar_month</span>
-                        <span id="custom-period-label">Custom</span>
-                    </button>
+                
+                <div class="flex p-1 bg-surface-container-lowest border border-outline-variant rounded-xl w-full max-w-[400px]">
+                    <button id="tab-cash-flow" onclick="window.toggleFinanceView('cash-flow')" class="flex-1 px-4 py-1.5 text-[13px] font-bold rounded-lg bg-primary text-white transition-all shadow-sm">Cash Flow</button>
+                    <button id="tab-balance-sheet" onclick="window.toggleFinanceView('balance-sheet')" class="flex-1 px-4 py-1.5 text-[13px] font-bold rounded-lg text-secondary hover:text-on-surface transition-all">Balance Sheet</button>
                 </div>
             </div>
 
