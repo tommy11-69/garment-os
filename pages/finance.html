@@ -309,10 +309,17 @@
         <!-- Header -->
         <div class="flex items-center justify-between px-5 pb-4 pt-2 border-b border-outline-variant/30 shrink-0">
             <h3 id="bs-detail-title" class="text-[18px] font-bold text-on-surface">Detail</h3>
-            <button onclick="window.closeBsDetail()" class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-secondary active-scale transition-apple">
-                <span class="material-symbols-outlined text-[20px]">close</span>
-            </button>
+            <div class="flex items-center gap-2">
+                <button onclick="window.exportBsDetailPDF()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-primary/10 text-primary text-[12px] font-bold active:scale-95 transition-apple" title="Export as PDF">
+                    <span class="material-symbols-outlined text-[16px]">picture_as_pdf</span>
+                    PDF
+                </button>
+                <button onclick="window.closeBsDetail()" class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-secondary active-scale transition-apple">
+                    <span class="material-symbols-outlined text-[20px]">close</span>
+                </button>
+            </div>
         </div>
+
         <!-- Body (scrollable) -->
         <div id="bs-detail-body" class="overflow-y-auto flex-1 pb-6"></div>
     </div>

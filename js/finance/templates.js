@@ -193,118 +193,346 @@ export function getAddTransactionFooterHTML(isEdit = false) {
     `;
 }
 
-export function getBalanceSheetDetailHTML(type, items = [], parties = { customers: [], vendors: [] }) {
-    const fmt = (n) => '₹' + parseFloat(n).toLocaleString('en-IN', { minimumFractionDigits: 2 });
-
-    const titles = {
-        cash: 'Cash & Bank Balance',
-        receivable: 'Accounts Receivable',
-        payable: 'Accounts Payable',
-        inventory: 'Inventory Value'
-    };
-
-    const resolveParty = (t) => {
-        if (!t.refId) return null;
-        const isIncome = t.type === 'Income';
-        const list = isIncome ? parties.customers : parties.vendors;
-        const party = list?.find(p => String(p.id) === String(t.refId));
-        return { name: party ? party.name : t.refId, isIncome };
-    };
+export function getBalanceSheetDetailHTML(type, items = [], parties = { customers: [], vendors: [] }, runningBalanceData = null) {
+    const fmt = (n) => '₹' + parseFloat(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+    const today = new Date();
+    const daysSince = (dateStr) => Math.floor((today - new Date(dateStr)) / 86400000);
 
     if (items.length === 0) {
-        return `
-        <div class="flex flex-col items-center justify-center py-12 text-secondary">
+        return `<div class="flex flex-col items-center justify-center py-16 text-secondary">
             <span class="material-symbols-outlined text-[48px] mb-3 opacity-40">receipt_long</span>
             <p class="text-[15px] font-medium">No entries found</p>
         </div>`;
     }
 
-    if (type === 'inventory') {
-        const total = items.reduce((s, i) => s + (i.quantity * (i.unitCost || 0)), 0);
+    // ── 1. CASH LEDGER ──────────────────────────────────────────────────────
+    if (type === 'cash') {
+        const sorted = [...items].sort((a, b) => new Date(a.date) - new Date(b.date));
+        let balance = runningBalanceData?.openingBalance || 0;
+        const openingBalance = balance;
+
+        const rows = sorted.map(t => {
+            const amount = parseFloat(t.amount || 0);
+            const isIncome = t.type === 'Income';
+            const debit = isIncome ? 0 : amount;
+            const credit = isIncome ? amount : 0;
+            balance += isIncome ? amount : -amount;
+            return { ...t, debit, credit, balance };
+        });
+
+        const closingBalance = rows.length > 0 ? rows[rows.length - 1].balance : 0;
+        const totalDebits   = rows.reduce((s, r) => s + r.debit, 0);
+        const totalCredits  = rows.reduce((s, r) => s + r.credit, 0);
+
         return `
-        <div class="flex flex-col gap-3 p-4">
-            <div class="flex justify-between items-center px-1 mb-1">
-                <span class="text-[13px] font-semibold text-secondary uppercase tracking-wider">${items.length} items</span>
-                <span class="text-[14px] font-bold text-on-surface">${fmt(total)} total</span>
+        <div class="flex flex-col h-full">
+            <!-- Summary bar -->
+            <div class="px-4 py-3 bg-surface-variant/40 border-b border-outline-variant/30 grid grid-cols-3 gap-2 text-center shrink-0">
+                <div>
+                    <p class="text-[9px] font-bold text-secondary uppercase tracking-wider">Closing Balance</p>
+                    <p class="text-[14px] font-extrabold ${closingBalance >= 0 ? 'text-on-surface' : 'text-error'}">${fmt(closingBalance)}</p>
+                </div>
+                <div class="border-x border-outline-variant/30">
+                    <p class="text-[9px] font-bold text-secondary uppercase tracking-wider">Total In ↓</p>
+                    <p class="text-[14px] font-extrabold text-[#008A00]">${fmt(totalCredits)}</p>
+                </div>
+                <div>
+                    <p class="text-[9px] font-bold text-secondary uppercase tracking-wider">Total Out ↑</p>
+                    <p class="text-[14px] font-extrabold text-error">${fmt(totalDebits)}</p>
+                </div>
             </div>
-            ${items.map(item => {
-                const lineVal = item.quantity * (item.unitCost || 0);
-                return `
-                <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant/50 p-4 flex items-start gap-3">
-                    <div class="w-10 h-10 rounded-xl ${item.iconColor || 'bg-surface-variant text-secondary'} flex items-center justify-center shrink-0">
-                        <span class="material-symbols-outlined text-[20px]">${item.icon || 'inventory_2'}</span>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <div class="flex justify-between items-start mb-1 gap-2">
-                            <span class="text-[14px] font-bold text-on-surface truncate">${item.name}</span>
-                            <span class="text-[14px] font-bold text-on-surface shrink-0">${fmt(lineVal)}</span>
-                        </div>
-                        <span class="text-[12px] text-secondary">${item.quantity.toLocaleString()} ${item.unit} × ${fmt(item.unitCost || 0)}/${item.unit?.replace(/s$/, '') || 'unit'}</span>
-                        <div class="flex items-center gap-2 mt-2">
-                            <span class="text-[10px] font-semibold text-secondary">SKU: ${item.sku}</span>
-                            <span class="px-2 py-0.5 rounded-lg text-[10px] font-bold ${item.statusColor || 'bg-surface-variant text-secondary'}">${item.status}</span>
-                        </div>
-                    </div>
-                </div>`;
-            }).join('')}
+            <!-- Scrollable table -->
+            <div class="overflow-auto flex-1">
+                <table class="w-full text-left border-collapse" style="min-width:520px">
+                    <thead class="sticky top-0 bg-surface z-10 shadow-sm">
+                        <tr class="border-b-2 border-outline-variant/50">
+                            <th class="px-3 py-2.5 text-[9px] font-bold text-secondary uppercase tracking-wider w-[80px]">Date</th>
+                            <th class="px-3 py-2.5 text-[9px] font-bold text-secondary uppercase tracking-wider">Description</th>
+                            <th class="px-3 py-2.5 text-[9px] font-bold text-error uppercase tracking-wider text-right w-[90px]">Debit (−)</th>
+                            <th class="px-3 py-2.5 text-[9px] font-bold text-[#008A00] uppercase tracking-wider text-right w-[90px]">Credit (+)</th>
+                            <th class="px-3 py-2.5 text-[9px] font-bold text-secondary uppercase tracking-wider text-right w-[100px]">Balance</th>
+                        </tr>
+                        <tr class="bg-surface-variant/30 border-b border-outline-variant/20">
+                            <td class="px-3 py-2 text-[10px] text-secondary">—</td>
+                            <td class="px-3 py-2 text-[11px] font-bold text-secondary italic" colspan="3">Opening Balance</td>
+                            <td class="px-3 py-2 text-[12px] font-bold text-right text-on-surface">${fmt(openingBalance)}</td>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rows.map((r, idx) => `
+                        <tr class="border-b border-outline-variant/15 cursor-pointer hover:bg-primary/5 active:bg-primary/10 transition-colors ${idx % 2 === 1 ? 'bg-surface-container/20' : ''}"
+                            onclick="window.openTransactionDetails('${r.id}')">
+                            <td class="px-3 py-2.5 text-[11px] text-secondary whitespace-nowrap">${r.date}</td>
+                            <td class="px-3 py-2.5">
+                                <p class="text-[12px] font-semibold text-on-surface leading-tight truncate max-w-[180px]">${r.title}</p>
+                                <p class="text-[10px] text-secondary">${r.category}${r.paymentMethod ? ' · ' + r.paymentMethod : ''}</p>
+                            </td>
+                            <td class="px-3 py-2.5 text-[12px] font-semibold text-right ${r.debit > 0 ? 'text-error' : 'text-secondary/30'}">${r.debit > 0 ? fmt(r.debit) : '—'}</td>
+                            <td class="px-3 py-2.5 text-[12px] font-semibold text-right ${r.credit > 0 ? 'text-[#008A00]' : 'text-secondary/30'}">${r.credit > 0 ? fmt(r.credit) : '—'}</td>
+                            <td class="px-3 py-2.5 text-[12px] font-bold text-right ${r.balance >= 0 ? 'text-on-surface' : 'text-error'}">${fmt(r.balance)}</td>
+                        </tr>`).join('')}
+                    </tbody>
+                    <tfoot>
+                        <tr class="border-t-2 border-primary/30 bg-primary/5">
+                            <td class="px-3 py-3 text-[11px] font-bold text-on-surface" colspan="2">Closing Total</td>
+                            <td class="px-3 py-3 text-[12px] font-extrabold text-right text-error">${fmt(totalDebits)}</td>
+                            <td class="px-3 py-3 text-[12px] font-extrabold text-right text-[#008A00]">${fmt(totalCredits)}</td>
+                            <td class="px-3 py-3 text-[13px] font-extrabold text-right ${closingBalance >= 0 ? 'text-primary' : 'text-error'}">${fmt(closingBalance)}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
         </div>`;
     }
 
-    // Transaction list (cash / receivable / payable)
-    let runningBalance = 0;
-    if (type === 'cash') {
-        // Pre-compute total for running balance start
-        runningBalance = items.reduce((s, t) => t.type === 'Income' ? s + parseFloat(t.amount) : s - parseFloat(t.amount), 0);
+    // ── 2. ACCOUNTS RECEIVABLE ──────────────────────────────────────────────
+    if (type === 'receivable') {
+        const grouped = {};
+        items.forEach(t => {
+            const p = t.refId ? parties.customers?.find(c => String(c.id) === String(t.refId)) : null;
+            const key = p ? p.name : (t.title || 'Unknown');
+            if (!grouped[key]) grouped[key] = [];
+            grouped[key].push(t);
+        });
+
+        const total = items.reduce((s, t) => s + parseFloat(t.amount || 0), 0);
+        const avgDays = items.length ? Math.round(items.reduce((s, t) => s + daysSince(t.date), 0) / items.length) : 0;
+        const overdueCount = items.filter(t => daysSince(t.date) > 30).length;
+
+        return `
+        <div class="flex flex-col h-full">
+            <div class="px-4 py-3 bg-surface-variant/40 border-b border-outline-variant/30 grid grid-cols-3 gap-2 text-center shrink-0">
+                <div>
+                    <p class="text-[9px] font-bold text-secondary uppercase tracking-wider">Outstanding</p>
+                    <p class="text-[14px] font-extrabold text-[#008A00]">${fmt(total)}</p>
+                </div>
+                <div class="border-x border-outline-variant/30">
+                    <p class="text-[9px] font-bold text-secondary uppercase tracking-wider">Customers</p>
+                    <p class="text-[14px] font-extrabold text-on-surface">${Object.keys(grouped).length}</p>
+                </div>
+                <div>
+                    <p class="text-[9px] font-bold text-secondary uppercase tracking-wider">Avg Age</p>
+                    <p class="text-[14px] font-extrabold ${avgDays > 30 ? 'text-error' : avgDays > 7 ? 'text-[#FF9F0A]' : 'text-on-surface'}">${avgDays}d</p>
+                </div>
+            </div>
+            ${overdueCount > 0 ? `<div class="flex items-center gap-2 px-4 py-2 bg-error/5 border-b border-error/20">
+                <span class="material-symbols-outlined text-error text-[14px]">warning</span>
+                <p class="text-[11px] font-semibold text-error">${overdueCount} invoice${overdueCount > 1 ? 's' : ''} overdue (30+ days)</p>
+            </div>` : ''}
+            <div class="overflow-auto flex-1">
+                <table class="w-full text-left border-collapse" style="min-width:460px">
+                    <thead class="sticky top-0 bg-surface z-10 shadow-sm">
+                        <tr class="border-b-2 border-outline-variant/50">
+                            <th class="px-3 py-2.5 text-[9px] font-bold text-secondary uppercase tracking-wider">Customer / Description</th>
+                            <th class="px-3 py-2.5 text-[9px] font-bold text-secondary uppercase tracking-wider w-[75px]">Date</th>
+                            <th class="px-3 py-2.5 text-[9px] font-bold text-secondary uppercase tracking-wider text-center w-[50px]">Age</th>
+                            <th class="px-3 py-2.5 text-[9px] font-bold text-secondary uppercase tracking-wider text-right w-[95px]">Due Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${Object.entries(grouped).map(([customer, txns]) => {
+                            const custTotal = txns.reduce((s, t) => s + parseFloat(t.amount || 0), 0);
+                            return `
+                            <tr class="bg-[#5E5CE6]/5 border-y border-[#5E5CE6]/20">
+                                <td class="px-3 py-2 text-[12px] font-bold text-on-surface">
+                                    <span class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[13px] text-[#5E5CE6]">person</span>${customer}</span>
+                                </td>
+                                <td class="px-3 py-2 text-[10px] text-secondary">${txns.length} inv.</td>
+                                <td></td>
+                                <td class="px-3 py-2 text-[12px] font-bold text-right text-[#008A00]">${fmt(custTotal)}</td>
+                            </tr>
+                            ${txns.map(t => {
+                                const days = daysSince(t.date);
+                                const ageClr = days > 30 ? 'text-error bg-error/10' : days > 7 ? 'text-[#FF9F0A] bg-[#FF9F0A]/10' : 'text-[#008A00] bg-[#008A00]/10';
+                                return `
+                                <tr class="border-b border-outline-variant/15 cursor-pointer hover:bg-primary/5 transition-colors ${days > 30 ? 'border-l-2 border-l-error' : ''}"
+                                    onclick="window.openTransactionDetails('${t.id}')">
+                                    <td class="px-3 py-2.5 pl-7">
+                                        <p class="text-[12px] font-medium text-on-surface leading-tight">${t.title}</p>
+                                        <p class="text-[10px] text-secondary">${t.category}${t.paymentMethod ? ' · ' + t.paymentMethod : ''}</p>
+                                    </td>
+                                    <td class="px-3 py-2.5 text-[11px] text-secondary whitespace-nowrap">${t.date}</td>
+                                    <td class="px-3 py-2.5 text-center"><span class="px-1.5 py-0.5 rounded-md text-[10px] font-bold ${ageClr}">${days}d</span></td>
+                                    <td class="px-3 py-2.5 text-[12px] font-semibold text-right text-[#008A00]">${fmt(parseFloat(t.amount || 0))}</td>
+                                </tr>`;
+                            }).join('')}`;
+                        }).join('')}
+                    </tbody>
+                    <tfoot>
+                        <tr class="border-t-2 border-[#008A00]/30 bg-[#008A00]/5">
+                            <td class="px-3 py-3 text-[11px] font-bold text-on-surface" colspan="3">Total Receivable</td>
+                            <td class="px-3 py-3 text-[13px] font-extrabold text-right text-[#008A00]">${fmt(total)}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>`;
     }
 
-    const sorted = [...items].sort((a, b) => new Date(b.date) - new Date(a.date));
+    // ── 3. ACCOUNTS PAYABLE ──────────────────────────────────────────────────
+    if (type === 'payable') {
+        const grouped = {};
+        items.forEach(t => {
+            const p = t.refId ? parties.vendors?.find(v => String(v.id) === String(t.refId)) : null;
+            const key = p ? p.name : (t.title || 'Unknown');
+            if (!grouped[key]) grouped[key] = [];
+            grouped[key].push(t);
+        });
 
-    return `
-    <div class="flex flex-col gap-2 p-4">
-        <div class="flex justify-between items-center px-1 mb-1">
-            <span class="text-[13px] font-semibold text-secondary uppercase tracking-wider">${sorted.length} transactions</span>
-        </div>
-        ${sorted.map(t => {
-            const isIncome = t.type === 'Income';
-            const amount = parseFloat(t.amount || 0);
-            const amountStr = (isIncome ? '+' : '−') + fmt(amount);
-            const amountColor = isIncome ? 'text-[#008A00]' : 'text-error';
-            const iconGradient = isIncome
-                ? 'bg-gradient-to-br from-[#30D158] to-[#008A00] text-white'
-                : 'bg-gradient-to-br from-[#FF6B6B] to-[#FF453A] text-white';
-            const statusColor = t.status === 'Completed'
-                ? 'bg-[#008A00]/10 text-[#008A00]'
-                : t.status === 'Pending'
-                    ? 'bg-[#FF9F0A]/10 text-[#FF9F0A]'
-                    : 'bg-surface-variant text-secondary';
-            const party = resolveParty(t);
+        const total = items.reduce((s, t) => s + parseFloat(t.amount || 0), 0);
+        const overdueCount = items.filter(t => daysSince(t.date) > 30).length;
+        const avgDays = items.length ? Math.round(items.reduce((s, t) => s + daysSince(t.date), 0) / items.length) : 0;
 
-            return `
-            <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant/50 p-3.5 flex items-start gap-3 cursor-pointer active:scale-[0.98] transition-all" onclick="window.openTransactionDetails('${t.id}')">
-                <div class="w-9 h-9 rounded-full ${iconGradient} flex items-center justify-center shrink-0 mt-0.5">
-                    <span class="material-symbols-outlined text-[17px]">${isIncome ? 'arrow_downward' : 'arrow_upward'}</span>
+        return `
+        <div class="flex flex-col h-full">
+            <div class="px-4 py-3 bg-surface-variant/40 border-b border-outline-variant/30 grid grid-cols-3 gap-2 text-center shrink-0">
+                <div>
+                    <p class="text-[9px] font-bold text-secondary uppercase tracking-wider">Total Payable</p>
+                    <p class="text-[14px] font-extrabold text-error">${fmt(total)}</p>
                 </div>
-                <div class="flex-1 min-w-0">
-                    <div class="flex justify-between items-baseline mb-1 gap-2">
-                        <span class="text-[14px] font-bold text-on-surface truncate">${t.title}</span>
-                        <span class="text-[14px] font-extrabold ${amountColor} shrink-0">${amountStr}</span>
-                    </div>
-                    <div class="flex items-center gap-1.5 flex-wrap">
-                        <span class="text-[11px] text-secondary">${t.date}</span>
-                        <span class="text-secondary opacity-40">·</span>
-                        <span class="text-[11px] text-secondary">${t.category}</span>
-                        ${party ? `
-                        <span class="flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-[#5E5CE6]/10 text-[#5E5CE6]">
-                            <span class="material-symbols-outlined text-[10px]">${party.isIncome ? 'person' : 'storefront'}</span>
-                            <span class="text-[10px] font-bold">${party.name}</span>
-                        </span>` : ''}
-                        <span class="px-1.5 py-0.5 rounded-md text-[10px] font-bold ${statusColor}">${t.status}</span>
-                    </div>
+                <div class="border-x border-outline-variant/30">
+                    <p class="text-[9px] font-bold text-secondary uppercase tracking-wider">Vendors</p>
+                    <p class="text-[14px] font-extrabold text-on-surface">${Object.keys(grouped).length}</p>
                 </div>
-            </div>`;
-        }).join('')}
+                <div>
+                    <p class="text-[9px] font-bold text-secondary uppercase tracking-wider">Overdue (30d+)</p>
+                    <p class="text-[14px] font-extrabold ${overdueCount > 0 ? 'text-error' : 'text-[#008A00]'}">${overdueCount}</p>
+                </div>
+            </div>
+            ${overdueCount > 0 ? `<div class="flex items-center gap-2 px-4 py-2 bg-error/5 border-b border-error/20">
+                <span class="material-symbols-outlined text-error text-[14px]">warning</span>
+                <p class="text-[11px] font-semibold text-error">${overdueCount} payment${overdueCount > 1 ? 's' : ''} overdue — pay immediately</p>
+            </div>` : ''}
+            <div class="overflow-auto flex-1">
+                <table class="w-full text-left border-collapse" style="min-width:460px">
+                    <thead class="sticky top-0 bg-surface z-10 shadow-sm">
+                        <tr class="border-b-2 border-outline-variant/50">
+                            <th class="px-3 py-2.5 text-[9px] font-bold text-secondary uppercase tracking-wider">Vendor / Description</th>
+                            <th class="px-3 py-2.5 text-[9px] font-bold text-secondary uppercase tracking-wider w-[75px]">Date</th>
+                            <th class="px-3 py-2.5 text-[9px] font-bold text-secondary uppercase tracking-wider text-center w-[50px]">Age</th>
+                            <th class="px-3 py-2.5 text-[9px] font-bold text-secondary uppercase tracking-wider text-right w-[95px]">Amount Due</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${Object.entries(grouped).map(([vendor, txns]) => {
+                            const vendTotal = txns.reduce((s, t) => s + parseFloat(t.amount || 0), 0);
+                            return `
+                            <tr class="bg-[#FF9F0A]/5 border-y border-[#FF9F0A]/20">
+                                <td class="px-3 py-2 text-[12px] font-bold text-on-surface">
+                                    <span class="flex items-center gap-1.5"><span class="material-symbols-outlined text-[13px] text-[#FF9F0A]">storefront</span>${vendor}</span>
+                                </td>
+                                <td class="px-3 py-2 text-[10px] text-secondary">${txns.length} bill${txns.length > 1 ? 's' : ''}</td>
+                                <td></td>
+                                <td class="px-3 py-2 text-[12px] font-bold text-right text-error">${fmt(vendTotal)}</td>
+                            </tr>
+                            ${txns.map(t => {
+                                const days = daysSince(t.date);
+                                const isOverdue = days > 30;
+                                const ageClr = isOverdue ? 'text-error bg-error/10' : days > 7 ? 'text-[#FF9F0A] bg-[#FF9F0A]/10' : 'text-secondary bg-surface-variant/60';
+                                return `
+                                <tr class="border-b border-outline-variant/15 cursor-pointer hover:bg-primary/5 transition-colors ${isOverdue ? 'border-l-2 border-l-error' : ''}"
+                                    onclick="window.openTransactionDetails('${t.id}')">
+                                    <td class="px-3 py-2.5 pl-7">
+                                        <p class="text-[12px] font-medium text-on-surface leading-tight">${t.title}${isOverdue ? ' <span class="ml-1 text-[9px] font-bold text-error bg-error/10 px-1 rounded">OVERDUE</span>' : ''}</p>
+                                        <p class="text-[10px] text-secondary">${t.category}${t.paymentMethod ? ' · ' + t.paymentMethod : ''}</p>
+                                    </td>
+                                    <td class="px-3 py-2.5 text-[11px] text-secondary whitespace-nowrap">${t.date}</td>
+                                    <td class="px-3 py-2.5 text-center"><span class="px-1.5 py-0.5 rounded-md text-[10px] font-bold ${ageClr}">${days}d</span></td>
+                                    <td class="px-3 py-2.5 text-[12px] font-semibold text-right text-error">${fmt(parseFloat(t.amount || 0))}</td>
+                                </tr>`;
+                            }).join('')}`;
+                        }).join('')}
+                    </tbody>
+                    <tfoot>
+                        <tr class="border-t-2 border-error/30 bg-error/5">
+                            <td class="px-3 py-3 text-[11px] font-bold text-on-surface" colspan="3">Total Payable</td>
+                            <td class="px-3 py-3 text-[13px] font-extrabold text-right text-error">${fmt(total)}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>`;
+    }
+
+    // ── 4. INVENTORY TABLE ──────────────────────────────────────────────────
+    if (type === 'inventory') {
+        const total = items.reduce((s, i) => s + (i.quantity * (i.unitCost || 0)), 0);
+        const lowStockCount = items.filter(i => i.status === 'Low Stock').length;
+
+        return `
+        <div class="flex flex-col h-full">
+            <div class="px-4 py-3 bg-surface-variant/40 border-b border-outline-variant/30 grid grid-cols-3 gap-2 text-center shrink-0">
+                <div>
+                    <p class="text-[9px] font-bold text-secondary uppercase tracking-wider">Total Value</p>
+                    <p class="text-[14px] font-extrabold text-on-surface">${fmt(total)}</p>
+                </div>
+                <div class="border-x border-outline-variant/30">
+                    <p class="text-[9px] font-bold text-secondary uppercase tracking-wider">Items</p>
+                    <p class="text-[14px] font-extrabold text-on-surface">${items.length}</p>
+                </div>
+                <div>
+                    <p class="text-[9px] font-bold text-secondary uppercase tracking-wider">Low Stock</p>
+                    <p class="text-[14px] font-extrabold ${lowStockCount > 0 ? 'text-[#FF9F0A]' : 'text-[#008A00]'}">${lowStockCount}</p>
+                </div>
+            </div>
+            <div class="overflow-auto flex-1">
+                <table class="w-full text-left border-collapse" style="min-width:520px">
+                    <thead class="sticky top-0 bg-surface z-10 shadow-sm">
+                        <tr class="border-b-2 border-outline-variant/50">
+                            <th class="px-3 py-2.5 text-[9px] font-bold text-secondary uppercase tracking-wider">Item</th>
+                            <th class="px-3 py-2.5 text-[9px] font-bold text-secondary uppercase tracking-wider text-right w-[80px]">Qty</th>
+                            <th class="px-3 py-2.5 text-[9px] font-bold text-secondary uppercase tracking-wider text-right w-[85px]">Unit Cost</th>
+                            <th class="px-3 py-2.5 text-[9px] font-bold text-secondary uppercase tracking-wider text-right w-[95px]">Line Value</th>
+                            <th class="px-3 py-2.5 text-[9px] font-bold text-secondary uppercase tracking-wider text-right w-[50px]">%</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${items.map((item, idx) => {
+                            const lineVal = item.quantity * (item.unitCost || 0);
+                            const pct = total > 0 ? (lineVal / total * 100) : 0;
+                            const statusClr = item.status === 'Low Stock'
+                                ? 'bg-[#FF9F0A]/10 text-[#FF9F0A]'
+                                : item.status === 'Out of Stock'
+                                    ? 'bg-error/10 text-error'
+                                    : 'bg-[#008A00]/10 text-[#008A00]';
+                            return `
+                            <tr class="border-b border-outline-variant/15 ${idx % 2 === 1 ? 'bg-surface-container/20' : ''}">
+                                <td class="px-3 py-3">
+                                    <p class="text-[12px] font-semibold text-on-surface leading-tight">${item.name}</p>
+                                    <div class="flex items-center gap-2 mt-1">
+                                        <span class="text-[10px] text-secondary">SKU: ${item.sku}</span>
+                                        <span class="px-1.5 py-0.5 rounded-md text-[9px] font-bold ${statusClr}">${item.status}</span>
+                                    </div>
+                                    <div class="w-full bg-surface-variant rounded-full h-1 mt-2 max-w-[140px]">
+                                        <div class="bg-primary h-1 rounded-full transition-all" style="width:${Math.min(pct, 100)}%"></div>
+                                    </div>
+                                </td>
+                                <td class="px-3 py-3 text-[12px] text-right text-on-surface whitespace-nowrap">${item.quantity.toLocaleString()} ${item.unit}</td>
+                                <td class="px-3 py-3 text-[12px] text-right text-secondary whitespace-nowrap">${fmt(item.unitCost || 0)}</td>
+                                <td class="px-3 py-3 text-[12px] font-semibold text-right text-on-surface whitespace-nowrap">${fmt(lineVal)}</td>
+                                <td class="px-3 py-3 text-[11px] text-right text-secondary">${pct.toFixed(1)}%</td>
+                            </tr>`;
+                        }).join('')}
+                    </tbody>
+                    <tfoot>
+                        <tr class="border-t-2 border-primary/30 bg-primary/5">
+                            <td class="px-3 py-3 text-[11px] font-bold text-on-surface" colspan="3">Total Inventory Value</td>
+                            <td class="px-3 py-3 text-[13px] font-extrabold text-right text-primary">${fmt(total)}</td>
+                            <td class="px-3 py-3 text-[11px] text-right text-secondary">100%</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>`;
+    }
+
+    return `<div class="flex flex-col items-center justify-center py-16 text-secondary">
+        <span class="material-symbols-outlined text-[48px] mb-3 opacity-40">receipt_long</span>
+        <p class="text-[15px] font-medium">No entries found</p>
     </div>`;
 }
+
+
 
 export function getTransactionDetailsHeader(t) {
     if(!t) return '';

@@ -11,7 +11,7 @@ import {
     getCategoriesByType, getCategoryBreakdownSheetContent,
     getCustomDateSheetHTML, getCustomDateFooterHTML,
     getBalanceSheetDetailHTML
-} from './templates.js?v=3.0';
+} from './templates.js?v=4.0';
 
 async function initModule() {
     window.financeStore = financeStore;
@@ -720,8 +720,17 @@ window.openBsDetail = function(type) {
         items = window.financeInventory || [];
     }
 
+    // Running balance data for cash ledger (starts from ₹0 — first transaction)
+    const runningBalanceData = (type === 'cash') ? { openingBalance: 0 } : null;
+
+    // Store current detail for PDF export
+    window._bsDetailType = type;
+    window._bsDetailItems = items;
+    window._bsDetailParties = parties;
+    window._bsDetailRunningData = runningBalanceData;
+
     if (titleEl) titleEl.textContent = titles[type] || 'Detail';
-    bodyEl.innerHTML = getBalanceSheetDetailHTML(type, items, parties);
+    bodyEl.innerHTML = getBalanceSheetDetailHTML(type, items, parties, runningBalanceData);
 
     sheet.classList.remove('translate-y-full');
     sheet.classList.add('translate-y-0');
@@ -737,6 +746,99 @@ window.closeBsDetail = function() {
     bd?.classList.add('opacity-0', 'pointer-events-none');
     bd?.classList.remove('opacity-100');
 };
+
+window.exportBsDetailPDF = function() {
+    const type = window._bsDetailType;
+    const items = window._bsDetailItems || [];
+    const parties = window._bsDetailParties || { customers: [], vendors: [] };
+    const runningData = window._bsDetailRunningData;
+    if (!type) return;
+
+    const fmt = (n) => '₹' + parseFloat(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+    const today = new Date();
+    const titles = { cash: 'Cash & Bank Balance', receivable: 'Accounts Receivable', payable: 'Accounts Payable', inventory: 'Inventory Value' };
+    const daysSince = (d) => Math.floor((today - new Date(d)) / 86400000);
+
+    let tableHTML = '';
+    if (type === 'cash') {
+        const sorted = [...items].sort((a, b) => new Date(a.date) - new Date(b.date));
+        let bal = runningData?.openingBalance || 0;
+        const rows = sorted.map(t => {
+            const amt = parseFloat(t.amount || 0);
+            const isInc = t.type === 'Income';
+            const debit = isInc ? 0 : amt;
+            const credit = isInc ? amt : 0;
+            bal += isInc ? amt : -amt;
+            return { ...t, debit, credit, balance: bal };
+        });
+        const tD = rows.reduce((s, r) => s + r.debit, 0);
+        const tC = rows.reduce((s, r) => s + r.credit, 0);
+        const closing = rows.length ? rows[rows.length - 1].balance : 0;
+        tableHTML = `<table><thead><tr><th>Date</th><th>Description</th><th>Category</th><th class="num">Debit (−)</th><th class="num">Credit (+)</th><th class="num">Balance</th></tr></thead>
+        <tbody><tr class="sub"><td>—</td><td colspan="4"><em>Opening Balance</em></td><td class="num">${fmt(0)}</td></tr>
+        ${rows.map(r => `<tr><td>${r.date}</td><td><strong>${r.title}</strong></td><td>${r.category}</td>
+            <td class="num debit">${r.debit > 0 ? fmt(r.debit) : '—'}</td>
+            <td class="num credit">${r.credit > 0 ? fmt(r.credit) : '—'}</td>
+            <td class="num"><strong>${fmt(r.balance)}</strong></td></tr>`).join('')}</tbody>
+        <tfoot><tr class="total"><td colspan="3">Total</td><td class="num debit">${fmt(tD)}</td><td class="num credit">${fmt(tC)}</td><td class="num closing">${fmt(closing)}</td></tr></tfoot></table>`;
+    } else if (type === 'receivable' || type === 'payable') {
+        const isRec = type === 'receivable';
+        const grouped = {};
+        items.forEach(t => {
+            const p = t.refId ? (isRec ? parties.customers : parties.vendors)?.find(x => String(x.id) === String(t.refId)) : null;
+            const key = p ? p.name : (t.title || 'Unknown');
+            if (!grouped[key]) grouped[key] = [];
+            grouped[key].push(t);
+        });
+        const total = items.reduce((s, t) => s + parseFloat(t.amount || 0), 0);
+        tableHTML = `<table><thead><tr><th>${isRec ? 'Customer' : 'Vendor'} / Description</th><th>Date</th><th class="num">Age</th><th class="num">Amount</th></tr></thead><tbody>
+        ${Object.entries(grouped).map(([name, txns]) => {
+            const sub = txns.reduce((s, t) => s + parseFloat(t.amount || 0), 0);
+            return `<tr class="sub"><td><strong>${name}</strong></td><td></td><td></td><td class="num ${isRec ? 'credit' : 'debit'}"><strong>${fmt(sub)}</strong></td></tr>
+            ${txns.map(t => {
+                const days = daysSince(t.date);
+                return `<tr><td style="padding-left:20px">${t.title}${days > 30 ? ' ⚠️' : ''}</td><td>${t.date}</td><td class="num">${days}d</td><td class="num ${isRec ? 'credit' : 'debit'}">${fmt(parseFloat(t.amount || 0))}</td></tr>`;
+            }).join('')}`;
+        }).join('')}</tbody>
+        <tfoot><tr class="total"><td colspan="3">Total ${isRec ? 'Receivable' : 'Payable'}</td><td class="num ${isRec ? 'credit' : 'debit'}">${fmt(total)}</td></tr></tfoot></table>`;
+    } else if (type === 'inventory') {
+        const total = items.reduce((s, i) => s + (i.quantity * (i.unitCost || 0)), 0);
+        tableHTML = `<table><thead><tr><th>Item</th><th>SKU</th><th class="num">Qty</th><th class="num">Unit Cost</th><th class="num">Line Value</th><th class="num">%</th></tr></thead><tbody>
+        ${items.map(item => {
+            const lv = item.quantity * (item.unitCost || 0);
+            const pct = total > 0 ? (lv / total * 100).toFixed(1) : '0.0';
+            return `<tr><td><strong>${item.name}</strong><br><small>SKU: ${item.sku} · ${item.status}</small></td><td>${item.sku}</td><td class="num">${item.quantity.toLocaleString()} ${item.unit}</td><td class="num">${fmt(item.unitCost || 0)}</td><td class="num credit">${fmt(lv)}</td><td class="num">${pct}%</td></tr>`;
+        }).join('')}</tbody>
+        <tfoot><tr class="total"><td colspan="4">Total Inventory Value</td><td class="num credit">${fmt(total)}</td><td class="num">100%</td></tr></tfoot></table>`;
+    }
+
+    const win = window.open('', '_blank', 'width=900,height=700');
+    win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <title>${titles[type]} — Balance Sheet Detail</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; color: #111; padding: 32px; }
+        h1 { font-size: 20px; margin: 0 0 4px; color: #1a1a2e; }
+        .meta { font-size: 11px; color: #666; margin-bottom: 24px; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #f5f5f7; padding: 8px 10px; text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #d1d1d6; }
+        td { padding: 7px 10px; border-bottom: 1px solid #e5e5ea; }
+        .num { text-align: right; }
+        .debit { color: #c0392b; }
+        .credit { color: #1a7a1a; }
+        .closing { color: #1d3a8a; font-weight: 700; }
+        tr.sub td { background: #f9f9fb; font-weight: 600; }
+        tfoot tr.total td { background: #f0f0f5; font-weight: 700; font-size: 13px; border-top: 2px solid #a0a0b0; }
+        @media print { body { padding: 16px; } }
+    </style></head>
+    <body>
+    <h1>${titles[type]}</h1>
+    <p class="meta">Generated: ${today.toLocaleDateString('en-IN', { day:'numeric', month:'long', year:'numeric' })} · ${items.length} entries · GarmentOS Finance</p>
+    ${tableHTML}
+    <script>setTimeout(() => { window.print(); }, 400);<\/script>
+    </body></html>`);
+    win.document.close();
+};
+
 
 window.toggleFinanceView = function(view) {
     const cashFlowView = document.getElementById('cash-flow-view');
