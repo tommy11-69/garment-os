@@ -1,6 +1,6 @@
 import { financeStore } from '../stores/FinanceStore.js';
 import { api } from '../services/api.js';
-import { renderers } from '../renderers.js';
+import { renderers } from '../renderers.js?v=2.0';
 import { BottomSheet } from '../components/index.js';
 import { bindFormValidation } from '../utils/formHandler.js';
 import { SearchableSelectInput } from '../components/inputs.js';

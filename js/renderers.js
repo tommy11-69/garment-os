@@ -206,24 +206,6 @@ export const renderers = {
             </div>
         `;
     },
-
-    transactionCard(txn) {
-        const sign = txn.isNegative ? "-" : "+";
-        return `
-            <div role="button" tabindex="0" class="p-md ${txn.id === 'txn-003' ? '' : 'border-b border-outline-variant/30'} flex justify-between items-center active-scale transition-apple cursor-pointer outline-none focus-visible:bg-surface-variant focus-visible:ring-2 focus-visible:ring-primary" onclick="window.openTransactionDetails('${txn.id}')">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-full ${txn.iconBg} ${txn.iconColor} flex items-center justify-center">
-                        <span class="material-symbols-outlined text-[20px]">${txn.icon}</span>
-                    </div>
-                    <div>
-                        <h4 class="text-[15px] font-semibold text-on-surface leading-tight mb-0.5">${txn.title}</h4>
-                        <span class="text-[13px] text-secondary">${txn.category}</span>
-                    </div>
-                </div>
-                <span class="text-[15px] font-bold ${txn.amountColor}">${sign}₹${txn.amount.toFixed(2).toLocaleString()}</span>
-            </div>
-        `;
-    },
     
     shipmentCard(s) {
         const isTransit = s.status === 'In Transit';
@@ -354,24 +336,6 @@ export const renderers = {
                         <span class="text-caption text-secondary">${item.unit}</span>
                     </div>
                 </div>
-            </div>
-        `;
-    },
-
-    transactionCard(txn) {
-        const sign = txn.isNegative ? "-" : "+";
-        return `
-            <div role="button" tabindex="0" class="p-md ${txn.id === 'txn-003' ? '' : 'border-b border-outline-variant/30'} flex justify-between items-center active-scale transition-apple cursor-pointer outline-none focus-visible:bg-surface-variant focus-visible:ring-2 focus-visible:ring-primary" onclick="window.openTransactionDetails('${txn.id}')">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-full ${txn.iconBg} ${txn.iconColor} flex items-center justify-center">
-                        <span class="material-symbols-outlined text-[20px]">${txn.icon}</span>
-                    </div>
-                    <div>
-                        <h4 class="text-[15px] font-semibold text-on-surface leading-tight mb-0.5">${txn.title}</h4>
-                        <span class="text-[13px] text-secondary">${txn.category}</span>
-                    </div>
-                </div>
-                <span class="text-[15px] font-bold ${txn.amountColor}">${sign}₹${txn.amount.toFixed(2).toLocaleString()}</span>
             </div>
         `;
     },
