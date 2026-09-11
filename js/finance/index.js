@@ -322,7 +322,7 @@ function setupCustomDateSheet() {
 }
 
 function renderUI(state) {
-    const { entities, selectedIds, isBulkMode, metrics, loading, error, allTransactions } = state;
+    const { entities, selectedIds, isBulkMode, metrics, loading, error, allTransactions, currentFilters } = state;
     
     renderDashboard(metrics);
     renderBalanceSheet(metrics);
@@ -349,8 +349,89 @@ function renderUI(state) {
         window.renderFinanceCharts(allTxns);
     }
 
+    updateFilterUI(currentFilters);
     updateBulkToolbar(state);
     updateActiveEntitySheets(state.activeEntity);
+}
+
+function updateFilterUI(filters = {}) {
+    let activeCount = 0;
+    const activeTags = [];
+
+    if (filters.type && filters.type !== 'all') {
+        activeCount++;
+        activeTags.push({ key: 'type', label: `Type: ${filters.type}` });
+    }
+    if (filters.status && filters.status !== 'all') {
+        activeCount++;
+        activeTags.push({ key: 'status', label: `Status: ${filters.status}` });
+    }
+    if (filters.paymentMethod && filters.paymentMethod !== 'all') {
+        activeCount++;
+        activeTags.push({ key: 'paymentMethod', label: `Method: ${filters.paymentMethod}` });
+    }
+    if (filters.dateRange && filters.dateRange !== 'all') {
+        activeCount++;
+        const dateLabel = filters.dateRange === 'custom' && filters.startDate ? `${filters.startDate} - ${filters.endDate}` : filters.dateRange.replace('_', ' ');
+        activeTags.push({ key: 'dateRange', label: `Date: ${dateLabel}` });
+    }
+
+    const badge = document.getElementById('filter-badge');
+    if (badge) {
+        if (activeCount > 0) {
+            badge.textContent = activeCount;
+            badge.classList.remove('hidden');
+            badge.classList.add('flex');
+        } else {
+            badge.classList.add('hidden');
+            badge.classList.remove('flex');
+        }
+    }
+
+    const tagsContainer = document.getElementById('active-filter-tags');
+    if (tagsContainer) {
+        if (activeTags.length > 0) {
+            tagsContainer.classList.remove('hidden');
+            tagsContainer.classList.add('flex');
+            tagsContainer.innerHTML = activeTags.map(t => `
+                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-primary/10 text-primary border border-primary/20 text-[11px] font-bold animate-fade-in">
+                    ${t.label}
+                    <button onclick="window.removeSingleFilter('${t.key}')" class="hover:opacity-75 active-scale ml-0.5" title="Remove filter">
+                        <span class="material-symbols-outlined text-[13px]">close</span>
+                    </button>
+                </span>
+            `).join('') + `
+                <button onclick="window.clearFilters()" class="text-[11px] font-bold text-secondary underline hover:text-on-surface ml-1 active-scale">
+                    Clear All
+                </button>
+            `;
+        } else {
+            tagsContainer.classList.add('hidden');
+            tagsContainer.classList.remove('flex');
+            tagsContainer.innerHTML = '';
+        }
+    }
+
+    const quickChips = document.querySelectorAll('#quick-filter-chips .quick-chip');
+    quickChips.forEach(chip => {
+        const val = chip.dataset.quickFilter;
+        let isSelected = false;
+        if (val === 'all') {
+            isSelected = (!filters.type || filters.type === 'all') && (!filters.status || filters.status === 'all');
+        } else if (val === 'Income' || val === 'Expense') {
+            isSelected = filters.type === val;
+        } else if (val === 'Pending' || val === 'Completed') {
+            isSelected = filters.status === val;
+        }
+
+        if (isSelected) {
+            chip.classList.add('bg-primary', 'text-white', 'border-primary', 'shadow-xs');
+            chip.classList.remove('bg-surface-container-lowest', 'text-secondary', 'border-outline-variant');
+        } else {
+            chip.classList.remove('bg-primary', 'text-white', 'border-primary', 'shadow-xs');
+            chip.classList.add('bg-surface-container-lowest', 'text-secondary', 'border-outline-variant');
+        }
+    });
 }
 
 function renderDashboard(metrics) {
@@ -916,6 +997,41 @@ window.applyFilters = function() {
     });
     
     window.closeSheet('filterSheet');
+};
+
+window.selectFilterPill = function(category, value, el) {
+    const hiddenInput = document.getElementById(`filter-${category}`);
+    if (hiddenInput) hiddenInput.value = value;
+
+    const parent = el.closest('div');
+    if (parent) {
+        parent.querySelectorAll('button').forEach(b => {
+            b.classList.remove('bg-primary', 'text-white', 'border-primary', 'shadow-xs');
+            b.classList.add('bg-surface-container-lowest', 'text-on-surface', 'border-outline-variant');
+        });
+    }
+    el.classList.add('bg-primary', 'text-white', 'border-primary', 'shadow-xs');
+    el.classList.remove('bg-surface-container-lowest', 'text-on-surface', 'border-outline-variant');
+};
+
+window.setQuickFilter = function(val) {
+    if (val === 'all') {
+        financeStore.setFilters({ type: 'all', status: 'all' });
+    } else if (val === 'Income' || val === 'Expense') {
+        financeStore.setFilters({ type: val });
+    } else if (val === 'Pending' || val === 'Completed') {
+        financeStore.setFilters({ status: val });
+    }
+};
+
+window.removeSingleFilter = function(key) {
+    const current = { ...financeStore.getState().currentFilters };
+    current[key] = 'all';
+    if (key === 'dateRange') {
+        current.startDate = null;
+        current.endDate = null;
+    }
+    financeStore.setFilters(current);
 };
 
 window.clearFilters = function() {

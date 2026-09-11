@@ -197,16 +197,31 @@
             <div class="flex items-center gap-3 mt-2">
                 <div class="relative flex-1">
                     <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[20px]" aria-hidden="true">search</span>
-                    <input type="text" id="transaction-search-input" placeholder="Search transactions..." autocomplete="off"
-                           class="w-full bg-surface-container-lowest border border-outline-variant rounded-2xl pl-10 pr-4 py-3.5 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple shadow-sm placeholder:text-secondary">
+                    <input type="text" id="transaction-search-input" placeholder="Search transactions, category, title..." autocomplete="off"
+                           class="w-full bg-surface-container-lowest border border-outline-variant rounded-2xl pl-10 pr-4 py-3 text-[14px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple shadow-sm placeholder:text-secondary">
                 </div>
-                <button onclick="window.openSheet('filterSheet')" class="w-12 h-12 shrink-0 rounded-2xl bg-surface-container-lowest border border-outline-variant flex items-center justify-center text-on-surface active-scale transition-apple shadow-sm">
-                    <span class="material-symbols-outlined text-[22px]">tune</span>
-                </button>
+                <div class="relative shrink-0">
+                    <button onclick="window.openSheet('filterSheet')" class="w-11 h-11 rounded-2xl bg-surface-container-lowest border border-outline-variant flex items-center justify-center text-on-surface active-scale transition-apple shadow-sm relative">
+                        <span class="material-symbols-outlined text-[20px]">tune</span>
+                        <span id="filter-badge" class="hidden absolute -top-1 -right-1 w-4 h-4 bg-primary text-white font-extrabold text-[9px] rounded-full flex items-center justify-center shadow-sm">0</span>
+                    </button>
+                </div>
             </div>
 
-            <div class="flex items-center justify-between">
-                <h3 class="text-[18px] font-bold text-on-surface tracking-tight">Recent Transactions</h3>
+            <!-- Quick Filter Chips Bar -->
+            <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1" id="quick-filter-chips">
+                <button class="quick-chip active px-3 py-1.5 rounded-xl text-[12px] font-bold border transition-all shrink-0 bg-primary text-white border-primary shadow-xs" data-quick-filter="all" onclick="window.setQuickFilter('all')">All</button>
+                <button class="quick-chip px-3 py-1.5 rounded-xl text-[12px] font-bold border transition-all shrink-0 bg-surface-container-lowest text-secondary border-outline-variant hover:text-on-surface active-scale" data-quick-filter="Income" onclick="window.setQuickFilter('Income')">Income 🟢</button>
+                <button class="quick-chip px-3 py-1.5 rounded-xl text-[12px] font-bold border transition-all shrink-0 bg-surface-container-lowest text-secondary border-outline-variant hover:text-on-surface active-scale" data-quick-filter="Expense" onclick="window.setQuickFilter('Expense')">Expense 🔴</button>
+                <button class="quick-chip px-3 py-1.5 rounded-xl text-[12px] font-bold border transition-all shrink-0 bg-surface-container-lowest text-secondary border-outline-variant hover:text-on-surface active-scale" data-quick-filter="Pending" onclick="window.setQuickFilter('Pending')">Pending ⏳</button>
+                <button class="quick-chip px-3 py-1.5 rounded-xl text-[12px] font-bold border transition-all shrink-0 bg-surface-container-lowest text-secondary border-outline-variant hover:text-on-surface active-scale" data-quick-filter="Completed" onclick="window.setQuickFilter('Completed')">Completed ✅</button>
+            </div>
+
+            <!-- Active Applied Filter Tags (Shown when advanced filters applied) -->
+            <div id="active-filter-tags" class="hidden flex-wrap items-center gap-1.5 py-1"></div>
+
+            <div class="flex items-center justify-between mt-1">
+                <h3 class="text-[17px] font-bold text-on-surface tracking-tight">Recent Transactions</h3>
             </div>
             
             <div id="transactions-list" class="flex flex-col">
@@ -301,7 +316,7 @@
     
     <div id="sheets-container"></div>
     
-    <script type="module" src="../js/finance/index.js?v=2.0"></script>
+    <script type="module" src="../js/finance/index.js?v=2.1"></script>
     <script src="../js/utils/sheet.js"></script>
     <script src="../js/app.js"></script>
 

@@ -537,43 +537,110 @@ export function getTransactionDetailsContent(t) {
 
 
 export function getFilterSheetHTML(currentFilters = {}) {
+    const curType = currentFilters.type || 'all';
+    const curStatus = currentFilters.status || 'all';
+    const curMethod = currentFilters.paymentMethod || 'all';
+    const curDate = currentFilters.dateRange || 'all';
+
     const types = [
-        { label: 'All Types', value: 'all' },
-        { label: 'Income', value: 'Income' },
-        { label: 'Expense', value: 'Expense' }
+        { label: 'All Types', value: 'all', icon: 'apps' },
+        { label: 'Income 🟢', value: 'Income', icon: 'arrow_downward' },
+        { label: 'Expense 🔴', value: 'Expense', icon: 'arrow_upward' }
     ];
-    
+
     const statuses = [
         { label: 'All Statuses', value: 'all' },
-        { label: 'Completed', value: 'Completed' },
-        { label: 'Pending', value: 'Pending' },
-        { label: 'Cancelled', value: 'Cancelled' }
+        { label: 'Completed ✅', value: 'Completed' },
+        { label: 'Pending ⏳', value: 'Pending' },
+        { label: 'Cancelled ❌', value: 'Cancelled' }
     ];
 
     const methods = [
-        { label: 'All Methods', value: 'all' },
-        { label: 'Cash', value: 'Cash' },
-        { label: 'UPI', value: 'UPI' },
-        { label: 'Bank Transfer', value: 'Bank Transfer' },
-        { label: 'Cheque', value: 'Cheque' },
-        { label: 'Card', value: 'Card' }
+        { label: 'All', value: 'all', icon: 'clear_all' },
+        { label: 'Cash', value: 'Cash', icon: 'payments' },
+        { label: 'UPI', value: 'UPI', icon: 'qr_code_2' },
+        { label: 'Bank', value: 'Bank Transfer', icon: 'account_balance' },
+        { label: 'Cheque', value: 'Cheque', icon: 'edit_note' },
+        { label: 'Card', value: 'Card', icon: 'credit_card' }
     ];
 
     const dateRanges = [
         { label: 'All Time', value: 'all' },
         { label: 'Today', value: 'today' },
         { label: 'This Week', value: 'this_week' },
-        { label: 'This Month', value: 'this_month' },
-        { label: 'Custom Range', value: 'custom' }
+        { label: 'This Month', value: 'this_month' }
     ];
 
     return `
-        <div class="flex flex-col gap-4">
-            ${SelectInput({ label: 'Transaction Type', id: 'filter-type', options: types, value: currentFilters.type || 'all' })}
-            ${SelectInput({ label: 'Status', id: 'filter-status', options: statuses, value: currentFilters.status || 'all' })}
-            ${SelectInput({ label: 'Payment Method', id: 'filter-method', options: methods, value: currentFilters.paymentMethod || 'all' })}
-            ${SelectInput({ label: 'Date Range', id: 'filter-date', options: dateRanges, value: currentFilters.dateRange || 'all' })}
-            <div class="h-4"></div>
+        <div class="flex flex-col gap-5">
+            <!-- Hidden inputs to preserve form values for applyFilters -->
+            <input type="hidden" id="filter-type" value="${curType}">
+            <input type="hidden" id="filter-status" value="${curStatus}">
+            <input type="hidden" id="filter-method" value="${curMethod}">
+            <input type="hidden" id="filter-date" value="${curDate}">
+
+            <!-- 1. Transaction Type -->
+            <div>
+                <label class="block text-[12px] font-bold text-secondary uppercase tracking-wider mb-2">Transaction Type</label>
+                <div class="grid grid-cols-3 gap-2">
+                    ${types.map(t => {
+                        const active = curType === t.value;
+                        return `
+                            <button type="button" class="filter-pill-type px-3 py-2.5 rounded-xl text-[13px] font-bold border transition-all flex items-center justify-center gap-1.5 active-scale ${active ? 'bg-primary text-white border-primary shadow-xs' : 'bg-surface-container-lowest text-on-surface border-outline-variant hover:border-primary/50'}" data-value="${t.value}" onclick="window.selectFilterPill('type', '${t.value}', this)">
+                                <span>${t.label}</span>
+                            </button>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+
+            <!-- 2. Status -->
+            <div>
+                <label class="block text-[12px] font-bold text-secondary uppercase tracking-wider mb-2">Status</label>
+                <div class="grid grid-cols-2 gap-2">
+                    ${statuses.map(s => {
+                        const active = curStatus === s.value;
+                        return `
+                            <button type="button" class="filter-pill-status px-3 py-2.5 rounded-xl text-[13px] font-bold border transition-all flex items-center justify-center gap-1.5 active-scale ${active ? 'bg-primary text-white border-primary shadow-xs' : 'bg-surface-container-lowest text-on-surface border-outline-variant hover:border-primary/50'}" data-value="${s.value}" onclick="window.selectFilterPill('status', '${s.value}', this)">
+                                <span>${s.label}</span>
+                            </button>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+
+            <!-- 3. Payment Method -->
+            <div>
+                <label class="block text-[12px] font-bold text-secondary uppercase tracking-wider mb-2">Payment Method</label>
+                <div class="grid grid-cols-3 gap-2">
+                    ${methods.map(m => {
+                        const active = curMethod === m.value;
+                        return `
+                            <button type="button" class="filter-pill-method px-2.5 py-2.5 rounded-xl text-[12px] font-bold border transition-all flex flex-col items-center justify-center gap-1 active-scale ${active ? 'bg-primary text-white border-primary shadow-xs' : 'bg-surface-container-lowest text-on-surface border-outline-variant hover:border-primary/50'}" data-value="${m.value}" onclick="window.selectFilterPill('method', '${m.value}', this)">
+                                <span class="material-symbols-outlined text-[18px]">${m.icon}</span>
+                                <span class="truncate max-w-full">${m.label}</span>
+                            </button>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+
+            <!-- 4. Date Range -->
+            <div>
+                <label class="block text-[12px] font-bold text-secondary uppercase tracking-wider mb-2">Date Range</label>
+                <div class="grid grid-cols-2 gap-2">
+                    ${dateRanges.map(d => {
+                        const active = curDate === d.value;
+                        return `
+                            <button type="button" class="filter-pill-date px-3 py-2.5 rounded-xl text-[13px] font-bold border transition-all flex items-center justify-center gap-1.5 active-scale ${active ? 'bg-primary text-white border-primary shadow-xs' : 'bg-surface-container-lowest text-on-surface border-outline-variant hover:border-primary/50'}" data-value="${d.value}" onclick="window.selectFilterPill('date', '${d.value}', this)">
+                                <span>${d.label}</span>
+                            </button>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+
+            <div class="h-2"></div>
         </div>
     `;
 }
