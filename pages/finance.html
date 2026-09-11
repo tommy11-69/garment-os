@@ -95,6 +95,23 @@
                     <button class="period-pill active text-[11px] font-bold px-2.5 py-1.5 rounded-lg" data-period="7d" onclick="window.finSetPeriod('7d')">7D</button>
                     <button class="period-pill inactive text-[11px] font-bold px-2.5 py-1.5 rounded-lg" data-period="1m" onclick="window.finSetPeriod('1m')">1M</button>
                     <button class="period-pill inactive text-[11px] font-bold px-2.5 py-1.5 rounded-lg" data-period="3m" onclick="window.finSetPeriod('3m')">3M</button>
+                    <button id="custom-period-btn" class="period-pill inactive text-[11px] font-bold px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 active-scale" data-period="custom" onclick="window.openCustomDateFilter()" title="Custom Date Range">
+                        <span class="material-symbols-outlined text-[15px] leading-none">calendar_month</span>
+                        <span id="custom-period-label">Custom</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Active Custom Range Banner -->
+            <div id="active-custom-range-banner" class="hidden px-xs -mt-2">
+                <div class="flex items-center justify-between py-2 px-3.5 rounded-2xl bg-primary/10 border border-primary/20 text-primary animate-fade-in">
+                    <div class="flex items-center gap-2 text-[12px] font-semibold truncate">
+                        <span class="material-symbols-outlined text-[16px] shrink-0">calendar_today</span>
+                        <span>Filtering: <strong id="active-custom-range-text">Custom Range</strong></span>
+                    </div>
+                    <button onclick="window.clearCustomDateFilter()" class="text-[11px] font-bold text-primary underline shrink-0 ml-2 hover:opacity-80 active-scale">
+                        Reset to 7D
+                    </button>
                 </div>
             </div>
 
@@ -207,12 +224,28 @@
         // ─── State ────────────────────────────────────────────────────────────
         let _transactions = [];
         let _period = '7d';
+        let _customStartDate = null;
+        let _customEndDate = null;
 
-        window.finSetPeriod = function(period) {
+        window.finSetPeriod = function(period, customRange) {
             _period = period;
+            if (period === 'custom' && customRange) {
+                _customStartDate = customRange.startDate;
+                _customEndDate = customRange.endDate;
+            } else if (period !== 'custom') {
+                _customStartDate = null;
+                _customEndDate = null;
+                const banner = document.getElementById('active-custom-range-banner');
+                if (banner) banner.classList.add('hidden');
+                if (typeof window.onFinPeriodReset === 'function') {
+                    window.onFinPeriodReset();
+                }
+            }
+
             document.querySelectorAll('.period-pill').forEach(el => {
-                el.classList.toggle('active',   el.dataset.period === period);
-                el.classList.toggle('inactive', el.dataset.period !== period);
+                const isActive = el.dataset.period === period;
+                el.classList.toggle('active',   isActive);
+                el.classList.toggle('inactive', !isActive);
             });
             if (_transactions.length) renderAllCharts(_transactions);
         };
@@ -228,15 +261,68 @@
         const DAY_MS = 86400000;
 
         function getPeriodDays() {
+            if (_period === 'custom' && _customStartDate && _customEndDate) {
+                const s = new Date(_customStartDate + 'T00:00:00');
+                const e = new Date(_customEndDate + 'T00:00:00');
+                return Math.max(1, Math.round((e - s) / DAY_MS) + 1);
+            }
             return _period === '3m' ? 90 : _period === '1m' ? 30 : 7;
         }
 
         function getPeriodTransactions(txns) {
+            if (_period === 'custom' && _customStartDate && _customEndDate) {
+                return txns.filter(t => {
+                    const d = (t.date || '').split('T')[0];
+                    return d >= _customStartDate && d <= _customEndDate;
+                });
+            }
             const cutoff = Date.now() - getPeriodDays() * DAY_MS;
             return txns.filter(t => new Date(t.date).getTime() >= cutoff);
         }
 
         function groupByDate(txns, days) {
+            if (_period === 'custom' && _customStartDate && _customEndDate) {
+                const startD = new Date(_customStartDate + 'T00:00:00');
+                const endD = new Date(_customEndDate + 'T00:00:00');
+                const totalDays = Math.max(1, Math.round((endD - startD) / DAY_MS) + 1);
+                const buckets = [];
+
+                if (totalDays <= 31) {
+                    for (let i = 0; i < totalDays; i++) {
+                        const cur = new Date(startD);
+                        cur.setDate(cur.getDate() + i);
+                        const key = cur.toISOString().split('T')[0];
+                        const dayTxns = txns.filter(t => (t.date || '').split('T')[0] === key);
+                        buckets.push({
+                            label: cur.getDate() + ' ' + cur.toLocaleString('en', { month: 'short' }),
+                            income: dayTxns.filter(t => t.type === 'Income').reduce((s, t) => s + +t.amount, 0),
+                            expenses: dayTxns.filter(t => t.type === 'Expense').reduce((s, t) => s + +t.amount, 0),
+                        });
+                    }
+                } else {
+                    const step = Math.ceil(totalDays / 20);
+                    for (let i = 0; i < totalDays; i += step) {
+                        const curStart = new Date(startD);
+                        curStart.setDate(curStart.getDate() + i);
+                        const curEnd = new Date(curStart);
+                        curEnd.setDate(curEnd.getDate() + Math.min(step - 1, totalDays - 1 - i));
+                        
+                        const kStart = curStart.toISOString().split('T')[0];
+                        const kEnd = curEnd.toISOString().split('T')[0];
+                        const bucketTxns = txns.filter(t => {
+                            const d = (t.date || '').split('T')[0];
+                            return d >= kStart && d <= kEnd;
+                        });
+                        buckets.push({
+                            label: curStart.toLocaleString('en', { month: 'short' }) + ' ' + curStart.getDate(),
+                            income: bucketTxns.filter(t => t.type === 'Income').reduce((s, t) => s + +t.amount, 0),
+                            expenses: bucketTxns.filter(t => t.type === 'Expense').reduce((s, t) => s + +t.amount, 0),
+                        });
+                    }
+                }
+                return buckets;
+            }
+
             const now = new Date();
             const buckets = [];
             for (let i = days - 1; i >= 0; i--) {
@@ -283,7 +369,15 @@
             const sub    = document.getElementById('area-chart-subtitle');
             if (!svg || !labels) return;
 
-            sub.textContent = _period === '7d' ? 'Last 7 days' : _period === '1m' ? 'Last 1 month' : 'Last 3 months';
+            if (_period === 'custom' && _customStartDate && _customEndDate) {
+                const sObj = new Date(_customStartDate + 'T00:00:00');
+                const eObj = new Date(_customEndDate + 'T00:00:00');
+                const sFmt = sObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                const eFmt = eObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                sub.textContent = `${sFmt} – ${eFmt}`;
+            } else {
+                sub.textContent = _period === '7d' ? 'Last 7 days' : _period === '1m' ? 'Last 1 month' : 'Last 3 months';
+            }
 
             const W = 340, H = 160, PAD = { t: 10, b: 30, l: 8, r: 8 };
             const cW = W - PAD.l - PAD.r;
@@ -292,7 +386,7 @@
 
             const maxVal = Math.max(...data.map(d => Math.max(d.income, d.expenses)), 1);
 
-            const xPos = i => PAD.l + (i / (n - 1)) * cW;
+            const xPos = i => n > 1 ? PAD.l + (i / (n - 1)) * cW : PAD.l + (cW / 2);
             const yInc = d => PAD.t + cH - (d.income / maxVal) * cH;
             const yExp = d => PAD.t + cH - (d.expenses / maxVal) * cH;
 
@@ -305,12 +399,16 @@
             });
 
             // Build paths
-            const incPts = data.map((d, i) => `${xPos(i)},${yInc(d)}`).join(' ');
-            const expPts = data.map((d, i) => `${xPos(i)},${yExp(d)}`).join(' ');
+            const incPts = n > 1
+                ? data.map((d, i) => `${xPos(i)},${yInc(d)}`).join(' ')
+                : `${PAD.l},${yInc(data[0] || {income:0})} ${W - PAD.r},${yInc(data[0] || {income:0})}`;
+            const expPts = n > 1
+                ? data.map((d, i) => `${xPos(i)},${yExp(d)}`).join(' ')
+                : `${PAD.l},${yExp(data[0] || {expenses:0})} ${W - PAD.r},${yExp(data[0] || {expenses:0})}`;
             const baseY = PAD.t + cH;
 
-            const incAreaPts = `${xPos(0)},${baseY} ${incPts} ${xPos(n-1)},${baseY}`;
-            const expAreaPts = `${xPos(0)},${baseY} ${expPts} ${xPos(n-1)},${baseY}`;
+            const incAreaPts = `${PAD.l},${baseY} ${incPts} ${W - PAD.r},${baseY}`;
+            const expAreaPts = `${PAD.l},${baseY} ${expPts} ${W - PAD.r},${baseY}`;
 
             // Dot hit areas (invisible — for tooltip)
             const dots = data.map((d, i) => `

@@ -10,7 +10,9 @@ class FinanceStore extends BaseStore {
             status: 'all',
             paymentMethod: 'all',
             category: 'all',
-            dateRange: 'all'
+            dateRange: 'all',
+            startDate: null,
+            endDate: null
         };
         this.currentSort = 'newest';
         
@@ -112,6 +114,18 @@ class FinanceStore extends BaseStore {
 
     setFilter(key, value) {
         this.currentFilters[key] = value;
+        this.loadTransactions();
+    }
+
+    setFilters(filtersObj) {
+        this.currentFilters = { ...this.currentFilters, ...filtersObj };
+        this.loadTransactions();
+    }
+
+    setCustomDateRange(startDate, endDate) {
+        this.currentFilters.dateRange = 'custom';
+        this.currentFilters.startDate = startDate;
+        this.currentFilters.endDate = endDate;
         this.loadTransactions();
     }
 

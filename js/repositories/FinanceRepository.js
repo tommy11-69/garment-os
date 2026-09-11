@@ -61,8 +61,14 @@ class FinanceRepository extends BaseRepository {
                 } else if (filters.dateRange === 'this_month') {
                     return tDate.getMonth() === today.getMonth() && tDate.getFullYear() === today.getFullYear();
                 } else if (filters.dateRange === 'custom' && filters.startDate && filters.endDate) {
+                    const itemDate = (t.date || '').split('T')[0];
+                    if (itemDate) {
+                        return itemDate >= filters.startDate && itemDate <= filters.endDate;
+                    }
                     const s = new Date(filters.startDate);
+                    s.setHours(0, 0, 0, 0);
                     const e = new Date(filters.endDate);
+                    e.setHours(23, 59, 59, 999);
                     return tDate >= s && tDate <= e;
                 }
                 return true;

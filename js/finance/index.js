@@ -8,7 +8,8 @@ import {
     getAddTransactionSheetHTML, getAddTransactionFooterHTML,
     getTransactionDetailsHeader, getTransactionDetailsContent,
     getFilterSheetHTML, getFilterFooterHTML,
-    getCategoriesByType, getCategoryBreakdownSheetContent
+    getCategoriesByType, getCategoryBreakdownSheetContent,
+    getCustomDateSheetHTML, getCustomDateFooterHTML
 } from './templates.js';
 
 async function initModule() {
@@ -38,7 +39,8 @@ async function renderSheets() {
         const sheetsHTML = [
             BottomSheet({ id: 'addTransactionSheet', title: 'New Transaction', content: getAddTransactionSheetHTML(), footerContent: getAddTransactionFooterHTML(false), isForm: true }),
             BottomSheet({ id: 'editTransactionSheet', title: 'Edit Transaction', content: '<div id="edit-trans-container"></div>', footerContent: getAddTransactionFooterHTML(true), isForm: true }),
-            BottomSheet({ id: 'filterSheet', title: 'Filters', content: getFilterSheetHTML(state.currentFilters), footerContent: getFilterFooterHTML(), isForm: false })
+            BottomSheet({ id: 'filterSheet', title: 'Filters', content: getFilterSheetHTML(state.currentFilters), footerContent: getFilterFooterHTML(), isForm: false }),
+            BottomSheet({ id: 'customDateSheet', title: 'Custom Date Range', content: getCustomDateSheetHTML(), footerContent: getCustomDateFooterHTML(), isForm: false })
         ].join('');
         
         sheetsContainer.innerHTML = sheetsHTML;
@@ -52,6 +54,7 @@ async function renderSheets() {
         setupTypeChange('trans-');
         setupCategoryToggle('trans-');
         setupSearchableSelects('trans-');
+        setupCustomDateSheet();
     }
 }
 
@@ -165,6 +168,117 @@ function setupSearchableSelects(prefix = 'trans-') {
             item.style.display = matches ? '' : 'none';
         });
     }
+}
+
+function setupCustomDateSheet() {
+    const startInput = document.getElementById('custom-date-start');
+    const endInput = document.getElementById('custom-date-end');
+    const presetsContainer = document.getElementById('custom-date-presets');
+    const summaryText = document.getElementById('custom-date-summary-text');
+    const durationText = document.getElementById('custom-date-duration-text');
+    const errorBox = document.getElementById('custom-date-error-box');
+    const applyBtn = document.getElementById('custom-date-apply-btn');
+
+    function updateSummary() {
+        if (!startInput || !endInput) return;
+        const sVal = startInput.value;
+        const eVal = endInput.value;
+
+        if (!sVal || !eVal) {
+            if (summaryText) summaryText.textContent = 'Please choose start and end dates';
+            if (durationText) durationText.textContent = '';
+            if (applyBtn) {
+                applyBtn.disabled = true;
+                applyBtn.classList.add('opacity-50', 'pointer-events-none');
+            }
+            return;
+        }
+
+        if (sVal > eVal) {
+            if (errorBox) errorBox.classList.remove('hidden');
+            if (applyBtn) {
+                applyBtn.disabled = true;
+                applyBtn.classList.add('opacity-50', 'pointer-events-none');
+            }
+            if (summaryText) summaryText.textContent = 'Invalid date range';
+            if (durationText) durationText.textContent = 'From Date must be before or equal to To Date';
+        } else {
+            if (errorBox) errorBox.classList.add('hidden');
+            if (applyBtn) {
+                applyBtn.disabled = false;
+                applyBtn.classList.remove('opacity-50', 'pointer-events-none');
+            }
+
+            const sDate = new Date(sVal + 'T00:00:00');
+            const eDate = new Date(eVal + 'T00:00:00');
+            const diffDays = Math.round((eDate - sDate) / 86400000) + 1;
+
+            const sFmt = sDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+            const eFmt = eDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+            if (summaryText) summaryText.textContent = `${sFmt} – ${eFmt}`;
+            if (durationText) durationText.textContent = `${diffDays} day${diffDays === 1 ? '' : 's'} selected`;
+        }
+    }
+
+    startInput?.addEventListener('input', () => {
+        updateSummary();
+        clearActivePresetStyles();
+    });
+    startInput?.addEventListener('change', () => {
+        updateSummary();
+        clearActivePresetStyles();
+    });
+    endInput?.addEventListener('input', () => {
+        updateSummary();
+        clearActivePresetStyles();
+    });
+    endInput?.addEventListener('change', () => {
+        updateSummary();
+        clearActivePresetStyles();
+    });
+
+    function clearActivePresetStyles() {
+        presetsContainer?.querySelectorAll('.preset-pill').forEach(pill => {
+            pill.classList.remove('bg-primary', 'text-white', 'border-primary');
+            pill.classList.add('border-outline-variant', 'text-on-surface');
+        });
+    }
+
+    presetsContainer?.querySelectorAll('.preset-pill').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const preset = btn.dataset.preset;
+            const now = new Date();
+            let start = new Date();
+            let end = new Date();
+
+            if (preset === 'today') {
+                // today
+            } else if (preset === '7d') {
+                start.setDate(now.getDate() - 6);
+            } else if (preset === '30d') {
+                start.setDate(now.getDate() - 29);
+            } else if (preset === 'this_month') {
+                start = new Date(now.getFullYear(), now.getMonth(), 1);
+            } else if (preset === 'last_month') {
+                start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                end = new Date(now.getFullYear(), now.getMonth(), 0);
+            } else if (preset === '90d') {
+                start.setDate(now.getDate() - 89);
+            }
+
+            if (startInput) startInput.value = start.toISOString().split('T')[0];
+            if (endInput) endInput.value = end.toISOString().split('T')[0];
+
+            clearActivePresetStyles();
+            btn.classList.remove('border-outline-variant', 'text-on-surface');
+            btn.classList.add('bg-primary', 'text-white', 'border-primary');
+
+            updateSummary();
+        });
+    });
+
+    updateSummary();
 }
 
 function renderUI(state) {
@@ -606,26 +720,134 @@ window.deleteTransaction = async function() {
 };
 
 window.applyFilters = function() {
-    const type = document.getElementById('filter-type').value;
-    const status = document.getElementById('filter-status').value;
-    const paymentMethod = document.getElementById('filter-method').value;
-    const dateRange = document.getElementById('filter-date').value;
+    const type = document.getElementById('filter-type')?.value || 'all';
+    const status = document.getElementById('filter-status')?.value || 'all';
+    const paymentMethod = document.getElementById('filter-method')?.value || 'all';
+    const dateRange = document.getElementById('filter-date')?.value || 'all';
     
-    financeStore.setFilter('type', type);
-    financeStore.setFilter('status', status);
-    financeStore.setFilter('paymentMethod', paymentMethod);
-    financeStore.setFilter('dateRange', dateRange);
+    if (dateRange === 'custom') {
+        window.closeSheet('filterSheet');
+        window.openCustomDateFilter();
+        return;
+    }
+
+    financeStore.setFilters({
+        type,
+        status,
+        paymentMethod,
+        dateRange,
+        startDate: null,
+        endDate: null
+    });
     
     window.closeSheet('filterSheet');
 };
 
 window.clearFilters = function() {
-    document.getElementById('filter-type').value = 'all';
-    document.getElementById('filter-status').value = 'all';
-    document.getElementById('filter-method').value = 'all';
-    document.getElementById('filter-date').value = 'all';
+    if (document.getElementById('filter-type')) document.getElementById('filter-type').value = 'all';
+    if (document.getElementById('filter-status')) document.getElementById('filter-status').value = 'all';
+    if (document.getElementById('filter-method')) document.getElementById('filter-method').value = 'all';
+    if (document.getElementById('filter-date')) document.getElementById('filter-date').value = 'all';
     
-    window.applyFilters();
+    financeStore.setFilters({
+        type: 'all',
+        status: 'all',
+        paymentMethod: 'all',
+        dateRange: 'all',
+        startDate: null,
+        endDate: null
+    });
+
+    window.closeSheet('filterSheet');
+};
+
+window.openCustomDateFilter = function() {
+    window.openSheet?.('customDateSheet');
+    const startInput = document.getElementById('custom-date-start');
+    const endInput = document.getElementById('custom-date-end');
+    const current = financeStore.getState().currentFilters;
+    if (current.dateRange === 'custom' && current.startDate && current.endDate) {
+        if (startInput) startInput.value = current.startDate;
+        if (endInput) endInput.value = current.endDate;
+    }
+    startInput?.dispatchEvent(new Event('input', { bubbles: true }));
+};
+
+window.applyCustomDateFilter = function() {
+    const startInput = document.getElementById('custom-date-start');
+    const endInput = document.getElementById('custom-date-end');
+    const applyList = document.getElementById('custom-date-apply-list');
+
+    if (!startInput || !endInput) return;
+    const startDate = startInput.value;
+    const endDate = endInput.value;
+
+    if (!startDate || !endDate) {
+        window.showToast?.('Please choose both From and To dates', 'warning');
+        return;
+    }
+    if (startDate > endDate) {
+        window.showToast?.('From Date cannot be later than To Date', 'error');
+        return;
+    }
+
+    // 1. Update SVG Chart Engine in finance.html
+    if (typeof window.finSetPeriod === 'function') {
+        window.finSetPeriod('custom', { startDate, endDate });
+    }
+
+    // 2. Update pill UI active styling
+    document.querySelectorAll('.period-pill').forEach(el => {
+        const isCustom = el.dataset.period === 'custom';
+        el.classList.toggle('active', isCustom);
+        el.classList.toggle('inactive', !isCustom);
+    });
+
+    // 3. Update active banner in finance.html
+    const sDate = new Date(startDate + 'T00:00:00');
+    const eDate = new Date(endDate + 'T00:00:00');
+    const sFmt = sDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const eFmt = eDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const banner = document.getElementById('active-custom-range-banner');
+    const bannerText = document.getElementById('active-custom-range-text');
+    if (banner && bannerText) {
+        bannerText.textContent = `${sFmt} – ${eFmt}`;
+        banner.classList.remove('hidden');
+    }
+
+    // 4. Update transaction list in FinanceStore if checked
+    if (applyList && applyList.checked) {
+        financeStore.setCustomDateRange(startDate, endDate);
+    }
+
+    window.closeSheet?.('customDateSheet');
+    window.showToast?.(`Custom range: ${sFmt} – ${eFmt}`, 'info');
+};
+
+window.clearCustomDateFilter = function() {
+    if (typeof window.finSetPeriod === 'function') {
+        window.finSetPeriod('7d');
+    }
+
+    const banner = document.getElementById('active-custom-range-banner');
+    if (banner) banner.classList.add('hidden');
+
+    const state = financeStore.getState();
+    if (state.currentFilters.dateRange === 'custom') {
+        financeStore.setFilters({ dateRange: 'all', startDate: null, endDate: null });
+    }
+
+    window.closeSheet?.('customDateSheet');
+};
+
+window.onFinPeriodReset = function() {
+    const banner = document.getElementById('active-custom-range-banner');
+    if (banner) banner.classList.add('hidden');
+
+    const state = financeStore.getState();
+    if (state.currentFilters.dateRange === 'custom') {
+        financeStore.setFilters({ dateRange: 'all', startDate: null, endDate: null });
+    }
 };
 
 window.toggleTransactionSelection = function(id) {

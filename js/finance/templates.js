@@ -88,7 +88,7 @@ export function getAddTransactionSheetHTML(transaction = null, prefix = 'trans-'
             </div>
 
             <div class="grid grid-cols-2 gap-4">
-                ${SelectInput({ label: 'Payment Method', id: `${prefix}method`, options: paymentMethods, value: isEdit ? (transaction.paymentMethod || 'Bank Transfer') : 'Bank Transfer', required: true })}
+                ${SelectInput({ label: 'Payment Method', id: `${prefix}method`, options: paymentMethods, value: isEdit ? (transaction.paymentMethod || 'UPI') : 'UPI', required: true })}
                 ${TextInput({ label: 'Reference No.', id: `${prefix}ref`, placeholder: 'Cheque/Txn ID', value: isEdit ? transaction.referenceNo : '' })}
             </div>
 
@@ -355,7 +355,8 @@ export function getFilterSheetHTML(currentFilters = {}) {
         { label: 'All Time', value: 'all' },
         { label: 'Today', value: 'today' },
         { label: 'This Week', value: 'this_week' },
-        { label: 'This Month', value: 'this_month' }
+        { label: 'This Month', value: 'this_month' },
+        { label: 'Custom Range', value: 'custom' }
     ];
 
     return `
@@ -377,6 +378,102 @@ export function getFilterFooterHTML() {
             </button>
             <button onclick="window.applyFilters()" class="flex-[2] bg-primary text-on-primary font-bold text-[15px] py-3.5 rounded-2xl active-scale transition-apple shadow-sm">
                 Apply Filters
+            </button>
+        </div>
+    `;
+}
+
+// ─── Custom Date Range Sheet ──────────────────────────────────────────────────
+
+export function getCustomDateSheetHTML(initialStart = '', initialEnd = '') {
+    const todayStr = new Date().toISOString().split('T')[0];
+    const defaultStart = initialStart || (() => {
+        const d = new Date();
+        d.setDate(1);
+        return d.toISOString().split('T')[0];
+    })();
+    const defaultEnd = initialEnd || todayStr;
+
+    return `
+        <div class="flex flex-col gap-4">
+            <!-- Quick Presets -->
+            <div>
+                <p class="text-[12px] font-semibold text-secondary uppercase tracking-wider mb-2">Quick Presets</p>
+                <div class="flex flex-wrap gap-1.5" id="custom-date-presets">
+                    <button type="button" class="preset-pill px-3 py-1.5 rounded-xl border border-outline-variant text-[12px] font-medium text-on-surface hover:bg-surface-variant active-scale transition-apple" data-preset="today">Today</button>
+                    <button type="button" class="preset-pill px-3 py-1.5 rounded-xl border border-outline-variant text-[12px] font-medium text-on-surface hover:bg-surface-variant active-scale transition-apple" data-preset="7d">Last 7 Days</button>
+                    <button type="button" class="preset-pill px-3 py-1.5 rounded-xl border border-outline-variant text-[12px] font-medium text-on-surface hover:bg-surface-variant active-scale transition-apple" data-preset="30d">Last 30 Days</button>
+                    <button type="button" class="preset-pill px-3 py-1.5 rounded-xl border border-outline-variant text-[12px] font-medium text-on-surface hover:bg-surface-variant active-scale transition-apple" data-preset="this_month">This Month</button>
+                    <button type="button" class="preset-pill px-3 py-1.5 rounded-xl border border-outline-variant text-[12px] font-medium text-on-surface hover:bg-surface-variant active-scale transition-apple" data-preset="last_month">Last Month</button>
+                    <button type="button" class="preset-pill px-3 py-1.5 rounded-xl border border-outline-variant text-[12px] font-medium text-on-surface hover:bg-surface-variant active-scale transition-apple" data-preset="90d">Last 90 Days</button>
+                </div>
+            </div>
+
+            <!-- Date Pickers (From / To) -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-[12px] font-semibold text-secondary uppercase tracking-wider" for="custom-date-start">
+                        From Date
+                    </label>
+                    <div class="relative">
+                        <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[18px]">calendar_month</span>
+                        <input type="date" id="custom-date-start" value="${defaultStart}" max="${todayStr}"
+                               class="w-full bg-surface border border-outline-variant rounded-xl pl-10 pr-3 py-3 text-[15px] font-medium text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple">
+                    </div>
+                </div>
+                <div class="flex flex-col gap-1.5">
+                    <label class="text-[12px] font-semibold text-secondary uppercase tracking-wider" for="custom-date-end">
+                        To Date
+                    </label>
+                    <div class="relative">
+                        <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[18px]">event_available</span>
+                        <input type="date" id="custom-date-end" value="${defaultEnd}" max="${todayStr}"
+                               class="w-full bg-surface border border-outline-variant rounded-xl pl-10 pr-3 py-3 text-[15px] font-medium text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dynamic Selection Summary -->
+            <div id="custom-date-summary-box" class="p-3 rounded-2xl bg-surface-container/60 border border-outline-variant/60 flex items-center gap-3">
+                <div class="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                    <span class="material-symbols-outlined text-[18px]">date_range</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p id="custom-date-summary-text" class="text-[13px] font-semibold text-on-surface truncate">Range selected</p>
+                    <p id="custom-date-duration-text" class="text-[11px] text-secondary">Calculating duration...</p>
+                </div>
+            </div>
+
+            <!-- Validation Error Display -->
+            <div id="custom-date-error-box" class="hidden p-3 rounded-2xl bg-error/10 border border-error/20 flex items-center gap-2.5 text-error text-[13px] font-medium">
+                <span class="material-symbols-outlined text-[18px]">error</span>
+                <span id="custom-date-error-text">From Date cannot be later than To Date</span>
+            </div>
+
+            <!-- Scope Options -->
+            <label class="flex items-center gap-3 p-3.5 rounded-2xl bg-surface-container-lowest border border-outline-variant cursor-pointer active:bg-surface-container/50 transition-apple select-none">
+                <input type="checkbox" id="custom-date-apply-list" checked
+                       class="w-4 h-4 rounded text-primary focus:ring-primary/20 border-outline-variant accent-primary cursor-pointer">
+                <div class="flex flex-col">
+                    <span class="text-[14px] font-semibold text-on-surface">Filter Transaction List as well</span>
+                    <span class="text-[12px] text-secondary">Keep recent transactions in sync with this date window</span>
+                </div>
+            </label>
+
+            <div class="h-2"></div>
+        </div>
+    `;
+}
+
+export function getCustomDateFooterHTML() {
+    return `
+        <div class="flex gap-3 w-full">
+            <button type="button" onclick="window.clearCustomDateFilter()" class="flex-1 py-3.5 rounded-2xl border border-outline-variant text-on-surface font-semibold text-[15px] active-bg transition-apple">
+                Reset to 7D
+            </button>
+            <button type="button" id="custom-date-apply-btn" onclick="window.applyCustomDateFilter()" class="flex-[2] bg-primary text-on-primary font-bold text-[15px] py-3.5 rounded-2xl active-scale transition-apple shadow-sm flex items-center justify-center gap-2">
+                <span class="material-symbols-outlined text-[18px]">check</span>
+                Apply Range
             </button>
         </div>
     `;
