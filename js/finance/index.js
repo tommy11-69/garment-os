@@ -10,7 +10,7 @@ import {
     getFilterSheetHTML, getFilterFooterHTML,
     getCategoriesByType, getCategoryBreakdownSheetContent,
     getCustomDateSheetHTML, getCustomDateFooterHTML
-} from './templates.js';
+} from './templates.js?v=1.3';
 
 async function initModule() {
     window.financeStore = financeStore;
