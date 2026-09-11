@@ -308,6 +308,30 @@
     <!-- ── Chart Engine (pure SVG, no library) ── -->
     <script>
     // Fallback handlers to ensure buttons work immediately even before ES modules resolve
+    window.toggleFinanceView = window.toggleFinanceView || function(view) {
+        const cashFlowView = document.getElementById('cash-flow-view');
+        const balanceSheetView = document.getElementById('balance-sheet-view');
+        const tabCashFlow = document.getElementById('tab-cash-flow');
+        const tabBalanceSheet = document.getElementById('tab-balance-sheet');
+        const periodSelector = document.getElementById('cash-flow-period-selector');
+        const fab = document.getElementById('fab-container');
+
+        if (view === 'cash-flow') {
+            if (cashFlowView) { cashFlowView.classList.remove('hidden'); cashFlowView.classList.add('flex'); }
+            if (balanceSheetView) { balanceSheetView.classList.add('hidden'); balanceSheetView.classList.remove('flex'); }
+            if (tabCashFlow) { tabCashFlow.classList.add('bg-primary', 'text-white', 'shadow-sm'); tabCashFlow.classList.remove('text-secondary', 'hover:text-on-surface'); }
+            if (tabBalanceSheet) { tabBalanceSheet.classList.remove('bg-primary', 'text-white', 'shadow-sm'); tabBalanceSheet.classList.add('text-secondary', 'hover:text-on-surface'); }
+            if (periodSelector) periodSelector.classList.remove('hidden');
+            if (fab) fab.classList.remove('hidden');
+        } else {
+            if (cashFlowView) { cashFlowView.classList.add('hidden'); cashFlowView.classList.remove('flex'); }
+            if (balanceSheetView) { balanceSheetView.classList.remove('hidden'); balanceSheetView.classList.add('flex'); }
+            if (tabCashFlow) { tabCashFlow.classList.remove('bg-primary', 'text-white', 'shadow-sm'); tabCashFlow.classList.add('text-secondary', 'hover:text-on-surface'); }
+            if (tabBalanceSheet) { tabBalanceSheet.classList.add('bg-primary', 'text-white', 'shadow-sm'); tabBalanceSheet.classList.remove('text-secondary', 'hover:text-on-surface'); }
+            if (periodSelector) periodSelector.classList.add('hidden');
+            if (fab) fab.classList.add('hidden');
+        }
+    };
     window.openCustomDateFilter = window.openCustomDateFilter || function() {
         if (window.openSheet) window.openSheet('customDateSheet');
     };
