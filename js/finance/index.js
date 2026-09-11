@@ -9,8 +9,9 @@ import {
     getTransactionDetailsHeader, getTransactionDetailsContent,
     getFilterSheetHTML, getFilterFooterHTML,
     getCategoriesByType, getCategoryBreakdownSheetContent,
-    getCustomDateSheetHTML, getCustomDateFooterHTML
-} from './templates.js?v=1.3';
+    getCustomDateSheetHTML, getCustomDateFooterHTML,
+    getBalanceSheetDetailHTML
+} from './templates.js?v=1.4';
 
 async function initModule() {
     window.financeStore = financeStore;
@@ -38,9 +39,10 @@ async function renderSheets() {
     if (sheetsContainer) {
         const state = financeStore.getState();
         
-        // Fetch parties for transaction form
-        const [customers, vendors] = await Promise.all([api.getCustomers(), api.getVendors()]);
+        // Fetch parties for transaction form + inventory for balance sheet
+        const [customers, vendors, inventoryItems] = await Promise.all([api.getCustomers(), api.getVendors(), api.getInventory()]);
         window.financeParties = { customers, vendors };
+        window.financeInventory = inventoryItems || [];
 
         const sheetsHTML = [
             BottomSheet({ id: 'addTransactionSheet', title: 'New Transaction', content: getAddTransactionSheetHTML(null, 'trans-', window.financeParties), footerContent: getAddTransactionFooterHTML(false), isForm: true }),
@@ -426,7 +428,9 @@ function renderBalanceSheet(metrics) {
     // Calculate Values
     const cash = metrics.currentBalance || 0;
     const ar = metrics.pendingReceivables || 0;
-    const inventoryValue = 0; // Value calculation pending backend updates
+    // Inventory value: auto-computed from real data (quantity × unitCost per item)
+    const inventoryItems = window.financeInventory || [];
+    const inventoryValue = inventoryItems.reduce((s, i) => s + ((i.quantity || 0) * (i.unitCost || 0)), 0);
     const ap = metrics.pendingPayments || 0;
     
     const totalAssets = cash + ar + inventoryValue;
@@ -608,6 +612,51 @@ async function handleEditTransaction() {
 // WINDOW EXPORTS (For UI Events)
 // ==========================================
 
+window.openBsDetail = function(type) {
+    const sheet = document.getElementById('bs-detail-sheet');
+    const titleEl = document.getElementById('bs-detail-title');
+    const bodyEl = document.getElementById('bs-detail-body');
+    if (!sheet || !bodyEl) return;
+
+    const allTxns = financeStore.getState().allTransactions || [];
+    const parties = window.financeParties || { customers: [], vendors: [] };
+
+    const titles = {
+        cash: 'Cash & Bank Balance',
+        receivable: 'Accounts Receivable',
+        payable: 'Accounts Payable',
+        inventory: 'Inventory Value'
+    };
+
+    let items = [];
+    if (type === 'cash') {
+        items = allTxns.filter(t => t.status === 'Completed');
+    } else if (type === 'receivable') {
+        items = allTxns.filter(t => t.status === 'Pending' && t.type === 'Income');
+    } else if (type === 'payable') {
+        items = allTxns.filter(t => t.status === 'Pending' && t.type === 'Expense');
+    } else if (type === 'inventory') {
+        items = window.financeInventory || [];
+    }
+
+    if (titleEl) titleEl.textContent = titles[type] || 'Detail';
+    bodyEl.innerHTML = getBalanceSheetDetailHTML(type, items, parties);
+
+    sheet.classList.remove('translate-y-full');
+    sheet.classList.add('translate-y-0');
+    document.getElementById('bs-detail-backdrop')?.classList.remove('opacity-0', 'pointer-events-none');
+    document.getElementById('bs-detail-backdrop')?.classList.add('opacity-100');
+};
+
+window.closeBsDetail = function() {
+    const sheet = document.getElementById('bs-detail-sheet');
+    sheet?.classList.add('translate-y-full');
+    sheet?.classList.remove('translate-y-0');
+    const bd = document.getElementById('bs-detail-backdrop');
+    bd?.classList.add('opacity-0', 'pointer-events-none');
+    bd?.classList.remove('opacity-100');
+};
+
 window.toggleFinanceView = function(view) {
     const cashFlowView = document.getElementById('cash-flow-view');
     const balanceSheetView = document.getElementById('balance-sheet-view');
@@ -622,8 +671,11 @@ window.toggleFinanceView = function(view) {
         balanceSheetView.classList.add('hidden');
         balanceSheetView.classList.remove('flex');
         
-        tabCashFlow.className = "flex-1 px-4 py-1.5 text-[13px] font-bold rounded-lg bg-primary text-white transition-all shadow-sm";
-        tabBalanceSheet.className = "flex-1 px-4 py-1.5 text-[13px] font-bold rounded-lg text-secondary hover:text-on-surface transition-all";
+        tabCashFlow.classList.add('bg-primary', 'text-white', 'shadow-sm');
+        tabCashFlow.classList.remove('text-secondary', 'hover:text-on-surface');
+        
+        tabBalanceSheet.classList.remove('bg-primary', 'text-white', 'shadow-sm');
+        tabBalanceSheet.classList.add('text-secondary', 'hover:text-on-surface');
         
         if (periodSelector) periodSelector.classList.remove('hidden');
         if (fab) fab.classList.remove('hidden'); // Show FAB
@@ -633,8 +685,11 @@ window.toggleFinanceView = function(view) {
         balanceSheetView.classList.remove('hidden');
         balanceSheetView.classList.add('flex');
 
-        tabCashFlow.className = "flex-1 px-4 py-1.5 text-[13px] font-bold rounded-lg text-secondary hover:text-on-surface transition-all";
-        tabBalanceSheet.className = "flex-1 px-4 py-1.5 text-[13px] font-bold rounded-lg bg-primary text-white transition-all shadow-sm";
+        tabCashFlow.classList.remove('bg-primary', 'text-white', 'shadow-sm');
+        tabCashFlow.classList.add('text-secondary', 'hover:text-on-surface');
+        
+        tabBalanceSheet.classList.add('bg-primary', 'text-white', 'shadow-sm');
+        tabBalanceSheet.classList.remove('text-secondary', 'hover:text-on-surface');
         
         if (periodSelector) periodSelector.classList.add('hidden');
         if (fab) fab.classList.add('hidden'); // Hide FAB since transactions aren't added here

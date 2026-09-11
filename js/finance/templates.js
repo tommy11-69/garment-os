@@ -193,6 +193,119 @@ export function getAddTransactionFooterHTML(isEdit = false) {
     `;
 }
 
+export function getBalanceSheetDetailHTML(type, items = [], parties = { customers: [], vendors: [] }) {
+    const fmt = (n) => '₹' + parseFloat(n).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+
+    const titles = {
+        cash: 'Cash & Bank Balance',
+        receivable: 'Accounts Receivable',
+        payable: 'Accounts Payable',
+        inventory: 'Inventory Value'
+    };
+
+    const resolveParty = (t) => {
+        if (!t.refId) return null;
+        const isIncome = t.type === 'Income';
+        const list = isIncome ? parties.customers : parties.vendors;
+        const party = list?.find(p => String(p.id) === String(t.refId));
+        return { name: party ? party.name : t.refId, isIncome };
+    };
+
+    if (items.length === 0) {
+        return `
+        <div class="flex flex-col items-center justify-center py-12 text-secondary">
+            <span class="material-symbols-outlined text-[48px] mb-3 opacity-40">receipt_long</span>
+            <p class="text-[15px] font-medium">No entries found</p>
+        </div>`;
+    }
+
+    if (type === 'inventory') {
+        const total = items.reduce((s, i) => s + (i.quantity * (i.unitCost || 0)), 0);
+        return `
+        <div class="flex flex-col gap-3 p-4">
+            <div class="flex justify-between items-center px-1 mb-1">
+                <span class="text-[13px] font-semibold text-secondary uppercase tracking-wider">${items.length} items</span>
+                <span class="text-[14px] font-bold text-on-surface">${fmt(total)} total</span>
+            </div>
+            ${items.map(item => {
+                const lineVal = item.quantity * (item.unitCost || 0);
+                return `
+                <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant/50 p-4 flex items-start gap-3">
+                    <div class="w-10 h-10 rounded-xl ${item.iconColor || 'bg-surface-variant text-secondary'} flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-[20px]">${item.icon || 'inventory_2'}</span>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex justify-between items-start mb-1 gap-2">
+                            <span class="text-[14px] font-bold text-on-surface truncate">${item.name}</span>
+                            <span class="text-[14px] font-bold text-on-surface shrink-0">${fmt(lineVal)}</span>
+                        </div>
+                        <span class="text-[12px] text-secondary">${item.quantity.toLocaleString()} ${item.unit} × ${fmt(item.unitCost || 0)}/${item.unit?.replace(/s$/, '') || 'unit'}</span>
+                        <div class="flex items-center gap-2 mt-2">
+                            <span class="text-[10px] font-semibold text-secondary">SKU: ${item.sku}</span>
+                            <span class="px-2 py-0.5 rounded-lg text-[10px] font-bold ${item.statusColor || 'bg-surface-variant text-secondary'}">${item.status}</span>
+                        </div>
+                    </div>
+                </div>`;
+            }).join('')}
+        </div>`;
+    }
+
+    // Transaction list (cash / receivable / payable)
+    let runningBalance = 0;
+    if (type === 'cash') {
+        // Pre-compute total for running balance start
+        runningBalance = items.reduce((s, t) => t.type === 'Income' ? s + parseFloat(t.amount) : s - parseFloat(t.amount), 0);
+    }
+
+    const sorted = [...items].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    return `
+    <div class="flex flex-col gap-2 p-4">
+        <div class="flex justify-between items-center px-1 mb-1">
+            <span class="text-[13px] font-semibold text-secondary uppercase tracking-wider">${sorted.length} transactions</span>
+        </div>
+        ${sorted.map(t => {
+            const isIncome = t.type === 'Income';
+            const amount = parseFloat(t.amount || 0);
+            const amountStr = (isIncome ? '+' : '−') + fmt(amount);
+            const amountColor = isIncome ? 'text-[#008A00]' : 'text-error';
+            const iconGradient = isIncome
+                ? 'bg-gradient-to-br from-[#30D158] to-[#008A00] text-white'
+                : 'bg-gradient-to-br from-[#FF6B6B] to-[#FF453A] text-white';
+            const statusColor = t.status === 'Completed'
+                ? 'bg-[#008A00]/10 text-[#008A00]'
+                : t.status === 'Pending'
+                    ? 'bg-[#FF9F0A]/10 text-[#FF9F0A]'
+                    : 'bg-surface-variant text-secondary';
+            const party = resolveParty(t);
+
+            return `
+            <div class="bg-surface-container-lowest rounded-2xl border border-outline-variant/50 p-3.5 flex items-start gap-3 cursor-pointer active:scale-[0.98] transition-all" onclick="window.openTransactionDetails('${t.id}')">
+                <div class="w-9 h-9 rounded-full ${iconGradient} flex items-center justify-center shrink-0 mt-0.5">
+                    <span class="material-symbols-outlined text-[17px]">${isIncome ? 'arrow_downward' : 'arrow_upward'}</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex justify-between items-baseline mb-1 gap-2">
+                        <span class="text-[14px] font-bold text-on-surface truncate">${t.title}</span>
+                        <span class="text-[14px] font-extrabold ${amountColor} shrink-0">${amountStr}</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 flex-wrap">
+                        <span class="text-[11px] text-secondary">${t.date}</span>
+                        <span class="text-secondary opacity-40">·</span>
+                        <span class="text-[11px] text-secondary">${t.category}</span>
+                        ${party ? `
+                        <span class="flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-[#5E5CE6]/10 text-[#5E5CE6]">
+                            <span class="material-symbols-outlined text-[10px]">${party.isIncome ? 'person' : 'storefront'}</span>
+                            <span class="text-[10px] font-bold">${party.name}</span>
+                        </span>` : ''}
+                        <span class="px-1.5 py-0.5 rounded-md text-[10px] font-bold ${statusColor}">${t.status}</span>
+                    </div>
+                </div>
+            </div>`;
+        }).join('')}
+    </div>`;
+}
+
 export function getTransactionDetailsHeader(t) {
     if(!t) return '';
     const isIncome = t.type === 'Income';

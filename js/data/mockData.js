@@ -134,6 +134,7 @@ export let inventory = [
         sku: "FAB-OC-001",
         quantity: 4500, // Numeric for easier math
         unit: "Meters",
+        unitCost: 120, // ₹ per Meter
         status: "In Stock",
         statusColor: "bg-[#008A00]/10 text-[#008A00]",
         icon: "inventory_2",
@@ -146,6 +147,7 @@ export let inventory = [
         sku: "THR-NB-024",
         quantity: 12,
         unit: "Cones",
+        unitCost: 250, // ₹ per Cone
         status: "Low Stock",
         statusColor: "bg-error/10 text-error",
         icon: "linear_scale",
