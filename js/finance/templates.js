@@ -218,7 +218,23 @@ export function getTransactionDetailsHeader(t) {
                 <h2 class="text-[22px] font-bold text-on-surface leading-tight mb-2">${t.title}</h2>
                 <span class="text-[24px] font-bold ${color}">${amountStr}</span>
                 ${hasAdds ? `<span class="inline-block ml-1.5 text-[12px] text-secondary font-medium">(+\u20b9${subTotal.toLocaleString(undefined, {minimumFractionDigits:2})} adds)</span>` : ''}
-                <span class="inline-block ml-3 px-3 py-1 rounded-full text-[12px] font-medium ${statusColor} align-text-bottom">${t.status}</span>
+                <div class="mt-2.5 flex items-center gap-2 flex-wrap">
+                    <span class="px-3 py-1 rounded-full text-[12px] font-medium ${statusColor}">${t.status}</span>
+                    ${(() => {
+                        if (!t.refId) return '';
+                        let partyName = t.refId;
+                        if (window.financeParties) {
+                            const partiesList = isIncome ? window.financeParties.customers : window.financeParties.vendors;
+                            const party = partiesList?.find(p => String(p.id) === String(t.refId));
+                            if (party) partyName = party.name;
+                        }
+                        return `
+                        <div class="flex items-center gap-1 px-3 py-1 rounded-full bg-[#5E5CE6]/10 text-[#5E5CE6] border border-[#5E5CE6]/20">
+                            <span class="material-symbols-outlined text-[13px]">${isIncome ? 'person' : 'storefront'}</span>
+                            <span class="text-[12px] font-bold tracking-wide">${partyName}</span>
+                        </div>`;
+                    })()}
+                </div>
             </div>
             <div class="flex gap-2">
                 <button onclick="window.editTransaction()" class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-on-surface active-scale transition-apple" title="Edit">

@@ -59,7 +59,8 @@ async function renderSheets() {
 
         setupTypeChange('trans-');
         setupCategoryToggle('trans-');
-        setupSearchableSelects('trans-');
+        setupSearchableSelects('trans-category');
+        setupSearchableSelects('trans-refId');
         setupCustomDateSheet();
     }
 }
@@ -107,8 +108,11 @@ function setupTypeChange(prefix = 'trans-') {
                 otherContainer.classList.add('hidden');
             }
             
-            // Re-setup handlers for new category select
-            setupSearchableSelects(prefix);
+            // Re-setup handlers for new selects
+            setupSearchableSelects(`${prefix}category`);
+            if (partyContainer) {
+                setupSearchableSelects(`${prefix}refId`);
+            }
             setupCategoryToggle(prefix);
         });
     }
@@ -129,8 +133,7 @@ function setupCategoryToggle(prefix = 'trans-') {
     }
 }
 
-function setupSearchableSelects(prefix = 'trans-') {
-    const fieldId = `${prefix}category`;
+function setupSearchableSelects(fieldId) {
     const hiddenInput = document.getElementById(fieldId);
     const displayDiv = document.getElementById(`${fieldId}-display`);
     const searchInput = document.getElementById(`${fieldId}-input`);
@@ -139,22 +142,33 @@ function setupSearchableSelects(prefix = 'trans-') {
 
     if (!hiddenInput || !searchInput || !dropdown || !items) return;
 
+    if (searchInput.dataset.bound) return;
+    searchInput.dataset.bound = 'true';
+
     // Open dropdown on input focus
     searchInput.addEventListener('focus', () => {
         dropdown.classList.remove('hidden');
-        searchInput.value = '';
-        filterItems('');
+        searchInput.select(); // Highlight existing text instead of clearing
+        filterItems(searchInput.value);
+        // Dynamically boost z-index to escape sibling stacking contexts
+        const wrapper = displayDiv.closest('.searchable-select-wrapper') || displayDiv.closest('.group');
+        if (wrapper) wrapper.style.zIndex = '99999';
     });
 
     // Filter items on input
     searchInput.addEventListener('input', (e) => {
-        filterItems(e.target.value);
+        const val = e.target.value;
+        hiddenInput.value = val; // Capture free text as the new value
+        filterItems(val);
+        hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
     });
 
     // Close on outside click
     document.addEventListener('click', (e) => {
         if (!displayDiv?.contains(e.target) && !dropdown?.contains(e.target)) {
             dropdown.classList.add('hidden');
+            const wrapper = displayDiv.closest('.searchable-select-wrapper') || displayDiv.closest('.group');
+            if (wrapper) wrapper.style.zIndex = '';
         }
     });
 
@@ -166,6 +180,8 @@ function setupSearchableSelects(prefix = 'trans-') {
             hiddenInput.value = value;
             searchInput.value = label;
             dropdown.classList.add('hidden');
+            const wrapper = displayDiv.closest('.searchable-select-wrapper') || displayDiv.closest('.group');
+            if (wrapper) wrapper.style.zIndex = '';
 
             // Trigger change event
             hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
@@ -786,7 +802,8 @@ window.editTransaction = function() {
         bindFormValidation('editTransactionSheet-content', 'edit-trans-submit');
         setupTypeChange('edit-trans-');
         setupCategoryToggle('edit-trans-');
-        setupSearchableSelects('edit-trans-');
+        setupSearchableSelects('edit-trans-category');
+        setupSearchableSelects('edit-trans-refId');
     }
     setTimeout(() => {
         window.openSheet('editTransactionSheet');

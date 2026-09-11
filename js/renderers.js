@@ -484,45 +484,77 @@ export const renderers = {
 
     transactionCard(t) {
         const isIncome = t.type === 'Income';
-        const color = isIncome ? 'text-[#008A00]' : 'text-error';
-        const bg = isIncome ? 'bg-[#008A00]/10' : 'bg-error/10';
+        const amountColor = isIncome ? 'text-[#008A00]' : 'text-on-surface';
+        
+        // Modern gradients for the icon
+        const iconGradient = isIncome 
+            ? 'bg-gradient-to-br from-[#30D158] to-[#008A00] text-white shadow-[0_2px_8px_rgba(0,138,0,0.3)]' 
+            : 'bg-gradient-to-br from-[#FF6B6B] to-[#FF453A] text-white shadow-[0_2px_8px_rgba(255,69,58,0.3)]';
         const icon = isIncome ? 'arrow_downward' : 'arrow_upward';
+        
         const amountStr = (isIncome ? '+' : '-') + '₹' + parseFloat(t.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         
-        const statusBg = t.status === 'Completed' ? 'bg-[#008A00]/10 text-[#008A00]' : 
-                         (t.status === 'Pending' ? 'bg-[#FF9F0A]/10 text-[#FF9F0A]' : 'bg-surface-variant text-secondary');
+        // Refined Badges with micro-icons
+        const statusUI = t.status === 'Completed' 
+            ? '<div class="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[#008A00]/10 text-[#008A00] border border-[#008A00]/20"><span class="material-symbols-outlined text-[11px]">check_circle</span><span class="text-[11px] font-bold tracking-wide">Completed</span></div>'
+            : (t.status === 'Pending' 
+                ? '<div class="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[#FF9F0A]/10 text-[#FF9F0A] border border-[#FF9F0A]/20"><span class="material-symbols-outlined text-[11px]">schedule</span><span class="text-[11px] font-bold tracking-wide">Pending</span></div>'
+                : '<div class="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-surface-variant text-secondary border border-outline-variant/30"><span class="material-symbols-outlined text-[11px]">cancel</span><span class="text-[11px] font-bold tracking-wide">Cancelled</span></div>');
 
         return `
-            <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant/60 p-4 mb-3 shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:shadow-sm transition-all cursor-pointer active-scale" onclick="window.openTransactionDetails('${t.id}')">
-                <div class="flex items-start gap-3.5">
-                    <div class="w-11 h-11 rounded-full ${bg} flex items-center justify-center shrink-0 mt-0.5">
-                        <span class="material-symbols-outlined text-[20px] ${color}">${icon}</span>
+            <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant/50 p-4 mb-3 shadow-sm hover:shadow-md transition-all duration-300 cursor-pointer active:scale-[0.98]" onclick="window.openTransactionDetails('${t.id}')">
+                <div class="flex items-start gap-4">
+                    <div class="w-11 h-11 rounded-full ${iconGradient} flex items-center justify-center shrink-0 mt-0.5">
+                        <span class="material-symbols-outlined text-[20px]">${icon}</span>
                     </div>
                     
                     <div class="flex-1 min-w-0">
                         <div class="flex justify-between items-baseline mb-1.5 gap-2">
-                            <h4 class="text-[15px] font-bold text-on-surface truncate tracking-tight">${t.title}</h4>
-                            <span class="text-[16px] font-extrabold ${color} whitespace-nowrap shrink-0">${amountStr}</span>
+                            <h4 class="text-[16px] font-bold text-on-surface truncate tracking-tight">${t.title}</h4>
+                            <span class="text-[17px] font-extrabold ${amountColor} whitespace-nowrap shrink-0">${amountStr}</span>
                         </div>
                         
-                        <div class="flex items-center gap-2 mb-2.5 flex-wrap">
-                            <span class="text-[12px] font-semibold px-2.5 py-1 rounded-lg bg-surface-variant/80 text-on-surface-variant">${t.category}</span>
-                            <span class="text-[12px] font-semibold px-2.5 py-1 rounded-lg ${statusBg}">${t.status}</span>
+                        <div class="flex items-center gap-2 mb-3 flex-wrap">
+                            <div class="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-surface-variant/60 text-secondary border border-outline-variant/30">
+                                <span class="material-symbols-outlined text-[11px]">sell</span>
+                                <span class="text-[11px] font-bold tracking-wide">${t.category}</span>
+                            </div>
+                            ${(() => {
+                                if (!t.refId) return '';
+                                let partyName = t.refId;
+                                if (window.financeParties) {
+                                    const partiesList = isIncome ? window.financeParties.customers : window.financeParties.vendors;
+                                    const party = partiesList?.find(p => String(p.id) === String(t.refId));
+                                    if (party) partyName = party.name;
+                                }
+                                return `
+                                <div class="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[#5E5CE6]/10 text-[#5E5CE6] border border-[#5E5CE6]/20">
+                                    <span class="material-symbols-outlined text-[11px]">${isIncome ? 'person' : 'storefront'}</span>
+                                    <span class="text-[11px] font-bold tracking-wide truncate max-w-[120px]">${partyName}</span>
+                                </div>`;
+                            })()}
+                            ${statusUI}
                         </div>
                         
                         ${t.notes ? `
-                        <p class="text-[13px] text-secondary mb-2.5 italic line-clamp-2 bg-surface-variant/30 px-3 py-1.5 rounded-lg border-l-2 border-primary/30">
-                            "${t.notes}"
-                        </p>` : ''}
+                        <div class="relative mb-3 mt-1">
+                            <div class="absolute -left-1.5 top-2.5 w-3 h-3 bg-surface-variant/40 rotate-45 transform origin-center border-l border-b border-outline-variant/30"></div>
+                            <div class="relative bg-surface-variant/40 px-3.5 py-2.5 rounded-2xl rounded-tl-sm border border-outline-variant/30">
+                                <p class="text-[12.5px] text-on-surface-variant leading-relaxed line-clamp-2 font-medium">
+                                    ${t.notes}
+                                </p>
+                            </div>
+                        </div>` : ''}
                         
-                        <div class="flex items-center justify-between text-[12px] text-secondary font-medium pt-1 border-t border-outline-variant/20">
+                        <div class="flex items-center justify-between text-[11.5px] text-secondary font-semibold mt-1">
                             <div class="flex items-center gap-1.5">
-                                <span class="material-symbols-outlined text-[15px]">calendar_today</span>
+                                <span class="material-symbols-outlined text-[14px]">calendar_today</span>
                                 <span>${t.date}</span>
-                                <span class="text-outline-variant">•</span>
+                                <span class="text-outline-variant/50 px-0.5">•</span>
+                                <span class="material-symbols-outlined text-[14px]">payments</span>
                                 <span>${t.paymentMethod || 'Bank Transfer'}</span>
                             </div>
-                            ${t.referenceNo ? `<span class="text-[11px] text-secondary/80 font-mono">#${t.referenceNo}</span>` : ''}
+                            ${t.referenceNo ? `<span class="bg-surface-container px-1.5 py-0.5 rounded text-[10px] font-mono tracking-widest text-secondary/70">#${t.referenceNo}</span>` : ''}
                         </div>
                     </div>
                 </div>

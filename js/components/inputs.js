@@ -7,6 +7,8 @@ export function SearchBar({ placeholder = 'Search...', id = 'search-input' }) {
     </div>`;
 }
 
+
+
 export function FilterBar({ categories = [], activeCategory = '' }) {
     if (!categories.length) return '';
     
@@ -120,7 +122,7 @@ export function SearchableSelectInput({ label, id, options = [], value = '', req
     const valAttr = validationType ? `data-validation="${validationType}"` : '';
     const describedBy = `${helperText ? id + '-helper ' : ''}${id}-error`.trim();
     const selectedOption = options.find(opt => String(opt.value || opt.label) === String(value));
-    const displayValue = selectedOption?.label || '';
+    const displayValue = selectedOption?.label || value || '';
 
     return `
     <div class="flex flex-col gap-2 w-full relative group">
@@ -130,11 +132,11 @@ export function SearchableSelectInput({ label, id, options = [], value = '', req
             </label>
             <span class="text-[12px] text-error font-medium opacity-0 transition-opacity" id="${id}-error" aria-live="polite"></span>
         </div>
-        <div class="relative w-full" style="z-index: 100;">
+        <div class="relative w-full">
             <input type="hidden" id="${id}" name="${id}" value="${value}" ${required ? 'required aria-required="true"' : ''} ${valAttr} aria-describedby="${describedBy}">
             <div class="flex items-center gap-2 bg-surface border border-outline-variant rounded-xl px-4 py-3 text-[16px] text-on-surface focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-apple cursor-pointer group-[.is-invalid]:border-error group-[.is-invalid]:focus-within:ring-error/20 group-[.is-invalid]:focus-within:border-error" id="${id}-display">
                 <span class="material-symbols-outlined text-secondary flex-shrink-0" aria-hidden="true">search</span>
-                <input type="text" id="${id}-input" class="flex-1 w-full min-w-0 bg-transparent outline-none focus:outline-none border-none focus:ring-0 text-[16px] text-on-surface placeholder:text-secondary" placeholder="Type to search..." autocomplete="off">
+                <input type="text" id="${id}-input" value="${displayValue}" class="flex-1 w-full min-w-0 bg-transparent outline-none focus:outline-none border-none focus:ring-0 text-[16px] text-on-surface placeholder:text-secondary" placeholder="Type to search..." autocomplete="off">
             </div>
             <div id="${id}-dropdown" class="absolute top-full left-0 right-0 mt-1 bg-surface border border-outline-variant rounded-xl shadow-2xl max-h-80 overflow-y-auto hidden" style="z-index: 9999;">
                 ${options.map(opt => {
