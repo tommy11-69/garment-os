@@ -5,10 +5,9 @@ class VendorStore extends BaseStore {
     constructor() {
         super(vendorRepository);
         this.currentSearch = '';
-        this.currentFilters = { status: 'All', vendorType: 'All' };
+        this.currentFilters = { status: 'Active', vendorType: 'All' };
     }
 
-    // Overrides
     getState() {
         return {
             ...super.getState(),
@@ -41,24 +40,24 @@ class VendorStore extends BaseStore {
         try {
             const entity = await vendorRepository.getByIdWithStats(id);
             if (entity) {
-                this.updateEntity(id, entity); // Update local cache
+                this.updateEntity(id, entity);
                 this.setActiveEntity(id);
             }
         } catch (err) {
-            console.error("Failed to fetch active vendor", err);
+            console.error('Failed to fetch active vendor', err);
         }
     }
 
     async createVendor(data) {
         const newVendor = await vendorRepository.create(data);
-        await this.loadVendors(); // Reload to get stats & sort
+        await this.loadVendors();
         return newVendor;
     }
 
     async updateVendor(id, data) {
         const updated = await vendorRepository.update(id, data);
-        await this.fetchActiveEntity(id); // Reload to recalculate stats
-        await this.loadVendors(); // Reload list
+        await this.fetchActiveEntity(id);
+        await this.loadVendors();
         return updated;
     }
 
@@ -82,11 +81,27 @@ class VendorStore extends BaseStore {
         await vendorRepository.delete(id);
         this.removeEntity(id);
     }
-    
+
+    async duplicateVendor(id) {
+        const vendor = await vendorRepository.getById(id);
+        if (!vendor) throw new Error('Vendor not found');
+        
+        const dup = { ...vendor };
+        delete dup.id;
+        delete dup.createdAt;
+        delete dup.updatedAt;
+        dup.name = `${vendor.name} (Copy)`;
+        dup.status = 'Active';
+        dup.statusColor = 'bg-[#008A00]/10 text-[#008A00]';
+        
+        const duplicate = await vendorRepository.create(dup);
+        await this.loadVendors();
+        return duplicate;
+    }
+
     async bulkArchive() {
         if (!this.selectedIds.size) return;
-        const ids = Array.from(this.selectedIds);
-        for (const id of ids) {
+        for (const id of this.selectedIds) {
             await vendorRepository.archive(id);
         }
         this.clearSelection();
@@ -95,8 +110,7 @@ class VendorStore extends BaseStore {
 
     async bulkDelete() {
         if (!this.selectedIds.size) return;
-        const ids = Array.from(this.selectedIds);
-        for (const id of ids) {
+        for (const id of this.selectedIds) {
             await vendorRepository.delete(id);
         }
         this.clearSelection();

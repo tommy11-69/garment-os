@@ -1,303 +1,531 @@
 import { vendorStore } from '../stores/VendorStore.js';
-import { db } from '../data/database.js';
-import { templates } from './templates.js';
+import { BottomSheet } from '../components/index.js';
+import { bindFormValidation } from '../utils/formHandler.js';
+import { getCreateVendorSheetHTML, getCreateVendorFooterHTML } from '../components/vendorForms.js';
+import {
+    getBulkToolbarHTML,
+    getVendorDetailsHeader,
+    getVendorDetailsContent,
+    getVendorDetailsFooter,
+    getEditVendorSheetHTML,
+    getEditVendorFooterHTML,
+    getRecordPaymentSheetHTML,
+    getRecordPaymentFooterHTML,
+} from './templates.js';
 
-const DOM = {
-    list: document.getElementById('vendors-list-container'),
-    search: document.getElementById('vendor-search'),
-    count: document.getElementById('vendors-count'),
-    sheets: document.getElementById('sheets-container')
-};
+// ─── INITIALIZATION ───────────────────────────────────────────────────────────
 
-function renderList() {
-    const { entities, loading, error } = vendorStore.getState();
-    if (loading) {
-        DOM.list.innerHTML = `<div class="p-4 text-center text-secondary">Loading vendors...</div>`;
-        return;
-    }
-    if (error) {
-        DOM.list.innerHTML = `<div class="p-4 text-center text-error">Error: ${error.message}</div>`;
-        return;
-    }
-    
-    if (entities.length === 0) {
-        DOM.list.innerHTML = `
-            <div class="py-10 text-center">
-                <div class="w-16 h-16 rounded-full bg-surface-container mx-auto mb-4 flex items-center justify-center text-secondary">
-                    <span class="material-symbols-outlined text-[32px]">storefront</span>
-                </div>
-                <h3 class="text-[16px] font-bold text-on-surface mb-1">No vendors found</h3>
-                <p class="text-[14px] text-secondary">Try adjusting your filters or add a new vendor.</p>
-            </div>
-        `;
-        DOM.count.textContent = `0 Vendors`;
-        return;
-    }
-
-    DOM.list.innerHTML = entities.map(v => templates.vendorCard(v)).join('');
-    DOM.count.textContent = `${entities.length} Vendors`;
-}
-
-// Subscriptions
-vendorStore.subscribe(() => renderList());
-
-// Filtering & Search
-window.setFilter = (key, val) => {
-    vendorStore.setFilter(key, val);
-    
-    // Update active tab styling
-    if (key === 'status') {
-        const btns = ['filter-active', 'filter-inactive', 'filter-all'];
-        btns.forEach(id => {
-            const el = document.getElementById(id);
-            if (!el) return;
-            if (id === `filter-${val.toLowerCase()}`) {
-                el.className = "flex-1 py-2 rounded-[12px] text-[13px] font-semibold bg-surface-container-lowest text-on-surface shadow-sm transition-all";
-            } else {
-                el.className = "flex-1 py-2 rounded-[12px] text-[13px] font-semibold text-secondary transition-all";
-            }
-        });
-    }
-};
-
-DOM.search.addEventListener('input', (e) => {
-    vendorStore.setSearch(e.target.value);
+document.addEventListener('DOMContentLoaded', () => {
+    initUI();
+    vendorStore.subscribe(renderUI);
+    vendorStore.loadVendors();
 });
 
-// Initialization
-function initSheets() {
-    DOM.sheets.innerHTML = `
-        ${window.BottomSheet ? window.BottomSheet({ 
-            id: 'addVendorSheet', 
-            title: 'Add Vendor', 
-            content: `
-                <div class="flex flex-col gap-4">
-                    <div class="field-group">
-                        <label class="text-[12px] font-semibold text-secondary uppercase tracking-wider mb-1.5 block">Vendor Name *</label>
-                        <input type="text" id="v-name" class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-[15px] font-medium text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors" required>
-                    </div>
-                    <div class="field-group">
-                        <label class="text-[12px] font-semibold text-secondary uppercase tracking-wider mb-1.5 block">Vendor Type</label>
-                        <select id="v-type" class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-[15px] font-medium text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors">
-                            <option value="Fabric">Fabric</option>
-                            <option value="Yarn">Yarn</option>
-                            <option value="Accessories">Accessories</option>
-                            <option value="Printing">Printing</option>
-                            <option value="Dyeing">Dyeing</option>
-                            <option value="Embroidery">Embroidery</option>
-                            <option value="Packaging">Packaging</option>
-                            <option value="Other" selected>Other</option>
-                        </select>
-                    </div>
-                    <div class="field-group">
-                        <label class="text-[12px] font-semibold text-secondary uppercase tracking-wider mb-1.5 block">Contact Person</label>
-                        <input type="text" id="v-contact" class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-[15px] font-medium text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors">
-                    </div>
-                    <div class="field-group">
-                        <label class="text-[12px] font-semibold text-secondary uppercase tracking-wider mb-1.5 block">Phone</label>
-                        <input type="tel" id="v-phone" class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-[15px] font-medium text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors">
-                    </div>
-                    <div class="field-group">
-                        <label class="text-[12px] font-semibold text-secondary uppercase tracking-wider mb-1.5 block">City</label>
-                        <input type="text" id="v-city" class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-[15px] font-medium text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors">
-                    </div>
-                    <div class="field-group">
-                        <label class="text-[12px] font-semibold text-secondary uppercase tracking-wider mb-1.5 block">Payment Terms</label>
-                        <input type="text" id="v-terms" placeholder="e.g. 30 Days" class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-[15px] font-medium text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors">
-                    </div>
-                    <div class="h-10"></div>
-                </div>
-            `,
-            footerContent: `<button onclick="window.saveVendor()" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active-scale transition-apple shadow-sm">Save Vendor</button>`,
-            isForm: true
-        }) : ''}
+function initUI() {
+    // Inject Add Vendor sheet
+    const sheetsContainer = document.getElementById('sheets-container');
+    if (sheetsContainer) {
+        sheetsContainer.innerHTML = BottomSheet({
+            id: 'addVendorSheet',
+            title: 'New Vendor',
+            content: getCreateVendorSheetHTML(),
+            footerContent: getCreateVendorFooterHTML(),
+            isForm: true,
+        });
+        bindFormValidation('addVendorSheet-content', 'create-vendor-submit');
+    }
 
-        ${window.BottomSheet ? window.BottomSheet({ 
-            id: 'vendorDetailsSheet', 
-            customHeader: '<div id="vd-header"></div>', 
-            content: '<div id="vd-content"></div>',
-            height: '90vh'
-        }) : ''}
-        
-        ${window.BottomSheet ? window.BottomSheet({ 
-            id: 'addPaymentSheet', 
-            title: 'Add Payment', 
-            content: `
-                <div class="flex flex-col gap-4">
-                    <input type="hidden" id="p-vendor-id">
-                    <div class="field-group">
-                        <label class="text-[12px] font-semibold text-secondary uppercase tracking-wider mb-1.5 block">Amount *</label>
-                        <input type="number" id="p-amount" class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-[15px] font-medium text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors" required>
+    // Search
+    const searchInput = document.getElementById('vendor-search');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            vendorStore.setSearch(e.target.value);
+        });
+    }
+
+    // Status filter buttons (Active / Inactive / All)
+    document.querySelectorAll('[data-status-filter]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const val = btn.getAttribute('data-status-filter');
+            window.setVendorStatusFilter(val);
+        });
+    });
+
+    // Type filter chips
+    document.querySelectorAll('[data-type-filter]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            window.setVendorTypeFilter(btn.getAttribute('data-type-filter'));
+        });
+    });
+}
+
+// ─── RENDERING ────────────────────────────────────────────────────────────────
+
+function renderUI(state) {
+    const { entities, activeEntity, selectedIds, isBulkMode, loading, error } = state;
+
+    // List
+    const container = document.getElementById('vendors-list-container');
+    if (container) {
+        if (loading) {
+            if (window.setLoading) window.setLoading('vendors-list-container');
+        } else if (error) {
+            container.innerHTML = `<div class="p-md text-center text-error">Failed to load vendors: ${error.message}</div>`;
+        } else if (entities.length === 0) {
+            container.innerHTML = `
+                <div class="flex flex-col items-center justify-center p-xl text-center">
+                    <div class="w-16 h-16 rounded-full bg-surface-variant flex items-center justify-center mb-4 text-secondary">
+                        <span class="material-symbols-outlined text-[32px]">storefront_off</span>
                     </div>
-                    <div class="field-group">
-                        <label class="text-[12px] font-semibold text-secondary uppercase tracking-wider mb-1.5 block">Payment Method</label>
-                        <select id="p-method" class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-[15px] font-medium text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors">
-                            <option value="UPI">UPI</option>
-                            <option value="Bank Transfer">Bank Transfer</option>
-                            <option value="Cash">Cash</option>
-                            <option value="Cheque">Cheque</option>
-                        </select>
-                    </div>
-                    <div class="field-group">
-                        <label class="text-[12px] font-semibold text-secondary uppercase tracking-wider mb-1.5 block">Reference No / Notes</label>
-                        <input type="text" id="p-ref" class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-[15px] font-medium text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors">
-                    </div>
-                    <div class="h-10"></div>
+                    <h3 class="text-[16px] font-bold text-on-surface mb-1">No Vendors Found</h3>
+                    <p class="text-body text-secondary max-w-[250px]">Try adjusting your search or filters, or add a new vendor.</p>
                 </div>
-            `,
-            footerContent: `<button onclick="window.savePayment()" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active-scale transition-apple shadow-sm">Record Payment</button>`,
-            isForm: true
-        }) : ''}
+            `;
+        } else {
+            container.innerHTML = entities.map(v => vendorCard(v, isBulkMode, selectedIds.has(v.id))).join('');
+        }
+    }
+
+    // Count badge
+    const countEl = document.getElementById('vendors-count');
+    if (countEl && !loading) {
+        const total = entities.length;
+        countEl.textContent = `${total} Vendor${total !== 1 ? 's' : ''}`;
+    }
+
+    // Bulk toolbar
+    updateBulkToolbar(state);
+
+    // If detail sheet open, refresh its contents
+    if (activeEntity) updateActiveEntitySheets(activeEntity);
+}
+
+function vendorCard(v, isBulkMode = false, isSelected = false) {
+    const typeColors = {
+        'Fabric':      'bg-blue-500/15 text-blue-700',
+        'Yarn':        'bg-sky-500/15 text-sky-700',
+        'Stitching':   'bg-purple-500/15 text-purple-700',
+        'Dyeing':      'bg-teal-500/15 text-teal-700',
+        'Printing':    'bg-orange-500/15 text-orange-700',
+        'Embroidery':  'bg-pink-500/15 text-pink-700',
+        'Packaging':   'bg-gray-500/15 text-gray-700',
+        'Accessories': 'bg-yellow-500/15 text-yellow-700',
+        'Other':       'bg-primary/15 text-primary',
+    };
+    const avatarCls = typeColors[v.vendorType] || typeColors['Other'];
+    const initials = v.initials || (v.name || 'VN').split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
+    const outstanding = parseFloat(v.outstandingPayable || 0);
+    const checkboxHtml = isBulkMode ? `
+        <div class="mr-3 flex items-center h-full">
+            <div class="w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors ${isSelected ? 'bg-primary border-primary' : 'border-outline-variant'}" onclick="event.stopPropagation(); window.toggleVendorSelection('${v.id}')">
+                ${isSelected ? '<span class="material-symbols-outlined text-white text-[16px] font-bold">check</span>' : ''}
+            </div>
+        </div>
+    ` : '';
+
+    return `
+        <div role="button" tabindex="0"
+            onclick="${isBulkMode ? `window.toggleVendorSelection('${v.id}')` : `window.openVendorDetails('${v.id}')`}"
+            class="bg-surface-container-lowest rounded-[24px] border ${isSelected ? 'border-primary ring-1 ring-primary' : 'border-outline-variant'} p-md shadow-sm active-bg transition-colors flex items-start gap-4 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary">
+            ${checkboxHtml}
+            <div class="w-[56px] h-[56px] rounded-full flex-shrink-0 flex items-center justify-center font-bold text-[18px] ${avatarCls}">
+                ${initials}
+            </div>
+            <div class="flex-1 w-full min-w-0">
+                <div class="flex items-start justify-between mb-1">
+                    <div class="min-w-0">
+                        <span class="text-[11px] font-semibold text-primary block mb-0.5">${v.vendorCode || ''}</span>
+                        <h4 class="text-[16px] font-bold text-on-surface leading-tight truncate">${v.name}</h4>
+                        ${v.company ? `<p class="text-[12px] text-secondary truncate">${v.company}</p>` : ''}
+                    </div>
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0 ml-2 ${v.statusColor || 'bg-[#008A00]/10 text-[#008A00]'}">${v.status || 'Active'}</span>
+                </div>
+                <div class="grid grid-cols-3 gap-2 mt-2 pt-2 border-t border-outline-variant/30">
+                    <div>
+                        <span class="text-[10px] text-secondary uppercase tracking-wider block mb-0.5">Type</span>
+                        <span class="text-[12px] font-semibold text-on-surface">${v.vendorType || '-'}</span>
+                    </div>
+                    <div>
+                        <span class="text-[10px] text-secondary uppercase tracking-wider block mb-0.5">Purchased</span>
+                        <span class="text-[12px] font-bold text-on-surface">₹${(v.totalPurchases || 0).toLocaleString('en-IN')}</span>
+                    </div>
+                    <div>
+                        <span class="text-[10px] text-secondary uppercase tracking-wider block mb-0.5">You Owe</span>
+                        <span class="text-[12px] font-bold ${outstanding > 0 ? 'text-error' : 'text-[#008A00]'}">₹${outstanding.toLocaleString('en-IN')}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
     `;
 }
 
-let editingVendorId = null;
+function updateBulkToolbar(state) {
+    const { isBulkMode, selectedIds } = state;
+    let toolbar = document.getElementById('vendor-bulk-toolbar');
 
-window.openVendorDetails = async (id) => {
-    await vendorStore.fetchActiveEntity(id);
-    const { activeEntity } = vendorStore.getState();
-    if (!activeEntity) return;
-
-    document.getElementById('vd-header').innerHTML = '';
-    document.getElementById('vd-content').innerHTML = templates.vendorDetails(activeEntity);
-    window.openSheet('vendorDetailsSheet');
-};
-
-window.closeVendorDetails = () => {
-    window.closeSheet('vendorDetailsSheet');
-};
-
-window.saveVendor = async () => {
-    const name = document.getElementById('v-name').value;
-    if (!name) {
-        window.showToast?.('Vendor name is required', 'error');
-        return;
+    if (isBulkMode) {
+        if (!toolbar) {
+            toolbar = document.createElement('div');
+            toolbar.id = 'vendor-bulk-toolbar';
+            toolbar.className = 'fixed bottom-[80px] left-4 right-4 bg-surface-container-highest border border-outline-variant shadow-lg rounded-2xl p-3 z-40 transition-all duration-300 translate-y-0 opacity-100 flex items-center max-w-[400px] mx-auto';
+            document.body.appendChild(toolbar);
+        }
+        toolbar.innerHTML = getBulkToolbarHTML(selectedIds.size);
+    } else {
+        if (toolbar) {
+            toolbar.classList.add('translate-y-4', 'opacity-0');
+            setTimeout(() => toolbar.remove(), 300);
+        }
     }
+}
 
+function updateActiveEntitySheets(entity) {
+    const detailsSheet = document.getElementById('vendorDetailsSheet');
+    if (detailsSheet && !detailsSheet.classList.contains('translate-y-full')) {
+        const bodyContent = detailsSheet.querySelector('.overflow-y-auto');
+        if (bodyContent) bodyContent.innerHTML = getVendorDetailsContent(entity);
+
+        const header = detailsSheet.querySelector('.bg-surface-container-lowest.sticky');
+        if (header) header.innerHTML = getVendorDetailsHeader(entity);
+    }
+}
+
+// ─── CRUD OPERATIONS ──────────────────────────────────────────────────────────
+
+window.saveNewVendor = async function () {
+    const btn = document.getElementById('create-vendor-submit');
+    if (btn) btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>';
+
+    const isActive = document.getElementById('new-vend-active')?.checked ?? true;
     const data = {
-        name,
-        vendorType: document.getElementById('v-type').value,
-        contactPerson: document.getElementById('v-contact').value,
-        phone: document.getElementById('v-phone').value,
-        city: document.getElementById('v-city').value,
-        paymentTerms: document.getElementById('v-terms').value
+        name:          document.getElementById('new-vend-name')?.value || '',
+        company:       document.getElementById('new-vend-company')?.value || '',
+        contactPerson: document.getElementById('new-vend-contact')?.value || '',
+        phone:         document.getElementById('new-vend-phone')?.value || '',
+        whatsapp:      document.getElementById('new-vend-whatsapp')?.value || '',
+        email:         document.getElementById('new-vend-email')?.value || '',
+        gst:           document.getElementById('new-vend-gst')?.value || '',
+        vendorType:    document.getElementById('new-vend-type')?.value || 'Other',
+        paymentTerms:  document.getElementById('new-vend-terms')?.value || '',
+        creditLimit:   parseFloat(document.getElementById('new-vend-limit')?.value) || 0,
+        upiId:         document.getElementById('new-vend-upi')?.value || '',
+        bankName:      document.getElementById('new-vend-bank')?.value || '',
+        accountNumber: document.getElementById('new-vend-account')?.value || '',
+        ifsc:          document.getElementById('new-vend-ifsc')?.value || '',
+        addressLine1:  document.getElementById('new-vend-addr1')?.value || '',
+        city:          document.getElementById('new-vend-city')?.value || '',
+        state:         document.getElementById('new-vend-state')?.value || '',
+        country:       document.getElementById('new-vend-country')?.value || 'India',
+        pincode:       document.getElementById('new-vend-pincode')?.value || '',
+        notes:         document.getElementById('new-vend-notes')?.value || '',
+        status:        isActive ? 'Active' : 'Inactive',
+        statusColor:   isActive ? 'bg-[#008A00]/10 text-[#008A00]' : 'bg-surface-variant text-secondary',
     };
 
     try {
-        if (editingVendorId) {
-            await vendorStore.updateVendor(editingVendorId, data);
-            window.showToast?.('Vendor updated', 'success');
-        } else {
-            await vendorStore.createVendor(data);
-            window.showToast?.('Vendor created', 'success');
-        }
+        await vendorStore.createVendor(data);
         window.closeSheet('addVendorSheet');
-        editingVendorId = null;
+        window.showToast?.('Vendor saved successfully', 'success');
+        document.getElementById('addVendorSheet-content')?.reset();
     } catch (e) {
-        window.showToast?.(e.message, 'error');
+        console.error(e);
+        window.showToast?.(e.message || 'Failed to save vendor', 'error');
+    } finally {
+        if (btn) btn.innerHTML = 'Save Vendor';
     }
 };
 
-window.editVendor = (id) => {
-    const { entities } = vendorStore.getState();
-    const vendor = entities.find(v => v.id === id);
-    if (!vendor) return;
+window.saveEditedVendor = async function () {
+    const btn = document.getElementById('edit-vendor-submit');
+    if (btn) btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>';
 
-    editingVendorId = id;
-    document.getElementById('v-name').value = vendor.name || '';
-    document.getElementById('v-type').value = vendor.vendorType || 'Other';
-    document.getElementById('v-contact').value = vendor.contactPerson || '';
-    document.getElementById('v-phone').value = vendor.phone || '';
-    document.getElementById('v-city').value = vendor.city || '';
-    document.getElementById('v-terms').value = vendor.paymentTerms || '';
+    const id = document.getElementById('edit-vend-id')?.value;
+    const isActive = document.getElementById('edit-vend-active')?.checked ?? true;
+    const data = {
+        name:          document.getElementById('edit-vend-name')?.value || '',
+        company:       document.getElementById('edit-vend-company')?.value || '',
+        contactPerson: document.getElementById('edit-vend-contact')?.value || '',
+        phone:         document.getElementById('edit-vend-phone')?.value || '',
+        whatsapp:      document.getElementById('edit-vend-whatsapp')?.value || '',
+        email:         document.getElementById('edit-vend-email')?.value || '',
+        gst:           document.getElementById('edit-vend-gst')?.value || '',
+        vendorType:    document.getElementById('edit-vend-type')?.value || 'Other',
+        paymentTerms:  document.getElementById('edit-vend-terms')?.value || '',
+        creditLimit:   parseFloat(document.getElementById('edit-vend-limit')?.value) || 0,
+        upiId:         document.getElementById('edit-vend-upi')?.value || '',
+        bankName:      document.getElementById('edit-vend-bank')?.value || '',
+        accountNumber: document.getElementById('edit-vend-account')?.value || '',
+        ifsc:          document.getElementById('edit-vend-ifsc')?.value || '',
+        addressLine1:  document.getElementById('edit-vend-addr1')?.value || '',
+        city:          document.getElementById('edit-vend-city')?.value || '',
+        state:         document.getElementById('edit-vend-state')?.value || '',
+        country:       document.getElementById('edit-vend-country')?.value || 'India',
+        pincode:       document.getElementById('edit-vend-pincode')?.value || '',
+        notes:         document.getElementById('edit-vend-notes')?.value || '',
+        status:        isActive ? 'Active' : 'Inactive',
+        statusColor:   isActive ? 'bg-[#008A00]/10 text-[#008A00]' : 'bg-surface-variant text-secondary',
+    };
 
-    window.closeSheet('vendorDetailsSheet');
-    setTimeout(() => window.openSheet('addVendorSheet'), 300);
-};
-
-window.deleteVendor = async (id) => {
-    if (confirm('Are you sure you want to delete this vendor? This action cannot be undone.')) {
-        try {
-            await vendorStore.deleteVendor(id);
-            window.closeSheet('vendorDetailsSheet');
-            window.showToast?.('Vendor deleted', 'success');
-        } catch (e) {
-            window.showToast?.(e.message, 'error');
-        }
+    try {
+        await vendorStore.updateVendor(id, data);
+        window.closeSheet('editVendorSheet');
+        window.showToast?.('Vendor updated successfully', 'success');
+        setTimeout(() => window.openVendorDetails(id), 300);
+    } catch (e) {
+        console.error(e);
+        window.showToast?.('Failed to update vendor', 'error');
+    } finally {
+        if (btn) btn.innerHTML = 'Update Vendor';
     }
 };
 
-window.addVendorPayment = (id) => {
-    document.getElementById('p-vendor-id').value = id;
-    document.getElementById('p-amount').value = '';
-    document.getElementById('p-ref').value = '';
-    
-    window.closeSheet('vendorDetailsSheet');
-    setTimeout(() => window.openSheet('addPaymentSheet'), 300);
-};
+window.saveVendorPayment = async function () {
+    const btn = document.getElementById('record-payment-submit');
+    if (btn) btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>';
 
-window.savePayment = async () => {
-    const vendorId = document.getElementById('p-vendor-id').value;
-    const amount = parseFloat(document.getElementById('p-amount').value);
-    
+    const vendorId = document.getElementById('pay-vendor-id')?.value;
+    const amount   = parseFloat(document.getElementById('pay-amount')?.value || 0);
+    const method   = document.getElementById('pay-method')?.value || 'UPI';
+    const date     = document.getElementById('pay-date')?.value || new Date().toISOString().split('T')[0];
+    const ref      = document.getElementById('pay-ref')?.value || '';
+    const notes    = document.getElementById('pay-notes')?.value || '';
+
     if (!amount || amount <= 0) {
         window.showToast?.('Please enter a valid amount', 'error');
+        if (btn) btn.innerHTML = 'Record Payment';
         return;
     }
 
-    const { entities } = vendorStore.getState();
-    const vendor = entities.find(v => v.id === vendorId);
+    const vendor = vendorStore.getState().entities.find(v => v.id === vendorId)
+        || vendorStore.getState().activeEntity;
 
-    const transactionData = {
-        id: `tx-${Date.now()}`,
-        type: 'Payment',
-        amount: amount,
-        date: new Date().toISOString().split('T')[0],
-        status: 'Completed',
-        paymentMethod: document.getElementById('p-method').value,
-        referenceNo: document.getElementById('p-ref').value,
-        createdBy: 'Admin',
-        description: `Payment to ${vendor ? vendor.name : 'Vendor'}`,
-        refId: vendorId,
-        title: `Payment`,
-        amountColor: 'text-[#FF9F0A]',
-        isNegative: 1, // 1 because it's money out
-        icon: 'payments',
-        iconBg: 'bg-[#FF9F0A]/10',
-        iconColor: 'text-[#FF9F0A]',
+    // Create a finance transaction that links to the vendor
+    const txn = {
+        id:            `txn-pay-${Date.now()}`,
+        type:          'Expense',
+        title:         `Payment to ${vendor?.name || 'Vendor'}`,
+        category:      'Vendor Payment',
+        amount,
+        date,
+        status:        'Completed',
+        paymentMethod: method,
+        referenceNo:   ref,
+        notes,
+        refId:         vendorId,
+        isNegative:    1,
+        createdBy:     'Admin',
+        icon:          'payments',
+        iconBg:        'bg-[#008A00]/10',
+        iconColor:     'text-[#008A00]',
+        amountColor:   'text-error',
     };
 
     try {
-        await db.insert('transactions', transactionData);
+        // Use the finance API / db to insert so it shows in Finance page too
+        const { db } = await import('../data/database.js');
+        await db.insert('transactions', txn);
+
+        window.closeSheet('recordPaymentSheet');
+        window.showToast?.(`Payment of ₹${amount.toLocaleString('en-IN')} recorded`, 'success');
+
+        // Refresh vendor detail
         await vendorStore.fetchActiveEntity(vendorId);
-        await vendorStore.loadVendors(); // Refresh the list
-        
-        window.closeSheet('addPaymentSheet');
-        window.showToast?.('Payment recorded successfully', 'success');
-        
-        // Re-open details
+        await vendorStore.loadVendors();
         setTimeout(() => window.openVendorDetails(vendorId), 300);
     } catch (e) {
-        window.showToast?.(e.message, 'error');
+        console.error(e);
+        window.showToast?.('Failed to record payment', 'error');
+    } finally {
+        if (btn) btn.innerHTML = 'Record Payment';
     }
 };
 
-// Reset form when opening add sheet (if not editing)
-const originalOpenSheet = window.openSheet;
-window.openSheet = (id) => {
-    if (id === 'addVendorSheet' && !editingVendorId) {
-        document.getElementById('v-name').value = '';
-        document.getElementById('v-type').value = 'Other';
-        document.getElementById('v-contact').value = '';
-        document.getElementById('v-phone').value = '';
-        document.getElementById('v-city').value = '';
-        document.getElementById('v-terms').value = '';
-    }
-    if (originalOpenSheet) originalOpenSheet(id);
+window.deleteVendorFlow = function (id) {
+    const vendor = vendorStore.getState().entities.find(v => v.id === id)
+        || vendorStore.getState().activeEntity;
+    if (!vendor) return;
+
+    window.showConfirmation({
+        title: 'Delete Vendor',
+        message: `Are you sure you want to permanently delete ${vendor.name}? This cannot be undone.`,
+        confirmText: 'Delete',
+        onConfirm: async () => {
+            try {
+                window.closeSheet('vendorDetailsSheet');
+                await vendorStore.deleteVendor(id);
+                window.showToast?.('Vendor deleted', 'success');
+            } catch (e) {
+                window.showToast?.('Failed to delete vendor', 'error');
+            }
+        },
+    });
 };
 
-// Init
-document.addEventListener('DOMContentLoaded', () => {
-    initSheets();
-    vendorStore.loadVendors();
-});
+window.archiveVendorFlow = async function (id) {
+    try {
+        window.closeSheet('vendorDetailsSheet');
+        await vendorStore.archiveVendor(id);
+        window.showToast?.('Vendor archived', 'success');
+    } catch (e) {
+        window.showToast?.('Failed to archive vendor', 'error');
+    }
+};
+
+window.restoreVendorFlow = async function (id) {
+    try {
+        window.closeSheet('vendorDetailsSheet');
+        await vendorStore.restoreVendor(id);
+        window.showToast?.('Vendor restored', 'success');
+    } catch (e) {
+        window.showToast?.('Failed to restore vendor', 'error');
+    }
+};
+
+window.duplicateVendorFlow = async function (id) {
+    try {
+        window.closeSheet('vendorDetailsSheet');
+        await vendorStore.duplicateVendor(id);
+        window.showToast?.('Vendor duplicated', 'success');
+    } catch (e) {
+        window.showToast?.('Failed to duplicate vendor', 'error');
+    }
+};
+
+// ─── SHEET FLOWS ──────────────────────────────────────────────────────────────
+
+window.openVendorDetails = async function (id) {
+    if (vendorStore.getState().isBulkMode) {
+        window.toggleVendorSelection(id);
+        return;
+    }
+
+    await vendorStore.fetchActiveEntity(id);
+    const vendor = vendorStore.getState().activeEntity;
+    if (!vendor) return;
+
+    const container = document.getElementById('sheets-container');
+    // Remove previous if any
+    document.getElementById('vendorDetailsSheet-content')?.remove();
+    document.getElementById('vendorDetailsSheet-overlay')?.remove();
+
+    const sheetHTML = BottomSheet({
+        id: 'vendorDetailsSheet',
+        customHeader: getVendorDetailsHeader(vendor),
+        content: getVendorDetailsContent(vendor),
+        footerContent: getVendorDetailsFooter(vendor),
+        height: '92vh',
+    });
+
+    container.insertAdjacentHTML('beforeend', sheetHTML);
+    setTimeout(() => window.openSheet('vendorDetailsSheet'), 50);
+};
+
+window.openEditVendor = async function (id) {
+    await vendorStore.fetchActiveEntity(id);
+    const vendor = vendorStore.getState().activeEntity;
+    if (!vendor) return;
+
+    window.closeSheet('vendorDetailsSheet');
+
+    const container = document.getElementById('sheets-container');
+    document.getElementById('editVendorSheet-content')?.remove();
+    document.getElementById('editVendorSheet-overlay')?.remove();
+
+    const sheetHTML = BottomSheet({
+        id: 'editVendorSheet',
+        title: 'Edit Vendor',
+        content: getEditVendorSheetHTML(vendor),
+        footerContent: getEditVendorFooterHTML(),
+        isForm: true,
+    });
+
+    container.insertAdjacentHTML('beforeend', sheetHTML);
+    setTimeout(() => {
+        bindFormValidation('editVendorSheet-content', 'edit-vendor-submit');
+        window.openSheet('editVendorSheet');
+    }, 300);
+};
+
+window.openRecordPayment = function (id) {
+    const container = document.getElementById('sheets-container');
+    document.getElementById('recordPaymentSheet-content')?.remove();
+    document.getElementById('recordPaymentSheet-overlay')?.remove();
+
+    const sheetHTML = BottomSheet({
+        id: 'recordPaymentSheet',
+        title: 'Record Payment',
+        content: getRecordPaymentSheetHTML(id),
+        footerContent: getRecordPaymentFooterHTML(),
+        isForm: true,
+    });
+
+    container.insertAdjacentHTML('beforeend', sheetHTML);
+    setTimeout(() => window.openSheet('recordPaymentSheet'), 50);
+};
+
+// ─── FILTER HANDLERS ──────────────────────────────────────────────────────────
+
+window.setVendorStatusFilter = function (val) {
+    vendorStore.setFilter('status', val);
+
+    document.querySelectorAll('[data-status-filter]').forEach(btn => {
+        const isActive = btn.getAttribute('data-status-filter') === val;
+        btn.className = isActive
+            ? 'flex-1 py-2 rounded-[12px] text-[13px] font-semibold bg-surface-container-lowest text-on-surface shadow-sm transition-all'
+            : 'flex-1 py-2 rounded-[12px] text-[13px] font-semibold text-secondary transition-all';
+    });
+};
+
+window.setVendorTypeFilter = function (val) {
+    vendorStore.setFilter('vendorType', val);
+
+    document.querySelectorAll('[data-type-filter]').forEach(btn => {
+        const isActive = btn.getAttribute('data-type-filter') === val;
+        btn.classList.toggle('bg-primary',         isActive);
+        btn.classList.toggle('text-white',         isActive);
+        btn.classList.toggle('border-primary',     isActive);
+        btn.classList.toggle('bg-surface-container-lowest', !isActive);
+        btn.classList.toggle('text-secondary',     !isActive);
+        btn.classList.toggle('border-outline-variant', !isActive);
+    });
+};
+
+// ─── BULK OPERATIONS ─────────────────────────────────────────────────────────
+
+window.toggleVendorSelection = function (id) {
+    vendorStore.toggleSelection(id);
+};
+
+window.clearVendorSelection = function () {
+    vendorStore.clearSelection();
+};
+
+window.bulkArchiveVendors = async function () {
+    const size = vendorStore.getState().selectedIds.size;
+    if (!size) return;
+    try {
+        await vendorStore.bulkArchive();
+        window.showToast?.(`${size} vendors archived`, 'success');
+    } catch (e) {
+        window.showToast?.('Failed to archive vendors', 'error');
+    }
+};
+
+window.bulkDeleteVendors = function () {
+    const size = vendorStore.getState().selectedIds.size;
+    if (!size) return;
+
+    window.showConfirmation({
+        title: 'Delete Vendors',
+        message: `Are you sure you want to permanently delete ${size} vendors?`,
+        confirmText: 'Delete All',
+        onConfirm: async () => {
+            try {
+                await vendorStore.bulkDelete();
+                window.showToast?.(`${size} vendors deleted`, 'success');
+            } catch (e) {
+                window.showToast?.('Failed to delete vendors', 'error');
+            }
+        },
+    });
+};

@@ -13,15 +13,16 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Garment OS - Vendors</title>
-    
+    <meta name="description" content="Manage vendors, track purchases, outstanding payables, and record payments in Garment OS.">
+
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com" rel="preconnect"/>
     <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-    
+
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <script src="../js/tailwind.config.js"></script>
-    
+
     <link rel="stylesheet" href="../css/layout.css">
     <link rel="stylesheet" href="../css/typography.css">
     <link rel="stylesheet" href="../css/utilities.css">
@@ -32,47 +33,85 @@
 
     <div class="mobile-wrapper">
         <main id="main-content-area" class="flex-1 p-md flex flex-col gap-lg">
-            
+
+            <!-- Page Header -->
             <div class="px-xs pt-sm">
                 <h2 class="text-[28px] leading-tight font-semibold tracking-tight text-on-surface mb-1">Vendors</h2>
-                <p id="vendors-count" class="text-body text-secondary">Manage suppliers and vendor relationships</p>
+                <p id="vendors-count" class="text-body text-secondary">Loading vendors...</p>
             </div>
-            
-            <!-- Mobile Search & Filter -->
+
+            <!-- Search & Filter -->
             <div class="flex gap-2 w-full">
                 <div class="relative flex-1">
                     <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
-                    <input id="vendor-search" class="w-full bg-surface-container-lowest border border-outline-variant rounded-2xl py-3 pl-12 pr-4 font-body text-[16px] text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary/20 transition-apple shadow-sm" placeholder="Search..." type="text"/>
+                    <input id="vendor-search" class="w-full bg-surface-container-lowest border border-outline-variant rounded-2xl py-3 pl-12 pr-4 font-body text-[16px] text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary/20 transition-apple shadow-sm" placeholder="Search vendors..." type="text"/>
                 </div>
-                <button class="w-[50px] h-[50px] rounded-2xl bg-surface-container-lowest border border-outline-variant shadow-sm flex items-center justify-center text-secondary active:bg-surface-variant transition-colors">
-                    <span class="material-symbols-outlined">tune</span>
+            </div>
+
+            <!-- Status Segmented Control -->
+            <div class="flex p-1 bg-surface-container rounded-[16px] border border-outline-variant/50">
+                <button data-status-filter="Active" class="flex-1 py-2 rounded-[12px] text-[13px] font-semibold bg-surface-container-lowest text-on-surface shadow-sm transition-all" onclick="window.setVendorStatusFilter('Active')">Active</button>
+                <button data-status-filter="Inactive" class="flex-1 py-2 rounded-[12px] text-[13px] font-semibold text-secondary transition-all" onclick="window.setVendorStatusFilter('Inactive')">Inactive</button>
+                <button data-status-filter="All" class="flex-1 py-2 rounded-[12px] text-[13px] font-semibold text-secondary transition-all" onclick="window.setVendorStatusFilter('All')">All</button>
+            </div>
+
+            <!-- Vendor Type Filter Chips -->
+            <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1" id="vendor-type-chips">
+                <button type="button" data-type-filter="All" onclick="window.setVendorTypeFilter('All')"
+                    class="px-3 py-1.5 rounded-xl text-[12px] font-bold border transition-all shrink-0 bg-primary text-white border-primary cursor-pointer touch-manipulation">
+                    All
+                </button>
+                <button type="button" data-type-filter="Fabric" onclick="window.setVendorTypeFilter('Fabric')"
+                    class="px-3 py-1.5 rounded-xl text-[12px] font-bold border transition-all shrink-0 bg-surface-container-lowest text-secondary border-outline-variant cursor-pointer touch-manipulation">
+                    🧵 Fabric
+                </button>
+                <button type="button" data-type-filter="Stitching" onclick="window.setVendorTypeFilter('Stitching')"
+                    class="px-3 py-1.5 rounded-xl text-[12px] font-bold border transition-all shrink-0 bg-surface-container-lowest text-secondary border-outline-variant cursor-pointer touch-manipulation">
+                    🪡 Stitching
+                </button>
+                <button type="button" data-type-filter="Dyeing" onclick="window.setVendorTypeFilter('Dyeing')"
+                    class="px-3 py-1.5 rounded-xl text-[12px] font-bold border transition-all shrink-0 bg-surface-container-lowest text-secondary border-outline-variant cursor-pointer touch-manipulation">
+                    🎨 Dyeing
+                </button>
+                <button type="button" data-type-filter="Printing" onclick="window.setVendorTypeFilter('Printing')"
+                    class="px-3 py-1.5 rounded-xl text-[12px] font-bold border transition-all shrink-0 bg-surface-container-lowest text-secondary border-outline-variant cursor-pointer touch-manipulation">
+                    🖨️ Printing
+                </button>
+                <button type="button" data-type-filter="Embroidery" onclick="window.setVendorTypeFilter('Embroidery')"
+                    class="px-3 py-1.5 rounded-xl text-[12px] font-bold border transition-all shrink-0 bg-surface-container-lowest text-secondary border-outline-variant cursor-pointer touch-manipulation">
+                    🌸 Embroidery
+                </button>
+                <button type="button" data-type-filter="Packaging" onclick="window.setVendorTypeFilter('Packaging')"
+                    class="px-3 py-1.5 rounded-xl text-[12px] font-bold border transition-all shrink-0 bg-surface-container-lowest text-secondary border-outline-variant cursor-pointer touch-manipulation">
+                    📦 Packaging
+                </button>
+                <button type="button" data-type-filter="Accessories" onclick="window.setVendorTypeFilter('Accessories')"
+                    class="px-3 py-1.5 rounded-xl text-[12px] font-bold border transition-all shrink-0 bg-surface-container-lowest text-secondary border-outline-variant cursor-pointer touch-manipulation">
+                    🪢 Accessories
+                </button>
+                <button type="button" data-type-filter="Other" onclick="window.setVendorTypeFilter('Other')"
+                    class="px-3 py-1.5 rounded-xl text-[12px] font-bold border transition-all shrink-0 bg-surface-container-lowest text-secondary border-outline-variant cursor-pointer touch-manipulation">
+                    Other
                 </button>
             </div>
 
-            <!-- Segmented Control for Active / Inactive -->
-            <div class="flex p-1 bg-surface-container rounded-[16px] border border-outline-variant/50">
-                <button id="filter-active" class="flex-1 py-2 rounded-[12px] text-[13px] font-semibold bg-surface-container-lowest text-on-surface shadow-sm transition-all" onclick="window.setFilter('status', 'Active')">Active</button>
-                <button id="filter-inactive" class="flex-1 py-2 rounded-[12px] text-[13px] font-semibold text-secondary transition-all" onclick="window.setFilter('status', 'Inactive')">Inactive</button>
-                <button id="filter-all" class="flex-1 py-2 rounded-[12px] text-[13px] font-semibold text-secondary transition-all" onclick="window.setFilter('status', 'All')">All</button>
-            </div>
-
-            <!-- Vendor Cards List -->
+            <!-- Vendors List -->
             <div class="flex flex-col gap-md">
                 <div id="vendors-list-container" class="flex flex-col gap-md min-h-[200px]"></div>
             </div>
-            
+
             <div class="h-6"></div>
         </main>
     </div>
-    
-    <!-- Floating Action Button for Add Vendor -->
+
+    <!-- FAB: Add Vendor -->
     <div id="fab-container" data-icon="add" data-action="openSheet('addVendorSheet')"></div>
 
     <div id="bottom-nav-container"></div>
 
-    <!-- BOTTOM SHEETS -->
+    <!-- Sheets injected by JS -->
     <div id="sheets-container"></div>
-    
+
     <script type="module" src="../js/vendors/index.js"></script>
     <script src="../js/utils/sheet.js"></script>
     <script src="../js/app.js"></script>
