@@ -543,48 +543,37 @@ function renderBalanceSheet(metrics) {
 
     const allTxns = financeStore.getState().allTransactions || [];
 
-    // 1. Calculate Opening Cash Balance (historical: all completed txns BEFORE startDateStr)
-    let openingCash = 0;
-    if (bounds.startDateStr) {
-        const priorTxns = allTxns.filter(t => t.status === 'Completed' && (t.date || '').split('T')[0] < bounds.startDateStr);
-        openingCash = priorTxns.reduce((s, t) => t.type === 'Income' ? s + parseFloat(t.amount || 0) : s - parseFloat(t.amount || 0), 0);
-    }
-
-    // 2. Period completed cash txns (between startDateStr and endDateStr)
-    const periodCashTxns = allTxns.filter(t => {
+    // A Balance Sheet is a snapshot as of endDateStr. It should NOT be filtered by startDateStr.
+    // 1. Total Cash as of endDateStr
+    const cashTxns = allTxns.filter(t => {
         if (t.status !== 'Completed') return false;
         const d = (t.date || '').split('T')[0];
-        if (bounds.startDateStr && d < bounds.startDateStr) return false;
         if (bounds.endDateStr && d > bounds.endDateStr) return false;
         return true;
     });
+    const cash = cashTxns.reduce((s, t) => t.type === 'Income' ? s + parseFloat(t.amount || 0) : s - parseFloat(t.amount || 0), 0);
 
-    const periodNetCash = periodCashTxns.reduce((s, t) => t.type === 'Income' ? s + parseFloat(t.amount || 0) : s - parseFloat(t.amount || 0), 0);
-    const cash = openingCash + periodNetCash;
-
-    // 3. Accounts Receivable in period range (Pending Income)
-    const periodArTxns = allTxns.filter(t => {
+    // 2. Accounts Receivable as of endDateStr (Pending Income)
+    const arTxns = allTxns.filter(t => {
         if (t.status !== 'Pending' || t.type !== 'Income') return false;
         const d = (t.date || '').split('T')[0];
-        if (bounds.startDateStr && d < bounds.startDateStr) return false;
         if (bounds.endDateStr && d > bounds.endDateStr) return false;
         return true;
     });
-    const ar = periodArTxns.reduce((s, t) => s + parseFloat(t.amount || 0), 0);
+    const ar = arTxns.reduce((s, t) => s + parseFloat(t.amount || 0), 0);
 
-    // 4. Inventory value: auto-computed from real data (quantity × unitCost per item)
+    // 3. Inventory value: auto-computed from real data (quantity × unitCost per item)
     const inventoryItems = window.financeInventory || [];
     const inventoryValue = inventoryItems.reduce((s, i) => s + ((i.quantity || 0) * (i.unitCost || 0)), 0);
 
-    // 5. Accounts Payable in period range (Pending Expense)
-    const periodApTxns = allTxns.filter(t => {
+    // 4. Accounts Payable as of endDateStr (Pending Expense)
+    const apTxns = allTxns.filter(t => {
         if (t.status !== 'Pending' || t.type !== 'Expense') return false;
         const d = (t.date || '').split('T')[0];
-        if (bounds.startDateStr && d < bounds.startDateStr) return false;
         if (bounds.endDateStr && d > bounds.endDateStr) return false;
         return true;
     });
-    const ap = periodApTxns.reduce((s, t) => s + parseFloat(t.amount || 0), 0);
+    const ap = apTxns.reduce((s, t) => s + parseFloat(t.amount || 0), 0);
 
     const totalAssets = cash + ar + inventoryValue;
     const totalLiabilities = ap;
