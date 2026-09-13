@@ -12,14 +12,14 @@
     <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Garment OS - Dashboard</title>
+    <title>Garment OS — Enterprise Command Center</title>
     
     <!-- Material Symbols -->
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com" rel="preconnect"/>
     <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet"/>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
@@ -30,86 +30,149 @@
     <link rel="stylesheet" href="../css/typography.css">
     <link rel="stylesheet" href="../css/utilities.css">
 </head>
-<body class="font-body text-body antialiased">
+<body class="font-body text-body antialiased bg-background selection:bg-primary/20">
 
     <!-- TopNavBar Placeholder -->
     <div id="topbar-container"></div>
 
     <!-- Main Content Area -->
     <div class="mobile-wrapper">
-        <main id="main-content-area" class="flex-1 p-md flex flex-col gap-lg">
+        <main id="main-content-area" class="flex-1 p-md flex flex-col gap-lg max-w-7xl mx-auto w-full">
             
-            <!-- Greeting Section -->
-            <div class="px-xs pt-sm pb-xs">
-                <h2 id="dashboard-greeting" class="text-[28px] leading-tight font-semibold tracking-tight text-on-surface mb-1">Good morning, Udhayaa</h2>
-                <p class="text-body text-secondary">Here's your production overview.</p>
-            </div>
-            
-            <!-- Metric Cards Container -->
-            <div id="dashboard-metrics" class="grid grid-cols-2 gap-md"></div>
-            <script type="module" src="../js/dashboard/index.js?v=5.2"></script>
-
-            <!-- Quick Actions -->
-            <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant p-md shadow-sm">
-                <h3 class="font-section-title text-[18px] text-on-surface mb-md">Quick Actions</h3>
-                <div class="flex gap-md overflow-x-auto pb-2 snap-x hide-scrollbar">
-                    <button onclick="window.location.href='orders.html'" class="snap-start flex flex-col items-center justify-center min-w-[80px] gap-2 active-scale transition-apple">
-                        <div class="w-14 h-14 rounded-full bg-primary/10 text-primary flex items-center justify-center">
-                            <span class="material-symbols-outlined text-[24px]">add_circle</span>
-                        </div>
-                        <span class="text-caption font-medium text-on-surface text-center">New<br>Order</span>
-                    </button>
-                    <button onclick="window.location.href='calculator.html'" class="snap-start flex flex-col items-center justify-center min-w-[80px] gap-2 active-scale transition-apple">
-                        <div class="w-14 h-14 rounded-full bg-[#008A00]/10 text-[#008A00] flex items-center justify-center">
-                            <span class="material-symbols-outlined text-[24px]">calculate</span>
-                        </div>
-                        <span class="text-caption font-medium text-on-surface text-center">Cost<br>Calc</span>
-                    </button>
-                    <button onclick="window.location.href='customers.html'" class="snap-start flex flex-col items-center justify-center min-w-[80px] gap-2 active-scale transition-apple">
-                        <div class="w-14 h-14 rounded-full bg-[#FF9F0A]/10 text-[#FF9F0A] flex items-center justify-center">
-                            <span class="material-symbols-outlined text-[24px]">person_add</span>
-                        </div>
-                        <span class="text-caption font-medium text-on-surface text-center">Add<br>Client</span>
-                    </button>
-                    <button onclick="window.location.href='inventory.html'" class="snap-start flex flex-col items-center justify-center min-w-[80px] gap-2 active-scale transition-apple">
-                        <div class="w-14 h-14 rounded-full bg-[#5E5CE6]/10 text-[#5E5CE6] flex items-center justify-center">
-                            <span class="material-symbols-outlined text-[24px]">inventory_2</span>
-                        </div>
-                        <span class="text-caption font-medium text-on-surface text-center">Update<br>Stock</span>
-                    </button>
-                </div>
-            </div>
-
-            <!-- Recent Orders -->
-            <div class="flex flex-col gap-sm">
-                <div class="flex items-center justify-between px-xs">
-                    <h3 class="font-section-title text-[20px] text-on-surface">Recent Orders</h3>
-                    <button onclick="window.location.href='orders.html'" class="text-primary text-body font-medium active:opacity-70">See All</button>
+            <!-- Command Center Header & KMS Launcher -->
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-xs pt-sm pb-xs border-b border-outline-variant/30">
+                <div>
+                    <h2 id="dashboard-greeting" class="text-[28px] leading-tight font-extrabold tracking-tight text-on-surface mb-1">Good morning, Udhayaa</h2>
+                    <p class="text-[14px] text-secondary">Garment OS Operational Command Center &amp; Live Telemetry</p>
                 </div>
                 
-                <div id="dashboard-recent-orders" class="bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-sm overflow-hidden flex flex-col divide-y divide-outline-variant/50">
-                    <!-- Data will be injected here -->
+                <div class="flex items-center gap-3">
+                    <button id="kms-trigger-btn" type="button" class="flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-surface-container-lowest border border-outline-variant/60 hover:bg-surface-variant/50 text-on-surface shadow-sm active-scale transition-apple cursor-pointer">
+                        <span class="material-symbols-outlined text-[20px] text-primary">search</span>
+                        <span class="text-[13px] font-semibold text-secondary">Quick Command Bar</span>
+                        <kbd class="px-2 py-0.5 text-[11px] font-bold font-mono text-secondary bg-surface-variant/80 rounded-lg border border-outline-variant/60 ml-2">⌘K</kbd>
+                    </button>
                 </div>
             </div>
 
-            <!-- Production Progress -->
-            <div class="flex flex-col gap-sm">
-                <div class="flex items-center justify-between px-xs">
-                    <h3 class="font-section-title text-[20px] text-on-surface">Active Batches</h3>
+            <!-- 1. Telemetry KPI Ribbon -->
+            <div id="dashboard-metrics" class="grid grid-cols-2 lg:grid-cols-4 gap-md"></div>
+
+            <!-- 2. Operational Health & State Machine Matrix -->
+            <div id="dashboard-health-matrix"></div>
+
+            <!-- 3. Advanced Analytical Graph Suite (Multi-Axis & Heatmap) -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-lg">
+                <!-- Financial Run-Rate Canvas Chart -->
+                <div class="lg:col-span-2 bg-surface-container-lowest border border-outline-variant/60 rounded-3xl p-5 shadow-sm flex flex-col">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-8 h-8 rounded-xl bg-[#00B386]/10 text-[#00B386] flex items-center justify-center">
+                                <span class="material-symbols-outlined text-[20px]">show_chart</span>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-[16px] text-on-surface">Revenue vs Expense Run-Rate</h3>
+                                <p class="text-[12px] text-secondary">Monthly cumulative billing comparison (60fps Canvas)</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 text-[12px] font-semibold">
+                            <span class="flex items-center gap-1.5 text-[#00B386]"><span class="w-2.5 h-2.5 rounded-full bg-[#00B386]"></span> Sales</span>
+                            <span class="flex items-center gap-1.5 text-[#FF3B30]"><span class="w-2.5 h-2.5 rounded-full bg-[#FF3B30]"></span> Expenses</span>
+                        </div>
+                    </div>
+                    <div class="relative w-full h-[220px] overflow-hidden">
+                        <canvas id="runRateCanvas" class="w-full h-full block"></canvas>
+                    </div>
                 </div>
-                <div id="dashboard-active-batches" class="bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-sm p-md flex flex-col gap-lg">
-                    <!-- Data will be injected here -->
+
+                <!-- 7-Day Floor Capacity Heatmap -->
+                <div class="bg-surface-container-lowest border border-outline-variant/60 rounded-3xl p-5 shadow-sm flex flex-col">
+                    <div class="flex items-center gap-2.5 mb-4">
+                        <div class="w-8 h-8 rounded-xl bg-[#FF6B00]/10 text-[#FF6B00] flex items-center justify-center">
+                            <span class="material-symbols-outlined text-[20px]">grid_view</span>
+                        </div>
+                        <div>
+                            <h3 class="font-bold text-[16px] text-on-surface">Floor Capacity Utilization</h3>
+                            <p class="text-[12px] text-secondary">7-Day shift load percentage</p>
+                        </div>
+                    </div>
+                    <div id="capacityHeatmapContainer" class="flex-1 flex flex-col justify-center"></div>
                 </div>
             </div>
 
-            <!-- Recent Activity -->
+            <!-- 4. Intelligent Anomaly Detection Micro-Widget -->
+            <div id="dashboard-anomaly-widget"></div>
+
+            <!-- 5. Quick Actions Bar -->
+            <div class="bg-surface-container-lowest rounded-3xl border border-outline-variant/60 p-md shadow-sm">
+                <h3 class="font-section-title text-[16px] font-bold text-on-surface mb-md">Quick Launch Actions</h3>
+                <div class="flex gap-md overflow-x-auto pb-2 snap-x hide-scrollbar">
+                    <button onclick="window.location.href='billings.html'" class="snap-start flex flex-col items-center justify-center min-w-[84px] gap-2 active-scale transition-apple cursor-pointer">
+                        <div class="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
+                            <span class="material-symbols-outlined text-[24px]">post_add</span>
+                        </div>
+                        <span class="text-caption font-semibold text-on-surface text-center">New<br>Bill</span>
+                    </button>
+                    <button onclick="window.location.href='orders.html'" class="snap-start flex flex-col items-center justify-center min-w-[84px] gap-2 active-scale transition-apple cursor-pointer">
+                        <div class="w-14 h-14 rounded-2xl bg-[#0071E3]/10 text-[#0071E3] flex items-center justify-center">
+                            <span class="material-symbols-outlined text-[24px]">receipt_long</span>
+                        </div>
+                        <span class="text-caption font-semibold text-on-surface text-center">New<br>Order</span>
+                    </button>
+                    <button onclick="window.location.href='calculator.html'" class="snap-start flex flex-col items-center justify-center min-w-[84px] gap-2 active-scale transition-apple cursor-pointer">
+                        <div class="w-14 h-14 rounded-2xl bg-[#008A00]/10 text-[#008A00] flex items-center justify-center">
+                            <span class="material-symbols-outlined text-[24px]">calculate</span>
+                        </div>
+                        <span class="text-caption font-semibold text-on-surface text-center">Cost<br>Calc</span>
+                    </button>
+                    <button onclick="window.location.href='customers.html'" class="snap-start flex flex-col items-center justify-center min-w-[84px] gap-2 active-scale transition-apple cursor-pointer">
+                        <div class="w-14 h-14 rounded-2xl bg-[#FF9F0A]/10 text-[#FF9F0A] flex items-center justify-center">
+                            <span class="material-symbols-outlined text-[24px]">person_add</span>
+                        </div>
+                        <span class="text-caption font-semibold text-on-surface text-center">Add<br>Client</span>
+                    </button>
+                    <button onclick="window.location.href='inventory.html'" class="snap-start flex flex-col items-center justify-center min-w-[84px] gap-2 active-scale transition-apple cursor-pointer">
+                        <div class="w-14 h-14 rounded-2xl bg-[#5E5CE6]/10 text-[#5E5CE6] flex items-center justify-center">
+                            <span class="material-symbols-outlined text-[24px]">inventory_2</span>
+                        </div>
+                        <span class="text-caption font-semibold text-on-surface text-center">Update<br>Stock</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 6. Recent Orders & Production Pipelines -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-lg">
+                <!-- Recent Orders -->
+                <div class="flex flex-col gap-sm">
+                    <div class="flex items-center justify-between px-xs">
+                        <h3 class="font-section-title text-[18px] font-bold text-on-surface">Recent Orders</h3>
+                        <button onclick="window.location.href='orders.html'" class="text-primary text-[13px] font-semibold active:opacity-70">See All</button>
+                    </div>
+                    
+                    <div id="dashboard-recent-orders" class="bg-surface-container-lowest rounded-3xl border border-outline-variant/60 shadow-sm overflow-hidden flex flex-col divide-y divide-outline-variant/50">
+                        <!-- Data injected via index.js -->
+                    </div>
+                </div>
+
+                <!-- Active Production Batches -->
+                <div class="flex flex-col gap-sm">
+                    <div class="flex items-center justify-between px-xs">
+                        <h3 class="font-section-title text-[18px] font-bold text-on-surface">Active Batches</h3>
+                    </div>
+                    <div id="dashboard-active-batches" class="bg-surface-container-lowest rounded-3xl border border-outline-variant/60 shadow-sm p-md flex flex-col gap-lg">
+                        <!-- Data injected via index.js -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Activity Log Timeline -->
             <div class="flex flex-col gap-sm">
                 <div class="flex items-center justify-between px-xs">
-                    <h3 class="font-section-title text-[20px] text-on-surface">Activity</h3>
+                    <h3 class="font-section-title text-[18px] font-bold text-on-surface">System Activity Stream</h3>
                 </div>
-                <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-sm p-md pb-sm">
-                    <div id="dashboard-activity-feed" class="relative border-l-2 border-[#E5E5EA] ml-3 space-y-6">
-                        <!-- Data will be injected here -->
+                <div class="bg-surface-container-lowest rounded-3xl border border-outline-variant/60 shadow-sm p-md pb-sm">
+                    <div id="dashboard-activity-feed" class="relative border-l-2 border-outline-variant/50 ml-3 space-y-6">
+                        <!-- Data injected via index.js -->
                     </div>
                 </div>
             </div>
@@ -123,16 +186,12 @@
     <!-- BottomNavBar Placeholder -->
     <div id="bottom-nav-container"></div>
 
-    <!-- Application Logic -->
+    <!-- Application Modules -->
+    <script type="module" src="../js/dashboard/index.js?v=5.4"></script>
     <script src="../js/app.js"></script>
     <style>
-        .hide-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-        .hide-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </body>
 </html>

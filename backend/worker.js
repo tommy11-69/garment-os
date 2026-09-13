@@ -276,6 +276,69 @@ export default {
             }
         }
 
+        // Telemetry endpoint
+        if (url.pathname === '/api/telemetry/dashboard' || url.pathname === '/api/telemetry') {
+            try {
+                await ensureBillingTables(env);
+                const salesResult = await env.DB.prepare(
+                    `SELECT SUM(grand_total) as total FROM billing_master WHERE transaction_type = 'Sales_Bill' AND status != 'Void'`
+                ).first();
+                const purchaseResult = await env.DB.prepare(
+                    `SELECT SUM(grand_total) as total FROM billing_master WHERE transaction_type IN ('Purchase_Bill','Payment_Out') AND status != 'Void'`
+                ).first();
+                const quotesResult = await env.DB.prepare(
+                    `SELECT COUNT(*) as count FROM billing_master WHERE transaction_type = 'Quotation' AND status != 'Void'`
+                ).first();
+                const invResult = await env.DB.prepare(
+                    `SELECT SUM(totalValue) as total FROM inventory WHERE isActive = 1`
+                ).first();
+
+                const statusCounts = {
+                    'Draft': 0, 'Quotation Sent': 0, 'Awaiting Approval': 0, 'Approved': 0,
+                    'Material Reserved': 0, 'Production Assigned': 0, 'Knitting': 0,
+                    'Cutting': 0, 'Stitching': 0, 'QC Audit': 0, 'Dispatched': 0, 'Fulfilled': 0
+                };
+                const ordersResult = await env.DB.prepare(`SELECT status, COUNT(*) as cnt FROM orders GROUP BY status`).all();
+                if (ordersResult.results) {
+                    for (const r of ordersResult.results) {
+                        if (statusCounts[r.status] !== undefined) statusCounts[r.status] = r.cnt;
+                    }
+                }
+
+                const salesTotal = salesResult?.total || 0;
+                const purchasesTotal = purchaseResult?.total || 0;
+                const quotesCount = quotesResult?.count || 0;
+                const inventoryTotalValue = invResult?.total || 0;
+
+                const anomalies = [];
+                if (inventoryTotalValue > 500000) {
+                    anomalies.push({
+                        id: 'anom-1',
+                        metric: 'High Inventory Holding',
+                        currentValue: '₹' + Math.round(inventoryTotalValue).toLocaleString(),
+                        severity: 'MEDIUM',
+                        message: 'Total fabric & SKU holding value is above baseline threshold.'
+                    });
+                }
+
+                return json({
+                    success: true,
+                    timestamp: new Date().toISOString(),
+                    metrics: {
+                        totalSales: salesTotal,
+                        totalExpenses: purchasesTotal,
+                        quotationsCount: quotesCount,
+                        inventoryValue: inventoryTotalValue,
+                        activeOrders: Object.values(statusCounts).reduce((a, b) => a + b, 0) - (statusCounts['Fulfilled'] || 0)
+                    },
+                    matrix: statusCounts,
+                    anomalies
+                });
+            } catch (e) {
+                return json({ error: e.message }, 500);
+            }
+        }
+
         // API routes
         if (url.pathname.startsWith('/api/')) {
             try {

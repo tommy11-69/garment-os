@@ -288,9 +288,75 @@ try {
             ('bitem-77195-2', 'bill-qt-77195', 'Caps', '', 'Caps', 133, 'pcs', 130, 0, 0, 0, 17290, '2026-08-19 10:00:00')
         ");
     }
+    // Telemetry & Order Lifecycle DDL
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `order_lifecycle_events` (
+        `id` VARCHAR(191) PRIMARY KEY,
+        `order_id` VARCHAR(191) NOT NULL,
+        `from_stage` VARCHAR(50) NOT NULL,
+        `to_stage` VARCHAR(50) NOT NULL,
+        `duration_seconds` INT DEFAULT 0,
+        `is_bottleneck` TINYINT DEFAULT 0,
+        `delay_reason` LONGTEXT DEFAULT '',
+        `operator_id` VARCHAR(191) DEFAULT '',
+        `createdAt` DATETIME DEFAULT CURRENT_TIMESTAMP
+    )");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `system_telemetry_baselines` (
+        `metric_key` VARCHAR(100) PRIMARY KEY,
+        `mean_val` DOUBLE NOT NULL DEFAULT 0,
+        `std_dev` DOUBLE NOT NULL DEFAULT 0,
+        `sample_count` INT NOT NULL DEFAULT 0,
+        `last_anomaly_at` DATETIME DEFAULT NULL,
+        `updatedAt` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )");
 } catch (Exception $e) { /* ignore */ }
 
 try {
+
+// ── Route: /api/telemetry/dashboard ─────────────────────────────────
+if ($relPath === 'telemetry/dashboard' || $relPath === 'telemetry') {
+    $statusCounts = [
+        'Draft' => 0, 'Quotation Sent' => 0, 'Awaiting Approval' => 0, 'Approved' => 0,
+        'Material Reserved' => 0, 'Production Assigned' => 0, 'Knitting' => 0,
+        'Cutting' => 0, 'Stitching' => 0, 'QC Audit' => 0, 'Dispatched' => 0, 'Fulfilled' => 0
+    ];
+    $ordersStmt = $pdo->query("SELECT `status`, COUNT(*) as cnt FROM `orders` GROUP BY `status`");
+    while ($r = $ordersStmt->fetch()) {
+        if (isset($statusCounts[$r['status']])) {
+            $statusCounts[$r['status']] = (int)$r['cnt'];
+        }
+    }
+
+    $salesTotal = (float)$pdo->query("SELECT COALESCE(SUM(`grand_total`), 0) FROM `billing_master` WHERE `transaction_type` = 'Sales_Bill' AND `status` != 'Void'")->fetchColumn();
+    $purchasesTotal = (float)$pdo->query("SELECT COALESCE(SUM(`grand_total`), 0) FROM `billing_master` WHERE `transaction_type` IN ('Purchase_Bill','Payment_Out') AND `status` != 'Void'")->fetchColumn();
+    $quotesCount = (int)$pdo->query("SELECT COUNT(*) FROM `billing_master` WHERE `transaction_type` = 'Quotation' AND `status` != 'Void'")->fetchColumn();
+    $inventoryTotalValue = (float)$pdo->query("SELECT COALESCE(SUM(`totalValue`), 0) FROM `inventory` WHERE `isActive` = 1")->fetchColumn();
+
+    $anomalies = [];
+    if ($inventoryTotalValue > 500000) {
+        $anomalies[] = [
+            'id' => 'anom-1',
+            'metric' => 'High Inventory Holding',
+            'currentValue' => '₹' . number_format($inventoryTotalValue),
+            'severity' => 'MEDIUM',
+            'message' => 'Total fabric & SKU holding value is above baseline threshold.'
+        ];
+    }
+
+    jsonResponse([
+        'success' => true,
+        'timestamp' => date('c'),
+        'metrics' => [
+            'totalSales' => $salesTotal,
+            'totalExpenses' => $purchasesTotal,
+            'quotationsCount' => $quotesCount,
+            'inventoryValue' => $inventoryTotalValue,
+            'activeOrders' => array_sum($statusCounts) - ($statusCounts['Fulfilled'] ?? 0)
+        ],
+        'matrix' => $statusCounts,
+        'anomalies' => $anomalies
+    ]);
+}
 
 // ── Route: /api/health ───────────────────────────────────────────────
 if ($relPath === 'health') {
