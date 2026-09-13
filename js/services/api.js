@@ -1,4 +1,4 @@
-import { db } from '../data/database.js?v=5.2';
+import { db } from '../data/database.js?v=5.4';
 
 export const ORDER_STATUSES = {
     DRAFT: 'Draft',

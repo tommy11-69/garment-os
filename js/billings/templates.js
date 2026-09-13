@@ -137,8 +137,8 @@ export function getCreateSheetHTML(type, contacts, inventoryItems, linkedBills =
     ).join('');
 
     return `
-    <div id="createBillingSheet-overlay" class="bottom-sheet-overlay" onclick="window.closeBillingCreateSheet()"></div>
-    <div id="createBillingSheet-content" class="bottom-sheet-content flex flex-col" style="height: 95vh;">
+    <div id="billingCreateSheet-overlay" class="bottom-sheet-overlay" onclick="window.closeBillingCreateSheet()"></div>
+    <div id="billingCreateSheet-content" class="bottom-sheet-content flex flex-col" style="height: 95vh;">
         <div class="sheet-handle"></div>
         <!-- Header -->
         <div class="px-lg pb-md pt-sm flex justify-between items-center border-b border-outline-variant/30 flex-shrink-0">
@@ -147,7 +147,7 @@ export function getCreateSheetHTML(type, contacts, inventoryItems, linkedBills =
                     <span class="material-symbols-outlined text-[18px] ${meta.color}">${meta.icon}</span>
                 </div>
                 <div>
-                    <h2 id="createBillingSheet-title" class="text-[18px] font-bold text-on-surface">New ${meta.label.slice(0,-1)}</h2>
+                    <h2 id="billingCreateSheet-title" class="text-[18px] font-bold text-on-surface">New ${meta.label.slice(0,-1)}</h2>
                     <p class="text-[12px] text-secondary">Auto-numbered on save</p>
                 </div>
             </div>

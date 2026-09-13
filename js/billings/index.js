@@ -1,10 +1,10 @@
 // js/billings/index.js — Main BILLINGS module controller
-import { api } from '../services/api.js?v=5.3';
+import { api } from '../services/api.js?v=5.4';
 import {
     BILLING_TYPES, fmtCurrency,
     getStatsBarHTML, getBillingCardHTML, getEmptyStateHTML,
     getCreateSheetHTML, getBillingDetailsHTML, getPrintHTML
-} from './templates.js?v=5.3';
+} from './templates.js?v=5.4';
 
 // ── Module State ────────────────────────────────────────────────────
 let currentTab = 'Quotation';
@@ -605,7 +605,7 @@ window.editBillingDoc = async function (id) {
         portal.innerHTML = getCreateSheetHTML(type, contacts, cachedInventory, linkedBills);
 
         // Prefill form
-        const titleEl = document.getElementById('createBillingSheet-title');
+        const titleEl = document.getElementById('billingCreateSheet-title');
         if (titleEl) titleEl.textContent = `Edit ${meta?.label.slice(0,-1)}`;
         const editIdEl = document.getElementById('billing-edit-id');
         if (editIdEl) editIdEl.value = doc.id;
