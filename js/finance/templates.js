@@ -460,72 +460,133 @@ export function getBalanceSheetDetailHTML(type, items = [], parties = { customer
 
     // ── 4. INVENTORY TABLE ──────────────────────────────────────────────────
     if (type === 'inventory') {
-        const total = items.reduce((s, i) => s + (i.quantity * (i.unitCost || 0)), 0);
+        const total = items.reduce((s, i) => {
+            const cost = Number(i.costPrice != null ? i.costPrice : (i.unitCost || 0));
+            return s + (i.totalValue != null ? Number(i.totalValue) : (Number(i.quantity || 0) * cost));
+        }, 0);
         const lowStockCount = items.filter(i => i.status === 'Low Stock').length;
+        const outOfStockCount = items.filter(i => i.status === 'Out of Stock').length;
+        const inStockCount = items.filter(i => i.status === 'In Stock').length;
+
+        // Group valuations by category for summary strip
+        const categoryMap = {};
+        items.forEach(i => {
+            const cat = i.category || 'Fabric';
+            const cost = Number(i.costPrice != null ? i.costPrice : (i.unitCost || 0));
+            const val = i.totalValue != null ? Number(i.totalValue) : (Number(i.quantity || 0) * cost);
+            categoryMap[cat] = (categoryMap[cat] || 0) + val;
+        });
 
         return `
         <div class="flex flex-col h-full">
+            <!-- Valuation KPI strip -->
             <div class="px-4 py-3 bg-surface-variant/40 border-b border-outline-variant/30 grid grid-cols-3 gap-2 text-center shrink-0">
                 <div>
                     <p class="text-[9px] font-bold text-secondary uppercase tracking-wider">Total Value</p>
-                    <p class="text-[14px] font-extrabold text-on-surface">${fmt(total)}</p>
+                    <p class="text-[14px] font-extrabold text-primary">${fmt(total)}</p>
                 </div>
                 <div class="border-x border-outline-variant/30">
-                    <p class="text-[9px] font-bold text-secondary uppercase tracking-wider">Items</p>
+                    <p class="text-[9px] font-bold text-secondary uppercase tracking-wider">Total SKUs</p>
                     <p class="text-[14px] font-extrabold text-on-surface">${items.length}</p>
                 </div>
                 <div>
-                    <p class="text-[9px] font-bold text-secondary uppercase tracking-wider">Low Stock</p>
-                    <p class="text-[14px] font-extrabold ${lowStockCount > 0 ? 'text-[#FF9F0A]' : 'text-[#008A00]'}">${lowStockCount}</p>
+                    <p class="text-[9px] font-bold text-secondary uppercase tracking-wider">Stock Health</p>
+                    <p class="text-[12px] font-extrabold ${outOfStockCount > 0 ? 'text-error' : lowStockCount > 0 ? 'text-[#FF9F0A]' : 'text-[#008A00]'}">
+                        ${outOfStockCount > 0 ? `${outOfStockCount} Out · ` : ''}${lowStockCount} Low · ${inStockCount} Good
+                    </p>
                 </div>
             </div>
+
+            <!-- Category Valuation Pills Strip -->
+            <div class="px-4 py-2 bg-surface border-b border-outline-variant/20 flex items-center gap-2 overflow-x-auto no-scrollbar shrink-0">
+                <span class="text-[10px] font-bold text-secondary uppercase whitespace-nowrap">By Category:</span>
+                ${Object.entries(categoryMap).map(([cat, val]) => `
+                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-surface-container-high text-on-surface whitespace-nowrap border border-outline-variant/30">
+                        <span class="text-secondary">${cat}:</span>
+                        <span class="font-bold text-primary">${fmt(val)}</span>
+                    </span>
+                `).join('')}
+            </div>
+
+            ${(lowStockCount > 0 || outOfStockCount > 0) ? `
+            <div class="flex items-center justify-between px-4 py-2 bg-amber-500/10 border-b border-amber-500/20 text-amber-600 dark:text-amber-400">
+                <div class="flex items-center gap-2 text-[11px] font-semibold">
+                    <span class="material-symbols-outlined text-[15px]">inventory_2</span>
+                    <span>${lowStockCount + outOfStockCount} item(s) require re-order / replenishment</span>
+                </div>
+                <a href="../pages/inventory.html" class="text-[11px] font-bold underline hover:opacity-80">Manage Stock →</a>
+            </div>` : ''}
+
+            <!-- Scrollable Table -->
             <div class="overflow-auto flex-1">
-                <table class="w-full text-left border-collapse" style="min-width:520px">
+                <table class="w-full text-left border-collapse" style="min-width:560px">
                     <thead class="sticky top-0 bg-surface z-10 shadow-sm">
                         <tr class="border-b-2 border-outline-variant/50">
-                            <th class="px-3 py-2.5 text-[9px] font-bold text-secondary uppercase tracking-wider">Item</th>
-                            <th class="px-3 py-2.5 text-[9px] font-bold text-secondary uppercase tracking-wider text-right w-[80px]">Qty</th>
+                            <th class="px-3 py-2.5 text-[9px] font-bold text-secondary uppercase tracking-wider">Item & Category</th>
+                            <th class="px-3 py-2.5 text-[9px] font-bold text-secondary uppercase tracking-wider text-right w-[90px]">In Hand</th>
                             <th class="px-3 py-2.5 text-[9px] font-bold text-secondary uppercase tracking-wider text-right w-[85px]">Unit Cost</th>
-                            <th class="px-3 py-2.5 text-[9px] font-bold text-secondary uppercase tracking-wider text-right w-[95px]">Line Value</th>
+                            <th class="px-3 py-2.5 text-[9px] font-bold text-secondary uppercase tracking-wider text-right w-[105px]">Valuation</th>
                             <th class="px-3 py-2.5 text-[9px] font-bold text-secondary uppercase tracking-wider text-right w-[50px]">%</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${items.map((item, idx) => {
-                            const lineVal = item.quantity * (item.unitCost || 0);
+                            const unitCost = Number(item.costPrice != null ? item.costPrice : (item.unitCost || 0));
+                            const lineVal = item.totalValue != null ? Number(item.totalValue) : (Number(item.quantity || 0) * unitCost);
                             const pct = total > 0 ? (lineVal / total * 100) : 0;
                             const statusClr = item.status === 'Low Stock'
-                                ? 'bg-[#FF9F0A]/10 text-[#FF9F0A]'
+                                ? 'bg-[#FF9F0A]/10 text-[#FF9F0A] border-[#FF9F0A]/20'
                                 : item.status === 'Out of Stock'
-                                    ? 'bg-error/10 text-error'
-                                    : 'bg-[#008A00]/10 text-[#008A00]';
+                                    ? 'bg-error/10 text-error border-error/20'
+                                    : 'bg-[#008A00]/10 text-[#008A00] border-[#008A00]/20';
                             return `
-                            <tr class="border-b border-outline-variant/15 ${idx % 2 === 1 ? 'bg-surface-container/20' : ''}">
-                                <td class="px-3 py-3">
-                                    <p class="text-[12px] font-semibold text-on-surface leading-tight">${item.name}</p>
-                                    <div class="flex items-center gap-2 mt-1">
-                                        <span class="text-[10px] text-secondary">SKU: ${item.sku}</span>
-                                        <span class="px-1.5 py-0.5 rounded-md text-[9px] font-bold ${statusClr}">${item.status}</span>
+                            <tr class="border-b border-outline-variant/15 hover:bg-surface-variant/30 transition-colors ${idx % 2 === 1 ? 'bg-surface-container/20' : ''}">
+                                <td class="px-3 py-2.5">
+                                    <div class="flex items-center gap-1.5 flex-wrap">
+                                        <p class="text-[12px] font-bold text-on-surface leading-tight">${item.name}</p>
+                                        <span class="px-1.5 py-0.2 rounded text-[9px] font-bold border ${statusClr}">${item.status || 'In Stock'}</span>
                                     </div>
-                                    <div class="w-full bg-surface-variant rounded-full h-1 mt-2 max-w-[140px]">
+                                    <div class="flex items-center gap-2 mt-1 text-[10px] text-secondary">
+                                        <span class="px-1.5 py-0.5 rounded bg-surface-variant/60 font-medium">${item.category || 'Fabric'}${item.subCategory ? ` · ${item.subCategory}` : ''}</span>
+                                        <span class="font-mono">SKU: ${item.sku || 'N/A'}</span>
+                                        ${item.location ? `<span>· ${item.location}</span>` : ''}
+                                    </div>
+                                    <div class="w-full bg-surface-variant rounded-full h-1 mt-1.5 max-w-[140px]">
                                         <div class="bg-primary h-1 rounded-full transition-all" style="width:${Math.min(pct, 100)}%"></div>
                                     </div>
                                 </td>
-                                <td class="px-3 py-3 text-[12px] text-right text-on-surface whitespace-nowrap">${item.quantity.toLocaleString()} ${item.unit}</td>
-                                <td class="px-3 py-3 text-[12px] text-right text-secondary whitespace-nowrap">${fmt(item.unitCost || 0)}</td>
-                                <td class="px-3 py-3 text-[12px] font-semibold text-right text-on-surface whitespace-nowrap">${fmt(lineVal)}</td>
-                                <td class="px-3 py-3 text-[11px] text-right text-secondary">${pct.toFixed(1)}%</td>
+                                <td class="px-3 py-2.5 text-[12px] text-right font-semibold text-on-surface whitespace-nowrap">
+                                    ${Number(item.quantity || 0).toLocaleString()} <span class="text-[10px] font-normal text-secondary">${item.unit || 'Units'}</span>
+                                </td>
+                                <td class="px-3 py-2.5 text-[12px] text-right text-secondary whitespace-nowrap font-mono">
+                                    ${fmt(unitCost)}
+                                </td>
+                                <td class="px-3 py-2.5 text-[12px] font-bold text-right text-on-surface whitespace-nowrap">
+                                    ${fmt(lineVal)}
+                                </td>
+                                <td class="px-3 py-2.5 text-[11px] text-right text-secondary font-mono">
+                                    ${pct.toFixed(1)}%
+                                </td>
                             </tr>`;
                         }).join('')}
                     </tbody>
                     <tfoot>
                         <tr class="border-t-2 border-primary/30 bg-primary/5">
-                            <td class="px-3 py-3 text-[11px] font-bold text-on-surface" colspan="3">Total Inventory Value</td>
+                            <td class="px-3 py-3 text-[11px] font-bold text-on-surface" colspan="3">Total Current Inventory Valuation</td>
                             <td class="px-3 py-3 text-[13px] font-extrabold text-right text-primary">${fmt(total)}</td>
-                            <td class="px-3 py-3 text-[11px] text-right text-secondary">100%</td>
+                            <td class="px-3 py-3 text-[11px] text-right text-secondary font-bold">100%</td>
                         </tr>
                     </tfoot>
                 </table>
+            </div>
+
+            <!-- Footer Link -->
+            <div class="p-3 bg-surface-container-lowest border-t border-outline-variant/30 flex items-center justify-between shrink-0">
+                <span class="text-[11px] text-secondary">Values auto-updated from Inventory ledger</span>
+                <a href="../pages/inventory.html" class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary/10 text-primary text-[12px] font-bold hover:bg-primary/20 transition-colors">
+                    <span>Full Inventory Details</span>
+                    <span class="material-symbols-outlined text-[15px]">arrow_forward</span>
+                </a>
             </div>
         </div>`;
     }

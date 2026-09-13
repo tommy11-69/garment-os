@@ -59,7 +59,8 @@ const JSON_COLUMNS = [
     'orders'      => ['sizes', 'colours', 'timeline', 'tasks', 'expenses', 'activityLog', 'stageData', 'products'],
     'batches'     => ['expenses', 'consumptions'],
     'costings'    => ['materials', 'uData'],
-    'quotations'  => ['items']
+    'quotations'  => ['items'],
+    'inventory'   => ['movementHistory', 'specifications']
 ];
 
 function jsonResponse($data, $statusCode = 200) {
@@ -96,7 +97,7 @@ function hydrateRow($table, $row) {
         }
     }
     // Numbers
-    foreach (['creditLimit', 'unitPrice', 'subtotal', 'discount', 'tax', 'shipping', 'grandTotal', 'value', 'incurredCost', 'quotedCost', 'progressPercentage', 'paymentReceived', 'quantity', 'historicalAvgConsumption', 'progress', 'amount', 'totalUnitCost', 'retailPrice', 'totalAmount', 'boxes', 'qty'] as $numField) {
+    foreach (['creditLimit', 'unitPrice', 'subtotal', 'discount', 'tax', 'shipping', 'grandTotal', 'value', 'incurredCost', 'quotedCost', 'progressPercentage', 'paymentReceived', 'quantity', 'historicalAvgConsumption', 'progress', 'amount', 'totalUnitCost', 'retailPrice', 'totalAmount', 'boxes', 'qty', 'costPrice', 'totalValue', 'minStock'] as $numField) {
         if (isset($row[$numField]) && is_numeric($row[$numField])) {
             $row[$numField] = strpos($row[$numField], '.') !== false ? (float)$row[$numField] : (int)$row[$numField];
         }
@@ -193,6 +194,29 @@ try {
         `userId` VARCHAR(191) DEFAULT NULL,
         `expiresAt` DATETIME NOT NULL
     )");
+
+    // ── Inventory Columns Migration ──────────────────────────────────
+    $invCols = $pdo->query("SHOW COLUMNS FROM `inventory`")->fetchAll();
+    $existingInvCols = array_column($invCols, 'Field');
+    $neededInvCols = [
+        'category'        => "LONGTEXT DEFAULT 'Fabric'",
+        'subCategory'     => "LONGTEXT DEFAULT ''",
+        'costPrice'       => "DOUBLE DEFAULT 0",
+        'totalValue'      => "DOUBLE DEFAULT 0",
+        'minStock'        => "DOUBLE DEFAULT 0",
+        'location'        => "LONGTEXT DEFAULT ''",
+        'supplier'        => "LONGTEXT DEFAULT ''",
+        'supplierId'      => "LONGTEXT DEFAULT ''",
+        'color'           => "LONGTEXT DEFAULT ''",
+        'specifications'  => "LONGTEXT DEFAULT '{}'",
+        'notes'           => "LONGTEXT DEFAULT ''",
+        'movementHistory' => "LONGTEXT DEFAULT '[]'"
+    ];
+    foreach ($neededInvCols as $cName => $cDef) {
+        if (!in_array($cName, $existingInvCols, true)) {
+            $pdo->exec("ALTER TABLE `inventory` ADD COLUMN `{$cName}` {$cDef}");
+        }
+    }
 } catch (Exception $e) { /* ignore */ }
 
 try {

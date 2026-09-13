@@ -202,24 +202,97 @@ export const renderers = {
     },
 
     inventoryCard(item) {
+        const qty = Number(item.quantity || 0);
+        const cost = Number(item.costPrice || item.unitPrice || 0);
+        const totalVal = Number(item.totalValue) || (qty * cost);
+        const minStock = Number(item.minStock || 0);
+        
+        // Progress percentage against 2x minStock threshold
+        const targetRef = minStock > 0 ? (minStock * 2) : 100;
+        const stockPct = Math.min(100, Math.max(5, Math.round((qty / targetRef) * 100)));
+        
+        let barColor = 'bg-[#34C759]';
+        if (qty <= 0) {
+            barColor = 'bg-error';
+        } else if (minStock > 0 && qty <= minStock) {
+            barColor = 'bg-[#FF9F0A]';
+        }
+
+        // Gather spec chips (GSM, color, size, etc.)
+        const specChips = [];
+        if (item.color) specChips.push(item.color);
+        if (item.specifications) {
+            if (item.specifications.gsm) specChips.push(`${item.specifications.gsm} GSM`);
+            if (item.specifications.width) specChips.push(item.specifications.width);
+            if (item.specifications.count) specChips.push(item.specifications.count);
+            if (item.specifications.size) specChips.push(item.specifications.size);
+            if (item.specifications.rolls) specChips.push(`${item.specifications.rolls} Rolls`);
+        }
+
         return `
-            <div role="button" tabindex="0" class="bg-surface-container-lowest rounded-[24px] border border-outline-variant p-md shadow-sm active-scale transition-apple cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary" onclick="window.openItemDetails('${item.id}')">
-                <div class="flex justify-between items-start mb-3">
-                    <div class="flex gap-3 items-center">
-                        <div class="w-10 h-10 rounded-full ${item.iconColor} flex items-center justify-center">
-                            <span class="material-symbols-outlined text-[20px]">${item.icon}</span>
+            <div role="button" tabindex="0" class="bg-surface-container-lowest rounded-[24px] border border-outline-variant p-4 sm:p-5 shadow-sm active-scale transition-apple cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary flex flex-col gap-3" onclick="window.openItemDetails('${item.id}')">
+                <!-- Header -->
+                <div class="flex justify-between items-start gap-3">
+                    <div class="flex gap-3 items-center min-w-0">
+                        <div class="w-11 h-11 rounded-2xl ${item.iconColor || 'bg-primary/10 text-primary'} flex items-center justify-center shrink-0 shadow-xs">
+                            <span class="material-symbols-outlined text-[22px]">${item.icon || 'inventory_2'}</span>
                         </div>
-                        <div>
-                            <h4 class="text-[15px] font-semibold text-on-surface leading-tight">${item.name}</h4>
-                            <span class="text-[12px] text-secondary">${item.sku}</span>
+                        <div class="min-w-0">
+                            <h4 class="text-[15px] font-bold text-on-surface leading-snug truncate">${item.name}</h4>
+                            <div class="flex items-center gap-1.5 flex-wrap text-[12px] text-secondary mt-0.5">
+                                <span class="font-mono text-primary font-semibold">${item.sku || 'SKU-GEN'}</span>
+                                <span>•</span>
+                                <span>${item.category || 'General'}${item.subCategory ? ` / ${item.subCategory}` : ''}</span>
+                                ${item.location ? `
+                                    <span>•</span>
+                                    <span class="inline-flex items-center gap-0.5 text-on-surface-variant font-medium">
+                                        <span class="material-symbols-outlined text-[13px]">pin_drop</span>
+                                        ${item.location}
+                                    </span>
+                                ` : ''}
+                            </div>
                         </div>
                     </div>
-                    <span class="px-2 py-0.5 rounded text-[11px] font-medium ${item.statusColor}">${item.status}</span>
+                    <span class="px-2.5 py-1 rounded-full text-[11px] font-bold tracking-tight shrink-0 ${item.statusColor || 'bg-[#008A00]/10 text-[#008A00]'}">
+                        ${item.status || 'In Stock'}
+                    </span>
                 </div>
-                <div class="flex items-end justify-between">
-                    <div>
-                        <span class="text-[20px] font-bold text-on-surface leading-none block mb-0.5">${item.quantity}</span>
-                        <span class="text-caption text-secondary">${item.unit}</span>
+
+                <!-- Spec Chips -->
+                ${specChips.length > 0 ? `
+                    <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+                        ${specChips.map(chip => `
+                            <span class="px-2 py-0.5 rounded-md bg-surface-container text-secondary text-[11px] font-medium shrink-0 border border-outline-variant/40">
+                                ${chip}
+                            </span>
+                        `).join('')}
+                    </div>
+                ` : ''}
+
+                <!-- Stock Level Progress Bar -->
+                <div class="w-full bg-surface-container rounded-full h-1.5 overflow-hidden">
+                    <div class="h-full rounded-full ${barColor} transition-all duration-300" style="width: ${stockPct}%"></div>
+                </div>
+
+                <!-- 3-Column Valuation & Metrics Grid -->
+                <div class="grid grid-cols-3 gap-2 pt-1 border-t border-outline-variant/40">
+                    <div class="flex flex-col">
+                        <span class="text-[10px] font-bold text-secondary uppercase tracking-wider">In Hand</span>
+                        <span class="text-[15px] font-bold text-on-surface leading-tight mt-0.5">
+                            ${qty.toLocaleString()} <span class="text-[11px] text-secondary font-medium">${item.unit || 'units'}</span>
+                        </span>
+                    </div>
+                    <div class="flex flex-col border-l border-outline-variant/30 pl-2">
+                        <span class="text-[10px] font-bold text-secondary uppercase tracking-wider">Unit Cost</span>
+                        <span class="text-[14px] font-semibold text-on-surface leading-tight mt-0.5">
+                            ₹${cost.toLocaleString('en-IN')}
+                        </span>
+                    </div>
+                    <div class="flex flex-col border-l border-outline-variant/30 pl-2">
+                        <span class="text-[10px] font-bold text-secondary uppercase tracking-wider">Total Value</span>
+                        <span class="text-[15px] font-bold text-primary leading-tight mt-0.5">
+                            ₹${totalVal >= 100000 ? (totalVal / 100000).toFixed(2) + 'L' : totalVal.toLocaleString('en-IN')}
+                        </span>
                     </div>
                 </div>
             </div>
@@ -334,31 +407,7 @@ export const renderers = {
 
 
 
-    inventoryCard(item) {
-        return `
-            <div role="button" tabindex="0" class="bg-surface-container-lowest rounded-[24px] border border-outline-variant p-md shadow-sm active-scale transition-apple cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary" onclick="window.openItemDetails('${item.id}')">
-                <div class="flex justify-between items-start mb-3">
-                    <div class="flex gap-3 items-center">
-                        <div class="w-10 h-10 rounded-full ${item.iconColor} flex items-center justify-center">
-                            <span class="material-symbols-outlined text-[20px]">${item.icon}</span>
-                        </div>
-                        <div>
-                            <h4 class="text-[15px] font-semibold text-on-surface leading-tight">${item.name}</h4>
-                            <span class="text-[12px] text-secondary">${item.sku}</span>
-                        </div>
-                    </div>
-                    <span class="px-2 py-0.5 rounded text-[11px] font-medium ${item.statusColor}">${item.status}</span>
-                </div>
-                <div class="flex items-end justify-between">
-                    <div>
-                        <span class="text-[20px] font-bold text-on-surface leading-none block mb-0.5">${item.quantity}</span>
-                        <span class="text-caption text-secondary">${item.unit}</span>
-                    </div>
-                </div>
-            </div>
-        `;
-    },
-    
+
     shipmentCard(s) {
         const isTransit = s.status === 'In Transit';
         const statusColor = isTransit ? 'bg-[#FF9F0A]/10 text-[#FF9F0A]' : 'bg-primary/10 text-primary';

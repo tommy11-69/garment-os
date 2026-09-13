@@ -1,4 +1,5 @@
 import { financeStore } from '../stores/FinanceStore.js';
+import { inventoryRepository } from '../repositories/InventoryRepository.js';
 import { api } from '../services/api.js';
 import { renderers } from '../renderers.js?v=3.0';
 import { BottomSheet } from '../components/index.js';
@@ -11,7 +12,7 @@ import {
     getCategoriesByType, getCategoryBreakdownSheetContent,
     getCustomDateSheetHTML, getCustomDateFooterHTML,
     getBalanceSheetDetailHTML
-} from './templates.js?v=4.0';
+} from './templates.js?v=5.0';
 
 async function initModule() {
     window.financeStore = financeStore;
@@ -39,8 +40,12 @@ async function renderSheets() {
     if (sheetsContainer) {
         const state = financeStore.getState();
         
-        // Fetch parties for transaction form + inventory for balance sheet
-        const [customers, vendors, inventoryItems] = await Promise.all([api.getCustomers(), api.getVendors(), api.getInventory()]);
+        // Fetch parties for transaction form + live enriched inventory for balance sheet
+        const [customers, vendors, inventoryItems] = await Promise.all([
+            api.getCustomers(), 
+            api.getVendors(), 
+            inventoryRepository.getAllEnriched().catch(() => api.getInventory())
+        ]);
         window.financeParties = { customers, vendors };
         window.financeInventory = inventoryItems || [];
 
@@ -562,9 +567,26 @@ function renderBalanceSheet(metrics) {
     });
     const ar = arTxns.reduce((s, t) => s + parseFloat(t.amount || 0), 0);
 
-    // 3. Inventory value: auto-computed from real data (quantity × unitCost per item)
+    // 3. Inventory value: live from InventoryRepository (quantity × costPrice per item)
     const inventoryItems = window.financeInventory || [];
-    const inventoryValue = inventoryItems.reduce((s, i) => s + ((i.quantity || 0) * (i.unitCost || 0)), 0);
+    const inventoryValue = inventoryItems.reduce((s, i) => {
+        const cost = Number(i.costPrice != null ? i.costPrice : (i.unitCost || 0));
+        const val = i.totalValue != null ? Number(i.totalValue) : ((Number(i.quantity) || 0) * cost);
+        return s + val;
+    }, 0);
+
+    // Auto-sync inventory from InventoryRepository if not yet loaded in memory
+    if ((!window.financeInventory || window.financeInventory.length === 0) && !window._inventorySyncing) {
+        window._inventorySyncing = true;
+        inventoryRepository.getAllEnriched().then(items => {
+            window.financeInventory = items || [];
+            window._inventorySyncing = false;
+            renderBalanceSheet(financeStore.getState().metrics || {});
+        }).catch(err => {
+            console.warn('Balance sheet inventory auto-sync notice:', err);
+            window._inventorySyncing = false;
+        });
+    }
 
     // 4. Accounts Payable as of endDateStr (Pending Expense)
     const apTxns = allTxns.filter(t => {
@@ -812,6 +834,11 @@ window.openBsDetail = function(type) {
             return true;
         });
     } else if (type === 'inventory') {
+        try {
+            window.financeInventory = await inventoryRepository.getAllEnriched();
+        } catch (e) {
+            console.warn('Using cached inventory for balance sheet drilldown', e);
+        }
         items = window.financeInventory || [];
     }
 
@@ -902,14 +929,19 @@ window.exportBsDetailPDF = function() {
         }).join('')}</tbody>
         <tfoot><tr class="total"><td colspan="3">Total ${isRec ? 'Receivable' : 'Payable'}</td><td class="num ${isRec ? 'credit' : 'debit'}">${fmt(total)}</td></tr></tfoot></table>`;
     } else if (type === 'inventory') {
-        const total = items.reduce((s, i) => s + (i.quantity * (i.unitCost || 0)), 0);
-        tableHTML = `<table><thead><tr><th>Item</th><th>SKU</th><th class="num">Qty</th><th class="num">Unit Cost</th><th class="num">Line Value</th><th class="num">%</th></tr></thead><tbody>
+        const total = items.reduce((s, i) => {
+            const cost = Number(i.costPrice != null ? i.costPrice : (i.unitCost || 0));
+            return s + (i.totalValue != null ? Number(i.totalValue) : (Number(i.quantity || 0) * cost));
+        }, 0);
+        tableHTML = `<table><thead><tr><th>Item & Category</th><th>SKU</th><th class="num">In Hand</th><th class="num">Unit Cost</th><th class="num">Line Valuation</th><th class="num">%</th></tr></thead><tbody>
         ${items.map(item => {
-            const lv = item.quantity * (item.unitCost || 0);
+            const unitCost = Number(item.costPrice != null ? item.costPrice : (item.unitCost || 0));
+            const lv = item.totalValue != null ? Number(item.totalValue) : (Number(item.quantity || 0) * unitCost);
             const pct = total > 0 ? (lv / total * 100).toFixed(1) : '0.0';
-            return `<tr><td><strong>${item.name}</strong><br><small>SKU: ${item.sku} · ${item.status}</small></td><td>${item.sku}</td><td class="num">${item.quantity.toLocaleString()} ${item.unit}</td><td class="num">${fmt(item.unitCost || 0)}</td><td class="num credit">${fmt(lv)}</td><td class="num">${pct}%</td></tr>`;
+            const cat = item.category ? `${item.category}${item.subCategory ? ' · ' + item.subCategory : ''}` : 'Inventory';
+            return `<tr><td><strong>${item.name}</strong><br><small style="color:#666">${cat} · ${item.status || 'In Stock'}</small></td><td>${item.sku || '—'}</td><td class="num">${Number(item.quantity || 0).toLocaleString()} ${item.unit || 'Units'}</td><td class="num">${fmt(unitCost)}</td><td class="num credit">${fmt(lv)}</td><td class="num">${pct}%</td></tr>`;
         }).join('')}</tbody>
-        <tfoot><tr class="total"><td colspan="4">Total Inventory Value</td><td class="num credit">${fmt(total)}</td><td class="num">100%</td></tr></tfoot></table>`;
+        <tfoot><tr class="total"><td colspan="4">Total Current Inventory Valuation</td><td class="num credit">${fmt(total)}</td><td class="num">100%</td></tr></tfoot></table>`;
     }
 
     const win = window.open('', '_blank', 'width=900,height=700');
@@ -976,6 +1008,12 @@ window.toggleFinanceView = function(view) {
         
         if (periodSelector) periodSelector.classList.remove('hidden'); // Keep period selector visible for Balance Sheet too!
         if (fab) fab.classList.add('hidden'); // Hide FAB since transactions aren't added here
+
+        // Instantly refresh inventory when switching to Balance Sheet
+        inventoryRepository.getAllEnriched().then(items => {
+            window.financeInventory = items || [];
+            renderBalanceSheet(financeStore.getState().metrics || {});
+        }).catch(() => {});
     }
 };
 

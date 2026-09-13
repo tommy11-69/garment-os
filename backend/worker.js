@@ -12,7 +12,8 @@ const JSON_COLUMNS = {
     orders: ['sizes', 'colours', 'timeline', 'tasks', 'expenses', 'activityLog', 'stageData', 'products'],
     batches: ['expenses', 'consumptions'],
     costings: ['materials', 'uData'],
-    quotations: ['items']
+    quotations: ['items'],
+    inventory: ['movementHistory', 'specifications']
 };
 
 // ── Helpers ─────────────────────────────────────────────────────────
@@ -213,6 +214,33 @@ export default {
 
                 if (!ALLOWED_TABLES.has(table)) {
                     return json({ error: 'Collection not found' }, 404);
+                }
+
+                // Auto-migrate inventory columns if missing
+                if (table === 'inventory') {
+                    try {
+                        const tableInfo = await env.DB.prepare(`PRAGMA table_info(inventory)`).all();
+                        const existing = new Set(tableInfo.results.map(c => c.name));
+                        const needed = [
+                            ['category', "TEXT DEFAULT 'Fabric'"],
+                            ['subCategory', "TEXT DEFAULT ''"],
+                            ['costPrice', "REAL DEFAULT 0"],
+                            ['totalValue', "REAL DEFAULT 0"],
+                            ['minStock', "REAL DEFAULT 0"],
+                            ['location', "TEXT DEFAULT ''"],
+                            ['supplier', "TEXT DEFAULT ''"],
+                            ['supplierId', "TEXT DEFAULT ''"],
+                            ['color', "TEXT DEFAULT ''"],
+                            ['specifications', "TEXT DEFAULT '{}'"],
+                            ['notes', "TEXT DEFAULT ''"],
+                            ['movementHistory', "TEXT DEFAULT '[]'"]
+                        ];
+                        for (const [col, typeDef] of needed) {
+                            if (!existing.has(col)) {
+                                await env.DB.prepare(`ALTER TABLE inventory ADD COLUMN ${col} ${typeDef}`).run().catch(() => {});
+                            }
+                        }
+                    } catch (e) { /* ignore */ }
                 }
 
                 // ── GET ─────────────────────────────────────────
