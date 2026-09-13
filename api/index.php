@@ -266,6 +266,28 @@ try {
         `row_total` DOUBLE DEFAULT 0,
         `createdAt` DATETIME DEFAULT CURRENT_TIMESTAMP
     )");
+
+    // Seed legacy quotations if missing
+    $checkLegacy = $pdo->query("SELECT COUNT(*) FROM `billing_master` WHERE `id` IN ('bill-qt-33531', 'bill-qt-77195')")->fetchColumn();
+    if ((int)$checkLegacy < 2) {
+        $pdo->exec("INSERT IGNORE INTO `billing_counters` (`type_key`, `last_seq`) VALUES ('AG-QTY-2026', 2) ON DUPLICATE KEY UPDATE `last_seq` = GREATEST(`last_seq`, 2)");
+        
+        $pdo->exec("INSERT IGNORE INTO `billing_master` 
+            (`id`, `invoice_number`, `transaction_type`, `contact_id`, `contact_type`, `contact_name`, `contact_gstin`, `date`, `due_date`, `subtotal`, `discount`, `tax_total`, `grand_total`, `amount_paid`, `status`, `notes`, `linked_bill_id`, `createdAt`, `updatedAt`)
+            VALUES
+            ('bill-qt-33531', 'AG-QTY-2026-0001', 'Quotation', 'c-sai-sharvesh', 'customer', 'Sai Sharvesh', '', '2026-08-19', '2026-09-18', 45250, 0, 0, 45250, 0, 'Expired', 'Migrated from legacy quotations', '', '2026-08-19 10:00:00', '2026-08-19 10:00:00'),
+            ('bill-qt-77195', 'AG-QTY-2026-0002', 'Quotation', 'c-milton-school', 'customer', 'Milton School', '', '2026-08-19', '2026-09-18', 42560, 0, 0, 42560, 0, 'Converted', 'Honeycomb tshirts - 2 colours', '', '2026-08-19 10:00:00', '2026-08-19 10:00:00')
+        ");
+
+        $pdo->exec("INSERT IGNORE INTO `billing_items`
+            (`id`, `billing_master_id`, `item_name`, `item_id`, `description`, `quantity`, `unit`, `unit_price`, `discount_pct`, `tax_pct`, `tax_amount`, `row_total`, `createdAt`)
+            VALUES
+            ('bitem-33531-1', 'bill-qt-33531', 'Polo Tshirt', '', 'Polo Tshirt', 25, 'pcs', 250, 0, 0, 0, 6250, '2026-08-19 10:00:00'),
+            ('bitem-33531-2', 'bill-qt-33531', 'Jersey', '', 'Jersey', 260, 'pcs', 150, 0, 0, 0, 39000, '2026-08-19 10:00:00'),
+            ('bitem-77195-1', 'bill-qt-77195', 'Polyester round neck tshirt', '', 'Polyester round neck tshirt - Honeycomb tshirts - 2 colours', 133, 'pcs', 190, 0, 0, 0, 25270, '2026-08-19 10:00:00'),
+            ('bitem-77195-2', 'bill-qt-77195', 'Caps', '', 'Caps', 133, 'pcs', 130, 0, 0, 0, 17290, '2026-08-19 10:00:00')
+        ");
+    }
 } catch (Exception $e) { /* ignore */ }
 
 try {
