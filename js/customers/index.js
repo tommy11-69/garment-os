@@ -9,7 +9,9 @@ import {
     getCustomerDetailsContent, 
     getCustomerDetailsFooter, 
     getEditCustomerSheetHTML, 
-    getEditCustomerFooterHTML 
+    getEditCustomerFooterHTML,
+    getCollectPaymentSheetHTML,
+    getCollectPaymentFooterHTML
 } from './templates.js';
 
 // ─── INITIALIZATION ───────────────────────────────────────────────
@@ -34,19 +36,11 @@ function initUI() {
         bindFormValidation('addCustomerSheet-content', 'create-customer-submit');
     }
 
-    // Search binding
-    const searchInput = document.querySelector('input[placeholder="Search..."]');
+    // Search binding via explicit ID
+    const searchInput = document.getElementById('customer-search');
     if (searchInput) {
         searchInput.addEventListener('input', (e) => {
             customerStore.setSearch(e.target.value);
-        });
-    }
-
-    // Filter binding
-    const filterBtn = Array.from(document.querySelectorAll('button')).find(btn => btn.textContent.includes('tune'));
-    if (filterBtn) {
-        filterBtn.addEventListener('click', () => {
-            window.showToast('Filters coming soon', 'info');
         });
     }
 }
@@ -56,6 +50,18 @@ function initUI() {
 function renderUI(state) {
     const { entities, activeEntity, selectedIds, isBulkMode, loading, error } = state;
     
+    // Update live count badge
+    const countEl = document.getElementById('customers-count');
+    if (countEl) {
+        if (loading) {
+            countEl.textContent = 'Loading customers...';
+        } else {
+            const activeCount = entities.filter(c => c.status === 'Active').length;
+            countEl.textContent = `${activeCount} Active ${activeCount === 1 ? 'Customer' : 'Customers'}` +
+                (entities.length !== activeCount ? ` (${entities.length} Total)` : '');
+        }
+    }
+
     // Render List
     const container = document.getElementById('customers-list-container');
     if (container) {
@@ -110,19 +116,15 @@ function updateBulkToolbar(state) {
 }
 
 function updateActiveEntitySheets(entity) {
-    // If the customer details sheet is currently open, we should re-render its contents to reflect any state changes.
     const detailsSheet = document.getElementById('customerDetailsSheet');
     if (detailsSheet && !detailsSheet.classList.contains('translate-y-full')) {
-        // We avoid completely replacing the HTML so we don't break animations.
-        // For now, since we rebuild BottomSheet HTML, we will just silently swap the contents.
         const bodyContent = detailsSheet.querySelector('.overflow-y-auto');
         if (bodyContent) {
             bodyContent.innerHTML = getCustomerDetailsContent(entity);
         }
-        // Header
-        const header = detailsSheet.querySelector('.bg-surface-container-lowest.sticky');
+        const header = detailsSheet.querySelector('.bg-surface-container-lowest.sticky') || detailsSheet.querySelector('.px-lg.pb-md');
         if (header) {
-            header.innerHTML = getCustomerDetailsHeader(entity);
+            header.outerHTML = getCustomerDetailsHeader(entity);
         }
     }
 }
@@ -133,32 +135,38 @@ window.saveNewCustomer = async function() {
     const btn = document.getElementById('create-customer-submit');
     if (btn) btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>';
     
+    const mobile = document.getElementById('new-cust-mobile')?.value || '';
+    const whatsapp = document.getElementById('new-cust-whatsapp')?.value || mobile;
+    const name = document.getElementById('new-cust-name')?.value || '';
+    const creditLimit = parseFloat(document.getElementById('new-cust-limit')?.value || 0);
+
     const data = {
-        name: document.getElementById('new-cust-name').value,
-        company: document.getElementById('new-cust-company').value,
-        contactPerson: document.getElementById('new-cust-contact').value,
-        mobile: document.getElementById('new-cust-mobile').value,
-        whatsapp: document.getElementById('new-cust-whatsapp').value,
-        email: document.getElementById('new-cust-email').value,
-        gst: document.getElementById('new-cust-gst').value,
-        customerType: document.getElementById('new-cust-type').value,
-        paymentTerms: document.getElementById('new-cust-terms').value,
-        creditLimit: document.getElementById('new-cust-limit').value,
-        currency: document.getElementById('new-cust-currency').value,
-        addressLine1: document.getElementById('new-cust-addr1').value,
-        addressLine2: document.getElementById('new-cust-addr2').value,
-        city: document.getElementById('new-cust-city').value,
-        state: document.getElementById('new-cust-state').value,
-        country: document.getElementById('new-cust-country').value,
-        pincode: document.getElementById('new-cust-pincode').value,
-        notes: document.getElementById('new-cust-notes').value,
-        isActive: document.getElementById('new-cust-active').checked
+        name,
+        company: document.getElementById('new-cust-company')?.value || '',
+        contactPerson: document.getElementById('new-cust-contact')?.value || '',
+        phone: mobile,
+        mobile: mobile,
+        whatsapp,
+        email: document.getElementById('new-cust-email')?.value || '',
+        gst: document.getElementById('new-cust-gst')?.value || '',
+        customerType: document.getElementById('new-cust-type')?.value || 'Brand',
+        paymentTerms: document.getElementById('new-cust-terms')?.value || '',
+        creditLimit,
+        currency: document.getElementById('new-cust-currency')?.value || 'INR',
+        addressLine1: document.getElementById('new-cust-addr1')?.value || '',
+        addressLine2: document.getElementById('new-cust-addr2')?.value || '',
+        city: document.getElementById('new-cust-city')?.value || '',
+        state: document.getElementById('new-cust-state')?.value || '',
+        country: document.getElementById('new-cust-country')?.value || 'India',
+        pincode: document.getElementById('new-cust-pincode')?.value || '',
+        notes: document.getElementById('new-cust-notes')?.value || '',
+        isActive: document.getElementById('new-cust-active')?.checked ? 1 : 0
     };
     
     const payload = {
         ...data,
-        status: 'Active',
-        statusColor: 'bg-success-container/30 text-success'
+        status: data.isActive ? 'Active' : 'Inactive',
+        statusColor: data.isActive ? 'bg-[#008A00]/10 text-[#008A00]' : 'bg-surface-variant text-secondary'
     };
     
     try {
@@ -180,37 +188,41 @@ window.saveEditedCustomer = async function() {
     const btn = document.getElementById('edit-customer-submit');
     if (btn) btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>';
     
-    const id = document.getElementById('edit-cust-id').value;
-    const isActive = document.getElementById('edit-cust-active').checked;
+    const id = document.getElementById('edit-cust-id')?.value;
+    const isActive = document.getElementById('edit-cust-active')?.checked;
+    const mobile = document.getElementById('edit-cust-mobile')?.value || '';
+    const whatsapp = document.getElementById('edit-cust-whatsapp')?.value || mobile;
+    const creditLimit = parseFloat(document.getElementById('edit-cust-limit')?.value || 0);
     
     const customerData = {
-        name: document.getElementById('edit-cust-name').value,
-        company: document.getElementById('edit-cust-company').value,
-        contactPerson: document.getElementById('edit-cust-contact').value,
-        phone: document.getElementById('edit-cust-mobile').value,
-        whatsapp: document.getElementById('edit-cust-whatsapp').value,
-        email: document.getElementById('edit-cust-email').value,
-        gst: document.getElementById('edit-cust-gst').value,
-        customerType: document.getElementById('edit-cust-type').value,
-        paymentTerms: document.getElementById('edit-cust-terms').value,
-        creditLimit: parseFloat(document.getElementById('edit-cust-limit').value) || 0,
-        currency: document.getElementById('edit-cust-currency').value,
-        addressLine1: document.getElementById('edit-cust-addr1').value,
-        addressLine2: document.getElementById('edit-cust-addr2').value,
-        city: document.getElementById('edit-cust-city').value,
-        state: document.getElementById('edit-cust-state').value,
-        country: document.getElementById('edit-cust-country').value,
-        pincode: document.getElementById('edit-cust-pincode').value,
-        notes: document.getElementById('edit-cust-notes').value,
+        name: document.getElementById('edit-cust-name')?.value || '',
+        company: document.getElementById('edit-cust-company')?.value || '',
+        contactPerson: document.getElementById('edit-cust-contact')?.value || '',
+        phone: mobile,
+        mobile: mobile,
+        whatsapp,
+        email: document.getElementById('edit-cust-email')?.value || '',
+        gst: document.getElementById('edit-cust-gst')?.value || '',
+        customerType: document.getElementById('edit-cust-type')?.value || 'Brand',
+        paymentTerms: document.getElementById('edit-cust-terms')?.value || '',
+        creditLimit,
+        currency: document.getElementById('edit-cust-currency')?.value || 'INR',
+        addressLine1: document.getElementById('edit-cust-addr1')?.value || '',
+        addressLine2: document.getElementById('edit-cust-addr2')?.value || '',
+        city: document.getElementById('edit-cust-city')?.value || '',
+        state: document.getElementById('edit-cust-state')?.value || '',
+        country: document.getElementById('edit-cust-country')?.value || 'India',
+        pincode: document.getElementById('edit-cust-pincode')?.value || '',
+        notes: document.getElementById('edit-cust-notes')?.value || '',
+        isActive: isActive ? 1 : 0,
         status: isActive ? 'Active' : 'Inactive',
-        statusColor: isActive ? 'bg-success-container/30 text-success' : 'bg-surface-variant text-secondary'
+        statusColor: isActive ? 'bg-[#008A00]/10 text-[#008A00]' : 'bg-surface-variant text-secondary'
     };
     
     try {
         await customerStore.updateCustomer(id, customerData);
         window.closeSheet('editCustomerSheet');
         window.showToast('Customer updated successfully', 'success');
-        // Re-open details sheet
         setTimeout(() => window.openCustomerDetails(id), 300);
     } catch (error) {
         console.error(error);
@@ -221,12 +233,13 @@ window.saveEditedCustomer = async function() {
 };
 
 window.deleteCustomerFlow = function(id) {
-    const customer = customerStore.getState().entities.find(c => c.id === id);
+    const customer = customerStore.getState().entities.find(c => c.id === id)
+        || customerStore.getState().activeEntity;
     if (!customer) return;
 
     window.showConfirmation({
         title: 'Delete Customer',
-        message: `Are you sure you want to delete ${customer.name}? This action cannot be undone and will permanently remove the customer record.`,
+        message: `Are you sure you want to permanently delete ${customer.name}? This cannot be undone.`,
         confirmText: 'Delete',
         onConfirm: async () => {
             try {
@@ -270,6 +283,109 @@ window.duplicateCustomerFlow = async function(id) {
     }
 };
 
+// ─── RECORD / COLLECT PAYMENT FLOW ────────────────────────────────
+
+window.openCollectPayment = function(id) {
+    const container = document.getElementById('sheets-container');
+    document.getElementById('collectPaymentSheet-content')?.remove();
+    document.getElementById('collectPaymentSheet-overlay')?.remove();
+
+    const sheetHTML = BottomSheet({
+        id: 'collectPaymentSheet',
+        title: 'Collect Payment',
+        content: getCollectPaymentSheetHTML(id),
+        footerContent: getCollectPaymentFooterHTML(),
+        isForm: true,
+    });
+
+    container.insertAdjacentHTML('beforeend', sheetHTML);
+    setTimeout(() => window.openSheet('collectPaymentSheet'), 50);
+};
+
+window.saveCustomerPayment = async function() {
+    const btn = document.getElementById('collect-payment-submit');
+    if (btn) btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>';
+
+    const customerId = document.getElementById('collect-customer-id')?.value;
+    const amount     = parseFloat(document.getElementById('collect-amount')?.value || 0);
+    const method     = document.getElementById('collect-method')?.value || 'UPI';
+    const date       = document.getElementById('collect-date')?.value || new Date().toISOString().split('T')[0];
+    const ref        = document.getElementById('collect-ref')?.value || '';
+    const notes      = document.getElementById('collect-notes')?.value || '';
+
+    if (!amount || amount <= 0) {
+        window.showToast?.('Please enter a valid amount', 'error');
+        if (btn) btn.innerHTML = 'Record Income';
+        return;
+    }
+
+    const customer = customerStore.getState().entities.find(c => c.id === customerId)
+        || customerStore.getState().activeEntity;
+
+    // Create a finance transaction that links to the customer
+    const txn = {
+        id:            `txn-inc-${Date.now()}`,
+        type:          'Income',
+        title:         `Payment from ${customer?.name || 'Customer'}`,
+        category:      'Customer Payment',
+        amount,
+        date,
+        status:        'Completed',
+        paymentMethod: method,
+        referenceNo:   ref,
+        notes,
+        refId:         customerId,
+        isNegative:    0,
+        createdBy:     'Admin',
+        icon:          'payments',
+        iconBg:        'bg-[#008A00]/10',
+        iconColor:     'text-[#008A00]',
+        amountColor:   'text-[#008A00]',
+    };
+
+    try {
+        const { db } = await import('../data/database.js');
+        await db.insert('transactions', txn);
+
+        window.closeSheet('collectPaymentSheet');
+        window.showToast?.(`Income of ₹${amount.toLocaleString('en-IN')} recorded`, 'success');
+
+        // Refresh customer detail and reload list
+        await customerStore.fetchActiveEntity(customerId);
+        await customerStore.loadCustomers();
+        setTimeout(() => window.openCustomerDetails(customerId), 300);
+    } catch (e) {
+        console.error(e);
+        window.showToast?.('Failed to record payment', 'error');
+    } finally {
+        if (btn) btn.innerHTML = 'Record Income';
+    }
+};
+
+// ─── FILTER HANDLERS ──────────────────────────────────────────────
+
+window.setCustomerStatusFilter = function (val) {
+    customerStore.setFilter('status', val);
+
+    document.querySelectorAll('[data-status-filter]').forEach(btn => {
+        const isActive = btn.getAttribute('data-status-filter') === val;
+        btn.className = isActive
+            ? 'flex-1 py-2 rounded-[12px] text-[13px] font-semibold bg-surface-container-lowest text-on-surface shadow-sm transition-all'
+            : 'flex-1 py-2 rounded-[12px] text-[13px] font-semibold text-secondary transition-all';
+    });
+};
+
+window.setCustomerTypeFilter = function (val) {
+    customerStore.setFilter('customerType', val);
+
+    document.querySelectorAll('#customer-type-chips [data-type-filter]').forEach(btn => {
+        const isActive = btn.getAttribute('data-type-filter') === val;
+        btn.className = isActive
+            ? 'px-3 py-1.5 rounded-xl text-[12px] font-bold border transition-all shrink-0 bg-primary text-white border-primary cursor-pointer touch-manipulation'
+            : 'px-3 py-1.5 rounded-xl text-[12px] font-bold border transition-all shrink-0 bg-surface-container-lowest text-secondary border-outline-variant cursor-pointer touch-manipulation';
+    });
+};
+
 // ─── SHEETS & UI FLOWS ────────────────────────────────────────────
 
 window.openCustomerDetails = async function(id) {
@@ -283,19 +399,15 @@ window.openCustomerDetails = async function(id) {
     if (!customer) return;
 
     const container = document.getElementById('sheets-container');
-    const existing = document.getElementById('customerDetailsSheet-content');
-    if (existing) {
-        existing.remove(); 
-        const overlay = document.getElementById('customerDetailsSheet-overlay');
-        if (overlay) overlay.remove();
-    }
+    document.getElementById('customerDetailsSheet-content')?.remove();
+    document.getElementById('customerDetailsSheet-overlay')?.remove();
 
     const sheetHTML = BottomSheet({
         id: 'customerDetailsSheet',
         customHeader: getCustomerDetailsHeader(customer),
         content: getCustomerDetailsContent(customer),
         footerContent: getCustomerDetailsFooter(customer),
-        height: '90vh'
+        height: '92vh'
     });
 
     container.insertAdjacentHTML('beforeend', sheetHTML);
@@ -310,24 +422,19 @@ window.openEditCustomer = async function(id) {
     window.closeSheet('customerDetailsSheet');
 
     const container = document.getElementById('sheets-container');
-    const existing = document.getElementById('editCustomerSheet-content');
-    if (existing) {
-        existing.remove();
-        const overlay = document.getElementById('editCustomerSheet-overlay');
-        if (overlay) overlay.remove();
-    }
+    document.getElementById('editCustomerSheet-content')?.remove();
+    document.getElementById('editCustomerSheet-overlay')?.remove();
 
     const sheetHTML = BottomSheet({
         id: 'editCustomerSheet',
         title: 'Edit Customer',
         content: getEditCustomerSheetHTML(customer),
-        footerContent: getEditCustomerFooterHTML(customer.id),
+        footerContent: getEditCustomerFooterHTML(),
         isForm: true
     });
 
     container.insertAdjacentHTML('beforeend', sheetHTML);
     
-    // Bind validation
     setTimeout(() => {
         bindFormValidation('editCustomerSheet-content', 'edit-customer-submit');
         window.openSheet('editCustomerSheet');

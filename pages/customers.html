@@ -13,6 +13,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Garment OS - Customers</title>
+    <meta name="description" content="Manage customers, track orders, financial transactions, outstanding balances, and collect payments in Garment OS.">
     
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com" rel="preconnect"/>
@@ -35,17 +36,57 @@
             
             <div class="px-xs pt-sm">
                 <h2 class="text-[28px] leading-tight font-semibold tracking-tight text-on-surface mb-1">Customers</h2>
-                <p class="text-body text-secondary">24 Active Partners</p>
+                <p id="customers-count" class="text-body text-secondary">Loading customers...</p>
             </div>
             
-            <!-- Mobile Search & Filter -->
+            <!-- Search -->
             <div class="flex gap-2 w-full">
                 <div class="relative flex-1">
                     <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
-                    <input class="w-full bg-surface-container-lowest border border-outline-variant rounded-2xl py-3 pl-12 pr-4 font-body text-[16px] text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary/20 transition-apple shadow-sm" placeholder="Search..." type="text"/>
+                    <input id="customer-search" class="w-full bg-surface-container-lowest border border-outline-variant rounded-2xl py-3 pl-12 pr-4 font-body text-[16px] text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary/20 transition-apple shadow-sm" placeholder="Search customers..." type="text"/>
                 </div>
-                <button class="w-[50px] h-[50px] rounded-2xl bg-surface-container-lowest border border-outline-variant shadow-sm flex items-center justify-center text-secondary active:bg-surface-variant transition-colors">
-                    <span class="material-symbols-outlined">tune</span>
+            </div>
+
+            <!-- Status Segmented Control -->
+            <div class="flex p-1 bg-surface-container rounded-[16px] border border-outline-variant/50">
+                <button data-status-filter="Active" class="flex-1 py-2 rounded-[12px] text-[13px] font-semibold bg-surface-container-lowest text-on-surface shadow-sm transition-all" onclick="window.setCustomerStatusFilter('Active')">Active</button>
+                <button data-status-filter="Inactive" class="flex-1 py-2 rounded-[12px] text-[13px] font-semibold text-secondary transition-all" onclick="window.setCustomerStatusFilter('Inactive')">Inactive</button>
+                <button data-status-filter="All" class="flex-1 py-2 rounded-[12px] text-[13px] font-semibold text-secondary transition-all" onclick="window.setCustomerStatusFilter('All')">All</button>
+            </div>
+
+            <!-- Customer Type Filter Chips -->
+            <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1" id="customer-type-chips">
+                <button type="button" data-type-filter="All" onclick="window.setCustomerTypeFilter('All')"
+                    class="px-3 py-1.5 rounded-xl text-[12px] font-bold border transition-all shrink-0 bg-primary text-white border-primary cursor-pointer touch-manipulation">
+                    All
+                </button>
+                <button type="button" data-type-filter="Brand" onclick="window.setCustomerTypeFilter('Brand')"
+                    class="px-3 py-1.5 rounded-xl text-[12px] font-bold border transition-all shrink-0 bg-surface-container-lowest text-secondary border-outline-variant cursor-pointer touch-manipulation">
+                    🏷️ Brand
+                </button>
+                <button type="button" data-type-filter="Manufacturer" onclick="window.setCustomerTypeFilter('Manufacturer')"
+                    class="px-3 py-1.5 rounded-xl text-[12px] font-bold border transition-all shrink-0 bg-surface-container-lowest text-secondary border-outline-variant cursor-pointer touch-manipulation">
+                    🏭 Manufacturer
+                </button>
+                <button type="button" data-type-filter="Exporter" onclick="window.setCustomerTypeFilter('Exporter')"
+                    class="px-3 py-1.5 rounded-xl text-[12px] font-bold border transition-all shrink-0 bg-surface-container-lowest text-secondary border-outline-variant cursor-pointer touch-manipulation">
+                    🚢 Exporter
+                </button>
+                <button type="button" data-type-filter="Retailer" onclick="window.setCustomerTypeFilter('Retailer')"
+                    class="px-3 py-1.5 rounded-xl text-[12px] font-bold border transition-all shrink-0 bg-surface-container-lowest text-secondary border-outline-variant cursor-pointer touch-manipulation">
+                    🏬 Retailer
+                </button>
+                <button type="button" data-type-filter="Wholesaler" onclick="window.setCustomerTypeFilter('Wholesaler')"
+                    class="px-3 py-1.5 rounded-xl text-[12px] font-bold border transition-all shrink-0 bg-surface-container-lowest text-secondary border-outline-variant cursor-pointer touch-manipulation">
+                    📦 Wholesaler
+                </button>
+                <button type="button" data-type-filter="Distributor" onclick="window.setCustomerTypeFilter('Distributor')"
+                    class="px-3 py-1.5 rounded-xl text-[12px] font-bold border transition-all shrink-0 bg-surface-container-lowest text-secondary border-outline-variant cursor-pointer touch-manipulation">
+                    🚚 Distributor
+                </button>
+                <button type="button" data-type-filter="Other" onclick="window.setCustomerTypeFilter('Other')"
+                    class="px-3 py-1.5 rounded-xl text-[12px] font-bold border transition-all shrink-0 bg-surface-container-lowest text-secondary border-outline-variant cursor-pointer touch-manipulation">
+                    Other
                 </button>
             </div>
 

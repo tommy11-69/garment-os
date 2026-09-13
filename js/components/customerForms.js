@@ -1,14 +1,29 @@
 import { TextInput, SelectInput, TextareaInput } from './inputs.js';
 
+export const CUSTOMER_TYPES = [
+    { label: 'Brand', value: 'Brand' },
+    { label: 'Manufacturer', value: 'Manufacturer' },
+    { label: 'Exporter', value: 'Exporter' },
+    { label: 'Retailer', value: 'Retailer' },
+    { label: 'Wholesaler', value: 'Wholesaler' },
+    { label: 'Distributor', value: 'Distributor' },
+    { label: 'Other', value: 'Other' }
+];
+
+export const CUSTOMER_TYPE_COLORS = {
+    'Brand':        { bg: 'bg-blue-500/10',    text: 'text-blue-600',    avatar: 'bg-blue-500/15 text-blue-700' },
+    'Manufacturer': { bg: 'bg-purple-500/10',  text: 'text-purple-600',  avatar: 'bg-purple-500/15 text-purple-700' },
+    'Exporter':     { bg: 'bg-emerald-500/10', text: 'text-emerald-600', avatar: 'bg-emerald-500/15 text-emerald-700' },
+    'Retailer':     { bg: 'bg-orange-500/10',  text: 'text-orange-600',  avatar: 'bg-orange-500/15 text-orange-700' },
+    'Wholesaler':   { bg: 'bg-teal-500/10',    text: 'text-teal-600',    avatar: 'bg-teal-500/15 text-teal-700' },
+    'Distributor':  { bg: 'bg-indigo-500/10',  text: 'text-indigo-600',  avatar: 'bg-indigo-500/15 text-indigo-700' },
+    'Other':        { bg: 'bg-primary/10',     text: 'text-primary',     avatar: 'bg-primary/15 text-primary' },
+};
+
 export function getCreateCustomerSheetHTML() {
-    const customerTypes = [
-        {label: 'Select Type', value: ''},
-        {label: 'Brand', value: 'Brand'},
-        {label: 'Manufacturer', value: 'Manufacturer'},
-        {label: 'Exporter', value: 'Exporter'},
-        {label: 'Retailer', value: 'Retailer'},
-        {label: 'Wholesaler', value: 'Wholesaler'},
-        {label: 'Distributor', value: 'Distributor'}
+    const customerTypeOptions = [
+        { label: 'Select Type', value: '' },
+        ...CUSTOMER_TYPES
     ];
     
     return `
@@ -34,11 +49,11 @@ export function getCreateCustomerSheetHTML() {
         <div>
             <h4 class="text-[13px] font-bold text-secondary uppercase tracking-wider mb-4 border-b border-outline-variant pb-2">Business Details</h4>
             <div class="grid grid-cols-2 gap-4 mb-4">
-                ${SelectInput({ label: 'Customer Type', id: 'new-cust-type', options: customerTypes })}
+                ${SelectInput({ label: 'Customer Type', id: 'new-cust-type', options: customerTypeOptions })}
                 ${TextInput({ label: 'Payment Terms', id: 'new-cust-terms', placeholder: 'e.g. Net 30' })}
             </div>
             <div class="grid grid-cols-2 gap-4">
-                ${TextInput({ label: 'Credit Limit', id: 'new-cust-limit', type: 'number', placeholder: '0.00' })}
+                ${TextInput({ label: 'Credit Limit (₹)', id: 'new-cust-limit', type: 'number', placeholder: '0.00' })}
                 ${SelectInput({ label: 'Currency', id: 'new-cust-currency', options: [{label:'INR', value:'INR'}, {label:'USD', value:'USD'}, {label:'EUR', value:'EUR'}] })}
             </div>
         </div>
@@ -80,7 +95,7 @@ export function getCreateCustomerSheetHTML() {
 
 export function getCreateCustomerFooterHTML(onSaveAction = "window.saveNewCustomer()") {
     return `
-        <button type="button" onclick="window.closeSheet('createCustomerSheet')" class="flex-1 bg-surface-container-high text-on-surface font-bold text-[16px] py-4 rounded-2xl active-scale transition-apple">
+        <button type="button" onclick="window.closeSheet('addCustomerSheet')" class="flex-1 bg-surface-container-high text-on-surface font-bold text-[16px] py-4 rounded-2xl active-scale transition-apple">
             Cancel
         </button>
         <button id="create-customer-submit" type="button" onclick="${onSaveAction}" class="flex-[2] bg-primary text-white font-bold text-[16px] py-4 rounded-2xl active-scale transition-apple shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">

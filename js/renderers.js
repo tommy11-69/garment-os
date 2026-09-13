@@ -56,10 +56,22 @@ function renderStagePipeline(order) {
 export const renderers = {
 
     customerCard(customer, isBulkMode = false, isSelected = false) {
+        const typeAvatarColors = {
+            'Brand':        'bg-blue-500/15 text-blue-700',
+            'Manufacturer': 'bg-purple-500/15 text-purple-700',
+            'Exporter':     'bg-emerald-500/15 text-emerald-700',
+            'Retailer':     'bg-orange-500/15 text-orange-700',
+            'Wholesaler':   'bg-teal-500/15 text-teal-700',
+            'Distributor':  'bg-indigo-500/15 text-indigo-700',
+            'Other':        'bg-primary/15 text-primary',
+        };
+        const avatarCls = typeAvatarColors[customer.customerType] || typeAvatarColors['Other'];
+        const initials = customer.initials || (customer.name || 'CU').split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
         const avatarHtml = customer.avatar 
-            ? `<img class="w-full h-full object-cover" src="${customer.avatar}" alt="${customer.name}"/>`
-            : `<span class="text-secondary font-medium">${customer.initials}</span>`;
+            ? `<img class="w-full h-full object-cover rounded-full" src="${customer.avatar}" alt="${customer.name}"/>`
+            : `<span class="font-bold text-[18px]">${initials}</span>`;
             
+        const outstanding = parseFloat(customer.totalOutstanding ?? customer.outstanding ?? 0);
         const checkboxHtml = isBulkMode ? `
             <div class="mr-3 flex items-center h-full">
                 <div class="w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors ${isSelected ? 'bg-primary border-primary' : 'border-outline-variant'}" onclick="event.stopPropagation(); window.toggleCustomerSelection('${customer.id}')">
@@ -71,26 +83,33 @@ export const renderers = {
         return `
             <div role="button" tabindex="0" onclick="${isBulkMode ? `window.toggleCustomerSelection('${customer.id}')` : `window.openCustomerDetails('${customer.id}')`}" class="bg-surface-container-lowest rounded-[24px] border ${isSelected ? 'border-primary ring-1 ring-primary' : 'border-outline-variant'} p-md shadow-sm active-bg transition-colors flex items-start gap-4 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary">
                 ${checkboxHtml}
-                <div class="w-[60px] h-[60px] rounded-full overflow-hidden border border-outline-variant/30 flex-shrink-0 flex items-center justify-center bg-surface-variant/50">
+                <div class="w-[56px] h-[56px] rounded-full flex-shrink-0 flex items-center justify-center font-bold text-[18px] ${avatarCls}">
                     ${avatarHtml}
                 </div>
                 <div class="flex-1 w-full min-w-0">
-                    <div class="flex items-start justify-between">
-                        <div>
-                            <span class="text-[12px] font-semibold text-primary mb-0.5 block">${customer.customerCode || ''}</span>
-                            <h4 class="text-body-bold text-on-surface mb-0.5 truncate">${customer.name}</h4>
-                            <p class="text-caption text-secondary mb-2 truncate">${customer.company}</p>
+                    <div class="flex items-start justify-between mb-1">
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-1.5 mb-0.5">
+                                <span class="text-[11px] font-semibold text-primary">${customer.customerCode || ''}</span>
+                                ${customer.customerType ? `<span class="text-[10px] text-secondary font-medium">· ${customer.customerType}</span>` : ''}
+                            </div>
+                            <h4 class="text-[16px] font-bold text-on-surface leading-tight truncate">${customer.name}</h4>
+                            ${customer.company ? `<p class="text-[12px] text-secondary truncate">${customer.company}</p>` : ''}
                         </div>
-                        <span class="px-2.5 py-1 rounded-full text-[11px] font-medium shrink-0 ml-2 ${customer.statusColor || 'bg-success-container/30 text-success'}">${customer.status || 'Active'}</span>
+                        <span class="px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0 ml-2 ${customer.statusColor || 'bg-[#008A00]/10 text-[#008A00]'}">${customer.status || 'Active'}</span>
                     </div>
-                    <div class="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-outline-variant/30">
+                    <div class="grid grid-cols-3 gap-2 mt-2 pt-2 border-t border-outline-variant/30">
                         <div>
-                            <span class="text-[11px] text-secondary uppercase tracking-wider block mb-0.5">Revenue</span>
-                            <span class="text-[13px] font-bold text-on-surface">₹${(customer.totalRevenue || 0).toLocaleString()}</span>
+                            <span class="text-[10px] text-secondary uppercase tracking-wider block mb-0.5">Revenue</span>
+                            <span class="text-[12px] font-bold text-on-surface">₹${(customer.totalRevenue || 0).toLocaleString('en-IN')}</span>
                         </div>
                         <div>
-                            <span class="text-[11px] text-secondary uppercase tracking-wider block mb-0.5">Active Orders</span>
-                            <span class="text-[13px] font-bold text-on-surface">${customer.activeOrders || 0}</span>
+                            <span class="text-[10px] text-secondary uppercase tracking-wider block mb-0.5">Active Orders</span>
+                            <span class="text-[12px] font-bold text-on-surface">${customer.activeOrders || 0}</span>
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-secondary uppercase tracking-wider block mb-0.5">Outstanding</span>
+                            <span class="text-[12px] font-bold ${outstanding > 0 ? 'text-error' : 'text-[#008A00]'}">₹${outstanding.toLocaleString('en-IN')}</span>
                         </div>
                     </div>
                 </div>
