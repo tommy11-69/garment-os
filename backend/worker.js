@@ -5,7 +5,7 @@
 const ALLOWED_TABLES = new Set([
     'customers', 'orders', 'inventory', 'batches',
     'transactions', 'costings', 'shipments', 'quotations', 'vendors',
-    'billing_master', 'billing_items', 'billing_counters'
+    'billing_master', 'billing_items', 'billing_counters', 'billings'
 ]);
 
 // Columns that store JSON arrays/objects as TEXT in D1

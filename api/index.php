@@ -52,7 +52,8 @@ try {
 // ── Helpers ──────────────────────────────────────────────────────────
 const ALLOWED_TABLES = [
     'customers', 'orders', 'inventory', 'batches',
-    'transactions', 'costings', 'shipments', 'quotations', 'vendors'
+    'transactions', 'costings', 'shipments', 'quotations', 'vendors',
+    'billing_master', 'billing_items', 'billing_counters'
 ];
 
 const JSON_COLUMNS = [
@@ -217,6 +218,54 @@ try {
             $pdo->exec("ALTER TABLE `inventory` ADD COLUMN `{$cName}` {$cDef}");
         }
     }
+} catch (Exception $e) { /* ignore */ }
+
+// ── Billing Tables Auto-Migration ────────────────────────────────────
+try {
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `billing_counters` (
+        `id` INT AUTO_INCREMENT PRIMARY KEY,
+        `type_key` VARCHAR(50) UNIQUE NOT NULL,
+        `last_seq` INT NOT NULL DEFAULT 0
+    )");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `billing_master` (
+        `_rowid` INT AUTO_INCREMENT PRIMARY KEY,
+        `id` VARCHAR(191) UNIQUE NOT NULL,
+        `invoice_number` VARCHAR(50) UNIQUE NOT NULL,
+        `transaction_type` VARCHAR(50) NOT NULL,
+        `contact_id` VARCHAR(191) NOT NULL,
+        `contact_type` VARCHAR(20) DEFAULT 'customer',
+        `contact_name` VARCHAR(255) DEFAULT '',
+        `contact_gstin` VARCHAR(20) DEFAULT '',
+        `date` DATE NOT NULL,
+        `due_date` DATE DEFAULT NULL,
+        `subtotal` DOUBLE DEFAULT 0,
+        `discount` DOUBLE DEFAULT 0,
+        `tax_total` DOUBLE DEFAULT 0,
+        `grand_total` DOUBLE DEFAULT 0,
+        `amount_paid` DOUBLE DEFAULT 0,
+        `status` VARCHAR(30) DEFAULT 'Draft',
+        `notes` LONGTEXT DEFAULT '',
+        `linked_bill_id` VARCHAR(191) DEFAULT '',
+        `createdAt` DATETIME DEFAULT CURRENT_TIMESTAMP,
+        `updatedAt` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `billing_items` (
+        `id` VARCHAR(191) PRIMARY KEY,
+        `billing_master_id` VARCHAR(191) NOT NULL,
+        `item_name` VARCHAR(255) DEFAULT '',
+        `item_id` VARCHAR(191) DEFAULT '',
+        `description` LONGTEXT DEFAULT '',
+        `quantity` DOUBLE DEFAULT 1,
+        `unit` VARCHAR(20) DEFAULT 'pcs',
+        `unit_price` DOUBLE DEFAULT 0,
+        `discount_pct` DOUBLE DEFAULT 0,
+        `tax_pct` DOUBLE DEFAULT 0,
+        `tax_amount` DOUBLE DEFAULT 0,
+        `row_total` DOUBLE DEFAULT 0,
+        `createdAt` DATETIME DEFAULT CURRENT_TIMESTAMP
+    )");
 } catch (Exception $e) { /* ignore */ }
 
 try {
@@ -705,6 +754,258 @@ if ($relPath === 'auth/credentials') {
         }
     }
     jsonResponse(['success' => true]);
+}
+
+// ── Billing Serial Number Generator ─────────────────────────────────
+function generateBillingSerial($pdo, $transactionType) {
+    $prefixMap = [
+        'Quotation'     => 'QTY',
+        'Sales_Bill'    => 'INV',
+        'Payment_In'    => 'RCP',
+        'Purchase_Bill' => 'PO',
+        'Payment_Out'   => 'PAY',
+    ];
+    $prefix = $prefixMap[$transactionType] ?? 'DOC';
+    $year   = date('Y');
+    $typeKey = $prefix . '-' . $year;
+
+    // Upsert counter atomically
+    $pdo->prepare(
+        "INSERT INTO `billing_counters` (`type_key`, `last_seq`) VALUES (?, 1)
+         ON DUPLICATE KEY UPDATE `last_seq` = `last_seq` + 1"
+    )->execute([$typeKey]);
+
+    $row = $pdo->prepare("SELECT `last_seq` FROM `billing_counters` WHERE `type_key` = ?")->execute([$typeKey]);
+    $row = $pdo->prepare("SELECT `last_seq` FROM `billing_counters` WHERE `type_key` = ?")->execute([$typeKey]);
+    // Re-fetch cleanly
+    $stmt = $pdo->prepare("SELECT `last_seq` FROM `billing_counters` WHERE `type_key` = ?");
+    $stmt->execute([$typeKey]);
+    $seq = (int)($stmt->fetch()['last_seq'] ?? 1);
+
+    return "AG-{$prefix}-{$year}-" . str_pad($seq, 4, '0', STR_PAD_LEFT);
+}
+
+function getBillingWithItems($pdo, $billingId) {
+    $stmt = $pdo->prepare("SELECT * FROM `billing_master` WHERE `id` = ?");
+    $stmt->execute([$billingId]);
+    $master = $stmt->fetch();
+    if (!$master) return null;
+    unset($master['_rowid']);
+    // cast numerics
+    foreach (['subtotal','discount','tax_total','grand_total','amount_paid'] as $f) {
+        $master[$f] = (float)($master[$f] ?? 0);
+    }
+
+    $iStmt = $pdo->prepare("SELECT * FROM `billing_items` WHERE `billing_master_id` = ? ORDER BY createdAt ASC");
+    $iStmt->execute([$billingId]);
+    $items = $iStmt->fetchAll();
+    foreach ($items as &$item) {
+        foreach (['quantity','unit_price','discount_pct','tax_pct','tax_amount','row_total'] as $f) {
+            $item[$f] = (float)($item[$f] ?? 0);
+        }
+    }
+    $master['items'] = $items;
+    return $master;
+}
+
+// ── Route: /api/billings ─────────────────────────────────────────────
+if ($segments[0] === 'billings') {
+    $billingId = $segments[1] ?? null;
+    $action    = $segments[2] ?? null;
+
+    // GET /api/billings/stats
+    if ($method === 'GET' && $billingId === 'stats') {
+        $types = ['Quotation','Sales_Bill','Payment_In','Purchase_Bill','Payment_Out'];
+        $byType = [];
+        foreach ($types as $t) {
+            $st = $pdo->prepare("SELECT COUNT(*) as cnt, COALESCE(SUM(grand_total),0) as total FROM `billing_master` WHERE `transaction_type` = ?");
+            $st->execute([$t]);
+            $r = $st->fetch();
+            $byType[$t] = ['count' => (int)$r['cnt'], 'total' => (float)$r['total']];
+        }
+        $rec = $pdo->query("SELECT COALESCE(SUM(grand_total - amount_paid),0) as total FROM `billing_master` WHERE `transaction_type` = 'Sales_Bill' AND `status` NOT IN ('Paid','Void')")->fetch();
+        $pay = $pdo->query("SELECT COALESCE(SUM(grand_total - amount_paid),0) as total FROM `billing_master` WHERE `transaction_type` = 'Purchase_Bill' AND `status` NOT IN ('Paid','Void')")->fetch();
+        jsonResponse(['byType' => $byType, 'totalReceivable' => (float)$rec['total'], 'totalPayable' => (float)$pay['total']]);
+    }
+
+    // GET /api/billings  (list, with optional ?type=&status=&contactId=&q=)
+    if ($method === 'GET' && !$billingId) {
+        $where = []; $binds = [];
+        if (!empty($_GET['type']))      { $where[] = '`transaction_type` = ?'; $binds[] = $_GET['type']; }
+        if (!empty($_GET['status']))    { $where[] = '`status` = ?';           $binds[] = $_GET['status']; }
+        if (!empty($_GET['contactId'])) { $where[] = '`contact_id` = ?';      $binds[] = $_GET['contactId']; }
+        if (!empty($_GET['q'])) {
+            $where[] = '(`invoice_number` LIKE ? OR `contact_name` LIKE ? OR `notes` LIKE ?)';
+            $binds[] = '%'.$_GET['q'].'%'; $binds[] = '%'.$_GET['q'].'%'; $binds[] = '%'.$_GET['q'].'%';
+        }
+        $wc  = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
+        $st  = $pdo->prepare("SELECT * FROM `billing_master` {$wc} ORDER BY `date` DESC, `invoice_number` DESC");
+        $st->execute($binds);
+        $docs = $st->fetchAll();
+        foreach ($docs as &$d) { unset($d['_rowid']); $d['subtotal']=(float)$d['subtotal']; $d['grand_total']=(float)$d['grand_total']; $d['amount_paid']=(float)$d['amount_paid']; }
+        jsonResponse($docs);
+    }
+
+    // GET /api/billings/:id
+    if ($method === 'GET' && $billingId && !$action) {
+        $doc = getBillingWithItems($pdo, $billingId);
+        if (!$doc) jsonResponse(['error' => 'Billing document not found'], 404);
+        jsonResponse($doc);
+    }
+
+    // POST /api/billings  (create)
+    if ($method === 'POST' && !$billingId) {
+        if (empty($body['transaction_type'])) jsonResponse(['error' => 'transaction_type is required'], 400);
+        if (empty($body['contact_id']))       jsonResponse(['error' => 'contact_id is required'], 400);
+        if (empty($body['date']))             jsonResponse(['error' => 'date is required'], 400);
+
+        $invoiceNumber = generateBillingSerial($pdo, $body['transaction_type']);
+        $newId = 'bill-' . round(microtime(true)*1000) . '-' . bin2hex(random_bytes(3));
+        $now   = date('Y-m-d H:i:s');
+
+        $pdo->prepare("
+            INSERT INTO `billing_master`
+                (`id`,`invoice_number`,`transaction_type`,`contact_id`,`contact_type`,
+                 `contact_name`,`contact_gstin`,`date`,`due_date`,
+                 `subtotal`,`discount`,`tax_total`,`grand_total`,`amount_paid`,
+                 `status`,`notes`,`linked_bill_id`,`createdAt`,`updatedAt`)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        ")->execute([
+            $newId, $invoiceNumber, $body['transaction_type'], $body['contact_id'],
+            $body['contact_type'] ?? 'customer', $body['contact_name'] ?? '',
+            $body['contact_gstin'] ?? '', $body['date'], $body['due_date'] ?? null,
+            $body['subtotal'] ?? 0, $body['discount'] ?? 0, $body['tax_total'] ?? 0,
+            $body['grand_total'] ?? 0, 0,
+            $body['status'] ?? 'Draft', $body['notes'] ?? '', $body['linked_bill_id'] ?? '',
+            $now, $now
+        ]);
+
+        foreach (($body['items'] ?? []) as $item) {
+            $itemId = 'bitem-' . round(microtime(true)*1000) . '-' . bin2hex(random_bytes(3));
+            $pdo->prepare("
+                INSERT INTO `billing_items`
+                    (`id`,`billing_master_id`,`item_name`,`item_id`,`description`,
+                     `quantity`,`unit`,`unit_price`,`discount_pct`,`tax_pct`,`tax_amount`,`row_total`,`createdAt`)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+            ")->execute([
+                $itemId, $newId, $item['item_name'] ?? '', $item['item_id'] ?? '',
+                $item['description'] ?? '', $item['quantity'] ?? 1,
+                $item['unit'] ?? 'pcs', $item['unit_price'] ?? 0,
+                $item['discount_pct'] ?? 0, $item['tax_pct'] ?? 0,
+                $item['tax_amount'] ?? 0, $item['row_total'] ?? 0, $now
+            ]);
+        }
+
+        jsonResponse(getBillingWithItems($pdo, $newId), 201);
+    }
+
+    // PUT /api/billings/:id  (update master + optional items replace)
+    if ($method === 'PUT' && $billingId && !$action) {
+        $existing = $pdo->prepare("SELECT `id` FROM `billing_master` WHERE `id` = ?")->execute([$billingId]);
+        $existing = $pdo->prepare("SELECT `id` FROM `billing_master` WHERE `id` = ?");
+        $existing->execute([$billingId]);
+        if (!$existing->fetch()) jsonResponse(['error' => 'Billing document not found'], 404);
+
+        $allowed = ['contact_id','contact_type','contact_name','contact_gstin','date','due_date',
+                    'subtotal','discount','tax_total','grand_total','status','notes','linked_bill_id'];
+        $sets = []; $vals = [];
+        foreach ($allowed as $k) {
+            if (array_key_exists($k, $body)) { $sets[] = "`{$k}` = ?"; $vals[] = $body[$k]; }
+        }
+        if ($sets) {
+            $vals[] = date('Y-m-d H:i:s'); $sets[] = '`updatedAt` = ?';
+            $vals[] = $billingId;
+            $pdo->prepare("UPDATE `billing_master` SET " . implode(', ', $sets) . " WHERE `id` = ?")->execute($vals);
+        }
+
+        if (isset($body['items']) && is_array($body['items'])) {
+            $pdo->prepare("DELETE FROM `billing_items` WHERE `billing_master_id` = ?")->execute([$billingId]);
+            $now = date('Y-m-d H:i:s');
+            foreach ($body['items'] as $item) {
+                $itemId = 'bitem-' . round(microtime(true)*1000) . '-' . bin2hex(random_bytes(3));
+                $pdo->prepare("
+                    INSERT INTO `billing_items`
+                        (`id`,`billing_master_id`,`item_name`,`item_id`,`description`,
+                         `quantity`,`unit`,`unit_price`,`discount_pct`,`tax_pct`,`tax_amount`,`row_total`,`createdAt`)
+                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+                ")->execute([
+                    $itemId, $billingId, $item['item_name'] ?? '', $item['item_id'] ?? '',
+                    $item['description'] ?? '', $item['quantity'] ?? 1,
+                    $item['unit'] ?? 'pcs', $item['unit_price'] ?? 0,
+                    $item['discount_pct'] ?? 0, $item['tax_pct'] ?? 0,
+                    $item['tax_amount'] ?? 0, $item['row_total'] ?? 0, $now
+                ]);
+            }
+        }
+        jsonResponse(getBillingWithItems($pdo, $billingId));
+    }
+
+    // POST /api/billings/:id/finalize
+    if ($method === 'POST' && $billingId && $action === 'finalize') {
+        $st = $pdo->prepare("SELECT `status` FROM `billing_master` WHERE `id` = ?");
+        $st->execute([$billingId]);
+        $existing = $st->fetch();
+        if (!$existing) jsonResponse(['error' => 'Billing document not found'], 404);
+        if ($existing['status'] === 'Finalized') jsonResponse(['error' => 'Already finalized'], 400);
+        if ($existing['status'] === 'Void')      jsonResponse(['error' => 'Cannot finalize a voided document'], 400);
+        $pdo->prepare("UPDATE `billing_master` SET `status` = 'Finalized', `updatedAt` = NOW() WHERE `id` = ?")->execute([$billingId]);
+        jsonResponse(getBillingWithItems($pdo, $billingId));
+    }
+
+    // POST /api/billings/:id/convert  (Quotation → Sales Bill)
+    if ($method === 'POST' && $billingId && $action === 'convert') {
+        $original = getBillingWithItems($pdo, $billingId);
+        if (!$original) jsonResponse(['error' => 'Billing document not found'], 404);
+        if ($original['transaction_type'] !== 'Quotation') jsonResponse(['error' => 'Only Quotations can be converted'], 400);
+
+        $invoiceNumber = generateBillingSerial($pdo, 'Sales_Bill');
+        $newId = 'bill-' . round(microtime(true)*1000) . '-' . bin2hex(random_bytes(3));
+        $now   = date('Y-m-d H:i:s');
+        $today = date('Y-m-d');
+
+        $pdo->prepare("
+            INSERT INTO `billing_master`
+                (`id`,`invoice_number`,`transaction_type`,`contact_id`,`contact_type`,
+                 `contact_name`,`contact_gstin`,`date`,`due_date`,
+                 `subtotal`,`discount`,`tax_total`,`grand_total`,`amount_paid`,
+                 `status`,`notes`,`linked_bill_id`,`createdAt`,`updatedAt`)
+            VALUES (?,?,'Sales_Bill',?,?,?,?,?,?,?,?,?,?,0,'Draft',?,?,?,?)
+        ")->execute([
+            $newId, $invoiceNumber, $original['contact_id'], $original['contact_type'],
+            $original['contact_name'], $original['contact_gstin'], $today, $original['due_date'] ?? null,
+            $original['subtotal'], $original['discount'], $original['tax_total'], $original['grand_total'],
+            $original['notes'] ?? '', $billingId, $now, $now
+        ]);
+
+        foreach (($original['items'] ?? []) as $item) {
+            $itemId = 'bitem-' . round(microtime(true)*1000) . '-' . bin2hex(random_bytes(3));
+            $pdo->prepare("
+                INSERT INTO `billing_items`
+                    (`id`,`billing_master_id`,`item_name`,`item_id`,`description`,
+                     `quantity`,`unit`,`unit_price`,`discount_pct`,`tax_pct`,`tax_amount`,`row_total`,`createdAt`)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+            ")->execute([
+                $itemId, $newId, $item['item_name'], $item['item_id'] ?? '',
+                $item['description'] ?? '', $item['quantity'], $item['unit'] ?? 'pcs',
+                $item['unit_price'], $item['discount_pct'] ?? 0, $item['tax_pct'] ?? 0,
+                $item['tax_amount'] ?? 0, $item['row_total'], $now
+            ]);
+        }
+
+        $pdo->prepare("UPDATE `billing_master` SET `status` = 'Converted', `updatedAt` = NOW() WHERE `id` = ?")->execute([$billingId]);
+        jsonResponse(getBillingWithItems($pdo, $newId), 201);
+    }
+
+    // DELETE /api/billings/:id  (soft void)
+    if ($method === 'DELETE' && $billingId) {
+        $st = $pdo->prepare("SELECT `id` FROM `billing_master` WHERE `id` = ?");
+        $st->execute([$billingId]);
+        if (!$st->fetch()) jsonResponse(['error' => 'Billing document not found'], 404);
+        $pdo->prepare("UPDATE `billing_master` SET `status` = 'Void', `updatedAt` = NOW() WHERE `id` = ?")->execute([$billingId]);
+        jsonResponse(['success' => true, 'message' => 'Document voided']);
+    }
+
+    jsonResponse(['error' => 'Invalid billing endpoint'], 404);
 }
 
 // ── REST Collections ─────────────────────────────────────────────────
