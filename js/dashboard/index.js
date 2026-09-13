@@ -40,8 +40,8 @@ async function loadDashboardTelemetry() {
         // Fetch Telemetry & Core ERP Datasets in Parallel
         const [telemetry, orders, batches] = await Promise.all([
             fetchTelemetryData(),
-            api.getOrders().catch(() => []),
-            api.getBatches().catch(() => [])
+            (api.getOrders ? api.getOrders() : Promise.resolve([])).catch(() => []),
+            ((api.getBatches || api.getActiveBatches) ? (api.getBatches || api.getActiveBatches).call(api) : Promise.resolve([])).catch(() => [])
         ]);
 
         renderKPIs(telemetry.metrics || {});

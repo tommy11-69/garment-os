@@ -68,6 +68,7 @@ export const api = {
     async getOrders() { return await db.getCollection('orders'); },
     async getInventory() { return await db.getCollection('inventory'); },
     async getActiveBatches() { return await db.getCollection('batches'); },
+    async getBatches() { return await db.getCollection('batches'); },
     async getTransactions() { return await db.getCollection('transactions'); },
     async getCostings() { return await db.getCollection('costings'); },
     async getCostingById(id) { return await db.getById('costings', id); },
