@@ -27,16 +27,25 @@ if (!file_exists($configFile)) {
 }
 $dbConfig = require $configFile;
 
-try {
-    $dsn = "mysql:host={$dbConfig['host']};dbname={$dbConfig['database']};charset={$dbConfig['charset']}";
-    $pdo = new PDO($dsn, $dbConfig['username'], $dbConfig['password'], [
+// Function to connect to target DB
+function connectDatabase($config, $isDemo = false) {
+    $dbName = $isDemo ? $config['demo_database'] : $config['database'];
+    $dbUser = $isDemo ? $config['demo_username'] : $config['username'];
+    $dbPass = $isDemo ? $config['demo_password'] : $config['password'];
+
+    $dsn = "mysql:host={$config['host']};dbname={$dbName};charset={$config['charset']}";
+    return new PDO($dsn, $dbUser, $dbPass, [
         PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
         PDO::ATTR_EMULATE_PREPARES   => false,
     ]);
+}
+
+try {
+    $pdo = connectDatabase($dbConfig, false);
 } catch (PDOException $e) {
     http_response_code(500);
-    echo json_encode(['error' => 'Database connection failed: ' . $e->getMessage()]);
+    echo json_encode(['error' => 'Main database connection failed: ' . $e->getMessage()]);
     exit;
 }
 
@@ -68,7 +77,6 @@ function hydrateRow($table, $row) {
         if (isset($row[$col])) {
             if (is_string($row[$col])) {
                 $raw = $row[$col];
-                // Clean up any stray backticks that were converted in regex dumps
                 if (strpos($raw, '`') !== false) {
                     $raw = str_replace('`', '"', $raw);
                 }
@@ -136,13 +144,11 @@ $body = json_decode($rawInput, true) ?: [];
 
 // Auto-migrate schema fixes
 try {
-    // 1. Ensure sessions expiresAt is BIGINT
     $colInfo = $pdo->query("SHOW COLUMNS FROM `sessions` LIKE 'expiresAt'")->fetch();
     if ($colInfo && strpos(strtolower($colInfo['Type']), 'bigint') === false) {
         $pdo->exec("ALTER TABLE `sessions` MODIFY `expiresAt` BIGINT NOT NULL");
     }
 
-    // 2. Ensure vendors table exists
     $pdo->exec("CREATE TABLE IF NOT EXISTS `vendors` (
         `_rowid` INT AUTO_INCREMENT PRIMARY KEY,
         `id` VARCHAR(191) UNIQUE NOT NULL,
@@ -191,9 +197,28 @@ if ($relPath === 'auth/login') {
         jsonResponse(['error' => 'Username and password required'], 400);
     }
 
+    // 1. Guest / Showcase Login Check
+    if (($username === 'guest' && $password === 'guest123') || ($username === 'demo' && $password === 'demo123')) {
+        $token = 'demo-' . bin2hex(random_bytes(16));
+        $expiresAt = (time() + 86400 * 7) * 1000;
+        
+        // Connect to Demo DB and store session there
+        try {
+            $demoPdo = connectDatabase($dbConfig, true);
+            // Ensure sessions table exists in demo db
+            $demoPdo->exec("CREATE TABLE IF NOT EXISTS `sessions` (`token` VARCHAR(191) PRIMARY KEY, `userId` VARCHAR(191) NOT NULL, `expiresAt` BIGINT NOT NULL, `createdAt` DATETIME DEFAULT CURRENT_TIMESTAMP)");
+            $stmt = $demoPdo->prepare('INSERT INTO sessions (`token`, `userId`, `expiresAt`) VALUES (?, ?, ?)');
+            $stmt->execute([$token, 'guest-user', $expiresAt]);
+        } catch (Exception $e) {
+            jsonResponse(['error' => 'Demo database error: ' . $e->getMessage()], 500);
+        }
+
+        jsonResponse(['success' => true, 'token' => $token, 'userId' => 'guest-user', 'userType' => 'Guest (Showcase Mode)']);
+    }
+
     $passwordHash = hash('sha256', $password);
 
-    // Hardcoded developer admin fallback
+    // 2. Hardcoded developer admin fallback
     if ($username === 'admin' && $password === 'admin123') {
         $token = bin2hex(random_bytes(16));
         $expiresAt = (time() + 86400 * 7) * 1000;
@@ -233,6 +258,17 @@ if (!$authHeader || !str_starts_with($authHeader, 'Bearer ')) {
 }
 
 $token = trim(substr($authHeader, 7));
+$isDemoSession = str_starts_with($token, 'demo-');
+
+// Switch active database connection based on token type
+if ($isDemoSession) {
+    try {
+        $pdo = connectDatabase($dbConfig, true);
+    } catch (PDOException $e) {
+        jsonResponse(['error' => 'Failed to connect to Demo Database: ' . $e->getMessage()], 500);
+    }
+}
+
 $nowMs = round(microtime(true) * 1000);
 $stmt = $pdo->prepare('SELECT * FROM sessions WHERE `token` = ? AND `expiresAt` > ?');
 $stmt->execute([$token, $nowMs]);
@@ -241,6 +277,7 @@ $session = $stmt->fetch();
 if (!$session) {
     jsonResponse(['error' => 'Unauthorized: Invalid or expired token'], 401);
 }
+
 
 // ── Route: /api/auth/credentials ─────────────────────────────────────
 if ($relPath === 'auth/credentials') {
