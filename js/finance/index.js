@@ -1,10 +1,10 @@
-import { financeStore } from '../stores/FinanceStore.js';
-import { inventoryRepository } from '../repositories/InventoryRepository.js';
-import { api } from '../services/api.js';
-import { renderers } from '../renderers.js?v=3.0';
-import { BottomSheet } from '../components/index.js';
-import { bindFormValidation } from '../utils/formHandler.js';
-import { SearchableSelectInput } from '../components/inputs.js';
+import { financeStore } from '../stores/FinanceStore.js?v=5.2';
+import { inventoryRepository } from '../repositories/InventoryRepository.js?v=5.2';
+import { api } from '../services/api.js?v=5.2';
+import { renderers } from '../renderers.js?v=5.2';
+import { BottomSheet } from '../components/index.js?v=5.2';
+import { bindFormValidation } from '../utils/formHandler.js?v=5.2';
+import { SearchableSelectInput } from '../components/inputs.js?v=5.2';
 import { 
     getAddTransactionSheetHTML, getAddTransactionFooterHTML,
     getTransactionDetailsHeader, getTransactionDetailsContent,
@@ -697,6 +697,41 @@ function updateActiveEntitySheets(entity) {
 // FORM HANDLING
 // ==========================================
 
+async function resolvePartyId(type, refInputValue) {
+    if (!refInputValue) return '';
+    const isIncome = type === 'Income';
+    const list = isIncome ? (window.financeParties?.customers || []) : (window.financeParties?.vendors || []);
+    
+    // Check if it matches an existing ID
+    let existing = list.find(p => p.id === refInputValue);
+    if (existing) return existing.id;
+    
+    // Check if it matches an existing name case-insensitively
+    existing = list.find(p => p.name.toLowerCase() === refInputValue.toLowerCase());
+    if (existing) return existing.id;
+    
+    // It's a new name, create it!
+    if (isIncome) {
+        try {
+            const newCust = await api.saveCustomer({ name: refInputValue });
+            if (window.financeParties) window.financeParties.customers.push(newCust);
+            return newCust.id;
+        } catch (e) {
+            console.warn('Failed to auto-create customer', e);
+            return refInputValue;
+        }
+    } else {
+        try {
+            const newVend = await api.saveVendor({ name: refInputValue });
+            if (window.financeParties) window.financeParties.vendors.push(newVend);
+            return newVend.id;
+        } catch (e) {
+            console.warn('Failed to auto-create vendor', e);
+            return refInputValue;
+        }
+    }
+}
+
 async function handleAddTransaction() {
     const type = document.getElementById('trans-type').value;
     const date = document.getElementById('trans-date').value;
@@ -711,13 +746,15 @@ async function handleAddTransaction() {
     const referenceNo = document.getElementById('trans-ref').value;
     const status = document.getElementById('trans-status').value;
     const notes = document.getElementById('trans-notes').value;
-    const refId = document.getElementById('trans-refId')?.value || '';
+    let refId = document.getElementById('trans-refId')?.value || '';
     
     if(!title || !amount) return;
 
     window.showToast?.('Saving transaction...', 'info');
     
     try {
+        refId = await resolvePartyId(type, refId);
+
         await api.createTransaction({
             type, date, title, amount, category, paymentMethod, referenceNo, status, notes, createdBy: 'Admin', refId
         });
@@ -754,11 +791,13 @@ async function handleEditTransaction() {
     const referenceNo = document.getElementById('edit-trans-ref').value;
     const status = document.getElementById('edit-trans-status').value;
     const notes = document.getElementById('edit-trans-notes').value;
-    const refId = document.getElementById('edit-trans-refId')?.value || '';
+    let refId = document.getElementById('edit-trans-refId')?.value || '';
 
     window.showToast?.('Updating transaction...', 'info');
     
     try {
+        refId = await resolvePartyId(type, refId);
+
         await api.updateTransaction(id, {
             type, date, title, amount, category, paymentMethod, referenceNo, status, notes, refId
         });
