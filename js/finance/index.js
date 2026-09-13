@@ -785,7 +785,7 @@ window.onFinancePeriodChanged = function(period, customRange) {
     renderBalanceSheet(metrics);
 };
 
-window.openBsDetail = function(type) {
+window.openBsDetail = async function(type) {
     const sheet = document.getElementById('bs-detail-sheet');
     const titleEl = document.getElementById('bs-detail-title');
     const bodyEl = document.getElementById('bs-detail-body');
@@ -1462,34 +1462,4 @@ window.bulkPrint = function() {
         window.print();
     }, 1000);
 };
-
-// Robust touch handler for quick chips on mobile devices
-document.addEventListener('DOMContentLoaded', () => {
-    let touchStartX = 0;
-    let touchStartY = 0;
-    
-    document.body.addEventListener('touchstart', (e) => {
-        const chip = e.target.closest('.quick-chip');
-        if (chip) {
-            touchStartX = e.changedTouches[0].screenX;
-            touchStartY = e.changedTouches[0].screenY;
-        }
-    }, { passive: true });
-    
-    document.body.addEventListener('touchend', (e) => {
-        const chip = e.target.closest('.quick-chip');
-        if (chip) {
-            const touchEndX = e.changedTouches[0].screenX;
-            const touchEndY = e.changedTouches[0].screenY;
-            
-            // Differentiate between a tap and a scroll (threshold of 10px)
-            if (Math.abs(touchEndX - touchStartX) < 10 && Math.abs(touchEndY - touchStartY) < 10) {
-                e.preventDefault(); // Prevent ghost clicks
-                const filter = chip.getAttribute('data-quick-filter');
-                if (filter && typeof window.setQuickFilter === 'function') {
-                    window.setQuickFilter(filter);
-                }
-            }
-        }
-    });
-});
+
