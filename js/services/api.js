@@ -675,5 +675,57 @@ export const api = {
 
     async updateQuotationStatus(id, newStatus) {
         return await db.update('quotations', id, { status: newStatus });
+    },
+
+    // ── BILLINGS ──────────────────────────────────────────────────
+
+    async getBillings(filters = {}) {
+        const params = new URLSearchParams();
+        if (filters.type) params.append('type', filters.type);
+        if (filters.status) params.append('status', filters.status);
+        if (filters.contactId) params.append('contactId', filters.contactId);
+        if (filters.q) params.append('q', filters.q);
+        const qs = params.toString();
+        return db._fetchAPI(`/billings${qs ? '?' + qs : ''}`);
+    },
+
+    async getBilling(id) {
+        return db._fetchAPI(`/billings/${id}`);
+    },
+
+    async getBillingStats() {
+        return db._fetchAPI('/billings/stats');
+    },
+
+    async createBilling(data) {
+        return db._fetchAPI('/billings', {
+            method: 'POST',
+            body: JSON.stringify(data)
+        });
+    },
+
+    async updateBilling(id, data) {
+        return db._fetchAPI(`/billings/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data)
+        });
+    },
+
+    async finalizeBilling(id) {
+        return db._fetchAPI(`/billings/${id}/finalize`, {
+            method: 'POST',
+            body: JSON.stringify({})
+        });
+    },
+
+    async convertQuotationToBill(id) {
+        return db._fetchAPI(`/billings/${id}/convert`, {
+            method: 'POST',
+            body: JSON.stringify({})
+        });
+    },
+
+    async voidBilling(id) {
+        return db._fetchAPI(`/billings/${id}`, { method: 'DELETE' });
     }
 };
