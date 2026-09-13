@@ -1,5 +1,5 @@
-import { BaseStore } from './BaseStore.js';
-import { financeRepository } from '../repositories/FinanceRepository.js';
+import { BaseStore } from './BaseStore.js?v=5.2';
+import { financeRepository } from '../repositories/FinanceRepository.js?v=5.2';
 
 class FinanceStore extends BaseStore {
     constructor() {

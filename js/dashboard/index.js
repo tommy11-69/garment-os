@@ -1,6 +1,6 @@
-import { dashboardStore } from '../stores/DashboardStore.js';
-import { renderers } from '../renderers.js';
-import { MetricCard } from '../components/index.js';
+import { dashboardStore } from '../stores/DashboardStore.js?v=5.2';
+import { renderers } from '../renderers.js?v=5.2';
+import { MetricCard } from '../components/index.js?v=5.2';
 
 document.addEventListener('DOMContentLoaded', () => {
     updateGreeting();

@@ -1,12 +1,12 @@
-import { productionStore } from '../stores/ProductionStore.js';
-import { renderers } from '../renderers.js';
-import { BottomSheet } from '../components/index.js';
-import { bindFormValidation } from '../utils/formHandler.js';
+import { productionStore } from '../stores/ProductionStore.js?v=5.2';
+import { renderers } from '../renderers.js?v=5.2';
+import { BottomSheet } from '../components/index.js?v=5.2';
+import { bindFormValidation } from '../utils/formHandler.js?v=5.2';
 import { 
     getExpenseContentHTML, getExpenseFooterHTML,
     getConsumptionContentHTML, getConsumptionFooterHTML,
     getUpdateProgressContentHTML, getUpdateProgressFooterHTML
-} from './templates.js';
+} from './templates.js?v=5.2';
 
 document.addEventListener('DOMContentLoaded', () => {
     initUI();

@@ -1,4 +1,4 @@
-import { SelectInput, TextInput, TextareaInput } from '../components/inputs.js';
+import { SelectInput, TextInput, TextareaInput } from '../components/inputs.js?v=5.2';
 
 export function getDispatchOrderSheetHTML() {
     return `

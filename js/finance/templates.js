@@ -1,4 +1,4 @@
-import { TextInput, SelectInput, TextareaInput, SearchableSelectInput } from '../components/inputs.js';
+import { TextInput, SelectInput, TextareaInput, SearchableSelectInput } from '../components/inputs.js?v=5.2';
 
 // Category definitions by type
 const INCOME_CATEGORIES = [

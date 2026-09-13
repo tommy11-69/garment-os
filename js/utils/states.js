@@ -1,4 +1,4 @@
-import { SkeletonList, EmptyState, PageSkeleton } from '../components/index.js';
+import { SkeletonList, EmptyState, PageSkeleton } from '../components/index.js?v=5.2';
 
 /**
  * Sets a container's content to a loading skeleton.

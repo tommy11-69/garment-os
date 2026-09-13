@@ -1,5 +1,5 @@
-import { BaseStore } from './BaseStore.js';
-import { productionRepository } from '../repositories/ProductionRepository.js';
+import { BaseStore } from './BaseStore.js?v=5.2';
+import { productionRepository } from '../repositories/ProductionRepository.js?v=5.2';
 
 class ProductionStore extends BaseStore {
     constructor() {

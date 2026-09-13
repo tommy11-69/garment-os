@@ -1,4 +1,4 @@
-// import { BottomSheet } from '../components/index.js';
+// import { BottomSheet } from '../components/index.js?v=5.2';
 // import './states.js';
 
 // export function initDevTools() {

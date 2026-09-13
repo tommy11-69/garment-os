@@ -1,4 +1,4 @@
-import { TextInput, SelectInput, TextareaInput } from './inputs.js';
+import { TextInput, SelectInput, TextareaInput } from './inputs.js?v=5.2';
 
 export const CUSTOMER_TYPES = [
     { label: 'Brand', value: 'Brand' },

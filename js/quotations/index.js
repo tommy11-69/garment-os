@@ -1,5 +1,5 @@
-import { api } from '../services/api.js';
-import { getQuotationsHTML, getQuotationSheetsHTML, getQuotationDetailsContentHTML } from './templates.js';
+import { api } from '../services/api.js?v=5.2';
+import { getQuotationsHTML, getQuotationSheetsHTML, getQuotationDetailsContentHTML } from './templates.js?v=5.2';
 
 let currentQuotations = [];
 let currentFilter = 'Draft';

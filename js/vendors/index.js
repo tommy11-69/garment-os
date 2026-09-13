@@ -1,7 +1,7 @@
-import { vendorStore } from '../stores/VendorStore.js';
-import { BottomSheet } from '../components/index.js';
-import { bindFormValidation } from '../utils/formHandler.js';
-import { getCreateVendorSheetHTML, getCreateVendorFooterHTML } from '../components/vendorForms.js';
+import { vendorStore } from '../stores/VendorStore.js?v=5.2';
+import { BottomSheet } from '../components/index.js?v=5.2';
+import { bindFormValidation } from '../utils/formHandler.js?v=5.2';
+import { getCreateVendorSheetHTML, getCreateVendorFooterHTML } from '../components/vendorForms.js?v=5.2';
 import {
     getBulkToolbarHTML,
     getVendorDetailsHeader,
@@ -11,7 +11,7 @@ import {
     getEditVendorFooterHTML,
     getRecordPaymentSheetHTML,
     getRecordPaymentFooterHTML,
-} from './templates.js';
+} from './templates.js?v=5.2';
 
 // Expose filter functions on window immediately at module execution
 window.setVendorStatusFilter = function (val) {

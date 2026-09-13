@@ -1,6 +1,6 @@
-import { api } from '../services/api.js';
-import { renderers } from '../renderers.js';
-import { getOrderSheetsHTML, getOrderDetailsHeader, getOrderDetailsContent, getOrdersAnalyticsHTML } from './templates.js';
+import { api } from '../services/api.js?v=5.2';
+import { renderers } from '../renderers.js?v=5.2';
+import { getOrderSheetsHTML, getOrderDetailsHeader, getOrderDetailsContent, getOrdersAnalyticsHTML } from './templates.js?v=5.2';
 
 let currentOrders = [];
 let activeOrder = null;

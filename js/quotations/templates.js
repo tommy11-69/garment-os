@@ -1,6 +1,6 @@
-import { SelectInput, TextInput, TextareaInput } from '../components/inputs.js';
-import { BottomSheet } from '../components/index.js';
-import { api } from '../services/api.js';
+import { SelectInput, TextInput, TextareaInput } from '../components/inputs.js?v=5.2';
+import { BottomSheet } from '../components/index.js?v=5.2';
+import { api } from '../services/api.js?v=5.2';
 
 export function getQuotationsHTML(quotations) {
     if (!quotations || quotations.length === 0) {

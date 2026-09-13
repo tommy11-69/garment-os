@@ -1,4 +1,4 @@
-import { db } from '../data/database.js';
+import { db } from '../data/database.js?v=5.2';
 
 export class BaseRepository {
     constructor(collectionName) {

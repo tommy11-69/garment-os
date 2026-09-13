@@ -1,16 +1,16 @@
-import { inventoryStore } from '../stores/InventoryStore.js';
-import { vendorRepository } from '../repositories/VendorRepository.js';
-import { orderRepository } from '../repositories/OrderRepository.js';
-import { renderers } from '../renderers.js';
-import { BottomSheet } from '../components/index.js';
-import { bindFormValidation } from '../utils/formHandler.js';
+import { inventoryStore } from '../stores/InventoryStore.js?v=5.2';
+import { vendorRepository } from '../repositories/VendorRepository.js?v=5.2';
+import { orderRepository } from '../repositories/OrderRepository.js?v=5.2';
+import { renderers } from '../renderers.js?v=5.2';
+import { BottomSheet } from '../components/index.js?v=5.2';
+import { bindFormValidation } from '../utils/formHandler.js?v=5.2';
 import {
     getCreateItemSheetHTML, getCreateItemFooterHTML,
     getStockInSheetHTML, getStockInFooterHTML,
     getStockOutSheetHTML, getStockOutFooterHTML,
     getAdjustStockSheetHTML, getAdjustStockFooterHTML,
     getItemDetailsHeader, getItemDetailsContent, getItemDetailsFooter
-} from './templates.js';
+} from './templates.js?v=5.2';
 
 // ── EXPOSE WINDOW HANDLERS IMMEDIATELY ───────────────────────────────────────
 // Prevents any "is not a function" race condition when inline attributes or FAB are tapped

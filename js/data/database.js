@@ -1,4 +1,4 @@
-import { getApiBaseUrl } from '../config.js';
+import { getApiBaseUrl } from '../config.js?v=5.2';
 
 class Database {
     constructor() {

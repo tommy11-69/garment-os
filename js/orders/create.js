@@ -3,8 +3,8 @@
  * Handles all wizard logic, auto-calculations, data collection and save.
  */
 
-import { orderStore } from '../stores/OrderStore.js';
-import { customerStore } from '../stores/CustomerStore.js';
+import { orderStore } from '../stores/OrderStore.js?v=5.2';
+import { customerStore } from '../stores/CustomerStore.js?v=5.2';
 
 // ─── Fabric sub-type options ─────────────────────────────────────────────────
 const FABRIC_SUBTYPES = {

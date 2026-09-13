@@ -1,6 +1,6 @@
-import { SelectInput, TextInput, TextareaInput } from '../components/inputs.js';
-import { TimelineEvent } from '../components/index.js';
-import { CATEGORY_META } from '../repositories/InventoryRepository.js';
+import { SelectInput, TextInput, TextareaInput } from '../components/inputs.js?v=5.2';
+import { TimelineEvent } from '../components/index.js?v=5.2';
+import { CATEGORY_META } from '../repositories/InventoryRepository.js?v=5.2';
 
 // ── 1. Create New Inventory Item Sheet ───────────────────────────────────────
 export function getCreateItemSheetHTML(vendors = []) {

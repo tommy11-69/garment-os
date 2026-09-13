@@ -1,5 +1,5 @@
-import { BaseStore } from './BaseStore.js';
-import { inventoryRepository } from '../repositories/InventoryRepository.js';
+import { BaseStore } from './BaseStore.js?v=5.2';
+import { inventoryRepository } from '../repositories/InventoryRepository.js?v=5.2';
 
 class InventoryStore extends BaseStore {
     constructor() {

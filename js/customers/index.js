@@ -1,8 +1,8 @@
-import { customerStore } from '../stores/CustomerStore.js';
-import { renderers } from '../renderers.js';
-import { BottomSheet } from '../components/index.js';
-import { bindFormValidation } from '../utils/formHandler.js';
-import { getCreateCustomerSheetHTML, getCreateCustomerFooterHTML } from '../components/customerForms.js';
+import { customerStore } from '../stores/CustomerStore.js?v=5.2';
+import { renderers } from '../renderers.js?v=5.2';
+import { BottomSheet } from '../components/index.js?v=5.2';
+import { bindFormValidation } from '../utils/formHandler.js?v=5.2';
+import { getCreateCustomerSheetHTML, getCreateCustomerFooterHTML } from '../components/customerForms.js?v=5.2';
 import { 
     getBulkToolbarHTML, 
     getCustomerDetailsHeader, 
@@ -12,7 +12,7 @@ import {
     getEditCustomerFooterHTML,
     getCollectPaymentSheetHTML,
     getCollectPaymentFooterHTML
-} from './templates.js';
+} from './templates.js?v=5.2';
 
 // ─── INITIALIZATION ───────────────────────────────────────────────
 

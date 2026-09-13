@@ -1,4 +1,4 @@
-import { api } from '../services/api.js';
+import { api } from '../services/api.js?v=5.2';
 
 const $ = (id) => document.getElementById(id);
 

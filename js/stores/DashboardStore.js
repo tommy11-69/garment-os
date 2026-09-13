@@ -1,9 +1,9 @@
-import { BaseStore } from './BaseStore.js';
-import { orderRepository } from '../repositories/OrderRepository.js';
-import { productionRepository } from '../repositories/ProductionRepository.js';
-import { customerRepository } from '../repositories/CustomerRepository.js';
-import { financeRepository } from '../repositories/FinanceRepository.js';
-import { calculatorRepository } from '../repositories/CalculatorRepository.js';
+import { BaseStore } from './BaseStore.js?v=5.2';
+import { orderRepository } from '../repositories/OrderRepository.js?v=5.2';
+import { productionRepository } from '../repositories/ProductionRepository.js?v=5.2';
+import { customerRepository } from '../repositories/CustomerRepository.js?v=5.2';
+import { financeRepository } from '../repositories/FinanceRepository.js?v=5.2';
+import { calculatorRepository } from '../repositories/CalculatorRepository.js?v=5.2';
 
 class DashboardStore extends BaseStore {
     constructor() {

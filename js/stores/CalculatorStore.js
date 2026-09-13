@@ -1,5 +1,5 @@
-import { BaseStore } from './BaseStore.js';
-import { calculatorRepository } from '../repositories/CalculatorRepository.js';
+import { BaseStore } from './BaseStore.js?v=5.2';
+import { calculatorRepository } from '../repositories/CalculatorRepository.js?v=5.2';
 
 class CalculatorStore extends BaseStore {
     constructor() {

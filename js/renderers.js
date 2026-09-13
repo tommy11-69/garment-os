@@ -1,4 +1,4 @@
-import { ProgressBar } from './components/index.js';
+import { ProgressBar } from './components/index.js?v=5.2';
 
 // ─── Stage Pipeline Helper ────────────────────────────────────────────────────
 const STAGE_SEQUENCES = {

@@ -1,8 +1,8 @@
-import { api } from '../services/api.js';
-import { BottomSheet } from '../components/index.js';
-import { TextInput, SelectInput, TextareaInput } from '../components/inputs.js';
-import { bindFormValidation } from '../utils/formHandler.js';
-import { calculatorStore } from '../stores/CalculatorStore.js';
+import { api } from '../services/api.js?v=5.2';
+import { BottomSheet } from '../components/index.js?v=5.2';
+import { TextInput, SelectInput, TextareaInput } from '../components/inputs.js?v=5.2';
+import { bindFormValidation } from '../utils/formHandler.js?v=5.2';
+import { calculatorStore } from '../stores/CalculatorStore.js?v=5.2';
 
 // ══════════════════════════════════════════════════════
 //  STATE

@@ -1,4 +1,4 @@
-import { isValidEmail, isValidPhone, isValidGST, isValidPAN, isPositiveNumber, isNonNegativeNumber, isFutureOrToday } from './validation.js';
+import { isValidEmail, isValidPhone, isValidGST, isValidPAN, isPositiveNumber, isNonNegativeNumber, isFutureOrToday } from './validation.js?v=5.2';
 
 /**
  * Binds validation logic to a dynamically rendered form.

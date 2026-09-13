@@ -1,5 +1,5 @@
-import { BaseStore } from './BaseStore.js';
-import { vendorRepository } from '../repositories/VendorRepository.js';
+import { BaseStore } from './BaseStore.js?v=5.2';
+import { vendorRepository } from '../repositories/VendorRepository.js?v=5.2';
 
 class VendorStore extends BaseStore {
     constructor() {

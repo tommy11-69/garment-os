@@ -1,5 +1,5 @@
-import { BaseStore } from './BaseStore.js';
-import { orderRepository } from '../repositories/OrderRepository.js';
+import { BaseStore } from './BaseStore.js?v=5.2';
+import { orderRepository } from '../repositories/OrderRepository.js?v=5.2';
 
 class OrderStore extends BaseStore {
     constructor() {

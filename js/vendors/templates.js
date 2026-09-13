@@ -1,5 +1,5 @@
-import { TextInput, SelectInput, TextareaInput } from '../components/inputs.js';
-import { VENDOR_TYPES } from '../components/vendorForms.js';
+import { TextInput, SelectInput, TextareaInput } from '../components/inputs.js?v=5.2';
+import { VENDOR_TYPES } from '../components/vendorForms.js?v=5.2';
 
 const fmt = (n) => '₹' + parseFloat(n || 0).toLocaleString('en-IN', { minimumFractionDigits: 0 });
 

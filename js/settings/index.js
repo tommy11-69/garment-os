@@ -1,4 +1,4 @@
-import { db } from '../data/database.js';
+import { db } from '../data/database.js?v=5.2';
 
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('settings-form');

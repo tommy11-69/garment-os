@@ -1,5 +1,5 @@
-import { BaseStore } from './BaseStore.js';
-import { dispatchRepository } from '../repositories/DispatchRepository.js';
+import { BaseStore } from './BaseStore.js?v=5.2';
+import { dispatchRepository } from '../repositories/DispatchRepository.js?v=5.2';
 
 class DispatchStore extends BaseStore {
     constructor() {

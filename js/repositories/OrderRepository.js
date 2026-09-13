@@ -1,5 +1,5 @@
-import { BaseRepository } from './BaseRepository.js';
-import { db } from '../data/database.js';
+import { BaseRepository } from './BaseRepository.js?v=5.2';
+import { db } from '../data/database.js?v=5.2';
 
 class OrderRepository extends BaseRepository {
     constructor() {

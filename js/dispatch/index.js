@@ -1,9 +1,9 @@
-import { dispatchStore } from '../stores/DispatchStore.js';
-import { renderers } from '../renderers.js';
-import { BottomSheet } from '../components/index.js';
+import { dispatchStore } from '../stores/DispatchStore.js?v=5.2';
+import { renderers } from '../renderers.js?v=5.2';
+import { BottomSheet } from '../components/index.js?v=5.2';
 import { 
     getDispatchOrderSheetHTML, getDispatchOrderFooterHTML
-} from './templates.js';
+} from './templates.js?v=5.2';
 
 document.addEventListener('DOMContentLoaded', () => {
     initUI();
