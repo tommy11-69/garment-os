@@ -200,7 +200,11 @@ export function getBalanceSheetDetailHTML(type, items = [], parties = { customer
 
     // ── 1. CASH LEDGER ──────────────────────────────────────────────────────
     if (type === 'cash') {
-        const sorted = [...items].sort((a, b) => new Date(a.date) - new Date(b.date));
+        const sorted = [...items].sort((a, b) => {
+            const diff = new Date(a.date) - new Date(b.date);
+            if (diff !== 0) return diff;
+            return String(a.id).localeCompare(String(b.id));
+        });
         let balance = runningBalanceData?.openingBalance || 0;
         const openingBalance = balance;
 
