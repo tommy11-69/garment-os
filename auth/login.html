@@ -62,6 +62,48 @@
             background: linear-gradient(135deg, #0059B5 0%, #0071E3 100%);
             box-shadow: 0 8px 20px rgba(0, 89, 181, 0.25);
         }
+
+        .biometric-btn {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 13px 20px;
+            border-radius: 18px;
+            border: 1.5px solid #E2E8F0;
+            background: #F8FAFF;
+            color: #0059B5;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 180ms ease;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .biometric-btn:hover {
+            background: #EEF4FF;
+            border-color: #0059B5;
+            box-shadow: 0 0 0 3px rgba(0,89,181,0.10);
+        }
+        .biometric-btn:active { transform: scale(0.97); }
+        .biometric-btn:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+
+        .or-divider {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #94A3B8;
+            font-size: 12px;
+            font-weight: 500;
+            letter-spacing: 0.05em;
+            margin: 2px 0;
+        }
+        .or-divider::before, .or-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #E2E8F0;
+        }
     </style>
 </head>
 <body class="font-body text-body antialiased">
@@ -131,6 +173,19 @@
 
             </form>
 
+            <!-- Biometric Login Section -->
+            <div id="biometric-section" class="hidden mt-4">
+                <div class="or-divider">or</div>
+                <button id="biometric-btn" onclick="loginWithBiometric()" class="biometric-btn mt-3">
+                    <span class="material-symbols-outlined text-[22px]" style="font-variation-settings:'FILL' 1;">fingerprint</span>
+                    <span id="biometric-btn-text">Sign in with Biometrics</span>
+                </button>
+                <div id="biometric-error" class="hidden rounded-xl bg-error-container border border-error/20 p-3 flex items-center gap-2 mt-2">
+                    <span class="material-symbols-outlined text-error text-[18px] shrink-0">error</span>
+                    <span id="biometric-error-msg" class="text-[12px] text-error font-medium leading-snug"></span>
+                </div>
+            </div>
+
           
         </div>
 
@@ -145,25 +200,27 @@
         // Detect API endpoint based on environment
         function getAPIBase() {
             const hostname = window.location.hostname;
-            
-            // Development environments
             if (hostname === 'localhost' || hostname === '127.0.0.1') {
                 return 'http://localhost:8787';
             }
-            
-            // Production: check if API is on same domain or different
-            const protocol = window.location.protocol; // https: or http:
+            const protocol = window.location.protocol;
             const port = window.location.port ? `:${window.location.port}` : '';
-            
-            // Try: api.yourdomain.com, api-yourdomain.com, yourdomain.com/api, etc.
-            // For now, assume same domain
             return `${protocol}//${hostname}${port}`;
         }
         
         const API_BASE = getAPIBase();
-        
-        // Debug: log API endpoint (remove in production)
         console.log('API Base:', API_BASE);
+
+        // ── WebAuthn / Biometric Support Detection ────────────────────
+        (async function detectBiometric() {
+            try {
+                if (!window.PublicKeyCredential) return;
+                const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+                if (available) {
+                    document.getElementById('biometric-section').classList.remove('hidden');
+                }
+            } catch (e) { /* not supported, keep hidden */ }
+        })();
 
         function togglePassword() {
             const pw = document.getElementById('password');
@@ -192,37 +249,22 @@
             pwError.classList.add('hidden');
             loginError.classList.add('hidden');
 
-            if (!username) {
-                emailError.classList.remove('hidden');
-                valid = false;
-            }
-            if (!password) {
-                pwError.classList.remove('hidden');
-                valid = false;
-            }
+            if (!username) { emailError.classList.remove('hidden'); valid = false; }
+            if (!password) { pwError.classList.remove('hidden'); valid = false; }
             if (!valid) return;
 
-            // Loading state
             btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-[18px]">progress_activity</span> <span>Authenticating…</span>';
             btn.disabled = true;
             btn.style.opacity = '0.8';
 
             try {
-                const loginUrl = `${API_BASE}/api/auth/login`;
-                console.log('Attempting login at:', loginUrl);
-                
-                const response = await fetch(loginUrl, {
+                const response = await fetch(`${API_BASE}/api/auth/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username, password })
                 });
-
                 const data = await response.json();
-
-                if (!response.ok || data.error) {
-                    throw new Error(data.error || 'Authentication failed');
-                }
-
+                if (!response.ok || data.error) throw new Error(data.error || 'Authentication failed');
                 if (data.token) {
                     localStorage.setItem('gos_token', data.token);
                     window.location.href = '../pages/dashboard.html';
@@ -234,6 +276,91 @@
                 btn.innerHTML = '<span>Sign In</span><span class="material-symbols-outlined text-[18px]">arrow_forward</span>';
                 btn.disabled = false;
                 btn.style.opacity = '1';
+            }
+        }
+
+        // ── Biometric / WebAuthn Login Flow ───────────────────────────
+        async function loginWithBiometric() {
+            const btn = document.getElementById('biometric-btn');
+            const btnText = document.getElementById('biometric-btn-text');
+            const errBox = document.getElementById('biometric-error');
+            const errMsg = document.getElementById('biometric-error-msg');
+
+            errBox.classList.add('hidden');
+            btn.disabled = true;
+            btnText.textContent = 'Waiting for biometric…';
+
+            const showError = (msg) => {
+                errMsg.textContent = msg;
+                errBox.classList.remove('hidden');
+                btn.disabled = false;
+                btnText.textContent = 'Sign in with Biometrics';
+            };
+
+            try {
+                // Step 1: Get challenge from server
+                const beginRes = await fetch(`${API_BASE}/api/auth/webauthn/login-begin`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                const beginData = await beginRes.json();
+                if (!beginRes.ok || beginData.error) throw new Error(beginData.error || 'Could not start biometric login');
+
+                // Step 2: Build PublicKeyCredentialRequestOptions
+                const b64ToBuffer = (b64) => {
+                    const bin = atob(b64.replace(/-/g,'+').replace(/_/g,'/'));
+                    return Uint8Array.from(bin, c => c.charCodeAt(0)).buffer;
+                };
+                const bufToB64 = (buf) => {
+                    return btoa(String.fromCharCode(...new Uint8Array(buf)))
+                        .replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+                };
+
+                const credRequestOptions = {
+                    publicKey: {
+                        challenge: b64ToBuffer(beginData.challenge),
+                        rpId: beginData.rpId,
+                        allowCredentials: beginData.allowCredentials.map(c => ({
+                            type: 'public-key',
+                            id: b64ToBuffer(c.id)
+                        })),
+                        userVerification: 'required',
+                        timeout: beginData.timeout
+                    }
+                };
+
+                // Step 3: Prompt device biometric (FaceID / Fingerprint / Windows Hello)
+                const assertion = await navigator.credentials.get(credRequestOptions);
+                if (!assertion) throw new Error('Biometric authentication cancelled');
+
+                // Step 4: Send assertion to server for verification
+                const verifyRes = await fetch(`${API_BASE}/api/auth/webauthn/login-verify`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        credentialId:      bufToB64(assertion.rawId),
+                        clientDataJSON:    bufToB64(assertion.response.clientDataJSON),
+                        authenticatorData: bufToB64(assertion.response.authenticatorData),
+                        signature:         bufToB64(assertion.response.signature)
+                    })
+                });
+                const verifyData = await verifyRes.json();
+                if (!verifyRes.ok || verifyData.error) throw new Error(verifyData.error || 'Biometric verification failed');
+
+                // Step 5: Store token & redirect
+                localStorage.setItem('gos_token', verifyData.token);
+                window.location.href = '../pages/dashboard.html';
+
+            } catch (err) {
+                console.error('Biometric login error:', err);
+                if (err.name === 'NotAllowedError') {
+                    showError('Biometric scan was cancelled or timed out. Try again.');
+                } else if (err.name === 'SecurityError') {
+                    showError('Security error: ensure the app is running over HTTPS.');
+                } else {
+                    showError(err.message || 'Biometric authentication failed.');
+                }
             }
         }
     </script>

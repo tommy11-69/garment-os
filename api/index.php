@@ -174,6 +174,25 @@ try {
         `createdAt` DATETIME DEFAULT CURRENT_TIMESTAMP,
         `updatedAt` DATETIME DEFAULT CURRENT_TIMESTAMP
     )");
+
+    // ── WebAuthn Tables (auto-create) ────────────────────────────────
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `webauthn_credentials` (
+        `id` INT AUTO_INCREMENT PRIMARY KEY,
+        `userId` VARCHAR(191) NOT NULL,
+        `credentialId` TEXT NOT NULL,
+        `publicKey` LONGTEXT NOT NULL,
+        `counter` BIGINT DEFAULT 0,
+        `deviceName` VARCHAR(191) DEFAULT 'My Device',
+        `deviceAllowed` TINYINT DEFAULT 1,
+        `createdAt` DATETIME DEFAULT CURRENT_TIMESTAMP
+    )");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS `webauthn_challenges` (
+        `id` INT AUTO_INCREMENT PRIMARY KEY,
+        `challenge` VARCHAR(512) NOT NULL,
+        `userId` VARCHAR(191) DEFAULT NULL,
+        `expiresAt` DATETIME NOT NULL
+    )");
 } catch (Exception $e) { /* ignore */ }
 
 try {
@@ -198,9 +217,9 @@ if ($relPath === 'auth/login') {
     }
 
     // 1. Guest / Showcase Login Check
-    if (($username === 'guest' && $password === 'guest123') || ($username === 'demo' && $password === 'demo123')) {
+    if (($username === 'guest' && $password === 'guest@183') || ($username === 'demo' && $password === 'demo@183')) {
         $token = 'demo-' . bin2hex(random_bytes(16));
-        $expiresAt = (time() + 86400 * 7) * 1000;
+        $expiresAt = (time() + 3600) * 1000; // 1 hour expiration
         
         // Connect to Demo DB and store session there
         try {
@@ -221,7 +240,7 @@ if ($relPath === 'auth/login') {
     // 2. Hardcoded developer admin fallback
     if ($username === 'admin' && $password === 'admin123') {
         $token = bin2hex(random_bytes(16));
-        $expiresAt = (time() + 86400 * 7) * 1000;
+        $expiresAt = (time() + 3600) * 1000; // 1 hour expiration
         $stmt = $pdo->prepare('INSERT INTO sessions (`token`, `userId`, `expiresAt`) VALUES (?, ?, ?)');
         $stmt->execute([$token, 'dev-admin', $expiresAt]);
         jsonResponse(['success' => true, 'token' => $token, 'userId' => 'dev-admin', 'userType' => 'Developer (Fallback)']);
@@ -236,11 +255,365 @@ if ($relPath === 'auth/login') {
     }
 
     $token = bin2hex(random_bytes(16));
-    $expiresAt = (time() + 86400 * 7) * 1000;
+    $expiresAt = (time() + 3600) * 1000; // 1 hour expiration
     $stmt = $pdo->prepare('INSERT INTO sessions (`token`, `userId`, `expiresAt`) VALUES (?, ?, ?)');
     $stmt->execute([$token, $user['id'], $expiresAt]);
 
     jsonResponse(['success' => true, 'token' => $token, 'userId' => $user['id'], 'userType' => 'Administrator']);
+
+}
+
+// ── WebAuthn Helpers ─────────────────────────────────────────────────
+function b64url_encode(string $data): string {
+    return rtrim(strtr(base64_encode($data), '+/', '-_'), '=');
+}
+function b64url_decode(string $data): string {
+    $padded = str_pad(strtr($data, '-_', '+/'), strlen($data) + (4 - strlen($data) % 4) % 4, '=', STR_PAD_RIGHT);
+    return base64_decode($padded);
+}
+function wa_generate_challenge(): string {
+    return b64url_encode(random_bytes(32));
+}
+
+/**
+ * Parse a COSE key (CBOR-encoded) from authData and return a PEM public key.
+ * Supports ES256 (alg -7, P-256) and RS256 (alg -257, RSA).
+ * Uses a minimal CBOR decoder for the key map only.
+ */
+function cose_key_to_pem(string $coseBytes): ?string {
+    // Minimal CBOR map parser — only handles small integer keys (1-byte) and byte strings
+    $pos = 0;
+    $len = strlen($coseBytes);
+    $map = [];
+
+    $readByte = function() use (&$coseBytes, &$pos) { return ord($coseBytes[$pos++]); };
+    $readUint = function($ib) use (&$coseBytes, &$pos, $readByte) {
+        $ai = $ib & 0x1f;
+        if ($ai < 24) return $ai;
+        if ($ai === 24) return $readByte();
+        if ($ai === 25) { $v = (ord($coseBytes[$pos]) << 8) | ord($coseBytes[$pos+1]); $pos+=2; return $v; }
+        if ($ai === 26) { $v = unpack('N', substr($coseBytes,$pos,4))[1]; $pos+=4; return $v; }
+        return 0;
+    };
+
+    $ib = $readByte();
+    $mt = ($ib & 0xe0) >> 5;
+    if ($mt !== 5) return null; // not a map
+    $mapLen = $readUint($ib);
+
+    for ($i = 0; $i < $mapLen; $i++) {
+        // Key
+        $kib = $readByte(); $kmt = ($kib & 0xe0) >> 5;
+        $key = ($kmt === 0) ? (int)$readUint($kib) : -(int)($readUint($kib)+1); // neg int
+        // Value
+        $vib = $readByte(); $vmt = ($vib & 0xe0) >> 5;
+        if ($vmt === 2) { // byte string
+            $vlen = $readUint($vib);
+            $map[$key] = substr($coseBytes, $pos, $vlen); $pos += $vlen;
+        } elseif ($vmt === 0 || $vmt === 1) { // uint / nint
+            $map[$key] = ($vmt === 0) ? (int)$readUint($vib) : -(int)($readUint($vib)+1);
+        } else { $pos += $readUint($vib); } // skip others
+    }
+
+    $alg = $map[3] ?? null;
+    if ($alg === -7) {
+        // ES256: kty=2, crv=1, x=-2, y=-3
+        $x = $map[-2] ?? null; $y = $map[-3] ?? null;
+        if (!$x || !$y) return null;
+        $rawKey = "\x04" . $x . $y; // uncompressed EC point
+        $asn1 = "\x30\x59\x30\x13\x06\x07\x2a\x86\x48\xce\x3d\x02\x01\x06\x08\x2a\x86\x48\xce\x3d\x03\x01\x07\x03\x42\x00" . $rawKey;
+        return "-----BEGIN PUBLIC KEY-----\n" . chunk_split(base64_encode($asn1), 64) . "-----END PUBLIC KEY-----";
+    } elseif ($alg === -257) {
+        // RS256: n=-1, e=-2
+        $n = $map[-1] ?? null; $e = $map[-2] ?? null;
+        if (!$n || !$e) return null;
+        // Encode as DER RSAPublicKey then wrap in SubjectPublicKeyInfo
+        $encInt = function($bytes) {
+            $bytes = ltrim($bytes, "\x00");
+            if (ord($bytes[0]) & 0x80) $bytes = "\x00" . $bytes;
+            $len = strlen($bytes);
+            return "\x02" . ($len < 128 ? chr($len) : ("\x81" . chr($len))) . $bytes;
+        };
+        $rsa = $encInt($n) . $encInt($e);
+        $rsa = "\x30" . (strlen($rsa) < 128 ? chr(strlen($rsa)) : "\x81" . chr(strlen($rsa))) . $rsa;
+        $oid = "\x30\x0d\x06\x09\x2a\x86\x48\x86\xf7\x0d\x01\x01\x01\x05\x00";
+        $asn1 = $oid . "\x03" . chr(strlen($rsa)+1) . "\x00" . $rsa;
+        $asn1 = "\x30" . chr(strlen($asn1)) . $asn1;
+        return "-----BEGIN PUBLIC KEY-----\n" . chunk_split(base64_encode($asn1), 64) . "-----END PUBLIC KEY-----";
+    }
+    return null;
+}
+
+// ── Route: /api/auth/webauthn/register-begin ─────────────────────────
+// Requires: Bearer token (must be logged in with password first)
+// Returns challenge + rp + user options for navigator.credentials.create()
+if ($relPath === 'auth/webauthn/register-begin') {
+    if ($method !== 'POST') jsonResponse(['error' => 'Method not allowed'], 405);
+
+    // Mini-auth: validate bearer token without going through full auth flow below
+    $wAuthHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
+    if (!$wAuthHeader && function_exists('apache_request_headers')) {
+        $ah = apache_request_headers();
+        $wAuthHeader = $ah['Authorization'] ?? $ah['authorization'] ?? '';
+    }
+    if (!$wAuthHeader || !str_starts_with($wAuthHeader, 'Bearer ')) jsonResponse(['error' => 'Unauthorized'], 401);
+    $wToken = trim(substr($wAuthHeader, 7));
+    if (str_starts_with($wToken, 'demo-')) jsonResponse(['error' => 'Biometric login is not available for guest accounts'], 403);
+    $nowMs = round(microtime(true) * 1000);
+    $wStmt = $pdo->prepare('SELECT * FROM sessions WHERE `token` = ? AND `expiresAt` > ?');
+    $wStmt->execute([$wToken, $nowMs]);
+    $wSession = $wStmt->fetch();
+    if (!$wSession) jsonResponse(['error' => 'Unauthorized: Invalid or expired token'], 401);
+
+    $challenge = wa_generate_challenge();
+    $expiresAt = date('Y-m-d H:i:s', time() + 300); // 5 minutes
+    $stmt = $pdo->prepare('INSERT INTO webauthn_challenges (`challenge`, `userId`, `expiresAt`) VALUES (?, ?, ?)');
+    $stmt->execute([$challenge, $wSession['userId'], $expiresAt]);
+
+    $deviceName = trim($body['deviceName'] ?? 'My Device');
+    jsonResponse([
+        'challenge'  => $challenge,
+        'rp'         => ['id' => $_SERVER['HTTP_HOST'] ?? 'localhost', 'name' => 'Garment OS'],
+        'user'       => ['id' => b64url_encode($wSession['userId']), 'name' => $wSession['userId'], 'displayName' => 'Admin'],
+        'pubKeyCredParams' => [['type' => 'public-key', 'alg' => -7], ['type' => 'public-key', 'alg' => -257]],
+        'authenticatorSelection' => ['userVerification' => 'required'],
+        'timeout'    => 60000,
+        '_deviceName' => $deviceName,
+    ]);
+}
+
+// ── Route: /api/auth/webauthn/register-finish ────────────────────────
+// Receives attestation from browser, stores public key
+if ($relPath === 'auth/webauthn/register-finish') {
+    if ($method !== 'POST') jsonResponse(['error' => 'Method not allowed'], 405);
+
+    // Mini-auth
+    $wAuthHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
+    if (!$wAuthHeader && function_exists('apache_request_headers')) {
+        $ah = apache_request_headers();
+        $wAuthHeader = $ah['Authorization'] ?? $ah['authorization'] ?? '';
+    }
+    if (!$wAuthHeader || !str_starts_with($wAuthHeader, 'Bearer ')) jsonResponse(['error' => 'Unauthorized'], 401);
+    $wToken = trim(substr($wAuthHeader, 7));
+    if (str_starts_with($wToken, 'demo-')) jsonResponse(['error' => 'Biometric login is not available for guest accounts'], 403);
+    $nowMs = round(microtime(true) * 1000);
+    $wStmt = $pdo->prepare('SELECT * FROM sessions WHERE `token` = ? AND `expiresAt` > ?');
+    $wStmt->execute([$wToken, $nowMs]);
+    $wSession = $wStmt->fetch();
+    if (!$wSession) jsonResponse(['error' => 'Unauthorized'], 401);
+
+    $credentialId    = $body['credentialId'] ?? '';
+    $clientDataJSON  = b64url_decode($body['clientDataJSON'] ?? '');
+    $attestationObj  = b64url_decode($body['attestationObject'] ?? '');
+    $deviceName      = trim($body['deviceName'] ?? 'My Device');
+
+    if (!$credentialId || !$clientDataJSON || !$attestationObj) {
+        jsonResponse(['error' => 'Missing credential data'], 400);
+    }
+
+    // Verify clientData
+    $clientData = json_decode($clientDataJSON, true);
+    if (!$clientData || $clientData['type'] !== 'webauthn.create') {
+        jsonResponse(['error' => 'Invalid clientData type'], 400);
+    }
+
+    // Verify challenge
+    $receivedChallenge = $clientData['challenge'] ?? '';
+    $stmt = $pdo->prepare('SELECT * FROM webauthn_challenges WHERE `challenge` = ? AND `userId` = ? AND `expiresAt` > NOW()');
+    $stmt->execute([$receivedChallenge, $wSession['userId']]);
+    $ch = $stmt->fetch();
+    if (!$ch) jsonResponse(['error' => 'Invalid or expired challenge'], 400);
+    $pdo->prepare('DELETE FROM webauthn_challenges WHERE `id` = ?')->execute([$ch['id']]);
+
+    // Parse attestationObject (CBOR map): fmt + attStmt + authData
+    // We use a lightweight approach: skip fmt/attStmt, find authData
+    // authData layout: rpIdHash(32) + flags(1) + counter(4) + aaguid(16) + credIdLen(2) + credId + coseKey
+    $authDataStart = strpos($attestationObj, 'authData');
+    if ($authDataStart === false) {
+        // Try CBOR: find authData bytes directly (text key "authData" in CBOR is 68617574684461746100...)
+        // Fallback: parse raw CBOR map for key "authData" (key 3 in packed fmt, but varies)
+        // Simple approach: scan for 0x68617574684461 ("authData" as CBOR text)
+        $needle = "\x68authData"; // CBOR text(8) + "authData"
+        $authDataStart = strpos($attestationObj, $needle);
+        if ($authDataStart !== false) {
+            $authDataStart += strlen($needle);
+            $bIb = ord($attestationObj[$authDataStart++]);
+            $authDataLen = ($bIb & 0x1f) < 24 ? ($bIb & 0x1f) : ord($attestationObj[$authDataStart++]);
+            $authData = substr($attestationObj, $authDataStart, $authDataLen);
+            if (strlen($authData) < $authDataLen) {
+                // byte string length stored in 2 bytes
+                $authDataStart -= 1;
+                $authDataLen = (ord($attestationObj[$authDataStart]) << 8) | ord($attestationObj[$authDataStart+1]);
+                $authDataStart += 2;
+                $authData = substr($attestationObj, $authDataStart, $authDataLen);
+            }
+        } else {
+            jsonResponse(['error' => 'Could not parse attestation object'], 400);
+        }
+    } else {
+        // For 'none' attestation (most platform authenticators), skip CBOR header bytes
+        $authData = substr($attestationObj, $authDataStart + 10);
+    }
+
+    if (strlen($authData) < 55) jsonResponse(['error' => 'authData too short'], 400);
+
+    $flags = ord($authData[32]);
+    if (!($flags & 0x40)) jsonResponse(['error' => 'Attested credential data flag not set'], 400);
+
+    $counter = unpack('N', substr($authData, 33, 4))[1];
+    // aaguid: bytes 37-52, credIdLen: bytes 53-54
+    $credIdLen = (ord($authData[53]) << 8) | ord($authData[54]);
+    $coseKey = substr($authData, 55 + $credIdLen);
+
+    $publicKeyPem = cose_key_to_pem($coseKey);
+    if (!$publicKeyPem) jsonResponse(['error' => 'Unsupported key type (only ES256 / RS256 supported)'], 400);
+
+    $stmt = $pdo->prepare('INSERT INTO webauthn_credentials (`userId`, `credentialId`, `publicKey`, `counter`, `deviceName`, `deviceAllowed`) VALUES (?, ?, ?, ?, ?, 1)');
+    $stmt->execute([$wSession['userId'], $credentialId, $publicKeyPem, $counter, $deviceName]);
+
+    jsonResponse(['success' => true, 'message' => 'Biometric credential registered successfully']);
+}
+
+// ── Route: /api/auth/webauthn/login-begin ────────────────────────────
+// No auth required. Returns challenge + allowCredentials for login
+if ($relPath === 'auth/webauthn/login-begin') {
+    if ($method !== 'POST') jsonResponse(['error' => 'Method not allowed'], 405);
+
+    // Fetch all ALLOWED credentials (deviceAllowed = 1) for the admin user
+    $stmt = $pdo->prepare('SELECT `credentialId` FROM webauthn_credentials WHERE `deviceAllowed` = 1');
+    $stmt->execute();
+    $creds = $stmt->fetchAll();
+
+    if (empty($creds)) {
+        jsonResponse(['error' => 'No registered biometric devices found. Please register a device in Settings first.'], 404);
+    }
+
+    $challenge = wa_generate_challenge();
+    $expiresAt = date('Y-m-d H:i:s', time() + 300);
+    $stmt = $pdo->prepare('INSERT INTO webauthn_challenges (`challenge`, `userId`, `expiresAt`) VALUES (?, NULL, ?)');
+    $stmt->execute([$challenge, $expiresAt]);
+
+    $allowCredentials = array_map(fn($c) => ['type' => 'public-key', 'id' => $c['credentialId']], $creds);
+
+    jsonResponse([
+        'challenge'        => $challenge,
+        'rpId'             => $_SERVER['HTTP_HOST'] ?? 'localhost',
+        'allowCredentials' => $allowCredentials,
+        'userVerification' => 'required',
+        'timeout'          => 60000,
+    ]);
+}
+
+// ── Route: /api/auth/webauthn/login-verify ───────────────────────────
+// No auth required. Verifies assertion, returns session token
+if ($relPath === 'auth/webauthn/login-verify') {
+    if ($method !== 'POST') jsonResponse(['error' => 'Method not allowed'], 405);
+
+    $credentialId   = $body['credentialId'] ?? '';
+    $clientDataJSON = b64url_decode($body['clientDataJSON'] ?? '');
+    $authDataB64    = $body['authenticatorData'] ?? '';
+    $signatureB64   = $body['signature'] ?? '';
+
+    if (!$credentialId || !$clientDataJSON || !$authDataB64 || !$signatureB64) {
+        jsonResponse(['error' => 'Missing assertion data'], 400);
+    }
+
+    // Verify clientData
+    $clientData = json_decode($clientDataJSON, true);
+    if (!$clientData || $clientData['type'] !== 'webauthn.get') {
+        jsonResponse(['error' => 'Invalid clientData type'], 400);
+    }
+
+    // Verify challenge
+    $receivedChallenge = $clientData['challenge'] ?? '';
+    $stmt = $pdo->prepare('SELECT * FROM webauthn_challenges WHERE `challenge` = ? AND `userId` IS NULL AND `expiresAt` > NOW()');
+    $stmt->execute([$receivedChallenge]);
+    $ch = $stmt->fetch();
+    if (!$ch) jsonResponse(['error' => 'Invalid or expired challenge'], 400);
+    $pdo->prepare('DELETE FROM webauthn_challenges WHERE `id` = ?')->execute([$ch['id']]);
+
+    // Fetch credential (must be allowed)
+    $stmt = $pdo->prepare('SELECT * FROM webauthn_credentials WHERE `credentialId` = ? AND `deviceAllowed` = 1');
+    $stmt->execute([$credentialId]);
+    $cred = $stmt->fetch();
+    if (!$cred) jsonResponse(['error' => 'Device not found or not authorized. Contact admin to enable this device.'], 403);
+
+    // Verify signature
+    $authData     = b64url_decode($authDataB64);
+    $signature    = b64url_decode($signatureB64);
+    $clientDataHash = hash('sha256', $clientDataJSON, true);
+    $verifyData   = $authData . $clientDataHash;
+
+    $pubKey = openssl_pkey_get_public($cred['publicKey']);
+    if (!$pubKey) jsonResponse(['error' => 'Failed to load public key'], 500);
+
+    $keyDetails = openssl_pkey_get_details($pubKey);
+    $algoConst  = ($keyDetails['type'] === OPENSSL_KEYTYPE_EC) ? OPENSSL_ALGO_SHA256 : OPENSSL_ALGO_SHA256;
+    $verified   = openssl_verify($verifyData, $signature, $pubKey, $algoConst);
+
+    if ($verified !== 1) jsonResponse(['error' => 'Biometric verification failed — signature mismatch'], 401);
+
+    // Check counter (anti-clone)
+    $counter = unpack('N', substr(b64url_decode($authDataB64), 33, 4))[1];
+    if ($counter !== 0 && $counter <= $cred['counter']) {
+        jsonResponse(['error' => 'Authenticator counter invalid — possible cloned credential'], 401);
+    }
+    $pdo->prepare('UPDATE webauthn_credentials SET `counter` = ? WHERE `id` = ?')->execute([$counter, $cred['id']]);
+
+    // Issue session token for Main DB admin
+    $token     = bin2hex(random_bytes(16));
+    $expiresAt = (time() + 3600) * 1000;
+    $stmt = $pdo->prepare('INSERT INTO sessions (`token`, `userId`, `expiresAt`) VALUES (?, ?, ?)');
+    $stmt->execute([$token, $cred['userId'], $expiresAt]);
+
+    jsonResponse(['success' => true, 'token' => $token, 'userId' => $cred['userId'], 'userType' => 'Administrator']);
+}
+
+// ── Route: /api/auth/webauthn/devices ────────────────────────────────
+// Requires Bearer token — list / toggle / delete registered devices
+if (str_starts_with($relPath, 'auth/webauthn/devices')) {
+    // Mini-auth
+    $wAuthHeader = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
+    if (!$wAuthHeader && function_exists('apache_request_headers')) {
+        $ah = apache_request_headers();
+        $wAuthHeader = $ah['Authorization'] ?? $ah['authorization'] ?? '';
+    }
+    if (!$wAuthHeader || !str_starts_with($wAuthHeader, 'Bearer ')) jsonResponse(['error' => 'Unauthorized'], 401);
+    $wToken = trim(substr($wAuthHeader, 7));
+    if (str_starts_with($wToken, 'demo-')) jsonResponse(['error' => 'Not available for guest accounts'], 403);
+    $nowMs = round(microtime(true) * 1000);
+    $wStmt = $pdo->prepare('SELECT * FROM sessions WHERE `token` = ? AND `expiresAt` > ?');
+    $wStmt->execute([$wToken, $nowMs]);
+    $wSession = $wStmt->fetch();
+    if (!$wSession) jsonResponse(['error' => 'Unauthorized'], 401);
+
+    $devSegs = explode('/', $relPath); // ['auth','webauthn','devices'] or ['auth','webauthn','devices','123']
+    $devId   = $devSegs[3] ?? null;
+
+    if ($method === 'GET' && !$devId) {
+        $stmt = $pdo->prepare('SELECT `id`, `credentialId`, `deviceName`, `deviceAllowed`, `createdAt` FROM webauthn_credentials WHERE `userId` = ? ORDER BY `createdAt` DESC');
+        $stmt->execute([$wSession['userId']]);
+        jsonResponse($stmt->fetchAll());
+    }
+
+    if ($method === 'PATCH' && $devId) {
+        $allowed = isset($body['deviceAllowed']) ? (int)(bool)$body['deviceAllowed'] : null;
+        $name    = isset($body['deviceName']) ? trim($body['deviceName']) : null;
+        $updates = []; $params = [];
+        if ($allowed !== null) { $updates[] = '`deviceAllowed` = ?'; $params[] = $allowed; }
+        if ($name !== null)    { $updates[] = '`deviceName` = ?';    $params[] = $name; }
+        if (empty($updates))   jsonResponse(['error' => 'Nothing to update'], 400);
+        $params[] = $devId; $params[] = $wSession['userId'];
+        $pdo->prepare('UPDATE webauthn_credentials SET ' . implode(', ', $updates) . ' WHERE `id` = ? AND `userId` = ?')->execute($params);
+        jsonResponse(['success' => true]);
+    }
+
+    if ($method === 'DELETE' && $devId) {
+        $pdo->prepare('DELETE FROM webauthn_credentials WHERE `id` = ? AND `userId` = ?')->execute([$devId, $wSession['userId']]);
+        jsonResponse(['success' => true]);
+    }
+
+    jsonResponse(['error' => 'Method not allowed'], 405);
 }
 
 // ── Auth Token Verification for all other API endpoints ──────────────

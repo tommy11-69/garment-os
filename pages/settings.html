@@ -67,6 +67,40 @@
                     
                 </form>
             </div>
+
+            <!-- ── Biometric Login Card ───────────────────────────────────── -->
+            <div id="biometric-card" class="bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-sm overflow-hidden p-6">
+                <div class="flex items-center gap-3 mb-1">
+                    <span class="material-symbols-outlined text-primary text-[22px]" style="font-variation-settings:'FILL' 1;">fingerprint</span>
+                    <h3 class="text-[17px] font-semibold text-on-surface">Biometric Login</h3>
+                </div>
+                <p class="text-[13px] text-secondary mb-5">Register this device for FaceID / fingerprint / Windows Hello login. Each device must be individually approved.</p>
+
+                <!-- Register New Device -->
+                <div class="flex flex-col gap-3 mb-5">
+                    <label class="text-[13px] font-semibold text-on-surface-variant">Device Name</label>
+                    <input id="wa-device-name" type="text" maxlength="48"
+                        class="w-full bg-white border border-outline-variant rounded-2xl px-4 py-3 text-[15px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                        placeholder="e.g. iPhone 15 Pro, Work Laptop"/>
+                    <button id="wa-register-btn" onclick="registerBiometric()"
+                        class="w-full flex items-center justify-center gap-2 bg-primary text-white font-semibold text-[15px] rounded-2xl py-3.5 hover:bg-primary/90 active:scale-[0.98] transition-all">
+                        <span class="material-symbols-outlined text-[18px]">add_circle</span>
+                        <span id="wa-register-btn-text">Register This Device</span>
+                    </button>
+                    <div id="wa-register-error" class="hidden rounded-xl bg-error-container border border-error/20 p-3 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-error text-[18px] shrink-0">error</span>
+                        <span id="wa-register-error-msg" class="text-[12px] text-error font-medium leading-snug"></span>
+                    </div>
+                </div>
+
+                <!-- Registered Devices List -->
+                <div>
+                    <h4 class="text-[13px] font-semibold text-on-surface-variant mb-3">Registered Devices</h4>
+                    <div id="wa-devices-list" class="flex flex-col gap-2">
+                        <div class="text-[13px] text-secondary text-center py-4">Loading devices…</div>
+                    </div>
+                </div>
+            </div>
             
         </main>
     </div>
@@ -76,5 +110,181 @@
 
     <script src="../js/app.js"></script>
     <script type="module" src="../js/settings/index.js"></script>
+
+    <script type="module">
+    // ── Biometric Device Management ───────────────────────────────────────
+    import { db } from '../js/data/database.js';
+
+    const getToken = () => localStorage.getItem('gos_token') || '';
+    const isAdmin  = () => !getToken().startsWith('demo-');
+
+    // Hide biometric card for guest/demo accounts
+    if (!isAdmin()) {
+        document.getElementById('biometric-card').style.display = 'none';
+    }
+
+    // Load registered devices on page load
+    async function loadDevices() {
+        if (!isAdmin()) return;
+        const list = document.getElementById('wa-devices-list');
+        try {
+            const res = await fetch(`${window._API_BASE || ''}/api/auth/webauthn/devices`, {
+                headers: { 'Authorization': 'Bearer ' + getToken() }
+            });
+            const devices = await res.json();
+            if (!res.ok) throw new Error(devices.error || 'Failed to load');
+            if (!devices.length) {
+                list.innerHTML = '<div class="text-[13px] text-secondary text-center py-4">No devices registered yet.</div>';
+                return;
+            }
+            list.innerHTML = devices.map(d => `
+                <div class="flex items-center justify-between gap-3 bg-surface-container p-3.5 rounded-2xl border border-outline-variant/60" id="dev-row-${d.id}">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <span class="material-symbols-outlined text-[20px] ${d.deviceAllowed ? 'text-primary' : 'text-secondary'}" style="font-variation-settings:'FILL' 1;">
+                            ${d.deviceAllowed ? 'phonelink_lock' : 'phonelink_erase'}
+                        </span>
+                        <div class="min-w-0">
+                            <p class="text-[14px] font-semibold text-on-surface truncate">${d.deviceName}</p>
+                            <p class="text-[11px] text-secondary">${new Date(d.createdAt).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'})}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        <button onclick="toggleDevice(${d.id}, ${d.deviceAllowed ? 0 : 1})"
+                            class="text-[12px] font-semibold px-3 py-1.5 rounded-xl border transition-all ${d.deviceAllowed ? 'border-outline-variant text-secondary hover:bg-surface-variant' : 'border-primary/40 text-primary bg-primary/8 hover:bg-primary/15'}">
+                            ${d.deviceAllowed ? 'Revoke' : 'Allow'}
+                        </button>
+                        <button onclick="deleteDevice(${d.id})"
+                            class="w-8 h-8 rounded-xl flex items-center justify-center text-error hover:bg-error-container transition-colors">
+                            <span class="material-symbols-outlined text-[18px]">delete</span>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        } catch (err) {
+            list.innerHTML = `<div class="text-[13px] text-error text-center py-4">${err.message}</div>`;
+        }
+    }
+
+    window.toggleDevice = async (id, allow) => {
+        try {
+            const res = await fetch(`${window._API_BASE || ''}/api/auth/webauthn/devices/${id}`, {
+                method: 'PATCH',
+                headers: { 'Authorization': 'Bearer ' + getToken(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ deviceAllowed: allow })
+            });
+            if (!res.ok) throw new Error((await res.json()).error || 'Failed');
+            window.showToast?.(allow ? 'Device allowed.' : 'Device revoked.', 'success');
+            loadDevices();
+        } catch (err) { window.showToast?.(err.message, 'error'); }
+    };
+
+    window.deleteDevice = async (id) => {
+        if (!confirm('Remove this biometric device?')) return;
+        try {
+            const res = await fetch(`${window._API_BASE || ''}/api/auth/webauthn/devices/${id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': 'Bearer ' + getToken() }
+            });
+            if (!res.ok) throw new Error((await res.json()).error || 'Failed');
+            window.showToast?.('Device removed.', 'success');
+            loadDevices();
+        } catch (err) { window.showToast?.(err.message, 'error'); }
+    };
+
+    window.registerBiometric = async () => {
+        if (!isAdmin()) return;
+        const btn = document.getElementById('wa-register-btn');
+        const btnText = document.getElementById('wa-register-btn-text');
+        const errBox = document.getElementById('wa-register-error');
+        const errMsg = document.getElementById('wa-register-error-msg');
+        const deviceName = document.getElementById('wa-device-name').value.trim() || 'My Device';
+
+        errBox.classList.add('hidden');
+        btn.disabled = true;
+        btnText.textContent = 'Starting registration…';
+
+        const showError = (msg) => {
+            errMsg.textContent = msg;
+            errBox.classList.remove('hidden');
+            btn.disabled = false;
+            btnText.textContent = 'Register This Device';
+        };
+
+        const b64ToBuffer = (b64) => {
+            const bin = atob(b64.replace(/-/g,'+').replace(/_/g,'/'));
+            return Uint8Array.from(bin, c => c.charCodeAt(0)).buffer;
+        };
+        const bufToB64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+
+        try {
+            // Step 1: Get challenge
+            const beginRes = await fetch(`${window._API_BASE || ''}/api/auth/webauthn/register-begin`, {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + getToken(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({ deviceName })
+            });
+            const opts = await beginRes.json();
+            if (!beginRes.ok || opts.error) throw new Error(opts.error || 'Failed to start registration');
+
+            btnText.textContent = 'Waiting for biometric…';
+
+            // Step 2: Trigger platform biometric
+            const cred = await navigator.credentials.create({
+                publicKey: {
+                    challenge: b64ToBuffer(opts.challenge),
+                    rp: opts.rp,
+                    user: {
+                        id: b64ToBuffer(opts.user.id),
+                        name: opts.user.name,
+                        displayName: opts.user.displayName
+                    },
+                    pubKeyCredParams: opts.pubKeyCredParams,
+                    authenticatorSelection: opts.authenticatorSelection,
+                    timeout: opts.timeout,
+                    attestation: 'none'
+                }
+            });
+            if (!cred) throw new Error('Registration cancelled');
+
+            btnText.textContent = 'Saving credential…';
+
+            // Step 3: Send to server
+            const finishRes = await fetch(`${window._API_BASE || ''}/api/auth/webauthn/register-finish`, {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + getToken(), 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    credentialId:     bufToB64(cred.rawId),
+                    clientDataJSON:   bufToB64(cred.response.clientDataJSON),
+                    attestationObject: bufToB64(cred.response.attestationObject),
+                    deviceName
+                })
+            });
+            const result = await finishRes.json();
+            if (!finishRes.ok || result.error) throw new Error(result.error || 'Registration failed');
+
+            window.showToast?.('Biometric registered successfully! ✓', 'success');
+            document.getElementById('wa-device-name').value = '';
+            btn.disabled = false;
+            btnText.textContent = 'Register This Device';
+            loadDevices();
+
+        } catch (err) {
+            console.error('WebAuthn register error:', err);
+            if (err.name === 'NotAllowedError') showError('Registration cancelled or timed out. Try again.');
+            else if (err.name === 'SecurityError') showError('Security error: ensure app is running over HTTPS.');
+            else showError(err.message || 'Registration failed.');
+        }
+    };
+
+    // Set API base for webauthn calls (mirrors login.html logic)
+    const hostname = window.location.hostname;
+    window._API_BASE = (hostname === 'localhost' || hostname === '127.0.0.1')
+        ? 'http://localhost:8787'
+        : `${window.location.protocol}//${hostname}${window.location.port ? ':'+window.location.port : ''}`;
+
+    // Initial load
+    loadDevices();
+    </script>
 </body>
 </html>
+
