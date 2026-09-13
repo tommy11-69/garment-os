@@ -13,6 +13,32 @@ import {
     getRecordPaymentFooterHTML,
 } from './templates.js';
 
+// Expose filter functions on window immediately at module execution
+window.setVendorStatusFilter = function (val) {
+    vendorStore.setFilter('status', val);
+
+    document.querySelectorAll('[data-status-filter]').forEach(btn => {
+        const isActive = btn.getAttribute('data-status-filter') === val;
+        btn.className = isActive
+            ? 'flex-1 py-2 rounded-[12px] text-[13px] font-semibold bg-surface-container-lowest text-on-surface shadow-sm transition-all'
+            : 'flex-1 py-2 rounded-[12px] text-[13px] font-semibold text-secondary transition-all';
+    });
+};
+
+window.setVendorTypeFilter = function (val) {
+    vendorStore.setFilter('vendorType', val);
+
+    document.querySelectorAll('[data-type-filter]').forEach(btn => {
+        const isActive = btn.getAttribute('data-type-filter') === val;
+        btn.classList.toggle('bg-primary',         isActive);
+        btn.classList.toggle('text-white',         isActive);
+        btn.classList.toggle('border-primary',     isActive);
+        btn.classList.toggle('bg-surface-container-lowest', !isActive);
+        btn.classList.toggle('text-secondary',     !isActive);
+        btn.classList.toggle('border-outline-variant', !isActive);
+    });
+};
+
 // ─── INITIALIZATION ───────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -461,33 +487,6 @@ window.openRecordPayment = function (id) {
 
     container.insertAdjacentHTML('beforeend', sheetHTML);
     setTimeout(() => window.openSheet('recordPaymentSheet'), 50);
-};
-
-// ─── FILTER HANDLERS ──────────────────────────────────────────────────────────
-
-window.setVendorStatusFilter = function (val) {
-    vendorStore.setFilter('status', val);
-
-    document.querySelectorAll('[data-status-filter]').forEach(btn => {
-        const isActive = btn.getAttribute('data-status-filter') === val;
-        btn.className = isActive
-            ? 'flex-1 py-2 rounded-[12px] text-[13px] font-semibold bg-surface-container-lowest text-on-surface shadow-sm transition-all'
-            : 'flex-1 py-2 rounded-[12px] text-[13px] font-semibold text-secondary transition-all';
-    });
-};
-
-window.setVendorTypeFilter = function (val) {
-    vendorStore.setFilter('vendorType', val);
-
-    document.querySelectorAll('[data-type-filter]').forEach(btn => {
-        const isActive = btn.getAttribute('data-type-filter') === val;
-        btn.classList.toggle('bg-primary',         isActive);
-        btn.classList.toggle('text-white',         isActive);
-        btn.classList.toggle('border-primary',     isActive);
-        btn.classList.toggle('bg-surface-container-lowest', !isActive);
-        btn.classList.toggle('text-secondary',     !isActive);
-        btn.classList.toggle('border-outline-variant', !isActive);
-    });
 };
 
 // ─── BULK OPERATIONS ─────────────────────────────────────────────────────────
