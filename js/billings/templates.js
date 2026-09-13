@@ -112,9 +112,40 @@ export function getEmptyStateHTML(type) {
     </div>`;
 }
 
+// ── Helper: Calculate next serial number ──────────────────────────────
+export function getNextSerialNumber(type, existingDocs = []) {
+    const PREFIX_MAP = {
+        Quotation: 'AG-QTY',
+        Sales_Bill: 'AG-INV',
+        Payment_In: 'AG-REC',
+        Purchase_Bill: 'AG-BILL',
+        Purchase_Order: 'AG-PO',
+        Payment_Out: 'AG-EXP'
+    };
+    const prefix = PREFIX_MAP[type] || 'AG-DOC';
+    const year = new Date().getFullYear();
+    const fullPrefix = `${prefix}-${year}-`;
+
+    let maxSeq = 0;
+    if (Array.isArray(existingDocs)) {
+        for (const doc of existingDocs) {
+            const invNum = doc.invoice_number || doc.invoiceNumber || doc.serial_number || doc.id || '';
+            if (invNum.startsWith(fullPrefix)) {
+                const seqStr = invNum.replace(fullPrefix, '');
+                const seqNum = parseInt(seqStr, 10);
+                if (!isNaN(seqNum) && seqNum > maxSeq) {
+                    maxSeq = seqNum;
+                }
+            }
+        }
+    }
+    const nextSeq = maxSeq + 1;
+    return `${fullPrefix}${String(nextSeq).padStart(4, '0')}`;
+}
+
 // ── Create Sheet ───────────────────────────────────────────────────────
 
-export function getCreateSheetHTML(type, contacts, inventoryItems, linkedBills = []) {
+export function getCreateSheetHTML(type, contacts, inventoryItems, linkedBills = [], nextSerial = '') {
     const meta = BILLING_TYPES[type] || BILLING_TYPES.Quotation;
     const isPayment = type === 'Payment_In' || type === 'Payment_Out';
     const today = new Date().toISOString().split('T')[0];
@@ -148,7 +179,7 @@ export function getCreateSheetHTML(type, contacts, inventoryItems, linkedBills =
                 </div>
                 <div>
                     <h2 id="billingCreateSheet-title" class="text-[18px] font-bold text-on-surface">New ${meta.label.slice(0,-1)}</h2>
-                    <p class="text-[12px] text-secondary">Auto-numbered on save</p>
+                    <p id="billingCreateSheet-subtext" class="text-[12px] text-secondary">${nextSerial ? `Auto-numbered (${nextSerial})` : 'Auto-numbered on save'}</p>
                 </div>
             </div>
             <button type="button" onclick="window.closeBillingCreateSheet()" class="w-9 h-9 rounded-full bg-surface-variant flex items-center justify-center active-scale">

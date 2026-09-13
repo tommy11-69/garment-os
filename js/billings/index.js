@@ -1,7 +1,7 @@
 // js/billings/index.js — Main BILLINGS module controller
 import { api } from '../services/api.js?v=5.4';
 import {
-    BILLING_TYPES, fmtCurrency,
+    BILLING_TYPES, fmtCurrency, getNextSerialNumber,
     getStatsBarHTML, getBillingCardHTML, getEmptyStateHTML,
     getCreateSheetHTML, getBillingDetailsHTML, getPrintHTML
 } from './templates.js?v=5.4';
@@ -209,9 +209,18 @@ window.openCreateBillingSheet = async function (type) {
             .filter(b => ['Finalized', 'Partially_Paid'].includes(b.status));
     }
 
+    if (!allBillings[type]) {
+        try {
+            allBillings[type] = await api.getBillings({ type });
+        } catch (e) {
+            allBillings[type] = [];
+        }
+    }
+    const nextSerial = getNextSerialNumber(type, allBillings[type] || []);
+
     const portal = document.getElementById('billingCreateSheet-portal');
     if (!portal) return;
-    portal.innerHTML = getCreateSheetHTML(type, contacts, cachedInventory, linkedBills);
+    portal.innerHTML = getCreateSheetHTML(type, contacts, cachedInventory, linkedBills, nextSerial);
 
     // Bind contact select for GSTIN display
     const contactSelect = document.getElementById('billing-contact-select');
@@ -607,6 +616,8 @@ window.editBillingDoc = async function (id) {
         // Prefill form
         const titleEl = document.getElementById('billingCreateSheet-title');
         if (titleEl) titleEl.textContent = `Edit ${meta?.label.slice(0,-1)}`;
+        const subtextEl = document.getElementById('billingCreateSheet-subtext');
+        if (subtextEl) subtextEl.textContent = `Doc No: ${doc.invoice_number || doc.id}`;
         const editIdEl = document.getElementById('billing-edit-id');
         if (editIdEl) editIdEl.value = doc.id;
 
