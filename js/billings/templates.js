@@ -467,7 +467,7 @@ export function getBillingDetailsHTML(doc) {
                 </span>
             </button>` : ''}
 
-            ${(isSalesBill || isQuotation) && !isVoid && doc.status === 'Finalized' ? `
+            ${!isVoid ? `
             <button type="button" onclick="window.printBillingDoc('${doc.id}')"
                 class="w-full bg-surface-variant text-on-surface font-semibold py-3.5 rounded-xl active-scale text-[15px]">
                 <span class="flex items-center justify-center gap-2">
@@ -542,8 +542,14 @@ export function getPrintHTML(doc, contactInfo = {}) {
         </tr>`;
     }).join('');
 
+    const isPayment = doc.transaction_type === 'Payment_In' || doc.transaction_type === 'Payment_Out';
+
     const docTitle = doc.transaction_type === 'Quotation' ? 'PROFORMA INVOICE' : 
-                     doc.transaction_type === 'Sales_Bill' ? 'TAX INVOICE' : meta.label.toUpperCase();
+                     doc.transaction_type === 'Sales_Bill' ? 'TAX INVOICE' : 
+                     doc.transaction_type === 'Purchase_Order' ? 'PURCHASE ORDER' : 
+                     doc.transaction_type === 'Purchase_Bill' ? 'PURCHASE BILL' : 
+                     doc.transaction_type === 'Payment_In' ? 'PAYMENT RECEIPT' : 
+                     doc.transaction_type === 'Payment_Out' ? 'PAYMENT VOUCHER' : meta.label.toUpperCase();
 
     return `<!DOCTYPE html>
 <html>
@@ -603,7 +609,7 @@ export function getPrintHTML(doc, contactInfo = {}) {
 
     <div class="grid2">
         <div class="info-box">
-            <div class="info-label">${meta.contactType === 'vendor' ? 'Vendor' : 'Bill To'}</div>
+            <div class="info-label">${meta.contactType === 'vendor' ? (isPayment ? 'Paid To Vendor' : 'Vendor') : (isPayment ? 'Received From Customer' : 'Bill To')}</div>
             <div style="font-weight:700;font-size:15px;margin-bottom:4px">${doc.contact_name}</div>
             ${doc.contact_gstin ? `<div style="color:#64748b">GSTIN: ${doc.contact_gstin}</div>` : ''}
             ${contactInfo.address ? `<div style="color:#64748b">${contactInfo.address}</div>` : ''}
@@ -621,6 +627,35 @@ export function getPrintHTML(doc, contactInfo = {}) {
         </div>
     </div>
 
+    ${isPayment ? `
+    <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:20px; margin-bottom:32px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:14px; margin-bottom:14px;">
+            <div>
+                <div style="font-size:10px; text-transform:uppercase; color:#64748b; font-weight:600;">Transaction Type</div>
+                <div style="font-size:16px; font-weight:700; color:#0f172a;">${doc.transaction_type === 'Payment_In' ? 'Payment Received' : 'Payment Outflow'}</div>
+            </div>
+            <div style="text-align:right;">
+                <div style="font-size:10px; text-transform:uppercase; color:#64748b; font-weight:600;">Total Amount</div>
+                <div style="font-size:24px; font-weight:800; color:${doc.transaction_type === 'Payment_In' ? '#00B386' : '#FF3B30'};">₹ ${grandTotal.toFixed(2)}</div>
+            </div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+            <div>
+                <div style="font-size:10px; text-transform:uppercase; color:#64748b; font-weight:600;">Amount in Words</div>
+                <div style="font-weight:600; color:#1e293b; margin-top:2px;">${amountWords}</div>
+            </div>
+            <div>
+                <div style="font-size:10px; text-transform:uppercase; color:#64748b; font-weight:600;">Linked Document / Ref</div>
+                <div style="font-weight:600; color:#1e293b; margin-top:2px;">${doc.linked_bill_id || 'Direct Payment'}</div>
+            </div>
+            ${doc.notes ? `
+            <div style="grid-column: span 2;">
+                <div style="font-size:10px; text-transform:uppercase; color:#64748b; font-weight:600;">Notes / Particulars</div>
+                <div style="font-weight:500; color:#334155; margin-top:2px;">${doc.notes}</div>
+            </div>` : ''}
+        </div>
+    </div>
+    ` : `
     <div class="table-wrap">
         <table>
             <thead>
@@ -651,6 +686,7 @@ export function getPrintHTML(doc, contactInfo = {}) {
             <div class="amount-words">Amount in words: ${amountWords}</div>
         </div>
     </div>
+    `}
 
     <div class="footer">
         <div>
@@ -659,7 +695,7 @@ export function getPrintHTML(doc, contactInfo = {}) {
                 <li><strong>Advance Payment:</strong> 50% of total order value to confirm order.</li>
                 <li><strong>Fabric In House:</strong> 20% to be paid once dyeing is completed.</li>
                 <li><strong>On Completion:</strong> 30% to be paid before delivery/dispatch.</li>
-                <li>All quoted rates are valid for 7 days from the date of quotation.</li>
+                <li>All quoted rates are valid for 7 days from date of document.</li>
             </ul>
         </div>
         <div class="sign-box">
