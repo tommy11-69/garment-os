@@ -1,0 +1,495 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   Garment OS — Responsive CSS
+   ───────────────────────────────────────────────────────────────────────
+   Mobile-first extension layer. This file contains ONLY min-width media
+   queries and pointer-based hover rules. Loading this file cannot break
+   any existing mobile layout.
+
+   Breakpoints:
+     Tablet      768px  — sidebar + 2-col grids, bottom sheets → modals
+     Laptop     1024px  — 3-col grids, larger padding
+     Desktop    1440px  — wider sidebar, inner max-width cap
+
+   Load order: Always last in <head>, after all other CSS links.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── CSS Custom Properties ────────────────────────────────────────────── */
+:root {
+    --sidebar-w: 220px;
+    --content-padding-x: 40px;
+    --content-padding-y: 32px;
+}
+
+/* ── Sidebar: Hidden on Mobile (always injected, CSS controls display) ── */
+#sidebar-container {
+    display: none;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   TABLET — 768px
+   Sidebar appears. Bottom nav + top bar disappear. Wrapper expands.
+   Bottom sheets become centered modals.
+───────────────────────────────────────────────────────────────────────── */
+@media (min-width: 768px) {
+
+    /* ── Show Sidebar ── */
+    #sidebar-container {
+        display: block;
+    }
+
+    /* ── Hide Mobile-Only Navigation ── */
+    .bottom-nav-mobile,
+    #bottom-nav-container {
+        display: none !important;
+    }
+
+    .topbar-mobile,
+    #topbar-container {
+        display: none !important;
+    }
+
+    /* ── Hide FAB (actions live in page headers on desktop) ── */
+    #fab-container {
+        display: none !important;
+    }
+
+    /* ── Body Background ── */
+    body {
+        background-color: #F0EFF4 !important;
+    }
+
+    /* ── Sidebar Layout & Structure ── */
+    .sidebar-nav {
+        position: fixed;
+        left: 0;
+        top: 0;
+        width: var(--sidebar-w);
+        height: 100vh;
+        background: #FFFFFF;
+        border-right: 1px solid rgba(193, 198, 214, 0.5);
+        z-index: 50;
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
+        overflow-x: hidden;
+        box-shadow: 2px 0 16px rgba(0, 0, 0, 0.04);
+        scrollbar-width: thin;
+        scrollbar-color: #E0E0E6 transparent;
+    }
+
+    .sidebar-nav::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    .sidebar-nav::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .sidebar-nav::-webkit-scrollbar-thumb {
+        background-color: #D2D2D7;
+        border-radius: 4px;
+    }
+
+    /* ── Active Sidebar Link ── */
+    .sidebar-nav-link--active {
+        background: rgba(0, 89, 181, 0.09) !important;
+        color: #0059b5 !important;
+        position: relative;
+    }
+
+    .sidebar-nav-link--active::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 50%;
+        transform: translateY(-50%);
+        width: 3px;
+        height: 58%;
+        background: #0059b5;
+        border-radius: 0 3px 3px 0;
+    }
+
+    .sidebar-nav-link--active .material-symbols-outlined {
+        font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24 !important;
+        color: #0059b5 !important;
+    }
+
+    .sidebar-nav-link--active span:last-child {
+        color: #0059b5 !important;
+        font-weight: 700 !important;
+    }
+
+    /* ── Core Layout: Expand the Mobile Wrapper ── */
+    .mobile-wrapper {
+        max-width: 100% !important;
+        width: calc(100% - var(--sidebar-w)) !important;
+        margin-left: var(--sidebar-w) !important;
+        margin-right: 0 !important;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+        background-color: #F0EFF4 !important;
+        box-shadow: none !important;
+        border-left: none !important;
+        border-right: none !important;
+        min-height: 100vh;
+    }
+
+    /* ── Main Content Area Padding ── */
+    #main-content-area {
+        padding: var(--content-padding-y) var(--content-padding-x) !important;
+        box-sizing: border-box;
+    }
+
+    /* ── Bottom Sheets → Centered Modals ────────────────────────────────────
+       Root cause of old bug: overriding transform:translateY(100%) with
+       translate(-50%, ...) was making sheets VISIBLE even when not open.
+       Fix: use opacity + scale for the desktop show/hide animation.
+       The sheet is positioned (top:50% left:50%) but hidden via opacity:0.
+       When .active fires, it fades+scales into view.
+    ────────────────────────────────────────────────────────────────────── */
+
+    /* Inactive state: positioned as modal but invisible */
+    .bottom-sheet-content {
+        position: fixed !important;
+        bottom: auto !important;
+        top: 50% !important;
+        left: 50% !important;
+        margin-left: calc(var(--sidebar-w) / 2) !important;  /* shift center into content area */
+        width: min(660px, calc(100vw - var(--sidebar-w) - 64px)) !important;
+        border-radius: 28px !important;
+        border-top-left-radius: 28px !important;
+        border-top-right-radius: 28px !important;
+        max-height: 88vh;
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.20) !important;
+
+        /* Override the translateY(100%) with centered position, but HIDDEN */
+        transform: translate(-50%, -50%) scale(0.95) !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+        transition: transform 220ms cubic-bezier(0.32, 0.72, 0, 1),
+                    opacity 180ms ease !important;
+    }
+
+    /* Active state: visible and fully scaled */
+    .bottom-sheet-overlay.active + .bottom-sheet-content,
+    .bottom-sheet-content.active {
+        transform: translate(-50%, -50%) scale(1) !important;
+        opacity: 1 !important;
+        pointer-events: auto !important;
+    }
+
+    /* Sheet drag handle hidden on desktop (modal has no drag) */
+    .sheet-handle {
+        display: none;
+    }
+
+    /* ── Calculator: Floating Results repositioned ── */
+    .floating-results {
+        left: auto !important;
+        right: var(--content-padding-x) !important;
+        bottom: var(--content-padding-y) !important;
+        max-width: 360px !important;
+        transform: none !important;
+        width: 360px;
+    }
+
+    /* ── Orders: 2-column card grid ── */
+    #orders-list {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr);
+        align-items: start;
+    }
+
+    /* ── Billings: keep single col (dense content, works well) ── */
+
+    /* ── Stage filter chips: can wrap, no horizontal scroll ── */
+    .stage-chips-row {
+        flex-wrap: wrap;
+        overflow-x: visible;
+    }
+
+    /* ── Dashboard: Quick Actions — allow them to show on one wider row ── */
+    #main-content-area .snap-x {
+        flex-wrap: wrap;
+        overflow-x: visible;
+    }
+
+    /* ── More page: 2-column menu grid ── */
+    .more-menu-list {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr;
+        gap: 0;
+    }
+
+    .more-menu-list > li {
+        border-bottom: 1px solid rgba(193, 198, 214, 0.4) !important;
+        border-top: none !important;
+    }
+
+    .more-menu-list > li:nth-child(odd) {
+        border-right: 1px solid rgba(193, 198, 214, 0.4);
+    }
+
+    /* ── Typography: Scale up slightly for desktop readability ── */
+    .text-page-title {
+        font-size: 38px;
+        line-height: 46px;
+    }
+
+    /* ── Kanban: Show more columns naturally ── */
+    #orders-kanban {
+        overflow-x: auto;
+        scroll-snap-type: x mandatory;
+    }
+
+    /* ── Customers: 2-col on tablet ── */
+    #customers-list-container {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr);
+        align-items: start;
+        gap: 16px;
+    }
+
+    /* ── Inventory filter chips: wrap ── */
+    #inventory-status-chips,
+    #customer-type-chips {
+        flex-wrap: wrap;
+        overflow-x: visible;
+    }
+
+    /* ── Finance charts: taller on desktop ── */
+    .chart-wrapper,
+    [id*="chart-container"] {
+        min-height: 280px;
+    }
+
+    /* ── Settings: keep embedded header working with offset layout ── */
+    /* settings.html has its own sticky header inside .mobile-wrapper — no changes needed */
+
+    /* ── Quick Command Bar: larger on desktop ── */
+    #kms-trigger-btn {
+        padding: 10px 20px;
+    }
+
+    /* ── Billing tabs: single row, no scroll needed ── */
+    .billing-tabs-scroll {
+        overflow-x: visible;
+        flex-wrap: wrap;
+    }
+
+    /* ── Page content padding: reset inner px-xs/pt-sm overrides ── */
+    /* These small offsets were for mobile gutter. On desktop the main area
+       padding (40px) handles gutters, so inner px-xs (4px) is fine to keep — 
+       it just adds a tiny additional buffer. No need to zero out. */
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   LAPTOP — 1024px
+   Wider grids. 3-column card layouts. Increased chart heights.
+───────────────────────────────────────────────────────────────────────── */
+@media (min-width: 1024px) {
+
+    /* ── Customers: upgrade to 3-column ── */
+    #customers-list-container {
+        grid-template-columns: repeat(3, 1fr) !important;
+    }
+
+    /* ── Orders: stays 2-col — card content is dense ── */
+
+    /* ── Finance charts: even taller ── */
+    .chart-wrapper,
+    [id*="chart-container"] {
+        min-height: 320px;
+    }
+
+    /* ── Inner content max-width (prevents extreme stretching on ultrawide) ── */
+    #main-content-area {
+        max-width: 1440px;
+        margin-inline: 0; /* left-aligned within offset wrapper */
+    }
+
+    /* ── Typography ── */
+    .text-display {
+        font-size: 52px;
+        line-height: 60px;
+    }
+
+    /* ── Larger bottom sheet modals on wide screens ── */
+    .bottom-sheet-content {
+        width: min(720px, calc(100vw - var(--sidebar-w) - 80px)) !important;
+    }
+
+    /* ── Floating results: slightly wider ── */
+    .floating-results {
+        max-width: 400px !important;
+        width: 400px;
+    }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   LARGE DESKTOP — 1440px
+   Wider sidebar. Max content cap. Extra breathing room.
+───────────────────────────────────────────────────────────────────────── */
+@media (min-width: 1440px) {
+
+    :root {
+        --sidebar-w: 240px;
+        --content-padding-x: 56px;
+        --content-padding-y: 40px;
+    }
+
+    .mobile-wrapper {
+        width: calc(100% - var(--sidebar-w)) !important;
+        margin-left: var(--sidebar-w) !important;
+    }
+
+    .sidebar-nav {
+        width: var(--sidebar-w);
+    }
+
+    /* At 1440px: --sidebar-w becomes 240px (set in :root above).
+       The 768px rule uses margin-left: calc(var(--sidebar-w) / 2)
+       which automatically recalculates to 120px at this breakpoint.
+       Only override the width to allow a wider modal. */
+    .bottom-sheet-content {
+        width: min(780px, calc(100vw - var(--sidebar-w) - 80px)) !important;
+    }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   HOVER & INTERACTION STATES — Mouse/Pointer Devices Only
+   @media (hover: hover) fires ONLY on devices with true hover (mouse).
+   It does NOT fire on touch screens or stylus-only devices.
+   This prevents any touch-hover flash on mobile.
+───────────────────────────────────────────────────────────────────────── */
+@media (hover: hover) and (pointer: fine) {
+
+    /* ── Sidebar Nav Links ── */
+    .sidebar-nav-link:hover:not(.sidebar-nav-link--active) {
+        background: rgba(0, 89, 181, 0.06) !important;
+        color: #1b1b1d !important;
+    }
+
+    .sidebar-nav-link:hover .material-symbols-outlined {
+        color: #0059b5;
+        transition: color 150ms ease;
+    }
+
+    .sidebar-nav-link:hover span:last-child {
+        color: #1b1b1d;
+    }
+
+    /* ── Card Lift — override the unguarded rule in utilities.css ── */
+    /* (The existing .card:hover in utilities.css fires on touch too.
+       This scoped version is more correct for pointer devices.) */
+    .card:hover {
+        transform: translateY(-2px);
+        box-shadow:
+            0 1px 2px rgba(0, 0, 0, 0.02),
+            0 8px 24px rgba(0, 0, 0, 0.08);
+        border-color: #B8B8C0;
+        transition: all 180ms ease-out;
+    }
+
+    /* ── List Row / Role=Button Hover ── */
+    [role="button"]:hover {
+        background: rgba(0, 0, 0, 0.025);
+        transition: background 120ms ease;
+    }
+
+    /* ── Active-Scale: lift on hover, scale on click ── */
+    .active-scale:hover {
+        transform: scale(0.99);
+        transition: transform 120ms ease;
+    }
+
+    /* ── Stage / Filter Chips ── */
+    .stage-chip.inactive:hover {
+        border-color: rgba(0, 0, 0, 0.22);
+        background: rgba(0, 0, 0, 0.03);
+        color: #1b1b1d;
+        transition: all 120ms ease;
+    }
+
+    .billing-tab-btn:hover {
+        background: rgba(0, 0, 0, 0.04);
+        color: #1b1b1d;
+        transition: background 120ms ease;
+    }
+
+    /* ── Period Pills (Finance page) ── */
+    .period-pill.inactive:hover {
+        background: rgba(0, 0, 0, 0.04);
+        transition: background 120ms ease;
+    }
+
+    /* ── Segmented Control buttons ── */
+    button[id^="tab-"]:hover,
+    button[data-status-filter]:hover {
+        background: rgba(0, 0, 0, 0.03);
+        transition: background 120ms ease;
+    }
+
+    /* ── More page list items ── */
+    .more-menu-list > li > a:hover {
+        background: rgba(0, 89, 181, 0.04) !important;
+        transition: background 120ms ease;
+    }
+
+    /* ── Quick action buttons on dashboard ── */
+    button[onclick*="window.location.href"]:hover {
+        opacity: 0.85;
+        transition: opacity 150ms ease;
+    }
+
+    /* ── Cursor pointer for all interactive elements ── */
+    button:hover:not(:disabled),
+    [role="button"]:hover,
+    a[href]:hover,
+    .sidebar-nav-link:hover,
+    select:hover {
+        cursor: pointer;
+    }
+
+    /* ── Input fields: subtle glow on hover ── */
+    input:hover:not(:focus):not(:disabled),
+    select:hover:not(:focus):not(:disabled),
+    textarea:hover:not(:focus):not(:disabled) {
+        border-color: rgba(0, 0, 0, 0.2);
+        transition: border-color 150ms ease;
+    }
+
+    /* ── Kanban columns on hover ── */
+    .kanban-column:hover {
+        border-color: rgba(0, 89, 181, 0.2);
+        transition: border-color 150ms ease;
+    }
+
+    /* ── Nav tabs (bottom nav — visible on small screens) ── */
+    .nav-tab:hover .material-symbols-outlined,
+    .nav-tab:hover .font-caption {
+        color: #0059b5;
+        transition: color 120ms ease;
+    }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   PRINT STYLES — Basic cleanup for printing reports
+───────────────────────────────────────────────────────────────────────── */
+@media print {
+    .bottom-nav-mobile,
+    #bottom-nav-container,
+    .topbar-mobile,
+    #topbar-container,
+    #sidebar-container,
+    #fab-container,
+    .floating-results {
+        display: none !important;
+    }
+
+    .mobile-wrapper {
+        margin-left: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
+    }
+}

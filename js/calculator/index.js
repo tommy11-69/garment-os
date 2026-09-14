@@ -1035,7 +1035,6 @@ window.saveRates = function() {
     if (!isNaN(sr) && sr > 0) updates.stitchRate = sr;
     if (!isNaN(or) && or > 0) updates.overheadsRate = or;
     calculatorStore.updatePrefs(updates);
-    updateAutoSuggestions();
     window.closeSheet('ratesEditorSheet');
     window.showToast?.('Default rates updated', 'success');
 };

@@ -74,7 +74,33 @@ function initApp() {
         currentPage = 'dashboard';
     }
 
-    // Load Mobile Bottom Navigation
+    // ── Load Desktop/Tablet Sidebar Navigation ──
+    // Create the container programmatically — no HTML changes needed on any page.
+    // CSS in responsive.css hides it on mobile (< 768px).
+    if (!document.getElementById('sidebar-container')) {
+        const sidebarContainer = document.createElement('div');
+        sidebarContainer.id = 'sidebar-container';
+        document.body.insertBefore(sidebarContainer, document.body.firstChild);
+    }
+    loadComponent('../components/sidebar-nav.html', 'sidebar-container', () => {
+        // Set active state on sidebar links
+        const sidebarLinks = document.querySelectorAll('.sidebar-nav-link[data-page]');
+        sidebarLinks.forEach(link => {
+            if (link.dataset.page === currentPage) {
+                link.classList.add('sidebar-nav-link--active');
+                link.setAttribute('aria-current', 'page');
+                // Ensure icon fill is set to filled state
+                const icon = link.querySelector('.material-symbols-outlined');
+                if (icon) {
+                    icon.style.fontVariationSettings = "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24";
+                }
+            } else {
+                link.removeAttribute('aria-current');
+            }
+        });
+    });
+
+    // ── Load Mobile Bottom Navigation ──
     loadComponent('../components/bottom-nav.html', 'bottom-nav-container', () => {
         // Set active state on bottom nav links
         const tabs = document.querySelectorAll('.nav-tab');
@@ -104,10 +130,10 @@ function initApp() {
         });
     });
 
-    // Load Mobile Top Bar
+    // ── Load Mobile Top Bar ──
     loadComponent('../components/topbar-mobile.html', 'topbar-container');
     
-    // Load FAB if container exists
+    // ── Load FAB if container exists ──
     const fabContainer = document.getElementById('fab-container');
     if (fabContainer) {
         loadComponent('../components/fab.html', 'fab-container', () => {

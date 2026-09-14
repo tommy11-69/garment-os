@@ -15,9 +15,11 @@
     transition: all 200ms ease-out;
 }
 
-.card:hover {
-    transform: translateY(-2px);
-    border-color: #C1C1C6;
+@media (hover: hover) and (pointer: fine) {
+    .card:hover {
+        transform: translateY(-2px);
+        border-color: #C1C1C6;
+    }
 }
 
 .accent-primary { color: #0071E3; }
