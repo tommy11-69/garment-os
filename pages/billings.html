@@ -85,12 +85,27 @@
                 </div>
             </div>
 
-            <!-- ── Search ─────────────────────────────────────── -->
-            <div class="px-md">
-                <div class="relative">
-                    <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[20px]">search</span>
-                    <input id="billings-search-input" type="text" placeholder="Search by number, name, notes..."
-                        class="w-full bg-surface-container-lowest border border-outline-variant rounded-2xl pl-11 pr-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all placeholder:text-secondary">
+            <!-- ── Search & Filter / Export Controls ──────────────────────── -->
+            <div class="px-md flex flex-col gap-2">
+                <div class="flex gap-2 items-center">
+                    <div class="relative flex-1">
+                        <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[20px]">search</span>
+                        <input id="billings-search-input" type="text" placeholder="Search by number, name, notes..."
+                            class="w-full bg-surface-container-lowest border border-outline-variant rounded-2xl pl-11 pr-4 py-2.5 text-[14px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all placeholder:text-secondary">
+                    </div>
+                    <!-- Sort Dropdown -->
+                    <select id="billings-sort-select" onchange="window.setBillingSort(this.value)"
+                        class="bg-surface-container-lowest border border-outline-variant rounded-2xl px-3 py-2.5 text-[13px] font-semibold text-on-surface focus:ring-2 focus:ring-primary/20 outline-none">
+                        <option value="date-desc">Newest First</option>
+                        <option value="date-asc">Oldest First</option>
+                        <option value="amount-desc">Highest Amount</option>
+                        <option value="amount-asc">Lowest Amount</option>
+                    </select>
+                    <!-- Export CSV Button -->
+                    <button type="button" onclick="window.exportBillingsCSV()" title="Export CSV"
+                        class="p-2.5 bg-surface-container-lowest border border-outline-variant rounded-2xl text-secondary hover:text-on-surface active-scale flex items-center justify-center">
+                        <span class="material-symbols-outlined text-[20px]">download</span>
+                    </button>
                 </div>
             </div>
 

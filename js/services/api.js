@@ -728,5 +728,9 @@ export const api = {
 
     async voidBilling(id) {
         return db._fetchAPI(`/billings/${id}`, { method: 'DELETE' });
+    },
+
+    async deleteBillingDraft(id) {
+        return db._fetchAPI(`/billings/${id}?permanent=true`, { method: 'DELETE' });
     }
 };

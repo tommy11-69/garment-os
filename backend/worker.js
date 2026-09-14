@@ -657,10 +657,22 @@ export default {
                         return json(created, 201);
                     }
 
-                    // DELETE /api/billings/:id — void (soft delete)
+                    // DELETE /api/billings/:id — void (soft delete) or permanent delete for Drafts
                     if (request.method === 'DELETE' && billingId) {
-                        const existing = await env.DB.prepare(`SELECT id FROM billing_master WHERE id = ?`).bind(billingId).first();
+                        const existing = await env.DB.prepare(`SELECT id, status FROM billing_master WHERE id = ?`).bind(billingId).first();
                         if (!existing) return json({ error: 'Billing document not found' }, 404);
+
+                        const isPermanent = url.searchParams.get('permanent') === 'true';
+
+                        if (isPermanent) {
+                            if (existing.status !== 'Draft') {
+                                return json({ error: 'Only Draft documents can be permanently deleted' }, 400);
+                            }
+                            await env.DB.prepare(`DELETE FROM billing_items WHERE billing_master_id = ?`).bind(billingId).run();
+                            await env.DB.prepare(`DELETE FROM billing_master WHERE id = ?`).bind(billingId).run();
+                            return json({ success: true, message: 'Draft document permanently deleted' });
+                        }
+
                         await env.DB.prepare(
                             `UPDATE billing_master SET status = 'Void', updatedAt = datetime('now') WHERE id = ?`
                         ).bind(billingId).run();

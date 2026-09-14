@@ -247,6 +247,7 @@ export function getCreateSheetHTML(type, contacts, inventoryItems, linkedBills =
 
                 <!-- Item Input Row -->
                 <div class="bg-surface border border-outline-variant rounded-xl p-3 flex flex-col gap-3 mb-3">
+                    <input type="hidden" id="billing-item-edit-index" value="-1">
                     <div class="grid grid-cols-2 gap-2">
                         <div class="col-span-2">
                             <input type="text" id="billing-item-name" placeholder="Item name / description *"
@@ -286,10 +287,16 @@ export function getCreateSheetHTML(type, contacts, inventoryItems, linkedBills =
                         <input type="number" id="billing-item-discount" min="0" max="100" step="0.01" placeholder="0" 
                             class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-3 py-2 text-[14px] text-on-surface focus:ring-2 focus:ring-primary/20 outline-none">
                     </div>
-                    <button type="button" onclick="window.addBillingItem()"
-                        class="w-full bg-primary/10 text-primary font-semibold py-2.5 rounded-xl text-[14px] active-scale">
-                        + Add to Bill
-                    </button>
+                    <div class="flex gap-2">
+                        <button type="button" id="billing-item-submit-btn" onclick="window.addBillingItem()"
+                            class="flex-1 bg-primary/10 text-primary font-semibold py-2.5 rounded-xl text-[14px] active-scale">
+                            + Add to Bill
+                        </button>
+                        <button type="button" id="billing-item-cancel-edit-btn" onclick="window.cancelEditBillingItem()"
+                            class="hidden px-4 bg-surface-variant text-secondary font-semibold py-2.5 rounded-xl text-[14px] active-scale">
+                            Cancel
+                        </button>
+                    </div>
                 </div>
 
                 <!-- Items Table -->
@@ -468,29 +475,45 @@ export function getBillingDetailsHTML(doc) {
             </button>` : ''}
 
             ${!isVoid ? `
-            <button type="button" onclick="window.printBillingDoc('${doc.id}')"
-                class="w-full bg-surface-variant text-on-surface font-semibold py-3.5 rounded-xl active-scale text-[15px]">
-                <span class="flex items-center justify-center gap-2">
-                    <span class="material-symbols-outlined text-[18px]">print</span>
-                    Print / PDF
-                </span>
-            </button>` : ''}
+            <div class="flex gap-2">
+                <button type="button" onclick="window.printBillingDoc('${doc.id}')"
+                    class="flex-1 bg-surface-variant text-on-surface font-semibold py-3.5 rounded-xl active-scale text-[14px]">
+                    <span class="flex items-center justify-center gap-1.5">
+                        <span class="material-symbols-outlined text-[18px]">print</span>
+                        Print / PDF
+                    </span>
+                </button>
+                <button type="button" onclick="window.duplicateBillingDoc('${doc.id}')"
+                    class="flex-1 bg-surface-variant text-on-surface font-semibold py-3.5 rounded-xl active-scale text-[14px]">
+                    <span class="flex items-center justify-center gap-1.5">
+                        <span class="material-symbols-outlined text-[18px]">content_copy</span>
+                        Duplicate
+                    </span>
+                </button>
+            </div>` : ''}
 
             <div class="flex gap-2">
                 ${!isVoid && isDraft ? `
                 <button type="button" onclick="window.editBillingDoc('${doc.id}')"
                     class="flex-1 bg-surface-container-high text-on-surface font-semibold py-3 rounded-xl active-scale text-[14px]">
                     <span class="flex items-center justify-center gap-1">
-                        <span class="material-symbols-outlined text-[16px]">edit</span> Edit
+                        <span class="material-symbols-outlined text-[16px]">edit</span> Edit Draft
                     </span>
-                </button>` : ''}
-                ${!isVoid ? `
-                <button type="button" onclick="window.voidBillingDoc('${doc.id}')"
+                </button>
+                <button type="button" onclick="window.deleteBillingDraft('${doc.id}')"
                     class="flex-1 bg-error/10 text-error font-semibold py-3 rounded-xl active-scale text-[14px]">
                     <span class="flex items-center justify-center gap-1">
-                        <span class="material-symbols-outlined text-[16px]">block</span> Void
+                        <span class="material-symbols-outlined text-[16px]">delete_forever</span> Delete Draft
                     </span>
-                </button>` : ''}
+                </button>
+                ` : !isVoid ? `
+                <button type="button" onclick="window.voidBillingDoc('${doc.id}')"
+                    class="w-full bg-error/10 text-error font-semibold py-3 rounded-xl active-scale text-[14px]">
+                    <span class="flex items-center justify-center gap-1">
+                        <span class="material-symbols-outlined text-[16px]">block</span> Void Document
+                    </span>
+                </button>
+                ` : ''}
             </div>
         </div>
     </div>`;

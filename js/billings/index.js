@@ -11,6 +11,7 @@ let currentTab = 'Quotation';
 let allBillings = {};   // keyed by type: { Quotation: [...], Sales_Bill: [...], ... }
 let currentSearchQuery = '';
 let currentStatusFilter = '';
+let currentSortOrder = 'date-desc';
 let currentFormItems = [];
 let cachedInventory = [];
 let cachedContacts = {};  // { customer: [...], vendor: [...] }
@@ -103,7 +104,7 @@ function renderBillingsList() {
     const container = document.getElementById('billings-list');
     if (!container) return;
 
-    let docs = allBillings[currentTab] || [];
+    let docs = [...(allBillings[currentTab] || [])];
 
     // Search filter
     if (currentSearchQuery) {
@@ -118,6 +119,20 @@ function renderBillingsList() {
     if (currentStatusFilter) {
         docs = docs.filter(d => d.status === currentStatusFilter);
     }
+
+    // Sorting
+    docs.sort((a, b) => {
+        if (currentSortOrder === 'date-desc') {
+            return new Date(b.date || b.createdAt || 0) - new Date(a.date || a.createdAt || 0);
+        } else if (currentSortOrder === 'date-asc') {
+            return new Date(a.date || a.createdAt || 0) - new Date(b.date || b.createdAt || 0);
+        } else if (currentSortOrder === 'amount-desc') {
+            return (b.grand_total || 0) - (a.grand_total || 0);
+        } else if (currentSortOrder === 'amount-asc') {
+            return (a.grand_total || 0) - (b.grand_total || 0);
+        }
+        return 0;
+    });
 
     if (docs.length === 0) {
         container.innerHTML = getEmptyStateHTML(currentTab);
@@ -181,6 +196,45 @@ window.setBillingStatusFilter = function (status) {
     currentStatusFilter = status;
     updateStatusChips(currentTab);
     renderBillingsList();
+};
+
+window.setBillingSort = function (sortOrder) {
+    currentSortOrder = sortOrder;
+    renderBillingsList();
+};
+
+window.exportBillingsCSV = function () {
+    const docs = allBillings[currentTab] || [];
+    if (docs.length === 0) {
+        window.showToast?.('No records to export', 'info');
+        return;
+    }
+
+    const headers = ['Invoice Number', 'Type', 'Contact Name', 'Date', 'Due Date', 'Status', 'Subtotal', 'Discount', 'GST Total', 'Grand Total', 'Amount Paid', 'Notes'];
+    const rows = docs.map(d => [
+        `"${(d.invoice_number || '').replace(/"/g, '""')}"`,
+        `"${(d.transaction_type || '').replace(/"/g, '""')}"`,
+        `"${(d.contact_name || '').replace(/"/g, '""')}"`,
+        `"${d.date || ''}"`,
+        `"${d.due_date || ''}"`,
+        `"${d.status || ''}"`,
+        Number(d.subtotal || 0).toFixed(2),
+        Number(d.discount || 0).toFixed(2),
+        Number(d.tax_total || 0).toFixed(2),
+        Number(d.grand_total || 0).toFixed(2),
+        Number(d.amount_paid || 0).toFixed(2),
+        `"${(d.notes || '').replace(/"/g, '""')}"`
+    ]);
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `${currentTab}_export_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.showToast?.('Exported to CSV', 'success');
 };
 
 // ── Create Sheet ─────────────────────────────────────────────────────
@@ -272,6 +326,9 @@ window.onInventoryItemSelect = function () {
 };
 
 window.addBillingItem = function () {
+    const editIndexEl = document.getElementById('billing-item-edit-index');
+    const editIndex = editIndexEl ? parseInt(editIndexEl.value, 10) : -1;
+
     const nameEl = document.getElementById('billing-item-name');
     const qtyEl = document.getElementById('billing-item-qty');
     const priceEl = document.getElementById('billing-item-price');
@@ -295,7 +352,7 @@ window.addBillingItem = function () {
     const taxAmount = netPrice * (taxPct / 100);
     const rowTotal = netPrice + taxAmount;
 
-    currentFormItems.push({
+    const itemObj = {
         item_name: name,
         item_id: itemId,
         description: '',
@@ -306,21 +363,76 @@ window.addBillingItem = function () {
         tax_pct: taxPct,
         tax_amount: taxAmount,
         row_total: rowTotal
-    });
+    };
 
-    // Clear inputs
+    if (editIndex >= 0 && editIndex < currentFormItems.length) {
+        currentFormItems[editIndex] = itemObj;
+        window.showToast?.('Item updated', 'success');
+    } else {
+        currentFormItems.push(itemObj);
+        window.showToast?.('Item added', 'success');
+    }
+
+    window.cancelEditBillingItem();
+    renderFormItems();
+};
+
+window.editBillingItem = function (index) {
+    const item = currentFormItems[index];
+    if (!item) return;
+
+    const editIndexEl = document.getElementById('billing-item-edit-index');
+    if (editIndexEl) editIndexEl.value = index;
+
+    const nameEl = document.getElementById('billing-item-name');
+    const qtyEl = document.getElementById('billing-item-qty');
+    const priceEl = document.getElementById('billing-item-price');
+    const taxEl = document.getElementById('billing-item-tax');
+    const discEl = document.getElementById('billing-item-discount');
+    const invEl = document.getElementById('billing-item-inventory');
+    const submitBtn = document.getElementById('billing-item-submit-btn');
+    const cancelBtn = document.getElementById('billing-item-cancel-edit-btn');
+
+    if (nameEl) nameEl.value = item.item_name || '';
+    if (qtyEl) qtyEl.value = item.quantity || '';
+    if (priceEl) priceEl.value = item.unit_price || '';
+    if (taxEl) taxEl.value = item.tax_pct || 0;
+    if (discEl) discEl.value = item.discount_pct || '';
+    if (invEl) invEl.value = item.item_id || '';
+
+    if (submitBtn) submitBtn.textContent = 'Update Item';
+    if (cancelBtn) cancelBtn.classList.remove('hidden');
+
+    nameEl?.focus();
+};
+
+window.cancelEditBillingItem = function () {
+    const editIndexEl = document.getElementById('billing-item-edit-index');
+    if (editIndexEl) editIndexEl.value = '-1';
+
+    const nameEl = document.getElementById('billing-item-name');
+    const qtyEl = document.getElementById('billing-item-qty');
+    const priceEl = document.getElementById('billing-item-price');
+    const taxEl = document.getElementById('billing-item-tax');
+    const discEl = document.getElementById('billing-item-discount');
+    const invEl = document.getElementById('billing-item-inventory');
+    const submitBtn = document.getElementById('billing-item-submit-btn');
+    const cancelBtn = document.getElementById('billing-item-cancel-edit-btn');
+
     if (nameEl) nameEl.value = '';
     if (qtyEl) qtyEl.value = '';
     if (priceEl) priceEl.value = '';
+    if (taxEl) taxEl.value = '5';
     if (discEl) discEl.value = '';
     if (invEl) invEl.value = '';
 
-    renderFormItems();
-    window.showToast?.('Item added', 'success');
+    if (submitBtn) submitBtn.textContent = '+ Add to Bill';
+    if (cancelBtn) cancelBtn.classList.add('hidden');
 };
 
 window.removeBillingItem = function (index) {
     currentFormItems.splice(index, 1);
+    window.cancelEditBillingItem();
     renderFormItems();
 };
 
@@ -331,7 +443,6 @@ function renderFormItems() {
 
     if (currentFormItems.length === 0) {
         if (emptyEl) emptyEl.style.display = 'block';
-        // Remove all item cards
         container.querySelectorAll('.billing-item-card').forEach(el => el.remove());
     } else {
         if (emptyEl) emptyEl.style.display = 'none';
@@ -341,8 +452,11 @@ function renderFormItems() {
             el.className = 'billing-item-card bg-surface-container-lowest border border-outline-variant/50 rounded-xl p-3';
             el.innerHTML = `
                 <div class="flex items-start justify-between gap-2">
-                    <div class="flex-1 min-w-0">
-                        <div class="text-[14px] font-semibold text-on-surface">${item.item_name}</div>
+                    <div class="flex-1 min-w-0 cursor-pointer" onclick="window.editBillingItem(${i})" title="Tap to edit item">
+                        <div class="text-[14px] font-semibold text-on-surface flex items-center gap-1.5">
+                            ${item.item_name}
+                            <span class="material-symbols-outlined text-[14px] text-secondary">edit</span>
+                        </div>
                         <div class="text-[12px] text-secondary">
                             ${item.quantity} pcs × ${fmtCurrency(item.unit_price)}
                             ${item.discount_pct > 0 ? ` − ${item.discount_pct}% disc` : ''}
@@ -352,7 +466,10 @@ function renderFormItems() {
                     </div>
                     <div class="flex items-center gap-2">
                         <span class="text-[15px] font-bold text-on-surface">${fmtCurrency(item.row_total)}</span>
-                        <button type="button" onclick="window.removeBillingItem(${i})" class="text-error active-scale">
+                        <button type="button" onclick="window.editBillingItem(${i})" class="text-secondary hover:text-primary active-scale" title="Edit Item">
+                            <span class="material-symbols-outlined text-[18px]">edit</span>
+                        </button>
+                        <button type="button" onclick="window.removeBillingItem(${i})" class="text-error active-scale" title="Remove Item">
                             <span class="material-symbols-outlined text-[18px]">delete</span>
                         </button>
                     </div>
@@ -660,6 +777,90 @@ window.recordPaymentForBill = async function (billId, billType) {
 
 // ── Print ────────────────────────────────────────────────────────────
 
+window.deleteBillingDraft = async function (id) {
+    window.showConfirmation?.({
+        title: 'Delete Draft',
+        message: 'Are you sure you want to permanently delete this draft? This cannot be undone.',
+        confirmText: 'Delete Permanently',
+        confirmColor: 'bg-error text-white',
+        onConfirm: async () => {
+            try {
+                window.showToast?.('Deleting draft...', 'info');
+                await api.deleteBillingDraft(id);
+                window.closeBillingDetails();
+                allBillings[currentTab] = null;
+                await Promise.all([loadBillings(currentTab), loadStats()]);
+                window.showToast?.('Draft deleted permanently', 'success');
+            } catch (e) {
+                window.showToast?.(e.message || 'Failed to delete draft', 'error');
+            }
+        }
+    });
+};
+
+window.duplicateBillingDoc = async function (id) {
+    try {
+        const doc = await api.getBilling(id);
+        if (!doc) return;
+        window.closeBillingDetails();
+
+        currentFormItems = (doc.items || []).map(item => ({
+            item_name: item.item_name || '',
+            item_id: item.item_id || '',
+            description: item.description || '',
+            quantity: item.quantity || 1,
+            unit: item.unit || 'pcs',
+            unit_price: item.unit_price || 0,
+            discount_pct: item.discount_pct || 0,
+            tax_pct: item.tax_pct || 0,
+            tax_amount: item.tax_amount || 0,
+            row_total: item.row_total || 0
+        }));
+
+        const type = doc.transaction_type;
+        const meta = BILLING_TYPES[type];
+        const contacts = cachedContacts[meta?.contactType || 'customer'] || [];
+
+        let linkedBills = [];
+        if (type === 'Payment_In') {
+            linkedBills = await api.getBillings({ type: 'Sales_Bill' }).then(bs => bs.filter(b => ['Finalized', 'Partially_Paid'].includes(b.status)));
+        } else if (type === 'Payment_Out') {
+            linkedBills = await api.getBillings({ type: 'Purchase_Bill' }).then(bs => bs.filter(b => ['Finalized', 'Partially_Paid'].includes(b.status)));
+        }
+
+        if (!allBillings[type]) {
+            allBillings[type] = await api.getBillings({ type }).catch(() => []);
+        }
+        const nextSerial = getNextSerialNumber(type, allBillings[type] || []);
+
+        const portal = document.getElementById('billingCreateSheet-portal');
+        if (!portal) return;
+        portal.innerHTML = getCreateSheetHTML(type, contacts, cachedInventory, linkedBills, nextSerial);
+
+        // Prefill form (cloned data, new serial and today's date)
+        const titleEl = document.getElementById('billingCreateSheet-title');
+        if (titleEl) titleEl.textContent = `New ${meta?.label.slice(0,-1)} (Cloned)`;
+
+        const contactSelect = document.getElementById('billing-contact-select');
+        if (contactSelect) contactSelect.value = doc.contact_id;
+        const notesEl = document.getElementById('billing-notes');
+        if (notesEl) notesEl.value = doc.notes || '';
+
+        // Payment amount
+        const payAmtEl = document.getElementById('billing-payment-amount');
+        if (payAmtEl) payAmtEl.value = doc.grand_total || 0;
+        const linkedBillEl = document.getElementById('billing-linked-bill');
+        if (linkedBillEl && doc.linked_bill_id) linkedBillEl.value = doc.linked_bill_id;
+
+        renderFormItems();
+        requestAnimationFrame(() => openSheet('billingCreateSheet'));
+        window.showToast?.('Document cloned into new draft', 'info');
+    } catch (e) {
+        console.error('Duplicate billing error:', e);
+        window.showToast?.('Failed to duplicate document', 'error');
+    }
+};
+
 window.printBillingDoc = async function (id) {
     try {
         const doc = await api.getBilling(id);
@@ -686,3 +887,4 @@ window.printBillingDoc = async function (id) {
         window.showToast?.('Failed to generate print view', 'error');
     }
 };
+

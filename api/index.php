@@ -1084,11 +1084,23 @@ if ($segments[0] === 'billings') {
         jsonResponse(getBillingWithItems($pdo, $newId), 201);
     }
 
-    // DELETE /api/billings/:id  (soft void)
+    // DELETE /api/billings/:id  (soft void or permanent delete for drafts)
     if ($method === 'DELETE' && $billingId) {
-        $st = $pdo->prepare("SELECT `id` FROM `billing_master` WHERE `id` = ?");
+        $st = $pdo->prepare("SELECT `id`, `status` FROM `billing_master` WHERE `id` = ?");
         $st->execute([$billingId]);
-        if (!$st->fetch()) jsonResponse(['error' => 'Billing document not found'], 404);
+        $row = $st->fetch(PDO::FETCH_ASSOC);
+        if (!$row) jsonResponse(['error' => 'Billing document not found'], 404);
+
+        $isPermanent = isset($_GET['permanent']) && $_GET['permanent'] === 'true';
+        if ($isPermanent) {
+            if ($row['status'] !== 'Draft') {
+                jsonResponse(['error' => 'Only Draft documents can be permanently deleted'], 400);
+            }
+            $pdo->prepare("DELETE FROM `billing_items` WHERE `billing_master_id` = ?")->execute([$billingId]);
+            $pdo->prepare("DELETE FROM `billing_master` WHERE `id` = ?")->execute([$billingId]);
+            jsonResponse(['success' => true, 'message' => 'Draft document permanently deleted']);
+        }
+
         $pdo->prepare("UPDATE `billing_master` SET `status` = 'Void', `updatedAt` = NOW() WHERE `id` = ?")->execute([$billingId]);
         jsonResponse(['success' => true, 'message' => 'Document voided']);
     }
