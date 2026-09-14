@@ -318,19 +318,38 @@ if ($relPath === 'telemetry/dashboard' || $relPath === 'telemetry') {
     $statusCounts = [
         'Draft' => 0, 'Quotation Sent' => 0, 'Awaiting Approval' => 0, 'Approved' => 0,
         'Material Reserved' => 0, 'Production Assigned' => 0, 'Knitting' => 0,
-        'Cutting' => 0, 'Stitching' => 0, 'QC Audit' => 0, 'Dispatched' => 0, 'Fulfilled' => 0
+        'Cutting' => 0, 'Stitching' => 0, 'QC Audit' => 0, 'Dispatched' => 0, 'Delivered' => 0, 'Fulfilled' => 0, 'Closed' => 0, 'Archived' => 0
     ];
     $ordersStmt = $pdo->query("SELECT `status`, COUNT(*) as cnt FROM `orders` GROUP BY `status`");
     while ($r = $ordersStmt->fetch()) {
-        if (isset($statusCounts[$r['status']])) {
-            $statusCounts[$r['status']] = (int)$r['cnt'];
+        $statusCounts[$r['status']] = (int)$r['cnt'];
+    }
+
+    // Active orders exclude all completed/dispatched states
+    $completedStatuses = ['Dispatched', 'Delivered', 'Fulfilled', 'Closed', 'Archived'];
+    $activeOrdersCount = 0;
+    foreach ($statusCounts as $st => $cnt) {
+        if (!in_array($st, $completedStatuses, true)) {
+            $activeOrdersCount += (int)$cnt;
         }
     }
 
     $salesTotal = (float)$pdo->query("SELECT COALESCE(SUM(`grand_total`), 0) FROM `billing_master` WHERE `transaction_type` = 'Sales_Bill' AND `status` != 'Void'")->fetchColumn();
     $purchasesTotal = (float)$pdo->query("SELECT COALESCE(SUM(`grand_total`), 0) FROM `billing_master` WHERE `transaction_type` IN ('Purchase_Bill','Payment_Out') AND `status` != 'Void'")->fetchColumn();
+    
+    // Live transactions from Finance ledger
+    $transIncome = 0.0;
+    $transExpense = 0.0;
+    try {
+        $transIncome = (float)$pdo->query("SELECT COALESCE(SUM(`amount`), 0) FROM `transactions` WHERE `type` = 'Income' AND `status` = 'Completed'")->fetchColumn();
+        $transExpense = (float)$pdo->query("SELECT COALESCE(SUM(`amount`), 0) FROM `transactions` WHERE (`type` = 'Expense' OR `isNegative` = 1) AND `status` = 'Completed'")->fetchColumn();
+    } catch (Exception $e) { /* ignore if table not created yet */ }
+
     $quotesCount = (int)$pdo->query("SELECT COUNT(*) FROM `billing_master` WHERE `transaction_type` = 'Quotation' AND `status` != 'Void'")->fetchColumn();
     $inventoryTotalValue = (float)$pdo->query("SELECT COALESCE(SUM(`totalValue`), 0) FROM `inventory` WHERE `isActive` = 1")->fetchColumn();
+
+    $totalSales = max($salesTotal, $transIncome);
+    $totalExpenses = max($purchasesTotal, $transExpense);
 
     $anomalies = [];
     if ($inventoryTotalValue > 500000) {
@@ -347,11 +366,13 @@ if ($relPath === 'telemetry/dashboard' || $relPath === 'telemetry') {
         'success' => true,
         'timestamp' => date('c'),
         'metrics' => [
-            'totalSales' => $salesTotal,
-            'totalExpenses' => $purchasesTotal,
+            'totalSales' => $totalSales,
+            'totalExpenses' => $totalExpenses,
             'quotationsCount' => $quotesCount,
             'inventoryValue' => $inventoryTotalValue,
-            'activeOrders' => array_sum($statusCounts) - ($statusCounts['Fulfilled'] ?? 0)
+            'activeOrders' => $activeOrdersCount,
+            'transIncome' => $transIncome,
+            'transExpense' => $transExpense
         ],
         'matrix' => $statusCounts,
         'anomalies' => $anomalies

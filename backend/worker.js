@@ -282,31 +282,61 @@ export default {
                 await ensureBillingTables(env);
                 const salesResult = await env.DB.prepare(
                     `SELECT SUM(grand_total) as total FROM billing_master WHERE transaction_type = 'Sales_Bill' AND status != 'Void'`
-                ).first();
+                ).first().catch(() => ({ total: 0 }));
                 const purchaseResult = await env.DB.prepare(
                     `SELECT SUM(grand_total) as total FROM billing_master WHERE transaction_type IN ('Purchase_Bill','Payment_Out') AND status != 'Void'`
-                ).first();
+                ).first().catch(() => ({ total: 0 }));
                 const quotesResult = await env.DB.prepare(
                     `SELECT COUNT(*) as count FROM billing_master WHERE transaction_type = 'Quotation' AND status != 'Void'`
-                ).first();
+                ).first().catch(() => ({ count: 0 }));
                 const invResult = await env.DB.prepare(
                     `SELECT SUM(totalValue) as total FROM inventory WHERE isActive = 1`
-                ).first();
+                ).first().catch(() => ({ total: 0 }));
+
+                // Aggregate live transactions from Finance ledger
+                let transIncome = 0;
+                let transExpense = 0;
+                try {
+                    const transIncResult = await env.DB.prepare(
+                        `SELECT SUM(amount) as total FROM transactions WHERE type = 'Income' AND status = 'Completed'`
+                    ).first();
+                    const transExpResult = await env.DB.prepare(
+                        `SELECT SUM(amount) as total FROM transactions WHERE (type = 'Expense' OR isNegative = 1) AND status = 'Completed'`
+                    ).first();
+                    transIncome = transIncResult?.total || 0;
+                    transExpense = transExpResult?.total || 0;
+                } catch (err) { /* transactions table may be empty or unmigrated */ }
 
                 const statusCounts = {
                     'Draft': 0, 'Quotation Sent': 0, 'Awaiting Approval': 0, 'Approved': 0,
                     'Material Reserved': 0, 'Production Assigned': 0, 'Knitting': 0,
-                    'Cutting': 0, 'Stitching': 0, 'QC Audit': 0, 'Dispatched': 0, 'Fulfilled': 0
+                    'Cutting': 0, 'Stitching': 0, 'QC Audit': 0, 'Dispatched': 0, 'Delivered': 0, 'Fulfilled': 0, 'Closed': 0, 'Archived': 0
                 };
-                const ordersResult = await env.DB.prepare(`SELECT status, COUNT(*) as cnt FROM orders GROUP BY status`).all();
+                const ordersResult = await env.DB.prepare(`SELECT status, COUNT(*) as cnt FROM orders GROUP BY status`).all().catch(() => ({ results: [] }));
                 if (ordersResult.results) {
                     for (const r of ordersResult.results) {
-                        if (statusCounts[r.status] !== undefined) statusCounts[r.status] = r.cnt;
+                        if (statusCounts[r.status] !== undefined) {
+                            statusCounts[r.status] = r.cnt;
+                        } else {
+                            statusCounts[r.status] = r.cnt;
+                        }
                     }
                 }
 
-                const salesTotal = salesResult?.total || 0;
-                const purchasesTotal = purchaseResult?.total || 0;
+                // Completed statuses that should NOT count towards active WIP orders
+                const COMPLETED_STATUSES = new Set(['Dispatched', 'Delivered', 'Fulfilled', 'Closed', 'Archived']);
+                let activeOrdersCount = 0;
+                for (const [st, cnt] of Object.entries(statusCounts)) {
+                    if (!COMPLETED_STATUSES.has(st)) {
+                        activeOrdersCount += Number(cnt || 0);
+                    }
+                }
+
+                // Unified Sales & Expenses (take highest of billings vs finance transactions, or combined if distinct)
+                const billingSales = Number(salesResult?.total || 0);
+                const billingPurchases = Number(purchaseResult?.total || 0);
+                const totalSales = Math.max(billingSales, transIncome);
+                const totalExpenses = Math.max(billingPurchases, transExpense);
                 const quotesCount = quotesResult?.count || 0;
                 const inventoryTotalValue = invResult?.total || 0;
 
@@ -325,11 +355,13 @@ export default {
                     success: true,
                     timestamp: new Date().toISOString(),
                     metrics: {
-                        totalSales: salesTotal,
-                        totalExpenses: purchasesTotal,
+                        totalSales,
+                        totalExpenses,
                         quotationsCount: quotesCount,
                         inventoryValue: inventoryTotalValue,
-                        activeOrders: Object.values(statusCounts).reduce((a, b) => a + b, 0) - (statusCounts['Fulfilled'] || 0)
+                        activeOrders: activeOrdersCount,
+                        transIncome,
+                        transExpense
                     },
                     matrix: statusCounts,
                     anomalies

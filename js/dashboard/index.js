@@ -64,18 +64,23 @@ async function loadDashboardTelemetry() {
 
 async function fetchTelemetryData() {
     try {
-        const res = await fetch('/api/telemetry/dashboard');
+        const token = localStorage.getItem('gos_token');
+        const headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+
+        const res = await fetch('/api/telemetry/dashboard', { headers });
         if (res.ok) {
             const data = await res.json();
             if (data && data.success) return data;
         }
     } catch (e) { /* fallback to direct API calculations */ }
 
-    // Fallback calculation via API
-    const [billings, inventory, orders] = await Promise.all([
+    // Fallback calculation via unified API calls
+    const [billings, inventory, orders, transactions] = await Promise.all([
         api.getBillings().catch(() => []),
         api.getInventory().catch(() => []),
-        api.getOrders().catch(() => [])
+        api.getOrders().catch(() => []),
+        (api.getTransactions ? api.getTransactions() : Promise.resolve([])).catch(() => [])
     ]);
 
     let sales = 0;
@@ -89,15 +94,36 @@ async function fetchTelemetryData() {
         else if (b.transaction_type === 'Quotation') quotes++;
     });
 
-    const stockValue = inventory.reduce((sum, i) => sum + (i.totalValue || 0), 0);
+    // Merge transactions from Finance ledger
+    let transIncome = 0;
+    let transExpense = 0;
+    transactions.forEach(t => {
+        const amount = parseFloat(t.amount || 0);
+        if (t.status === 'Completed') {
+            if (t.type === 'Income') transIncome += amount;
+            else if (t.type === 'Expense' || t.isNegative) transExpense += amount;
+        }
+    });
+
+    sales = Math.max(sales, transIncome);
+    expenses = Math.max(expenses, transExpense);
+
+    const stockValue = inventory.reduce((sum, i) => sum + (i.totalValue || (Number(i.quantity || 0) * Number(i.costPrice || i.unitPrice || 0))), 0);
     
     const matrix = {
-        'Draft': 0, 'Quotation Sent': 0, 'Approved': 0, 'Material Reserved': 0,
-        'Knitting': 0, 'Cutting': 0, 'Stitching': 0, 'QC Audit': 0, 'Dispatched': 0
+        'Draft': 0, 'Quotation Sent': 0, 'Awaiting Approval': 0, 'Approved': 0,
+        'Material Reserved': 0, 'Production Assigned': 0, 'Knitting': 0,
+        'Cutting': 0, 'Stitching': 0, 'QC Audit': 0, 'Dispatched': 0, 'Delivered': 0,
+        'Fulfilled': 0, 'Closed': 0, 'Archived': 0
     };
     orders.forEach(o => {
         if (matrix[o.status] !== undefined) matrix[o.status]++;
+        else matrix[o.status] = 1;
     });
+
+    // Orders marked as Dispatched, Delivered, Fulfilled, Closed, or Archived are completed floor lifecycle
+    const COMPLETED_STATUSES = ['Dispatched', 'Delivered', 'Fulfilled', 'Closed', 'Archived'];
+    const activeOrders = orders.filter(o => !COMPLETED_STATUSES.includes(o.status)).length;
 
     return {
         metrics: {
@@ -105,7 +131,9 @@ async function fetchTelemetryData() {
             totalExpenses: expenses,
             quotationsCount: quotes,
             inventoryValue: stockValue,
-            activeOrders: orders.filter(o => o.status !== 'Fulfilled').length
+            activeOrders,
+            transIncome,
+            transExpense
         },
         matrix,
         anomalies: stockValue > 500000 ? [{
@@ -129,55 +157,75 @@ function renderKPIs(metrics) {
     const stockVal = metrics.inventoryValue || 0;
 
     container.innerHTML = `
-        <div class="bg-surface-container-lowest border border-outline-variant/60 rounded-3xl p-4 shadow-sm flex flex-col justify-between">
+        <div onclick="window.location.href='finance.html'" 
+             class="bg-surface-container-lowest border border-outline-variant/60 rounded-3xl p-4 shadow-sm flex flex-col justify-between cursor-pointer active-scale transition-apple hover:border-primary/50 group"
+             title="Click to view Finance Overview">
             <div class="flex items-center justify-between">
-                <span class="text-[12px] font-semibold text-secondary uppercase tracking-wider">Revenue</span>
+                <span class="text-[12px] font-semibold text-secondary uppercase tracking-wider group-hover:text-primary transition-colors">Revenue</span>
                 <div class="w-8 h-8 rounded-xl bg-[#00B386]/10 text-[#00B386] flex items-center justify-center">
                     <span class="material-symbols-outlined text-[18px]">payments</span>
                 </div>
             </div>
             <div class="mt-3">
                 <div class="text-[22px] font-extrabold font-mono text-on-surface">₹${sales.toLocaleString()}</div>
-                <div class="text-[11px] font-medium text-[#00B386] mt-0.5">Live Invoiced</div>
+                <div class="text-[11px] font-medium text-[#00B386] mt-0.5 flex items-center gap-1">
+                    <span>Live Invoiced & Inflow</span>
+                    <span class="material-symbols-outlined text-[13px]">arrow_forward</span>
+                </div>
             </div>
         </div>
 
-        <div class="bg-surface-container-lowest border border-outline-variant/60 rounded-3xl p-4 shadow-sm flex flex-col justify-between">
+        <div onclick="window.location.href='finance.html'"
+             class="bg-surface-container-lowest border border-outline-variant/60 rounded-3xl p-4 shadow-sm flex flex-col justify-between cursor-pointer active-scale transition-apple hover:border-primary/50 group"
+             title="Click to view Cash Flow & P&L">
             <div class="flex items-center justify-between">
-                <span class="text-[12px] font-semibold text-secondary uppercase tracking-wider">Net Profit</span>
+                <span class="text-[12px] font-semibold text-secondary uppercase tracking-wider group-hover:text-primary transition-colors">Net Profit</span>
                 <div class="w-8 h-8 rounded-xl ${netProfit >= 0 ? 'bg-[#008A00]/10 text-[#008A00]' : 'bg-error/10 text-error'} flex items-center justify-center">
                     <span class="material-symbols-outlined text-[18px]">account_balance</span>
                 </div>
             </div>
             <div class="mt-3">
                 <div class="text-[22px] font-extrabold font-mono text-on-surface">₹${netProfit.toLocaleString()}</div>
-                <div class="text-[11px] font-medium ${netProfit >= 0 ? 'text-[#008A00]' : 'text-error'} mt-0.5">${netProfit >= 0 ? '+ Run Rate' : '- Deficit'}</div>
+                <div class="text-[11px] font-medium ${netProfit >= 0 ? 'text-[#008A00]' : 'text-error'} mt-0.5 flex items-center gap-1">
+                    <span>${netProfit >= 0 ? '+ Live Run Rate' : '- Deficit'}</span>
+                    <span class="material-symbols-outlined text-[13px]">arrow_forward</span>
+                </div>
             </div>
         </div>
 
-        <div class="bg-surface-container-lowest border border-outline-variant/60 rounded-3xl p-4 shadow-sm flex flex-col justify-between">
+        <div onclick="window.location.href='orders.html?filter=active'"
+             class="bg-surface-container-lowest border border-outline-variant/60 rounded-3xl p-4 shadow-sm flex flex-col justify-between cursor-pointer active-scale transition-apple hover:border-primary/50 group"
+             title="Click to view Active Production Orders">
             <div class="flex items-center justify-between">
-                <span class="text-[12px] font-semibold text-secondary uppercase tracking-wider">Active WIP</span>
+                <span class="text-[12px] font-semibold text-secondary uppercase tracking-wider group-hover:text-primary transition-colors">Active WIP</span>
                 <div class="w-8 h-8 rounded-xl bg-[#0071E3]/10 text-[#0071E3] flex items-center justify-center">
                     <span class="material-symbols-outlined text-[18px]">precision_manufacturing</span>
                 </div>
             </div>
             <div class="mt-3">
                 <div class="text-[22px] font-extrabold font-mono text-on-surface">${activeOrders} Orders</div>
-                <div class="text-[11px] font-medium text-[#0071E3] mt-0.5">In Floor Lifecycle</div>
+                <div class="text-[11px] font-medium text-[#0071E3] mt-0.5 flex items-center gap-1">
+                    <span>In Floor Lifecycle</span>
+                    <span class="material-symbols-outlined text-[13px]">arrow_forward</span>
+                </div>
             </div>
         </div>
 
-        <div class="bg-surface-container-lowest border border-outline-variant/60 rounded-3xl p-4 shadow-sm flex flex-col justify-between">
+        <div onclick="window.location.href='inventory.html'"
+             class="bg-surface-container-lowest border border-outline-variant/60 rounded-3xl p-4 shadow-sm flex flex-col justify-between cursor-pointer active-scale transition-apple hover:border-primary/50 group"
+             title="Click to view Inventory Stock & Valuation">
             <div class="flex items-center justify-between">
-                <span class="text-[12px] font-semibold text-secondary uppercase tracking-wider">Stock Valuation</span>
+                <span class="text-[12px] font-semibold text-secondary uppercase tracking-wider group-hover:text-primary transition-colors">Stock Valuation</span>
                 <div class="w-8 h-8 rounded-xl bg-[#FF9F0A]/10 text-[#FF9F0A] flex items-center justify-center">
                     <span class="material-symbols-outlined text-[18px]">inventory_2</span>
                 </div>
             </div>
             <div class="mt-3">
                 <div class="text-[22px] font-extrabold font-mono text-on-surface">₹${stockVal.toLocaleString()}</div>
-                <div class="text-[11px] font-medium text-[#FF9F0A] mt-0.5">Yarn & Fabric Assets</div>
+                <div class="text-[11px] font-medium text-[#FF9F0A] mt-0.5 flex items-center gap-1">
+                    <span>Yarn & Fabric Assets</span>
+                    <span class="material-symbols-outlined text-[13px]">arrow_forward</span>
+                </div>
             </div>
         </div>
     `;
@@ -195,8 +243,8 @@ function renderAnomalyWidgetContainer(anomalies) {
 
 function renderCharts(metrics) {
     DashboardCharts.renderRunRateChart('runRateCanvas', {
-        sales: metrics.totalSales || 480000,
-        expenses: metrics.totalExpenses || 310000
+        sales: metrics.totalSales || 0,
+        expenses: metrics.totalExpenses || 0
     });
     DashboardCharts.renderCapacityHeatmap('capacityHeatmapContainer');
 }
