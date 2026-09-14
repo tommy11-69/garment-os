@@ -1,4 +1,5 @@
 import { getApiBaseUrl } from '../config.js?v=5.2';
+import { calculateOrderRollup } from '../production/domain/workflowEngine.js?v=5.5';
 
 class Database {
     constructor() {
@@ -104,73 +105,19 @@ export const db = new Database();
 function recalculateOrderProgress(order) {
     if (!order) return {};
 
-    const STAGE_SEQUENCES = {
-        default:             ['Fabric', 'Cutting', 'Stitching', 'Printing/Embroidery', 'Ironing & Packing', 'Dispatch'],
-        print_before_stitch: ['Fabric', 'Cutting', 'Printing/Embroidery', 'Stitching', 'Ironing & Packing', 'Dispatch'],
-        wash_before_stitch:  ['Fabric', 'Cutting', 'Wash', 'Stitching', 'Printing/Embroidery', 'Ironing & Packing', 'Dispatch'],
-        direct_fulfillment:  ['Procurement', 'Dispatch'],
-    };
-
-    const wf = order.workflowType || 'default';
-    const stages = STAGE_SEQUENCES[wf] || STAGE_SEQUENCES.default;
-    const status = order.status || 'Fabric';
-
-    const isFinished = ['Dispatched', 'Delivered', 'Closed', 'Archived'].includes(status);
-    if (isFinished) {
-        return {
-            progressPercentage: 100,
-            progressLabel: 'Completed',
-            progressColor: 'bg-[#008A00]'
-        };
-    }
-
-    let stageIdx = stages.findIndex(s =>
-        status.toLowerCase().includes(s.toLowerCase().split('/')[0]) ||
-        s.toLowerCase().includes(status.toLowerCase())
-    );
-    if (stageIdx < 0) {
-        return {
-            progressPercentage: 0,
-            progressLabel: status,
-            progressColor: 'bg-surface-variant'
-        };
-    }
-
-    const numStages = stages.length;
-    const baseProgress = (stageIdx / numStages) * 100;
-
-    const tasks = order.tasks || [];
-    let parsedTasks = tasks;
-    if (typeof tasks === 'string') {
-        try { parsedTasks = JSON.parse(tasks); } catch { parsedTasks = []; }
-    }
-    if (!Array.isArray(parsedTasks)) parsedTasks = [];
-
-    let taskPct = 0;
-    if (parsedTasks.length > 0) {
-        const completedTasks = parsedTasks.filter(t => t.completed === true || t.status === 'Completed' || t.status === 'completed').length;
-        taskPct = completedTasks / parsedTasks.length;
-    }
-
-    const progressWeight = 100 / numStages;
-    const progressPercentage = Math.round(baseProgress + (taskPct * progressWeight));
+    const roll = calculateOrderRollup(order);
+    const pct = roll.overallPercentage;
 
     let progressColor = 'bg-primary';
-    if (progressPercentage >= 90) {
-        progressColor = 'bg-[#008A00]';
-    } else if (progressPercentage >= 40) {
+    if (pct >= 90) {
+        progressColor = 'bg-[#34C759]';
+    } else if (pct >= 40) {
         progressColor = 'bg-[#FF9F0A]';
     }
 
-    let progressLabel = status;
-    if (parsedTasks.length > 0) {
-        const completedTasks = parsedTasks.filter(t => t.completed === true || t.status === 'Completed' || t.status === 'completed').length;
-        progressLabel = `${status} (${completedTasks}/${parsedTasks.length} tasks)`;
-    }
-
     return {
-        progressPercentage,
-        progressLabel,
+        progressPercentage: pct,
+        progressLabel: `${roll.activeStageDef.shortLabel} (${pct}%)`,
         progressColor
     };
 }
