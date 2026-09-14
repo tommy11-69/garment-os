@@ -4,7 +4,7 @@
  * drag-and-drop dropzone, mobile camera integration, and interactive full-screen Lightbox viewer.
  */
 
-import { api } from '../services/api.js?v=5.2';
+import { api } from '../services/api.js?v=5.5';
 
 // ── State for Pending Form Attachments ─────────────────────────────
 const pendingAttachmentsMap = new Map(); // key: form prefix (e.g., 'trans-', 'edit-trans-') -> Array of attachment objects

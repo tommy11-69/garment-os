@@ -1,10 +1,10 @@
-import { financeStore } from '../stores/FinanceStore.js?v=5.2';
-import { inventoryRepository } from '../repositories/InventoryRepository.js?v=5.2';
-import { api } from '../services/api.js?v=5.2';
-import { renderers } from '../renderers.js?v=5.2';
-import { BottomSheet } from '../components/index.js?v=5.2';
-import { bindFormValidation } from '../utils/formHandler.js?v=5.2';
-import { SearchableSelectInput } from '../components/inputs.js?v=5.2';
+import { financeStore } from '../stores/FinanceStore.js?v=5.5';
+import { inventoryRepository } from '../repositories/InventoryRepository.js?v=5.5';
+import { api } from '../services/api.js?v=5.5';
+import { renderers } from '../renderers.js?v=5.5';
+import { BottomSheet } from '../components/index.js?v=5.5';
+import { bindFormValidation } from '../utils/formHandler.js?v=5.5';
+import { SearchableSelectInput } from '../components/inputs.js?v=5.5';
 import { 
     getAddTransactionSheetHTML, getAddTransactionFooterHTML,
     getTransactionDetailsHeader, getTransactionDetailsContent,
@@ -12,14 +12,14 @@ import {
     getCategoriesByType, getCategoryBreakdownSheetContent,
     getCustomDateSheetHTML, getCustomDateFooterHTML,
     getBalanceSheetDetailHTML
-} from './templates.js?v=5.2';
+} from './templates.js?v=5.5';
 import {
     initPendingAttachments,
     getPendingAttachments,
     setPendingAttachments,
     setupDropzoneEvents,
     ensureLightboxDOM
-} from './attachments.js?v=5.2';
+} from './attachments.js?v=5.5';
 
 async function initModule() {
     window.financeStore = financeStore;

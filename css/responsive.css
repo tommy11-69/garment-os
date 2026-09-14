@@ -48,9 +48,16 @@
         display: none !important;
     }
 
-    /* ── Hide FAB (actions live in page headers on desktop) ── */
+    /* ── FAB Positioning for Desktop / Laptop ── */
     #fab-container {
-        display: none !important;
+        display: block !important;
+    }
+
+    #fab-container button {
+        bottom: 2rem !important; /* Bottom-8 on desktop since bottom navigation bar is hidden */
+        right: 2rem !important;  /* Right-8 on desktop */
+        box-shadow: 0 8px 24px -4px rgba(0, 89, 181, 0.35), 0 4px 12px -2px rgba(0, 0, 0, 0.12) !important;
+        z-index: 99 !important;
     }
 
     /* ── Body Background ── */

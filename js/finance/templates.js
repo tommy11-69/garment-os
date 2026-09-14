@@ -1,5 +1,5 @@
-import { TextInput, SelectInput, TextareaInput, SearchableSelectInput } from '../components/inputs.js?v=5.2';
-import { getFormAttachmentSectionHTML, getTransactionAttachmentsDetailHTML } from './attachments.js?v=5.2';
+import { TextInput, SelectInput, TextareaInput, SearchableSelectInput } from '../components/inputs.js?v=5.5';
+import { getFormAttachmentSectionHTML, getTransactionAttachmentsDetailHTML } from './attachments.js?v=5.5';
 
 // Category definitions by type
 const INCOME_CATEGORIES = [
@@ -28,6 +28,7 @@ const EXPENSE_CATEGORIES = [
     { label: 'Sampling', value: 'Sampling' },
     { label: 'Machine Repair', value: 'Machine Repair' },
     { label: 'Cutting', value: 'Cutting' },
+    { label: 'Pattern Making', value: 'Pattern Making' },
     { label: 'Other', value: 'Other' }
 ];
 
