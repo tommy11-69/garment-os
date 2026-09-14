@@ -223,13 +223,15 @@ if (!file_exists($migrationMarker)) {
             'color'           => "LONGTEXT DEFAULT ''",
             'specifications'  => "LONGTEXT DEFAULT '{}'",
             'notes'           => "LONGTEXT DEFAULT ''",
-            'movementHistory' => "LONGTEXT DEFAULT '[]'"
+            'movementHistory' => "LONGTEXT DEFAULT '[]'",
+            'isActive'        => "INT DEFAULT 1"
         ];
         foreach ($neededInvCols as $cName => $cDef) {
             if (!in_array($cName, $existingInvCols, true)) {
                 $pdo->exec("ALTER TABLE `inventory` ADD COLUMN `{$cName}` {$cDef}");
             }
         }
+
 
         // ── Transactions Attachments Column Migration ─────────────────────
         $txCols = $pdo->query("SHOW COLUMNS FROM `transactions`")->fetchAll();
@@ -369,7 +371,17 @@ if ($relPath === 'telemetry/dashboard' || $relPath === 'telemetry') {
     } catch (Exception $e) { /* ignore if table not created yet */ }
 
     $quotesCount = (int)$pdo->query("SELECT COUNT(*) FROM `billing_master` WHERE `transaction_type` = 'Quotation' AND `status` != 'Void'")->fetchColumn();
-    $inventoryTotalValue = (float)$pdo->query("SELECT COALESCE(SUM(`totalValue`), 0) FROM `inventory` WHERE `isActive` = 1")->fetchColumn();
+    $inventoryTotalValue = 0.0;
+    try {
+        $inventoryTotalValue = (float)$pdo->query("SELECT COALESCE(SUM(`totalValue`), 0) FROM `inventory` WHERE `isActive` = 1")->fetchColumn();
+    } catch (Exception $e) {
+        try {
+            $inventoryTotalValue = (float)$pdo->query("SELECT COALESCE(SUM(`totalValue`), 0) FROM `inventory`")->fetchColumn();
+        } catch (Exception $e2) {
+            $inventoryTotalValue = 0.0;
+        }
+    }
+
 
     $totalSales = max($salesTotal, $transIncome);
     $totalExpenses = max($purchasesTotal, $transExpense);
