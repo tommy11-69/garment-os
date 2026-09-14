@@ -1,21 +1,8 @@
-# Ignore node_modules, backend, git, and build files from static assets upload
 node_modules
-node_modules/
-backend/
 .git
-.git/
 .wrangler
-.wrangler/
-.wrangler/**/*
-*.sqlite
-*.sqlite3
-*.db
-*.wal
-*.shm
-.env*
-.dev.vars*
-package.json
-package-lock.json
-wrangler.jsonc
-DEPLOYMENT.md
-DESIGN.md
+.wrangler_state_garment
+dev/scripts
+*.log
+*.cjs
+*.sql
