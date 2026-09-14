@@ -13,6 +13,13 @@ import {
     getCustomDateSheetHTML, getCustomDateFooterHTML,
     getBalanceSheetDetailHTML
 } from './templates.js?v=5.2';
+import {
+    initPendingAttachments,
+    getPendingAttachments,
+    setPendingAttachments,
+    setupDropzoneEvents,
+    ensureLightboxDOM
+} from './attachments.js?v=5.2';
 
 async function initModule() {
     window.financeStore = financeStore;
@@ -69,6 +76,9 @@ async function renderSheets() {
         setupSearchableSelects('trans-category');
         setupSearchableSelects('trans-refId');
         setupCustomDateSheet();
+        initPendingAttachments('trans-', []);
+        setupDropzoneEvents('trans-');
+        ensureLightboxDOM();
     }
 }
 
@@ -754,9 +764,10 @@ async function handleAddTransaction() {
     
     try {
         refId = await resolvePartyId(type, refId);
+        const attachments = getPendingAttachments('trans-');
 
         await api.createTransaction({
-            type, date, title, amount, category, paymentMethod, referenceNo, status, notes, createdBy: 'Admin', refId
+            type, date, title, amount, category, paymentMethod, referenceNo, status, notes, createdBy: 'Admin', refId, attachments
         });
         window.closeSheet('addTransactionSheet');
         window.showToast?.('Transaction added successfully!', 'success');
@@ -769,6 +780,7 @@ async function handleAddTransaction() {
         const otherInput = document.getElementById('trans-other-category');
         if (otherInput) otherInput.value = '';
         document.getElementById('trans-other-category-container')?.classList.add('hidden');
+        setPendingAttachments('trans-', []);
         
         financeStore.loadTransactions();
     } catch (e) {
@@ -797,12 +809,14 @@ async function handleEditTransaction() {
     
     try {
         refId = await resolvePartyId(type, refId);
+        const attachments = getPendingAttachments('edit-trans-');
 
         await api.updateTransaction(id, {
-            type, date, title, amount, category, paymentMethod, referenceNo, status, notes, refId
+            type, date, title, amount, category, paymentMethod, referenceNo, status, notes, refId, attachments
         });
         window.closeSheet('editTransactionSheet');
         window.showToast?.('Transaction updated', 'success');
+        setPendingAttachments('edit-trans-', []);
         
         financeStore.loadTransactions(); // refresh list
         setTimeout(() => {
@@ -1219,6 +1233,8 @@ window.editTransaction = function() {
         setupCategoryToggle('edit-trans-');
         setupSearchableSelects('edit-trans-category');
         setupSearchableSelects('edit-trans-refId');
+        initPendingAttachments('edit-trans-', t.attachments || []);
+        setupDropzoneEvents('edit-trans-');
     }
     setTimeout(() => {
         window.openSheet('editTransactionSheet');

@@ -1,4 +1,5 @@
 import { TextInput, SelectInput, TextareaInput, SearchableSelectInput } from '../components/inputs.js?v=5.2';
+import { getFormAttachmentSectionHTML, getTransactionAttachmentsDetailHTML } from './attachments.js?v=5.2';
 
 // Category definitions by type
 const INCOME_CATEGORIES = [
@@ -175,9 +176,7 @@ export function getAddTransactionSheetHTML(transaction = null, prefix = 'trans-'
 
             ${TextareaInput({ label: 'Notes', id: `${prefix}notes`, placeholder: 'Additional details...', rows: 2, value: isEdit ? transaction.notes : '' })}
 
-            <div class="bg-surface-container rounded-2xl p-4 flex items-center justify-center border border-dashed border-outline-variant text-secondary text-[13px] font-medium cursor-pointer active-bg mt-2">
-                <span class="material-symbols-outlined mr-2 text-[18px]">attach_file</span> Attachments (Future Ready)
-            </div>
+            ${getFormAttachmentSectionHTML(prefix)}
 
             <div class="h-2"></div>
         </div>
@@ -811,6 +810,8 @@ export function getTransactionDetailsContent(t) {
                 </div>
                 <textarea id="detail-notes-input" class="w-full bg-surface border border-outline-variant rounded-xl px-3 py-2 text-[14px] text-on-surface focus:ring-2 focus:ring-primary/20 outline-none resize-none transition-apple placeholder:text-secondary/60" placeholder="Add notes..." rows="3" oninput="document.getElementById('save-detail-notes-btn').classList.remove('hidden')">${t.notes || ''}</textarea>
             </div>
+
+            ${getTransactionAttachmentsDetailHTML(t)}
 
             <div class="pt-4 border-t border-outline-variant/30">
                 <span class="block text-[12px] text-secondary mb-4">Audit History</span>

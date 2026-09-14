@@ -14,7 +14,8 @@ const JSON_COLUMNS = {
     batches: ['expenses', 'consumptions'],
     costings: ['materials', 'uData'],
     quotations: ['items'],
-    inventory: ['movementHistory', 'specifications']
+    inventory: ['movementHistory', 'specifications'],
+    transactions: ['subEntries', 'attachments']
 };
 
 // ── Helpers ─────────────────────────────────────────────────────────
@@ -746,6 +747,17 @@ export default {
                             if (!existing.has(col)) {
                                 await env.DB.prepare(`ALTER TABLE inventory ADD COLUMN ${col} ${typeDef}`).run().catch(() => {});
                             }
+                        }
+                    } catch (e) { /* ignore */ }
+                }
+
+                // Auto-migrate transactions attachments column if missing
+                if (table === 'transactions') {
+                    try {
+                        const tableInfo = await env.DB.prepare(`PRAGMA table_info(transactions)`).all();
+                        const existing = new Set(tableInfo.results.map(c => c.name));
+                        if (!existing.has('attachments')) {
+                            await env.DB.prepare(`ALTER TABLE transactions ADD COLUMN attachments TEXT DEFAULT '[]'`).run().catch(() => {});
                         }
                     } catch (e) { /* ignore */ }
                 }

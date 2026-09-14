@@ -171,6 +171,7 @@ CREATE TABLE IF NOT EXISTS transactions (
     linkedBatchId TEXT DEFAULT '',
     linkedOrderId TEXT DEFAULT '',
     subEntries TEXT DEFAULT '',
+    attachments TEXT DEFAULT '[]',
     createdAt TEXT DEFAULT (datetime('now')),
     updatedAt TEXT DEFAULT (datetime('now'))
 );

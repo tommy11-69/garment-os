@@ -566,6 +566,15 @@ export const renderers = {
                                 </div>`;
                             })()}
                             ${statusUI}
+                            ${(() => {
+                                const attCount = Array.isArray(t.attachments) ? t.attachments.length : 0;
+                                if (attCount === 0) return '';
+                                return `
+                                <div class="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-primary/10 text-primary border border-primary/20" title="${attCount} receipt/attachment${attCount > 1 ? 's' : ''}">
+                                    <span class="material-symbols-outlined text-[11px]">attach_file</span>
+                                    <span class="text-[11px] font-bold tracking-wide">${attCount}</span>
+                                </div>`;
+                            })()}
                         </div>
                         
                         ${t.notes ? `

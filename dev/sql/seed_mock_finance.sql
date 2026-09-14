@@ -1,8 +1,8 @@
 -- Clear existing generic transactions and insert realistic garment factory transactions
 DELETE FROM transactions;
 
-INSERT INTO transactions (id, type, title, category, amount, status, paymentMethod, date, refId, referenceNo, isNegative) VALUES
-('txn-201', 'Income', 'Advance 50% - ORD-4190 (8.5k Chinos)', 'Sales', 520000, 'Completed', 'Bank Transfer', '2026-08-14', 'c-026', 'TRF-884920', 0),
+INSERT INTO transactions (id, type, title, category, amount, status, paymentMethod, date, refId, referenceNo, isNegative, attachments) VALUES
+('txn-201', 'Income', 'Advance 50% - ORD-4190 (8.5k Chinos)', 'Sales', 520000, 'Completed', 'Bank Transfer', '2026-08-14', 'c-026', 'TRF-884920', 0, '[{"id":"att-mock-01","name":"Advance_Payment_TRF-884920.pdf","type":"application/pdf","size":48200,"dataUrl":"data:application/pdf;base64,JVBERi0xLjQKJcOkw7zDtsOfCjIgMCBvYmoKPDwvTGVuZ3RoIDM2Pj5zdHJlYW0KQlQKL0YxIDI0IFRmCjEwMCA3MDAgVGRNCihTYW1wbGUgUGF5bWVudCBWb3VjaGVyKSBUagpFVAplbmRzdHJlYW0KZW5kb2JqCjEgMCBvYmoKPDwvVHlwZSAvUGFnZXMKL0tpZHMgWzMgMCBSXQovQ291bnQgMQo+PmVuZG9iagozIDAgb2JqCjw8L1R5cGUgL1BhZ2UKL1BhcmVudCAxIDAgUgovTWVkaWFCb3ggWzAgMCA2MTIgNzkyXQovQ29udGVudHMgMiAwIFIKL1Jlc291cmNlcyA8PC9Gb250IDw8L0YxIDw8L1R5cGUgL0ZvbnQKL1N1YnR5cGUgL1R5cGUxCi9CYXNlRm9udCAvSGVsdmV0aWNhPj4+Pj4+CmVuZG9iago0IDAgb2JqCjw8L1R5cGUgL0NhdGFsb2cKL1BhZ2VzIDEgMCBSCj4+CmVuZG9iagp4cmVmCjAgNQowMDAwMDAwMDAwIDY1NTM1IGYgCjAwMDAwMDAxMTYgMDAwMDAgbiAKMDAwMDAwMDAxOSAwMDAwMCBuIAowMDAwMDAwMTc1IDAwMDAwIG4gCjAwMDAwMDAzMDUgMDAwMDAgbiAKdHJhaWxlcgo8PC9TaXplIDUKL1Jvb3QgNCAwIFIKPj4Kc3RhcnR4cmVmCjM1NwolJUVPRg==","uploadedAt":"2026-08-14T10:30:00.000Z"}]'),
 ('txn-202', 'Income', 'Invoice #INV-2026-88 (Sharma Co.)', 'Sales', 285000, 'Pending', 'Bank Transfer', '2026-09-08', 'c-021', 'INV-2026-88', 0),
 ('txn-203', 'Income', 'Final Settlement - ORD-4816 (Polo Shirts)', 'Sales', 710000, 'Completed', 'Net Banking', '2026-09-02', 'c-020', 'TRF-902141', 0),
 ('txn-204', 'Income', 'Custom Sample Printing Deposit', 'Sampling', 45000, 'Completed', 'UPI', '2026-08-28', 'c-019', 'UPI-4920182', 0),

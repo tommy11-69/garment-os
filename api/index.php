@@ -61,7 +61,8 @@ const JSON_COLUMNS = [
     'batches'     => ['expenses', 'consumptions'],
     'costings'    => ['materials', 'uData'],
     'quotations'  => ['items'],
-    'inventory'   => ['movementHistory', 'specifications']
+    'inventory'   => ['movementHistory', 'specifications'],
+    'transactions'=> ['subEntries', 'attachments']
 ];
 
 function jsonResponse($data, $statusCode = 200) {
@@ -217,6 +218,13 @@ try {
         if (!in_array($cName, $existingInvCols, true)) {
             $pdo->exec("ALTER TABLE `inventory` ADD COLUMN `{$cName}` {$cDef}");
         }
+    }
+
+    // ── Transactions Attachments Column Migration ─────────────────────
+    $txCols = $pdo->query("SHOW COLUMNS FROM `transactions`")->fetchAll();
+    $existingTxCols = array_column($txCols, 'Field');
+    if (!in_array('attachments', $existingTxCols, true)) {
+        $pdo->exec("ALTER TABLE `transactions` ADD COLUMN `attachments` LONGTEXT DEFAULT '[]'");
     }
 } catch (Exception $e) { /* ignore */ }
 
