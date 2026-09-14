@@ -3,34 +3,42 @@ import { calculateOrderRollup, normalizeStageKey, STAGE_DEFINITIONS } from './pr
 
 // ─── Stage Pipeline Helper ────────────────────────────────────────────────────
 const STAGE_SEQUENCES = {
-    default:             ['Fabric', 'Cutting', 'Stitching', 'Printing/Embroidery', 'Ironing & Packing', 'Dispatch'],
-    print_before_stitch: ['Fabric', 'Cutting', 'Printing/Embroidery', 'Stitching', 'Ironing & Packing', 'Dispatch'],
-    wash_before_stitch:  ['Fabric', 'Cutting', 'Wash', 'Stitching', 'Printing/Embroidery', 'Ironing & Packing', 'Dispatch'],
+    default:             ['Procurement', 'Fabric', 'Cutting', 'Stitching', 'Print/Wash', 'Packing', 'Dispatch'],
+    print_before_stitch: ['Procurement', 'Fabric', 'Cutting', 'Print/Wash', 'Stitching', 'Packing', 'Dispatch'],
+    wash_before_stitch:  ['Procurement', 'Fabric', 'Cutting', 'Print/Wash', 'Stitching', 'Packing', 'Dispatch'],
+    direct_fulfillment:  ['Procurement', 'Dispatch']
 };
 
 // Short labels for the pipeline chips
 const STAGE_SHORT = {
+    'Procurement': 'Source',
     'Fabric': 'Fabric',
-    'Cutting': 'Cutting',
+    'Cutting': 'Cut',
     'Stitching': 'Stitch',
-    'Printing/Embroidery': 'Print',
+    'Print/Wash': 'Print',
     'Wash': 'Wash',
-    'Ironing & Packing': 'Iron',
+    'Packing': 'Pack',
     'Dispatch': 'Dispatch',
 };
 
 function renderStagePipeline(order) {
     const wf     = order.workflowType || 'default';
     const stages = STAGE_SEQUENCES[wf] || STAGE_SEQUENCES.default;
-    const status = order.status || '';
+    const currentNorm = normalizeStageKey(order.status);
 
-    // Find active index — match order.status loosely against stage names
-    let activeIdx = stages.findIndex(s =>
-        status.toLowerCase().includes(s.toLowerCase().split('/')[0]) ||
-        s.toLowerCase().includes(status.toLowerCase())
-    );
+    const normStageMap = {
+        'procurement': 'Procurement',
+        'fabric': 'Fabric',
+        'cutting': 'Cutting',
+        'stitching': 'Stitching',
+        'print_wash': 'Print/Wash',
+        'packing': 'Packing',
+        'dispatch': 'Dispatch'
+    };
+
+    let activeIdx = stages.findIndex(s => s.toLowerCase().includes(currentNorm.replace('_', '')) || (normStageMap[currentNorm] === s));
     if (activeIdx < 0) activeIdx = 0;
-    if (['Dispatched', 'Delivered', 'Closed', 'Archived'].includes(status)) activeIdx = stages.length;
+    if (['Dispatched', 'Delivered', 'Closed', 'Archived'].includes(order.status)) activeIdx = stages.length;
 
     const chips = stages.map((s, i) => {
         const isDone   = i < activeIdx;
@@ -38,7 +46,7 @@ function renderStagePipeline(order) {
         const chipCls  = isDone
             ? 'bg-[#008A00] text-white'
             : isActive
-                ? 'bg-primary text-white'
+                ? 'bg-primary text-white shadow-xs'
                 : 'bg-surface-variant text-secondary';
         const icon = isDone ? '<span class="material-symbols-outlined text-[10px] leading-none">check</span>' : '';
         return `<span class="shrink-0 px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wide ${chipCls} flex items-center gap-0.5">${icon}${STAGE_SHORT[s] || s}</span>`;
@@ -173,26 +181,51 @@ export const renderers = {
             `;
         }
 
+        // Inline size breakdown preview
+        let sizesPreviewHtml = '';
+        const primaryProduct = Array.isArray(order.products) && order.products.length > 0 ? order.products[0] : null;
+        const sizesObj = primaryProduct?.sizes || order.stageData?.cutting?.cutQuantitiesBySize || order.sizes;
+
+        if (typeof sizesObj === 'object' && sizesObj !== null && Object.keys(sizesObj).length > 0) {
+            sizesPreviewHtml = `
+                <div class="flex items-center gap-1 overflow-x-auto no-scrollbar py-1 mt-1 text-[11px]">
+                    <span class="text-[10px] font-bold text-secondary uppercase mr-1">Sizes:</span>
+                    ${Object.entries(sizesObj).map(([sz, q]) => `
+                        <span class="px-1.5 py-0.5 rounded-md bg-surface-container border border-outline-variant/60 font-medium">
+                            <strong class="text-on-surface">${sz}</strong>:<span class="text-primary font-bold">${q}</span>
+                        </span>
+                    `).join('')}
+                </div>
+            `;
+        } else if (typeof sizesObj === 'string' && sizesObj.trim()) {
+            sizesPreviewHtml = `
+                <div class="text-[11px] text-secondary mt-1">
+                    <span class="font-bold">Sizes:</span> ${sizesObj}
+                </div>
+            `;
+        }
+
         return `
-            <div role="button" tabindex="0" onclick="${isBulkMode ? `window.toggleOrderSelection('${order.id}')` : `window.openOrderDetails('${order.id}')`}" class="bg-surface-container-lowest rounded-[24px] border ${isSelected ? 'border-primary ring-1 ring-primary' : 'border-outline-variant'} p-lg shadow-sm active-bg transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary flex items-center">
+            <div role="button" tabindex="0" onclick="${isBulkMode ? `window.toggleOrderSelection('${order.id}')` : `window.openOrderDetails('${order.id}')`}" class="bg-surface-container-lowest rounded-[24px] border ${isSelected ? 'border-primary ring-2 ring-primary/30 bg-primary/5' : 'border-outline-variant'} p-lg shadow-sm active-bg transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary flex items-center">
                 ${checkboxHtml}
                 <div class="flex-1 w-full min-w-0">
                     <div class="flex items-start justify-between mb-3">
                         <div>
-                            <span class="text-[13px] font-semibold text-primary mb-1 block">${order.id}</span>
-                            <h4 class="text-[18px] font-bold text-on-surface mb-0.5">${order.customerName}</h4>
+                            <span class="text-[13px] font-semibold text-primary mb-1 block font-mono">${order.id}</span>
+                            <h4 class="text-[18px] font-bold text-on-surface mb-0.5">${order.customerName || order.customerId}</h4>
                             <div class="flex items-center gap-2">
-                                <span class="text-body text-secondary">&#8377;${(order.value || 0).toLocaleString()}</span>
+                                <span class="text-body text-secondary font-semibold">&#8377;${(order.value || 0).toLocaleString()}</span>
                                 <span class="w-1.5 h-1.5 rounded-full ${pmtDot} shrink-0" title="Payment: ${pmtStatus}"></span>
                                 ${deliveryBadge}
                             </div>
                         </div>
                         <div class="flex flex-col items-end gap-1 shrink-0 ml-2">
-                            <span class="px-2.5 py-1 rounded-full text-[11px] font-medium ${order.statusColor}">${order.status}</span>
+                            <span class="px-2.5 py-1 rounded-full text-[11px] font-bold ${order.statusColor}">${order.status}</span>
                             ${bottleneckBadge}
                         </div>
                     </div>
                     ${productChipsHtml}
+                    ${sizesPreviewHtml}
                     <div class="mt-3">
                         ${ProgressBar({ label: `${displayPercentage}% Complete`, secondaryLabel: order.progressLabel || `${rollup.activeStageDef.shortLabel} phase`, percentage: displayPercentage, color: order.progressColor || 'bg-primary' })}
                     </div>
@@ -202,12 +235,21 @@ export const renderers = {
                             <span class="material-symbols-outlined text-[16px] text-primary">inventory_2</span>
                             <span><strong>${(order.qty || 0).toLocaleString()} pcs</strong> • ${order.product || 'Garments'}</span>
                         </div>
-                        <button type="button" 
-                            onclick="event.stopPropagation(); window.location.href='production.html?orderId=${order.id}&stage=${rollup.activeStageKey}'" 
-                            class="px-3.5 py-1.5 rounded-xl bg-primary text-white text-[12px] font-bold active-scale transition-apple shadow-xs flex items-center gap-1.5 hover:bg-primary-hover">
-                            <span>Open Floor</span>
-                            <span class="material-symbols-outlined text-[15px]">arrow_forward</span>
-                        </button>
+                        <div class="flex items-center gap-2">
+                            <button type="button" 
+                                onclick="event.stopPropagation(); window.printJobTraveler('${order.id}')" 
+                                title="Print Job Traveler / Cut Ticket"
+                                class="px-2.5 py-1.5 rounded-xl border border-outline-variant hover:border-primary text-secondary hover:text-primary text-[12px] font-bold active-scale transition-apple shadow-xs flex items-center gap-1">
+                                <span class="material-symbols-outlined text-[15px]">print</span>
+                                <span class="hidden sm:inline">Traveler</span>
+                            </button>
+                            <button type="button" 
+                                onclick="event.stopPropagation(); window.location.href='production.html?orderId=${order.id}&stage=${rollup.activeStageKey}'" 
+                                class="px-3.5 py-1.5 rounded-xl bg-primary text-white text-[12px] font-bold active-scale transition-apple shadow-xs flex items-center gap-1.5 hover:bg-primary-hover">
+                                <span>Open Floor</span>
+                                <span class="material-symbols-outlined text-[15px]">arrow_forward</span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html class="light" lang="en">
 <head>
     <!-- Favicon & PWA Icons -->
@@ -10,459 +10,627 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta charset="utf-8"/>
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>Create Order - Garment OS</title>
+    <title>Garment OS - Create Apparel Order Wizard</title>
+    
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com" rel="preconnect"/>
     <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet"/>
+    
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <script src="../js/tailwind.config.js"></script>
+    
     <link rel="stylesheet" href="../css/layout.css">
     <link rel="stylesheet" href="../css/typography.css">
     <link rel="stylesheet" href="../css/utilities.css">
+    <link rel="stylesheet" href="../css/responsive.css">
+
     <style>
-        .workflow-card { transition: all .2s; border: 2px solid transparent; }
+        .workflow-card { transition: all .2s ease; border: 2px solid transparent; }
         .workflow-card.selected { border-color: #0A84FF; background: rgba(10,132,255,.06); }
         .workflow-card.selected .wf-check { display: flex; }
         .wf-check { display: none; }
-        .print-subtype-btn { transition: all .2s; cursor: pointer; }
-        .size-row-input { min-width: 0; }
-        .size-row-input:focus { outline: none; background: rgba(10,132,255,.05); }
-        .wizard-step { animation: slideIn .25s ease; }
-        @keyframes slideIn { from { opacity:0; transform:translateX(16px); } to { opacity:1; transform:translateX(0); } }
+        .wizard-step { animation: slideIn .22s cubic-bezier(0.16, 1, 0.3, 1); }
+        @keyframes slideIn { from { opacity:0; transform:translateX(12px); } to { opacity:1; transform:translateX(0); } }
+        .stepper-pill { transition: all .2s ease; cursor: pointer; }
+        .stepper-pill.active { background: #0A84FF; color: white; border-color: #0A84FF; box-shadow: 0 2px 8px rgba(10,132,255,0.3); }
+        .stepper-pill.completed { background: rgba(0,138,0,0.1); color: #008A00; border-color: rgba(0,138,0,0.3); }
+        .stepper-pill.upcoming { background: var(--color-surface-container, #f2f2f7); color: #8e8e93; border-color: transparent; }
+        .ratio-btn { transition: all .15s ease; }
+        .ratio-btn:hover { background: rgba(10,132,255,0.1); color: #0A84FF; }
     </style>
-    <link rel="stylesheet" href="../css/responsive.css">
 </head>
 <body class="font-body text-body antialiased bg-background">
 
-<!-- Fixed Top Bar -->
-<div class="fixed top-0 left-0 right-0 h-16 bg-surface/90 backdrop-blur-md border-b border-outline-variant z-40 flex items-center justify-between px-4">
-    <div class="flex items-center gap-3">
-        <button onclick="window.history.back()" class="w-10 h-10 rounded-full bg-surface-variant flex items-center justify-center text-on-surface active-scale transition-apple">
-            <span class="material-symbols-outlined text-[20px]">arrow_back</span>
-        </button>
-        <div>
-            <h1 class="text-[17px] font-bold text-on-surface leading-tight">New Order</h1>
-            <p class="text-[12px] text-secondary leading-none" id="co-step-label">Step 1 of 7</p>
-        </div>
-    </div>
-    <button id="co-save-btn" onclick="window.coSaveOrder()" class="hidden px-4 py-2 bg-[#008A00] text-white font-bold text-[14px] rounded-xl active-scale transition-apple shadow-sm">
-        Save Order
-    </button>
-</div>
-
-<!-- Progress Bar -->
-<div class="fixed top-16 left-0 right-0 h-1 bg-surface-variant z-40">
-    <div id="co-progress-bar" class="h-full bg-primary transition-all duration-400" style="width:0%"></div>
-</div>
-
-<div class="mobile-wrapper" style="margin-top:68px;padding-bottom:120px;">
-<main class="p-4 flex flex-col gap-0">
-
-<!-- STEP 1 — Order Details -->
-<div id="co-step-1" class="wizard-step flex flex-col gap-5">
-    <div>
-        <h2 class="text-[22px] font-bold text-on-surface">Order Details</h2>
-        <p class="text-[14px] text-secondary mt-0.5">Customer, product and workflow type</p>
-    </div>
-
-    <div class="flex flex-col gap-1.5">
-        <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Customer *</label>
-        <select id="co-customer" class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple">
-            <option value="">Select Customer...</option>
-            <option value="NEW_CUSTOMER">+ Create New Customer</option>
-        </select>
-    </div>
-
-    <input type="hidden" id="co-product">
-    <input type="hidden" id="co-qty" value="0">
-
-    <div class="flex flex-col gap-1.5">
-        <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Delivery Date *</label>
-        <input type="date" id="co-delivery" required
-            class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple">
-    </div>
-
-    <div class="flex flex-col gap-2">
-        <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Products &amp; Size Breakdowns *</label>
-        <div id="co-products-container" class="flex flex-col gap-4"></div>
-        <button type="button" onclick="window.coAddProduct()" class="w-full py-3.5 border-2 border-dashed border-primary/30 hover:border-primary/50 text-primary font-bold text-[14px] rounded-2xl flex items-center justify-center gap-1.5 active-scale transition-all bg-primary/5">
-            <span class="material-symbols-outlined text-[18px]">add</span> Add Another Product
-        </button>
-    </div>
-
-    <div class="flex flex-col gap-2">
-        <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Workflow Type *</label>
-
-        <div class="workflow-card selected rounded-2xl p-4 bg-surface-container-lowest cursor-pointer" data-wf="default" onclick="window.coSelectWorkflow('default')">
-            <div class="flex items-start justify-between">
-                <div class="flex-1">
-                    <p class="text-[15px] font-bold text-on-surface">Default</p>
-                    <p class="text-[12px] text-secondary mt-0.5 leading-relaxed">Fabric - Cutting - Stitching - Printing - Ironing - Dispatch</p>
-                </div>
-                <div class="wf-check w-6 h-6 rounded-full bg-primary items-center justify-center shrink-0 ml-3 mt-0.5">
-                    <span class="material-symbols-outlined text-white text-[14px]">check</span>
-                </div>
-            </div>
-        </div>
-
-        <div class="workflow-card rounded-2xl p-4 bg-surface-container-lowest cursor-pointer" data-wf="print_before_stitch" onclick="window.coSelectWorkflow('print_before_stitch')">
-            <div class="flex items-start justify-between">
-                <div class="flex-1">
-                    <p class="text-[15px] font-bold text-on-surface">Print Before Stitch</p>
-                    <p class="text-[12px] text-secondary mt-0.5 leading-relaxed">Fabric - Cutting - Printing - Stitching - Ironing - Dispatch</p>
-                </div>
-                <div class="wf-check w-6 h-6 rounded-full bg-primary items-center justify-center shrink-0 ml-3 mt-0.5">
-                    <span class="material-symbols-outlined text-white text-[14px]">check</span>
-                </div>
-            </div>
-        </div>
-
-        <div class="workflow-card rounded-2xl p-4 bg-surface-container-lowest cursor-pointer" data-wf="wash_before_stitch" onclick="window.coSelectWorkflow('wash_before_stitch')">
-            <div class="flex items-start justify-between">
-                <div class="flex-1">
-                    <p class="text-[15px] font-bold text-on-surface">Wash Before Stitch</p>
-                    <p class="text-[12px] text-secondary mt-0.5 leading-relaxed">Fabric - Cutting - Wash - Stitching - Printing - Ironing - Dispatch</p>
-                </div>
-                <div class="wf-check w-6 h-6 rounded-full bg-primary items-center justify-center shrink-0 ml-3 mt-0.5">
-                    <span class="material-symbols-outlined text-white text-[14px]">check</span>
-                </div>
-            </div>
-        </div>
-
-        <div class="workflow-card rounded-2xl p-4 bg-surface-container-lowest cursor-pointer" data-wf="direct_fulfillment" onclick="window.coSelectWorkflow('direct_fulfillment')">
-            <div class="flex items-start justify-between">
-                <div class="flex-1">
-                    <p class="text-[15px] font-bold text-on-surface">Direct Fulfillment (Trading)</p>
-                    <p class="text-[12px] text-secondary mt-0.5 leading-relaxed">Procurement - Dispatch (Skips manufacturing)</p>
-                </div>
-                <div class="wf-check w-6 h-6 rounded-full bg-primary items-center justify-center shrink-0 ml-3 mt-0.5">
-                    <span class="material-symbols-outlined text-white text-[14px]">check</span>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- STEP 2 — Fabric -->
-<div id="co-step-2" class="wizard-step hidden flex flex-col gap-5">
-    <div>
-        <h2 class="text-[22px] font-bold text-on-surface">Fabric</h2>
-        <p class="text-[14px] text-secondary mt-0.5">Material type, weight and cost</p>
-    </div>
-
-    <div class="flex flex-col gap-2">
-        <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Fabric Type *</label>
-        <div class="flex gap-2">
-            <button id="ft-btn-cotton" onclick="window.coSwitchFabricType('Cotton')"
-                class="flex-1 py-3 rounded-xl border-2 border-primary bg-primary text-white font-semibold text-[15px] transition-all active-scale">
-                Cotton
+    <!-- Fixed Executive Top Bar -->
+    <header class="fixed top-0 left-0 right-0 h-16 bg-surface/90 backdrop-blur-md border-b border-outline-variant z-40 flex items-center justify-between px-4 max-w-7xl mx-auto w-full">
+        <div class="flex items-center gap-3">
+            <button onclick="window.history.back()" class="w-10 h-10 rounded-xl bg-surface-variant flex items-center justify-center text-on-surface active-scale transition-apple hover:bg-surface-container-high" title="Back to Orders">
+                <span class="material-symbols-outlined text-[20px]">arrow_back</span>
             </button>
-            <button id="ft-btn-poly" onclick="window.coSwitchFabricType('Polyester')"
-                class="flex-1 py-3 rounded-xl border-2 border-outline-variant bg-surface-container-lowest text-secondary font-semibold text-[15px] transition-all active-scale">
-                Polyester
+            <div>
+                <div class="flex items-center gap-2">
+                    <h1 class="text-[17px] font-extrabold text-on-surface leading-tight">Create Apparel Order</h1>
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-primary/10 text-primary uppercase tracking-wider hidden sm:inline">Engineering Wizard</span>
+                </div>
+                <p class="text-[12px] text-secondary leading-none mt-0.5" id="co-step-label">Step 1 of 6 — Buyer &amp; PO Profile</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <button type="button" onclick="window.location.href='orders.html'" class="px-3.5 py-1.5 rounded-xl border border-outline-variant text-secondary text-[12px] font-bold active-scale transition-apple hover:text-on-surface">
+                Cancel
+            </button>
+            <button id="co-header-save-btn" onclick="window.coSaveOrder()" class="hidden px-4 py-2 bg-[#008A00] text-white font-bold text-[13px] rounded-xl active-scale transition-apple shadow-sm hover:opacity-90 flex items-center gap-1">
+                <span class="material-symbols-outlined text-[16px]">check</span>
+                <span>Save Order</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Top Progress Bar -->
+    <div class="fixed top-16 left-0 right-0 h-1 bg-surface-variant z-40">
+        <div id="co-progress-bar" class="h-full bg-primary transition-all duration-300" style="width: 16.66%"></div>
+    </div>
+
+    <!-- Interactive 6-Step Stepper Ribbon -->
+    <div class="fixed top-[68px] left-0 right-0 bg-surface/95 backdrop-blur-md border-b border-outline-variant/60 z-30 px-4 py-2.5 overflow-x-auto no-scrollbar">
+        <div class="flex items-center gap-2 max-w-7xl mx-auto w-full min-w-[740px]">
+            <button class="stepper-pill active px-3 py-1.5 rounded-xl text-[12px] font-bold flex items-center gap-1.5 border" onclick="window.coJumpToStep(0)" id="pill-step-0">
+                <span class="w-4 h-4 rounded-full bg-white text-primary text-[10px] font-black flex items-center justify-center">1</span>
+                <span>Buyer &amp; PO</span>
+            </button>
+            <span class="text-outline-variant text-[14px]">›</span>
+            <button class="stepper-pill upcoming px-3 py-1.5 rounded-xl text-[12px] font-bold flex items-center gap-1.5 border" onclick="window.coJumpToStep(1)" id="pill-step-1">
+                <span class="w-4 h-4 rounded-full bg-surface-variant text-secondary text-[10px] font-black flex items-center justify-center">2</span>
+                <span>Products &amp; Sizes</span>
+            </button>
+            <span class="text-outline-variant text-[14px]">›</span>
+            <button class="stepper-pill upcoming px-3 py-1.5 rounded-xl text-[12px] font-bold flex items-center gap-1.5 border" onclick="window.coJumpToStep(2)" id="pill-step-2">
+                <span class="w-4 h-4 rounded-full bg-surface-variant text-secondary text-[10px] font-black flex items-center justify-center">3</span>
+                <span>Fabric &amp; BOM</span>
+            </button>
+            <span class="text-outline-variant text-[14px]">›</span>
+            <button class="stepper-pill upcoming px-3 py-1.5 rounded-xl text-[12px] font-bold flex items-center gap-1.5 border" onclick="window.coJumpToStep(3)" id="pill-step-3">
+                <span class="w-4 h-4 rounded-full bg-surface-variant text-secondary text-[10px] font-black flex items-center justify-center">4</span>
+                <span>Workflow &amp; Print</span>
+            </button>
+            <span class="text-outline-variant text-[14px]">›</span>
+            <button class="stepper-pill upcoming px-3 py-1.5 rounded-xl text-[12px] font-bold flex items-center gap-1.5 border" onclick="window.coJumpToStep(4)" id="pill-step-4">
+                <span class="w-4 h-4 rounded-full bg-surface-variant text-secondary text-[10px] font-black flex items-center justify-center">5</span>
+                <span>Pricing &amp; Margins</span>
+            </button>
+            <span class="text-outline-variant text-[14px]">›</span>
+            <button class="stepper-pill upcoming px-3 py-1.5 rounded-xl text-[12px] font-bold flex items-center gap-1.5 border" onclick="window.coJumpToStep(5)" id="pill-step-5">
+                <span class="w-4 h-4 rounded-full bg-surface-variant text-secondary text-[10px] font-black flex items-center justify-center">6</span>
+                <span>Review &amp; Launch</span>
             </button>
         </div>
     </div>
 
-    <div class="flex flex-col gap-1.5">
-        <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Sub-type</label>
-        <select id="co-fabric-subtype" class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple">
-        </select>
-    </div>
+    <!-- Main Wizard Content Wrapper -->
+    <div class="mobile-wrapper" style="margin-top: 124px; padding-bottom: 120px;">
+        <main class="p-4 max-w-4xl mx-auto w-full flex flex-col gap-5">
 
-    <div class="grid grid-cols-2 gap-3">
-        <div class="flex flex-col gap-1.5">
-            <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">GSM *</label>
-            <input type="number" id="co-gsm" placeholder="e.g. 180"
-                class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple placeholder:text-secondary">
-        </div>
-        <div class="flex flex-col gap-1.5">
-            <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Dia (inches)</label>
-            <input type="number" id="co-dia" placeholder="e.g. 72"
-                class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple placeholder:text-secondary">
-        </div>
-    </div>
+            <!-- ================================================================= -->
+            <!-- STEP 1: BUYER & ORDER PROFILE -->
+            <!-- ================================================================= -->
+            <div id="co-step-1" class="wizard-step flex flex-col gap-5">
+                <div class="bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant shadow-sm">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="material-symbols-outlined text-[24px] text-primary">person_pin</span>
+                        <h2 class="text-[20px] font-extrabold text-on-surface">1. Buyer &amp; Order Profile</h2>
+                    </div>
+                    <p class="text-[13px] text-secondary">Establish commercial buyer identity, delivery schedule, and optional quotation linkage.</p>
+                </div>
 
-    <div class="flex flex-col gap-1.5">
-        <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Total Fabric Purchased (kg) *</label>
-        <input type="number" id="co-fabric-kg" step="0.1" placeholder="e.g. 120"
-            class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple placeholder:text-secondary">
-    </div>
+                <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant shadow-sm flex flex-col gap-4">
+                    <!-- Customer Selector -->
+                    <div class="flex flex-col gap-1.5">
+                        <label class="text-[12px] font-bold text-secondary uppercase tracking-wider">Select Buyer / Customer *</label>
+                        <select id="co-customer" class="w-full bg-surface border border-outline-variant rounded-xl px-4 py-3 text-[15px] font-semibold text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple">
+                            <option value="">Select Customer...</option>
+                            <option value="NEW_CUSTOMER">+ Create New Customer</option>
+                        </select>
+                    </div>
 
-    <div class="flex flex-col gap-1.5">
-        <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Rate per kg (Rs.)</label>
-        <div class="relative">
-            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-secondary font-bold">Rs.</span>
-            <input type="number" id="co-fabric-rate" step="0.01" placeholder="0.00"
-                class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl pl-10 pr-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple placeholder:text-secondary">
-        </div>
-    </div>
+                    <!-- Buyer PO # & Reference -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-[12px] font-bold text-secondary uppercase tracking-wider">Buyer PO # / Style Ref</label>
+                            <input type="text" id="co-customer-po" placeholder="e.g. PO-2026-US-891"
+                                class="w-full bg-surface border border-outline-variant rounded-xl px-4 py-3 text-[14px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple">
+                        </div>
 
-    <!-- Pcs/Kg auto-calc + override -->
-    <div class="bg-primary/5 border border-primary/20 rounded-2xl p-4">
-        <div class="flex items-center justify-between mb-3">
-            <div>
-                <p class="text-[14px] font-bold text-on-surface">Pcs / Kg</p>
-                <p class="text-[12px] text-secondary">Auto: Qty div Fabric Kg</p>
+                        <!-- Costing / Quote Autofill Engine -->
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-[12px] font-bold text-secondary uppercase tracking-wider">Auto-fill From Approved Quotation</label>
+                            <select id="co-quote-select" onchange="window.coApplyQuotation(this.value)"
+                                class="w-full bg-surface border border-outline-variant rounded-xl px-4 py-3 text-[14px] font-medium text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple">
+                                <option value="">None (Manual Specs Entry)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Target Delivery Date & Urgency Lead-Time -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-outline-variant/30">
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-[12px] font-bold text-secondary uppercase tracking-wider">Target Delivery Deadline *</label>
+                            <input type="date" id="co-delivery" required
+                                class="w-full bg-surface border border-outline-variant rounded-xl px-4 py-3 text-[14px] font-bold text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple">
+                            <span class="text-[11px] text-secondary mt-0.5">Factory standard minimum lead time: 14 to 21 working days</span>
+                        </div>
+
+                        <!-- Priority Level -->
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-[12px] font-bold text-secondary uppercase tracking-wider">Order Priority *</label>
+                            <div class="grid grid-cols-3 gap-2">
+                                <button type="button" id="prio-normal-btn" onclick="window.coSetPriority('Normal')"
+                                    class="py-3 rounded-xl border-2 border-primary bg-primary text-white font-bold text-[13px] transition-all active-scale">
+                                    Normal
+                                </button>
+                                <button type="button" id="prio-high-btn" onclick="window.coSetPriority('High')"
+                                    class="py-3 rounded-xl border-2 border-outline-variant bg-surface text-secondary font-bold text-[13px] transition-all active-scale">
+                                    High
+                                </button>
+                                <button type="button" id="prio-urgent-btn" onclick="window.coSetPriority('Urgent')"
+                                    class="py-3 rounded-xl border-2 border-outline-variant bg-surface text-secondary font-bold text-[13px] transition-all active-scale">
+                                    ⚡ Urgent
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <span id="co-pcs-kg-display" class="text-[24px] font-bold text-primary">-</span>
-        </div>
-        <div class="flex flex-col gap-1">
-            <label class="text-[11px] font-semibold text-secondary uppercase tracking-wider">Override (optional)</label>
-            <input type="number" id="co-pcs-kg-override" step="0.01" placeholder="Leave blank to use auto"
-                class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-2.5 text-[14px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple placeholder:text-secondary">
-        </div>
-    </div>
 
-    <div class="bg-surface-container-lowest border border-outline-variant rounded-2xl p-4 flex justify-between items-center">
-        <div>
-            <p class="text-[13px] text-secondary">Total Fabric Cost</p>
-            <p id="co-fabric-total-cost" class="text-[20px] font-bold text-on-surface">Rs. 0</p>
-        </div>
-        <span class="material-symbols-outlined text-[28px] text-secondary">receipt_long</span>
-    </div>
-</div>
+            <!-- ================================================================= -->
+            <!-- STEP 2: PRODUCTS & MULTI-SIZE RATIO MATRIX -->
+            <!-- ================================================================= -->
+            <div id="co-step-2" class="wizard-step hidden flex flex-col gap-5">
+                <div class="bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant shadow-sm flex justify-between items-center">
+                    <div>
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="material-symbols-outlined text-[24px] text-primary">view_quilt</span>
+                            <h2 class="text-[20px] font-extrabold text-on-surface">2. Products &amp; Size Breakdown Matrix</h2>
+                        </div>
+                        <p class="text-[13px] text-secondary">Configure apparel items, size categories, and cut ratio distributions.</p>
+                    </div>
+                    <span id="co-header-total-pcs" class="px-3 py-1 rounded-full text-[13px] font-extrabold bg-primary/10 text-primary">
+                        0 pcs total
+                    </span>
+                </div>
 
-<!-- STEP 3 — Cutting -->
-<div id="co-step-3" class="wizard-step hidden flex flex-col gap-5">
-    <div>
-        <h2 class="text-[22px] font-bold text-on-surface">Cutting</h2>
-        <p class="text-[14px] text-secondary mt-0.5">Size-wise quantity breakdown</p>
-    </div>
+                <!-- Products Dynamic Container -->
+                <div id="co-products-container" class="flex flex-col gap-4"></div>
 
-    <div class="grid grid-cols-3 gap-2">
-        <div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-3 text-center">
-            <p class="text-[11px] text-secondary font-medium uppercase tracking-wide">Total Kg</p>
-            <p id="cut-total-kg" class="text-[16px] font-bold text-on-surface mt-0.5">-</p>
-        </div>
-        <div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-3 text-center">
-            <p class="text-[11px] text-secondary font-medium uppercase tracking-wide">Pcs/Kg</p>
-            <p id="cut-pcs-kg" class="text-[16px] font-bold text-on-surface mt-0.5">-</p>
-        </div>
-        <div class="bg-primary/10 border border-primary/20 rounded-xl p-3 text-center">
-            <p class="text-[11px] text-primary font-medium uppercase tracking-wide">Order Qty</p>
-            <p id="cut-order-qty" class="text-[16px] font-bold text-primary mt-0.5">-</p>
-        </div>
-    </div>
-
-    <div class="flex flex-col gap-2">
-        <div class="flex flex-col gap-2">
-            <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Consolidated Cutting Specs</label>
-            <div id="co-cutting-summary-container" class="flex flex-col gap-3 bg-surface-container rounded-2xl p-4 border border-outline-variant/60"></div>
-        </div>
-    </div>
-</div>
-
-<!-- STEP Wash (wash_before_stitch only) -->
-<div id="co-step-wash" class="wizard-step hidden flex flex-col gap-5">
-    <div>
-        <h2 class="text-[22px] font-bold text-on-surface">Wash</h2>
-        <p class="text-[14px] text-secondary mt-0.5">Washing stage details</p>
-    </div>
-    <div class="flex flex-col gap-1.5">
-        <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Wash Type</label>
-        <select id="co-wash-type" class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple">
-            <option value="">Select wash type</option>
-            <option>Stone Wash</option>
-            <option>Enzyme Wash</option>
-            <option>Acid Wash</option>
-            <option>Sand Wash</option>
-            <option>Bleach Wash</option>
-            <option>Silicon Wash</option>
-            <option>Other</option>
-        </select>
-    </div>
-    <div class="flex flex-col gap-1.5">
-        <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Notes</label>
-        <textarea id="co-wash-notes" rows="3" placeholder="Wash instructions, vendor notes"
-            class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple placeholder:text-secondary resize-none"></textarea>
-    </div>
-</div>
-
-<!-- STEP Stitching -->
-<div id="co-step-stitching" class="wizard-step hidden flex flex-col gap-5">
-    <div>
-        <h2 class="text-[22px] font-bold text-on-surface">Stitching &amp; Size Breakdown</h2>
-        <p class="text-[14px] text-secondary mt-0.5">Define size quantities for each product</p>
-    </div>
-    
-    <div id="co-stitching-sizes-container" class="flex flex-col gap-4"></div>
-    
-    <div class="flex flex-col gap-1.5">
-        <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Notes / Instructions</label>
-        <textarea id="co-stitch-notes" rows="4" placeholder="Stitching instructions, stitch type, thread color"
-            class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple placeholder:text-secondary resize-none"></textarea>
-    </div>
-    <div class="flex flex-col gap-1.5">
-        <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Expected Completion</label>
-        <input type="date" id="co-stitch-date" class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple">
-    </div>
-</div>
-
-<!-- STEP Printing / Embroidery -->
-<div id="co-step-printing" class="wizard-step hidden flex flex-col gap-5">
-    <div>
-        <h2 class="text-[22px] font-bold text-on-surface">Printing / Embroidery</h2>
-        <p class="text-[14px] text-secondary mt-0.5">Decoration method</p>
-    </div>
-
-    <div class="flex flex-col gap-2">
-        <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Type *</label>
-        <div class="flex gap-2 p-1 bg-surface-variant rounded-xl">
-            <button id="pt-btn-printing" onclick="window.coSelectPrintType('Printing')"
-                class="flex-1 py-2.5 rounded-lg text-[14px] font-bold bg-primary text-white transition-all">
-                Printing
-            </button>
-            <button id="pt-btn-embroidery" onclick="window.coSelectPrintType('Embroidery')"
-                class="flex-1 py-2.5 rounded-lg text-[14px] font-semibold text-secondary transition-all">
-                Embroidery
-            </button>
-        </div>
-    </div>
-
-    <div id="co-print-subtype-section" class="flex flex-col gap-2">
-        <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Printing Method *</label>
-        <button id="ps-btn-dtf" onclick="window.coSelectPrintSubtype('DTF')"
-            class="print-subtype-btn flex items-center gap-3 p-4 rounded-xl bg-primary text-white border-2 border-primary text-left w-full">
-            <span class="material-symbols-outlined text-[22px]">print</span>
-            <div>
-                <p class="text-[14px] font-bold">DTF</p>
-                <p class="text-[12px] opacity-80">Direct-to-Film transfer</p>
+                <button type="button" onclick="window.coAddProduct()"
+                    class="w-full py-4 border-2 border-dashed border-primary/30 hover:border-primary text-primary font-bold text-[14px] rounded-2xl flex items-center justify-center gap-2 active-scale transition-all bg-primary/5 shadow-xs">
+                    <span class="material-symbols-outlined text-[20px]">add_circle</span>
+                    <span>Add Another Product Line</span>
+                </button>
             </div>
-        </button>
-        <button id="ps-btn-sublimation" onclick="window.coSelectPrintSubtype('Sublimation')"
-            class="print-subtype-btn flex items-center gap-3 p-4 rounded-xl bg-surface-container-lowest border-2 border-outline-variant text-on-surface text-left w-full">
-            <span class="material-symbols-outlined text-[22px]">blur_on</span>
-            <div>
-                <p class="text-[14px] font-bold">Sublimation</p>
-                <p class="text-[12px] text-secondary">Heat-transfer sublimation dye</p>
+
+            <!-- ================================================================= -->
+            <!-- STEP 3: FABRIC SOURCING & AUTOMATED BOM -->
+            <!-- ================================================================= -->
+            <div id="co-step-3" class="wizard-step hidden flex flex-col gap-5">
+                <div class="bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant shadow-sm">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="material-symbols-outlined text-[24px] text-primary">texture</span>
+                        <h2 class="text-[20px] font-extrabold text-on-surface">3. Fabric Sourcing &amp; Automated BOM</h2>
+                    </div>
+                    <p class="text-[13px] text-secondary">Automated fabric consumption calculator (+5% cutting buffer), roll count, and trims checklist.</p>
+                </div>
+
+                <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant shadow-sm flex flex-col gap-4">
+                    <!-- Fabric Material Family -->
+                    <div class="flex flex-col gap-2">
+                        <label class="text-[12px] font-bold text-secondary uppercase tracking-wider">Primary Fiber Construction *</label>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                            <button type="button" id="ft-btn-cotton" onclick="window.coSwitchFabricType('Cotton')"
+                                class="py-2.5 rounded-xl border-2 border-primary bg-primary text-white font-bold text-[13px] transition-all active-scale">
+                                100% Cotton
+                            </button>
+                            <button type="button" id="ft-btn-poly" onclick="window.coSwitchFabricType('Polyester')"
+                                class="py-2.5 rounded-xl border-2 border-outline-variant bg-surface text-secondary font-bold text-[13px] transition-all active-scale">
+                                Polyester
+                            </button>
+                            <button type="button" id="ft-btn-blend" onclick="window.coSwitchFabricType('Blended')"
+                                class="py-2.5 rounded-xl border-2 border-outline-variant bg-surface text-secondary font-bold text-[13px] transition-all active-scale">
+                                Cotton / Poly Blend
+                            </button>
+                            <button type="button" id="ft-btn-fleece" onclick="window.coSwitchFabricType('Fleece')"
+                                class="py-2.5 rounded-xl border-2 border-outline-variant bg-surface text-secondary font-bold text-[13px] transition-all active-scale">
+                                Fleece / French Terry
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Subtype, GSM, Dia -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-[12px] font-bold text-secondary uppercase tracking-wider">Knit Construction</label>
+                            <select id="co-fabric-subtype" class="w-full bg-surface border border-outline-variant rounded-xl px-3 py-2.5 text-[14px] font-semibold text-on-surface outline-none focus:ring-2 focus:ring-primary/20">
+                            </select>
+                        </div>
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-[12px] font-bold text-secondary uppercase tracking-wider">GSM (Weight) *</label>
+                            <input type="number" id="co-gsm" value="180" placeholder="e.g. 180"
+                                class="w-full bg-surface border border-outline-variant rounded-xl px-3 py-2.5 text-[14px] font-bold text-on-surface outline-none focus:ring-2 focus:ring-primary/20">
+                        </div>
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-[12px] font-bold text-secondary uppercase tracking-wider">Knitting Dia (Inches)</label>
+                            <input type="number" id="co-dia" value="34" placeholder="e.g. 34"
+                                class="w-full bg-surface border border-outline-variant rounded-xl px-3 py-2.5 text-[14px] text-on-surface outline-none focus:ring-2 focus:ring-primary/20">
+                        </div>
+                    </div>
+
+                    <!-- AUTOMATED FABRIC ESTIMATOR CARD -->
+                    <div class="bg-gradient-to-br from-primary/5 to-blue-50 border border-primary/20 rounded-2xl p-4 mt-1">
+                        <div class="flex justify-between items-center mb-3">
+                            <div class="flex items-center gap-2">
+                                <span class="material-symbols-outlined text-[20px] text-primary">calculate</span>
+                                <h4 class="text-[14px] font-bold text-on-surface uppercase tracking-wider">Automated Fabric Consumption Estimator</h4>
+                            </div>
+                            <button type="button" onclick="window.coApplyAutoFabricKg()" 
+                                class="px-3 py-1 rounded-lg bg-primary text-white text-[11px] font-bold active-scale transition-apple hover:bg-primary-hover shadow-xs">
+                                Apply Auto Kg
+                            </button>
+                        </div>
+
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-center">
+                            <div class="bg-white/80 rounded-xl p-2.5 border border-outline-variant/30">
+                                <span class="text-[10px] font-bold text-secondary uppercase block">Per-Pc Avg</span>
+                                <strong id="bom-auto-consumption" class="text-[15px] text-on-surface">0.24 kg</strong>
+                            </div>
+                            <div class="bg-white/80 rounded-xl p-2.5 border border-outline-variant/30">
+                                <span class="text-[10px] font-bold text-secondary uppercase block">Gross Kg (+5% Wastage)</span>
+                                <strong id="bom-auto-gross-kg" class="text-[15px] text-primary">0.0 kg</strong>
+                            </div>
+                            <div class="bg-white/80 rounded-xl p-2.5 border border-outline-variant/30">
+                                <span class="text-[10px] font-bold text-secondary uppercase block">Est. 20kg Rolls</span>
+                                <strong id="bom-auto-rolls" class="text-[15px] text-on-surface">0 Rolls</strong>
+                            </div>
+                            <div class="bg-white/80 rounded-xl p-2.5 border border-outline-variant/30">
+                                <span class="text-[10px] font-bold text-secondary uppercase block">Pcs / Kg</span>
+                                <strong id="co-pcs-kg-display" class="text-[15px] text-[#008A00]">-</strong>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Actual Sourced Weight & Rate -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-[12px] font-bold text-secondary uppercase tracking-wider">Total Fabric Sourced (kg) *</label>
+                            <input type="number" id="co-fabric-kg" step="0.1" placeholder="e.g. 120"
+                                class="w-full bg-surface border border-outline-variant rounded-xl px-4 py-3 text-[16px] font-bold text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple">
+                        </div>
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-[12px] font-bold text-secondary uppercase tracking-wider">Yarn / Fabric Rate (₹ / kg)</label>
+                            <div class="relative">
+                                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-secondary font-bold">₹</span>
+                                <input type="number" id="co-fabric-rate" value="380" step="1" placeholder="380"
+                                    class="w-full bg-surface border border-outline-variant rounded-xl pl-10 pr-4 py-3 text-[16px] font-bold text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-surface-container rounded-xl p-3 flex justify-between items-center">
+                        <span class="text-[13px] text-secondary font-medium">Projected Direct Fabric Sourcing Cost:</span>
+                        <span id="co-fabric-total-cost" class="text-[18px] font-extrabold text-on-surface">₹0</span>
+                    </div>
+
+                    <!-- Trims Checklist Preview -->
+                    <div class="pt-2 border-t border-outline-variant/40">
+                        <h4 class="text-[12px] font-bold text-secondary uppercase tracking-wider mb-2">Automated Trims Requirement</h4>
+                        <div id="co-trims-preview" class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-[12px]"></div>
+                    </div>
+                </div>
             </div>
-        </button>
-        <button id="ps-btn-screen" onclick="window.coSelectPrintSubtype('Screen Printing')"
-            class="print-subtype-btn flex items-center gap-3 p-4 rounded-xl bg-surface-container-lowest border-2 border-outline-variant text-on-surface text-left w-full">
-            <span class="material-symbols-outlined text-[22px]">layers</span>
-            <div>
-                <p class="text-[14px] font-bold">Screen Printing</p>
-                <p class="text-[12px] text-secondary">Traditional screen / stencil print</p>
+
+            <!-- ================================================================= -->
+            <!-- STEP 4: CANONICAL WORKFLOW ROUTING & DECORATION -->
+            <!-- ================================================================= -->
+            <div id="co-step-4" class="wizard-step hidden flex flex-col gap-5">
+                <div class="bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant shadow-sm">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="material-symbols-outlined text-[24px] text-primary">route</span>
+                        <h2 class="text-[20px] font-extrabold text-on-surface">4. Workflow Routing &amp; Embellishment</h2>
+                    </div>
+                    <p class="text-[13px] text-secondary">Select factory department pipeline presets and configure decoration specifications.</p>
+                </div>
+
+                <!-- 5 Canonical Routing Presets -->
+                <div class="flex flex-col gap-2.5">
+                    <label class="text-[12px] font-bold text-secondary uppercase tracking-wider px-1">Factory Routing Preset *</label>
+
+                    <div class="workflow-card selected rounded-2xl p-4 bg-surface-container-lowest cursor-pointer shadow-xs" data-wf="default" onclick="window.coSelectWorkflow('default')">
+                        <div class="flex items-start justify-between">
+                            <div>
+                                <h4 class="text-[15px] font-bold text-on-surface">Standard Knits CMT</h4>
+                                <p class="text-[12px] text-secondary mt-0.5">Sourcing → Fabric → Cutting → Stitching → Print/Wash → Packing → Dispatch</p>
+                            </div>
+                            <div class="wf-check w-6 h-6 rounded-full bg-primary items-center justify-center shrink-0 ml-3 mt-0.5">
+                                <span class="material-symbols-outlined text-white text-[14px]">check</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="workflow-card rounded-2xl p-4 bg-surface-container-lowest cursor-pointer shadow-xs" data-wf="print_before_stitch" onclick="window.coSelectWorkflow('print_before_stitch')">
+                        <div class="flex items-start justify-between">
+                            <div>
+                                <h4 class="text-[15px] font-bold text-on-surface">Print-First Cut Panels</h4>
+                                <p class="text-[12px] text-secondary mt-0.5">Sourcing → Fabric → Cutting → <strong>Print/Embroidery First</strong> → Stitching → Packing → Dispatch</p>
+                            </div>
+                            <div class="wf-check w-6 h-6 rounded-full bg-primary items-center justify-center shrink-0 ml-3 mt-0.5">
+                                <span class="material-symbols-outlined text-white text-[14px]">check</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="workflow-card rounded-2xl p-4 bg-surface-container-lowest cursor-pointer shadow-xs" data-wf="wash_before_stitch" onclick="window.coSelectWorkflow('wash_before_stitch')">
+                        <div class="flex items-start justify-between">
+                            <div>
+                                <h4 class="text-[15px] font-bold text-on-surface">Garment Enzyme / Stone Wash</h4>
+                                <p class="text-[12px] text-secondary mt-0.5">Cutting → Stitching → <strong>Industrial Wash Laundry</strong> → Print/Pack → Dispatch</p>
+                            </div>
+                            <div class="wf-check w-6 h-6 rounded-full bg-primary items-center justify-center shrink-0 ml-3 mt-0.5">
+                                <span class="material-symbols-outlined text-white text-[14px]">check</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="workflow-card rounded-2xl p-4 bg-surface-container-lowest cursor-pointer shadow-xs" data-wf="stitch_before_embroidery" onclick="window.coSelectWorkflow('stitch_before_embroidery')">
+                        <div class="flex items-start justify-between">
+                            <div>
+                                <h4 class="text-[15px] font-bold text-on-surface">Finished Garment Embellishment</h4>
+                                <p class="text-[12px] text-secondary mt-0.5">Cutting → Sewing Assembly → <strong>Embroidery on Assembled Garments</strong> → Pack</p>
+                            </div>
+                            <div class="wf-check w-6 h-6 rounded-full bg-primary items-center justify-center shrink-0 ml-3 mt-0.5">
+                                <span class="material-symbols-outlined text-white text-[14px]">check</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="workflow-card rounded-2xl p-4 bg-surface-container-lowest cursor-pointer shadow-xs" data-wf="direct_fulfillment" onclick="window.coSelectWorkflow('direct_fulfillment')">
+                        <div class="flex items-start justify-between">
+                            <div>
+                                <h4 class="text-[15px] font-bold text-on-surface">Direct Sourcing / Trading</h4>
+                                <p class="text-[12px] text-secondary mt-0.5">Procurement / Ready Goods → Quality Audit → Dispatch (Skips factory cutting/sewing)</p>
+                            </div>
+                            <div class="wf-check w-6 h-6 rounded-full bg-primary items-center justify-center shrink-0 ml-3 mt-0.5">
+                                <span class="material-symbols-outlined text-white text-[14px]">check</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Decoration / Embellishment Details -->
+                <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant shadow-sm flex flex-col gap-4">
+                    <h3 class="text-[14px] font-bold text-on-surface uppercase tracking-wider">Decoration &amp; Artwork Specs</h3>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                        <button type="button" id="dec-btn-screen" onclick="window.coSelectDecType('Screen')"
+                            class="py-2.5 rounded-xl border-2 border-primary bg-primary text-white font-bold text-[12px] transition-all">
+                            Screen Print
+                        </button>
+                        <button type="button" id="dec-btn-dtf" onclick="window.coSelectDecType('DTF')"
+                            class="py-2.5 rounded-xl border-2 border-outline-variant bg-surface text-secondary font-bold text-[12px] transition-all">
+                            DTF Heat Transfer
+                        </button>
+                        <button type="button" id="dec-btn-embroidery" onclick="window.coSelectDecType('Embroidery')"
+                            class="py-2.5 rounded-xl border-2 border-outline-variant bg-surface text-secondary font-bold text-[12px] transition-all">
+                            Embroidery
+                        </button>
+                        <button type="button" id="dec-btn-none" onclick="window.coSelectDecType('None')"
+                            class="py-2.5 rounded-xl border-2 border-outline-variant bg-surface text-secondary font-bold text-[12px] transition-all">
+                            Plain / Solid
+                        </button>
+                    </div>
+
+                    <div id="dec-details-panel" class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-[12px] font-bold text-secondary uppercase tracking-wider">Placement Location</label>
+                            <input type="text" id="co-dec-placement" placeholder="e.g. Center Chest 10x10 inches" value="Center Chest"
+                                class="w-full bg-surface border border-outline-variant rounded-xl px-3 py-2.5 text-[14px] text-on-surface outline-none focus:ring-2 focus:ring-primary/20">
+                        </div>
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-[12px] font-bold text-secondary uppercase tracking-wider">Number of Colors / Stitches</label>
+                            <input type="text" id="co-dec-colors" placeholder="e.g. 3 Colors Plastisol" value="2 Colors"
+                                class="w-full bg-surface border border-outline-variant rounded-xl px-3 py-2.5 text-[14px] text-on-surface outline-none focus:ring-2 focus:ring-primary/20">
+                        </div>
+                    </div>
+                </div>
             </div>
-        </button>
+
+            <!-- ================================================================= -->
+            <!-- STEP 5: COMMERCIAL PRICING, MARGINS & ADVANCE PAYMENT -->
+            <!-- ================================================================= -->
+            <div id="co-step-5" class="wizard-step hidden flex flex-col gap-5">
+                <div class="bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant shadow-sm">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="material-symbols-outlined text-[24px] text-primary">payments</span>
+                        <h2 class="text-[20px] font-extrabold text-on-surface">5. Commercial Pricing &amp; Profit Margins</h2>
+                    </div>
+                    <p class="text-[13px] text-secondary">Lock quoted selling price, audit direct floor production cost, and project gross profit margin.</p>
+                </div>
+
+                <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant shadow-sm flex flex-col gap-4">
+                    <!-- Unit Selling Price & Grand Total -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-[12px] font-bold text-secondary uppercase tracking-wider">Quoted Selling Price (₹ / pc) *</label>
+                            <div class="relative">
+                                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-secondary font-bold">₹</span>
+                                <input type="number" id="co-unit-price" step="0.5" placeholder="e.g. 240.00"
+                                    class="w-full bg-surface border border-outline-variant rounded-xl pl-10 pr-4 py-3 text-[18px] font-extrabold text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple">
+                            </div>
+                        </div>
+
+                        <div class="bg-surface-container p-4 rounded-xl flex flex-col justify-center">
+                            <span class="text-[11px] font-bold text-secondary uppercase tracking-wider">Quoted Order Revenue</span>
+                            <span id="co-calc-grand-total" class="text-[26px] font-black text-primary mt-0.5">₹0</span>
+                        </div>
+                    </div>
+
+                    <!-- GROSS MARGIN LIVE ESTIMATOR GAUGE -->
+                    <div class="bg-surface-container/50 border border-outline-variant rounded-2xl p-4">
+                        <div class="flex justify-between items-center mb-3">
+                            <h4 class="text-[13px] font-bold text-secondary uppercase tracking-wider">Commercial Margin Health</h4>
+                            <span id="co-margin-badge" class="px-2.5 py-0.5 rounded-full text-[12px] font-extrabold bg-[#008A00]/10 text-[#008A00] border border-[#008A00]/20">
+                                32% Gross Margin
+                            </span>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-2.5 text-center mb-3">
+                            <div class="bg-white rounded-xl p-2.5 border border-outline-variant/30">
+                                <p class="text-[10px] font-bold text-secondary uppercase">Quoted Revenue</p>
+                                <p id="calc-revenue-display" class="text-[15px] font-bold text-on-surface mt-0.5">₹0</p>
+                            </div>
+                            <div class="bg-white rounded-xl p-2.5 border border-outline-variant/30">
+                                <p class="text-[10px] font-bold text-secondary uppercase">Est. Floor Cost</p>
+                                <p id="calc-cost-display" class="text-[15px] font-bold text-secondary mt-0.5">₹0</p>
+                            </div>
+                            <div class="bg-white rounded-xl p-2.5 border border-outline-variant/30">
+                                <p class="text-[10px] font-bold text-secondary uppercase">Est. Gross Profit</p>
+                                <p id="calc-profit-display" class="text-[15px] font-extrabold text-[#008A00] mt-0.5">₹0</p>
+                            </div>
+                        </div>
+
+                        <div class="w-full bg-surface-variant h-2 rounded-full overflow-hidden">
+                            <div id="co-margin-progress-bar" class="h-full bg-[#008A00] transition-all duration-300" style="width: 32%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Payment Terms & Advance Deposit -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-outline-variant/30">
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-[12px] font-bold text-secondary uppercase tracking-wider">Commercial Payment Terms</label>
+                            <select id="co-payment-terms" class="w-full bg-surface border border-outline-variant rounded-xl px-4 py-3 text-[14px] font-semibold text-on-surface outline-none focus:ring-2 focus:ring-primary/20">
+                                <option value="50_advance">50% Advance, 50% Before Dispatch</option>
+                                <option value="100_advance">100% Advance Payment</option>
+                                <option value="net_30">Net 30 Days Credit (Verified Buyers)</option>
+                                <option value="cod">Cash on Delivery / Gate Pass Handover</option>
+                            </select>
+                        </div>
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-[12px] font-bold text-secondary uppercase tracking-wider">Advance Payment Collected (₹)</label>
+                            <div class="relative">
+                                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-secondary font-bold">₹</span>
+                                <input type="number" id="co-advance-payment" step="100" placeholder="0.00"
+                                    class="w-full bg-surface border border-outline-variant rounded-xl pl-10 pr-4 py-3 text-[16px] font-bold text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ================================================================= -->
+            <!-- STEP 6: REVIEW, CONSIGNEE LOGISTICS & DUAL LAUNCH -->
+            <!-- ================================================================= -->
+            <div id="co-step-6" class="wizard-step hidden flex flex-col gap-5">
+                <div class="bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant shadow-sm">
+                    <div class="flex items-center gap-2 mb-1">
+                        <span class="material-symbols-outlined text-[24px] text-primary">local_shipping</span>
+                        <h2 class="text-[20px] font-extrabold text-on-surface">6. Consignee Logistics &amp; Review</h2>
+                    </div>
+                    <p class="text-[13px] text-secondary">Finalize shipping destination, master carton rules, and launch into the factory.</p>
+                </div>
+
+                <!-- Consignee Logistics -->
+                <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant shadow-sm flex flex-col gap-4">
+                    <h3 class="text-[14px] font-bold text-on-surface uppercase tracking-wider">Shipping &amp; Packaging Directives</h3>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-[12px] font-bold text-secondary uppercase tracking-wider">Consignee Shipping Address</label>
+                            <textarea id="co-shipping-address" rows="2" placeholder="Destination hub, street, city, pin code"
+                                class="w-full bg-surface border border-outline-variant rounded-xl px-4 py-2.5 text-[14px] text-on-surface outline-none focus:ring-2 focus:ring-primary/20 resize-none"></textarea>
+                        </div>
+                        <div class="flex flex-col gap-1.5">
+                            <label class="text-[12px] font-bold text-secondary uppercase tracking-wider">Packaging &amp; Label Instructions</label>
+                            <textarea id="co-packaging-notes" rows="2" placeholder="e.g. Individual polybags, 50 pcs per export master carton"
+                                class="w-full bg-surface border border-outline-variant rounded-xl px-4 py-2.5 text-[14px] text-on-surface outline-none focus:ring-2 focus:ring-primary/20 resize-none">Standard export polybag packaging. 50 pcs per 7-ply export carton.</textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Comprehensive Executive Audit Summary -->
+                <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant shadow-sm">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="text-[13px] font-bold text-secondary uppercase tracking-wider">Executive Order Summary</h3>
+                        <span class="text-[11px] font-mono font-bold text-primary">PRE-RELEASE AUDIT</span>
+                    </div>
+                    <div id="co-executive-summary" class="flex flex-col gap-2 text-[13px]"></div>
+                </div>
+
+                <!-- Launch Options -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <button type="button" onclick="window.coSaveOrder('launch_floor')"
+                        class="p-4 rounded-2xl bg-gradient-to-r from-primary to-blue-700 text-white font-extrabold text-[15px] flex items-center justify-between shadow-md active-scale transition-apple">
+                        <div class="text-left">
+                            <span>Save &amp; Open Factory Floor</span>
+                            <p class="text-[11px] text-white/80 font-medium">Instantly begin Sourcing &amp; Cutting</p>
+                        </div>
+                        <span class="material-symbols-outlined text-[24px]">precision_manufacturing</span>
+                    </button>
+
+                    <button type="button" onclick="window.coSaveOrder('print_traveler')"
+                        class="p-4 rounded-2xl bg-[#008A00] text-white font-extrabold text-[15px] flex items-center justify-between shadow-md active-scale transition-apple">
+                        <div class="text-left">
+                            <span>Save &amp; Print Job Traveler</span>
+                            <p class="text-[11px] text-white/80 font-medium">Generate A4 Cut Ticket &amp; Traveler</p>
+                        </div>
+                        <span class="material-symbols-outlined text-[24px]">print</span>
+                    </button>
+                </div>
+            </div>
+
+        </main>
     </div>
 
-    <div id="co-embroidery-section" class="hidden flex-col gap-1.5">
-        <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Embroidery Notes</label>
-        <textarea id="co-embroidery-notes" rows="3" placeholder="Thread colors, design details, placement"
-            class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple placeholder:text-secondary resize-none"></textarea>
-    </div>
+    <!-- Persistent Sticky Bottom KPI Deck & Action Bar -->
+    <div class="fixed bottom-0 left-0 right-0 bg-surface/95 backdrop-blur-md border-t border-outline-variant px-4 py-3 z-40">
+        <div class="max-w-4xl mx-auto w-full flex items-center justify-between gap-3">
+            <!-- Mini KPI Deck -->
+            <div class="flex items-center gap-4 text-[12px] min-w-0 pr-2">
+                <div>
+                    <span class="text-secondary block text-[10px] font-bold uppercase">Total Pcs</span>
+                    <strong id="bar-total-qty" class="text-[15px] text-on-surface">0</strong>
+                </div>
+                <div class="border-l border-outline-variant/60 pl-3">
+                    <span class="text-secondary block text-[10px] font-bold uppercase">Quoted Value</span>
+                    <strong id="bar-total-val" class="text-[15px] text-primary">₹0</strong>
+                </div>
+                <div class="border-l border-outline-variant/60 pl-3 hidden sm:block">
+                    <span class="text-secondary block text-[10px] font-bold uppercase">Fabric Weight</span>
+                    <strong id="bar-fabric-kg" class="text-[15px] text-on-surface">0 kg</strong>
+                </div>
+                <div class="border-l border-outline-variant/60 pl-3 hidden sm:block">
+                    <span class="text-secondary block text-[10px] font-bold uppercase">Margin</span>
+                    <strong id="bar-margin-pct" class="text-[15px] text-[#008A00]">32%</strong>
+                </div>
+            </div>
 
-    <div id="co-print-notes-section" class="flex flex-col gap-1.5">
-        <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Notes</label>
-        <textarea id="co-print-notes" rows="3" placeholder="Colors, placement, artwork reference"
-            class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple placeholder:text-secondary resize-none"></textarea>
-    </div>
-</div>
-
-<!-- STEP Ironing and Packing -->
-<div id="co-step-ironing" class="wizard-step hidden flex flex-col gap-5">
-    <div>
-        <h2 class="text-[22px] font-bold text-on-surface">Ironing and Packing</h2>
-        <p class="text-[14px] text-secondary mt-0.5">Finishing and packaging details</p>
-    </div>
-    <div class="flex flex-col gap-1.5">
-        <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Notes</label>
-        <textarea id="co-iron-notes" rows="4" placeholder="Folding style, packing type, label instructions"
-            class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple placeholder:text-secondary resize-none"></textarea>
-    </div>
-    <div class="flex flex-col gap-1.5">
-        <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Expected Completion</label>
-        <input type="date" id="co-iron-date" class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple">
-    </div>
-</div>
-
-<!-- STEP Procurement -->
-<div id="co-step-procurement" class="wizard-step hidden flex flex-col gap-5">
-    <div>
-        <h2 class="text-[22px] font-bold text-on-surface">Procurement</h2>
-        <p class="text-[14px] text-secondary mt-0.5">Vendor and sourcing details</p>
-    </div>
-
-    <div class="flex flex-col gap-1.5">
-        <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Vendor Name *</label>
-        <input type="text" id="co-vendor-name" placeholder="Enter vendor or supplier name"
-            class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple placeholder:text-secondary">
-    </div>
-
-    <div class="flex flex-col gap-1.5">
-        <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Purchase Cost (Rs.) *</label>
-        <div class="relative">
-            <span class="absolute left-4 top-1/2 -translate-y-1/2 text-secondary font-bold">Rs.</span>
-            <input type="number" id="co-purchase-cost" step="0.01" placeholder="0.00"
-                class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl pl-10 pr-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple placeholder:text-secondary">
+            <!-- Stepper Controls -->
+            <div class="flex items-center gap-2 shrink-0">
+                <button id="co-btn-back" type="button" onclick="window.coGoBack()"
+                    class="hidden px-5 py-3 bg-surface-container-high text-on-surface font-bold text-[14px] rounded-xl active-scale transition-apple hover:bg-surface-variant">
+                    Back
+                </button>
+                <button id="co-btn-next" type="button" onclick="window.coGoNext()"
+                    class="px-6 py-3 bg-primary text-white font-bold text-[14px] rounded-xl active-scale transition-apple shadow-md hover:bg-primary-hover flex items-center gap-1.5">
+                    <span>Next Step</span>
+                    <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+                </button>
+            </div>
         </div>
     </div>
-    
-    <div class="flex flex-col gap-1.5">
-        <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Expected Arrival Date</label>
-        <input type="date" id="co-arrival-date" class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple">
-    </div>
-</div>
 
-<!-- STEP Dispatch -->
-<div id="co-step-dispatch" class="wizard-step hidden flex flex-col gap-5">
-    <div>
-        <h2 class="text-[22px] font-bold text-on-surface">Dispatch</h2>
-        <p class="text-[14px] text-secondary mt-0.5">Shipping and logistics details</p>
-    </div>
+    <div id="toast-container" class="fixed top-20 left-0 right-0 z-50 flex flex-col gap-2 items-center pointer-events-none px-4"></div>
 
-    <div class="flex flex-col gap-1.5">
-        <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Courier / Transport</label>
-        <input type="text" id="co-dispatch-courier" placeholder="e.g. DTDC, Blue Dart, Own Vehicle"
-            class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple placeholder:text-secondary">
-    </div>
-
-    <div class="grid grid-cols-2 gap-3">
-        <div class="flex flex-col gap-1.5">
-            <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Tracking No.</label>
-            <input type="text" id="co-dispatch-tracking" placeholder="-"
-                class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple placeholder:text-secondary">
-        </div>
-        <div class="flex flex-col gap-1.5">
-            <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">No. of Boxes</label>
-            <input type="number" id="co-dispatch-boxes" min="0" placeholder="0"
-                class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple placeholder:text-secondary">
-        </div>
-    </div>
-
-    <div class="flex flex-col gap-1.5">
-        <label class="text-[13px] font-semibold text-secondary uppercase tracking-wider">Dispatch Date</label>
-        <input type="date" id="co-dispatch-date" class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple">
-    </div>
-
-    <!-- Summary before save -->
-    <div class="bg-surface-container-lowest border border-outline-variant rounded-2xl p-4">
-        <h3 class="text-[13px] font-bold text-secondary uppercase tracking-wider mb-3">Order Summary</h3>
-        <div id="co-summary-content" class="flex flex-col gap-2 text-[14px]"></div>
-    </div>
-</div>
-
-</main>
-</div>
-
-<!-- Bottom Nav Buttons -->
-<div class="fixed bottom-0 left-0 right-0 bg-surface/90 backdrop-blur-md border-t border-outline-variant px-4 py-3 flex gap-3 z-40">
-    <button id="co-btn-back" onclick="window.coGoBack()"
-        class="hidden flex-1 py-4 bg-surface-container-high text-on-surface font-bold text-[15px] rounded-2xl active-scale transition-apple">
-        Back
-    </button>
-    <button id="co-btn-next" onclick="window.coGoNext()"
-        class="flex-1 py-4 bg-primary text-white font-bold text-[15px] rounded-2xl active-scale transition-apple shadow-md">
-        Next Step
-    </button>
-</div>
-
-<div id="toast-container" class="fixed top-20 left-0 right-0 z-50 flex flex-col gap-2 items-center pointer-events-none px-4"></div>
-<script src="../js/utils/sheet.js"></script>
-<script src="../js/app.js"></script>
-<script type="module" src="../js/orders/create.js?v=5.2"></script>
+    <script src="../js/utils/sheet.js"></script>
+    <script src="../js/app.js"></script>
+    <script type="module" src="../js/orders/create.js?v=5.5"></script>
 </body>
 </html>

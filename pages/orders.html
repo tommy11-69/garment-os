@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html class="light" lang="en">
 <head>
     <!-- Favicon & PWA Icons -->
@@ -12,12 +12,12 @@
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Garment OS - Orders</title>
+    <title>Garment OS - Orders Commercial Control Tower</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com" rel="preconnect"/>
     <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
     
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <script src="../js/tailwind.config.js"></script>
@@ -25,6 +25,7 @@
     <link rel="stylesheet" href="../css/layout.css">
     <link rel="stylesheet" href="../css/typography.css">
     <link rel="stylesheet" href="../css/utilities.css">
+    <link rel="stylesheet" href="../css/responsive.css">
 
     <style>
         /* Stage filter chips scroll */
@@ -34,6 +35,7 @@
             overflow-x: auto; 
             padding-bottom: 2px;
             scrollbar-width: none;
+            -webkit-overflow-scrolling: touch;
         }
         .stage-chips-row::-webkit-scrollbar { display: none; }
         .stage-chip {
@@ -51,118 +53,201 @@
             background: var(--color-primary, #0A84FF);
             color: white;
             border-color: var(--color-primary, #0A84FF);
+            box-shadow: 0 2px 8px rgba(10,132,255,0.25);
         }
         .stage-chip.inactive {
-            background: transparent;
-            border-color: rgba(0,0,0,0.1);
+            background: var(--color-surface-container, #f2f2f7);
+            border-color: rgba(0,0,0,0.06);
             color: #6b7280;
         }
-        /* New order shortcut button */
-        .new-order-shortcut {
-            background: linear-gradient(135deg, var(--color-primary, #0A84FF) 0%, #5AC8FA 100%);
-            border-radius: 18px;
-            padding: 16px;
-            display: flex;
-            align-items: center;
-            gap: 14px;
-            cursor: pointer;
-            transition: transform 0.15s ease, box-shadow 0.15s ease;
-            box-shadow: 0 4px 16px rgba(10,132,255,0.25);
+        .stage-chip.inactive:hover {
+            background: var(--color-surface-variant, #e5e5ea);
+            color: var(--color-on-surface, #1d1d1f);
         }
-        .new-order-shortcut:active { transform: scale(0.97); }
+
+        /* Urgency filter pill */
+        .urgency-chip {
+            flex-shrink: 0;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            border: 1px solid transparent;
+        }
+        .urgency-chip.active {
+            background: #1d1d1f;
+            color: white;
+        }
+        .urgency-chip.inactive {
+            background: var(--color-surface-container, #f2f2f7);
+            color: #6b7280;
+        }
     </style>
-    <link rel="stylesheet" href="../css/responsive.css">
 </head>
 <body class="font-body text-body antialiased bg-background">
 
+    <!-- Global Topbar injected by app.js -->
     <div id="topbar-container"></div>
 
     <div class="mobile-wrapper">
-        <main id="main-content-area" class="flex-1 p-md flex flex-col gap-lg pb-[100px]">
+        <main id="main-content-area" class="flex-1 p-md flex flex-col gap-4 pb-[100px] max-w-7xl mx-auto w-full">
             
-            <!-- Header -->
-            <div class="px-xs pt-sm flex items-start justify-between">
+            <!-- Executive Header -->
+            <div class="px-xs pt-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
-                    <h2 class="text-[28px] leading-tight font-semibold tracking-tight text-on-surface mb-1">Orders</h2>
-                    <p class="text-[14px] text-secondary">Track production across all stages</p>
+                    <div class="flex items-center gap-2">
+                        <h2 class="text-[26px] sm:text-[30px] leading-tight font-extrabold tracking-tight text-on-surface">Orders Control Tower</h2>
+                        <span class="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-primary/10 text-primary uppercase tracking-wider">
+                            Commercial Truth
+                        </span>
+                    </div>
+                    <p class="text-[13px] text-secondary mt-0.5">Commercial oversight, multi-item size breakdown, margin health & floor tracking</p>
                 </div>
-                <!-- Quick new order button in header -->
-                <button onclick="window.location.href='create-order.html'"
-                    class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white shadow-md active-scale transition-apple shrink-0 mt-1"
-                    id="header-new-order-btn">
-                    <span class="material-symbols-outlined text-[22px]">add</span>
-                </button>
+                
+                <div class="flex items-center gap-2">
+                    <button onclick="window.exportAllOrdersCSV()" title="Export CSV"
+                        class="px-3.5 py-2 rounded-xl bg-surface-container-high border border-outline-variant text-on-surface text-[13px] font-bold active-scale transition-apple hover:bg-surface-variant flex items-center gap-1.5 shadow-xs">
+                        <span class="material-symbols-outlined text-[17px]">download</span>
+                        <span class="hidden sm:inline">Export CSV</span>
+                    </button>
+                    <button onclick="window.location.href='create-order.html'"
+                        class="px-4 py-2 rounded-xl bg-primary text-white text-[13px] font-bold active-scale transition-apple hover:bg-primary-hover flex items-center gap-1.5 shadow-sm"
+                        id="header-new-order-btn">
+                        <span class="material-symbols-outlined text-[18px]">add</span>
+                        <span>New Order</span>
+                    </button>
+                </div>
             </div>
 
-            <!-- Analytics Summary Container -->
+            <!-- Commercial Analytics Deck Container (Populated dynamically) -->
             <div id="orders-analytics-container" class="px-xs"></div>
 
-            <!-- New Order Shortcut Banner (shown when 0 active orders) -->
+            <!-- Empty CTA Banner (When zero orders) -->
             <div id="orders-empty-cta" class="hidden px-xs">
-                <div class="new-order-shortcut" onclick="window.location.href='create-order.html'">
-                    <div class="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
-                        <span class="material-symbols-outlined text-white text-[26px]">add_circle</span>
+                <div class="p-6 rounded-2xl bg-gradient-to-r from-primary to-blue-600 text-white flex items-center justify-between cursor-pointer active-scale transition-all shadow-md"
+                    onclick="window.location.href='create-order.html'">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
+                            <span class="material-symbols-outlined text-[28px]">add_circle</span>
+                        </div>
+                        <div>
+                            <h3 class="text-[17px] font-bold leading-tight">Create First Apparel Order</h3>
+                            <p class="text-[13px] text-white/80 mt-0.5">Set up buyer specs, multi-size breakdowns, and custom floor routes</p>
+                        </div>
                     </div>
-                    <div class="flex-1">
-                        <p class="text-white font-bold text-[16px] leading-tight">Create New Order</p>
-                        <p class="text-white/70 text-[13px] mt-0.5">Fabric, cutting, stitching and more</p>
-                    </div>
-                    <span class="material-symbols-outlined text-white/60 text-[20px]">chevron_right</span>
+                    <span class="material-symbols-outlined text-white/80 text-[24px]">chevron_right</span>
                 </div>
             </div>
 
-            <!-- Search & Filter -->
-            <div id="orders-search-container" class="px-xs">
-                <div class="flex items-center gap-3">
-                    <div class="relative flex-1">
-                        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary">search</span>
-                        <input id="orders-search-input" type="text" placeholder="Search orders, customers..."
-                            class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl pl-11 pr-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple placeholder:text-secondary">
-                    </div>
-                    <button onclick="window.openSheet('filterOrderSheet')" class="w-11 h-11 shrink-0 rounded-xl bg-surface-container-lowest border border-outline-variant flex items-center justify-center text-secondary active-scale transition-apple" id="orders-filter-btn">
+            <!-- Search, Sort & Filter Row -->
+            <div id="orders-search-container" class="px-xs flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                <!-- Search Input -->
+                <div class="relative flex-1">
+                    <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[20px]">search</span>
+                    <input id="orders-search-input" type="text" placeholder="Search orders, PO #, buyer, fabric, styles..."
+                        class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl pl-11 pr-4 py-2.5 text-[14px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple placeholder:text-secondary shadow-xs">
+                </div>
+
+                <!-- Sort Dropdown -->
+                <div class="flex items-center gap-2 shrink-0">
+                    <select id="orders-sort-select" onchange="window.setSortMode(this.value)" 
+                        class="bg-surface-container-lowest border border-outline-variant rounded-xl px-3 py-2.5 text-[13px] font-bold text-on-surface focus:border-primary outline-none shadow-xs">
+                        <option value="urgency">⚡ Sort: Urgency (Due Earliest)</option>
+                        <option value="value_desc">💰 Sort: Order Value (High → Low)</option>
+                        <option value="qty_desc">📦 Sort: Quantity (High → Low)</option>
+                        <option value="progress_asc">⏳ Sort: Bottlenecks (Lowest %)</option>
+                        <option value="date_desc">📅 Sort: Newest Created</option>
+                    </select>
+
+                    <button onclick="window.openSheet('filterOrderSheet')" 
+                        class="w-10 h-10 shrink-0 rounded-xl bg-surface-container-lowest border border-outline-variant flex items-center justify-center text-secondary active-scale transition-apple hover:text-primary shadow-xs" 
+                        id="orders-filter-btn" title="Advanced Filters">
                         <span class="material-symbols-outlined text-[20px]">tune</span>
                     </button>
                 </div>
             </div>
 
-            <!-- Active / Completed tabs + View toggle -->
-            <div id="orders-segmented-control" class="px-xs flex flex-col gap-3">
-                <div class="flex p-1 bg-surface-container-lowest border border-outline-variant rounded-xl">
-                    <button id="tab-active" onclick="window.setFilter('active')" class="flex-1 py-2 text-[14px] font-semibold rounded-lg bg-surface-variant text-on-surface transition-colors">Active</button>
-                    <button id="tab-completed" onclick="window.setFilter('completed')" class="flex-1 py-2 text-[14px] font-semibold rounded-lg text-secondary hover:text-on-surface transition-colors">Completed</button>
+            <!-- Segmented Controls: Active / Completed + Urgency Row + View Toggle -->
+            <div id="orders-segmented-control" class="px-xs flex flex-col gap-2.5">
+                
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                    <!-- Active / Completed Segmented Tabs -->
+                    <div class="flex p-1 bg-surface-container-lowest border border-outline-variant rounded-xl shadow-xs w-full sm:w-auto min-w-[220px]">
+                        <button id="tab-active" onclick="window.setFilter('active')" class="flex-1 px-4 py-1.5 text-[13px] font-bold rounded-lg bg-surface-variant text-on-surface transition-colors">Active Orders</button>
+                        <button id="tab-completed" onclick="window.setFilter('completed')" class="flex-1 px-4 py-1.5 text-[13px] font-bold rounded-lg text-secondary hover:text-on-surface transition-colors">Completed</button>
+                    </div>
+
+                    <!-- Deadline Urgency Pills -->
+                    <div class="flex items-center gap-1.5 overflow-x-auto pb-0.5">
+                        <span class="text-[11px] font-bold text-secondary uppercase shrink-0 mr-1">Deadline:</span>
+                        <button class="urgency-chip active" data-urgency="all" onclick="window.setUrgencyFilter('all')">All</button>
+                        <button class="urgency-chip inactive" data-urgency="overdue" onclick="window.setUrgencyFilter('overdue')">Overdue</button>
+                        <button class="urgency-chip inactive" data-urgency="this_week" onclick="window.setUrgencyFilter('this_week')">Due in 7 Days</button>
+                        <button class="urgency-chip inactive" data-urgency="two_weeks" onclick="window.setUrgencyFilter('two_weeks')">Next 14 Days</button>
+                    </div>
+
+                    <!-- View Mode Toggle -->
+                    <div class="flex items-center gap-1 shrink-0 self-end sm:self-auto">
+                        <button id="view-list-btn" onclick="window.setViewMode('list')" 
+                            class="px-2.5 py-1.5 rounded-lg bg-primary/10 text-primary text-[12px] font-bold flex items-center gap-1 transition-colors" title="List View">
+                            <span class="material-symbols-outlined text-[16px]">view_list</span>
+                            <span class="hidden sm:inline">List</span>
+                        </button>
+                        <button id="view-kanban-btn" onclick="window.setViewMode('kanban')" 
+                            class="px-2.5 py-1.5 rounded-lg text-secondary hover:bg-surface-variant text-[12px] font-bold flex items-center gap-1 transition-colors" title="Kanban View">
+                            <span class="material-symbols-outlined text-[16px]">view_kanban</span>
+                            <span class="hidden sm:inline">Kanban</span>
+                        </button>
+                    </div>
                 </div>
 
-                <!-- Stage filter chips (scrollable) -->
+                <!-- Canonical 7-Stage Filter Chips Row -->
                 <div class="stage-chips-row" id="stage-chips-row">
-                    <button class="stage-chip active" data-stage="all" onclick="window.setStageFilter('all')">All Stages</button>
-                    <button class="stage-chip inactive" data-stage="Procurement" onclick="window.setStageFilter('Procurement')">Procurement</button>
-                    <button class="stage-chip inactive" data-stage="Fabric" onclick="window.setStageFilter('Fabric')">Fabric</button>
-                    <button class="stage-chip inactive" data-stage="Cutting" onclick="window.setStageFilter('Cutting')">Cutting</button>
-                    <button class="stage-chip inactive" data-stage="Stitching" onclick="window.setStageFilter('Stitching')">Stitching</button>
-                    <button class="stage-chip inactive" data-stage="Printing/Embroidery" onclick="window.setStageFilter('Printing/Embroidery')">Printing</button>
-                    <button class="stage-chip inactive" data-stage="Ironing & Packing" onclick="window.setStageFilter('Ironing & Packing')">Ironing</button>
+                    <button class="stage-chip active" data-stage="all" onclick="window.setStageFilter('all')">All Workspaces</button>
+                    <button class="stage-chip inactive" data-stage="procurement" onclick="window.setStageFilter('procurement')">1. Sourcing</button>
+                    <button class="stage-chip inactive" data-stage="fabric" onclick="window.setStageFilter('fabric')">2. Fabric</button>
+                    <button class="stage-chip inactive" data-stage="cutting" onclick="window.setStageFilter('cutting')">3. Cutting</button>
+                    <button class="stage-chip inactive" data-stage="print_wash" onclick="window.setStageFilter('print_wash')">4. Print / Wash</button>
+                    <button class="stage-chip inactive" data-stage="stitching" onclick="window.setStageFilter('stitching')">5. Stitching</button>
+                    <button class="stage-chip inactive" data-stage="packing" onclick="window.setStageFilter('packing')">6. Packing</button>
+                    <button class="stage-chip inactive" data-stage="dispatch" onclick="window.setStageFilter('dispatch')">7. Dispatch</button>
                 </div>
+            </div>
 
-                <!-- View mode toggle -->
-                <div class="flex items-center justify-end gap-2">
-                    <span class="text-[12px] font-medium text-secondary">View:</span>
-                    <button id="view-list-btn" onclick="window.setViewMode('list')" class="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center transition-colors">
-                        <span class="material-symbols-outlined text-[18px]">view_list</span>
-                    </button>
-                    <button id="view-kanban-btn" onclick="window.setViewMode('kanban')" class="w-8 h-8 rounded-lg text-secondary hover:bg-surface-variant flex items-center justify-center transition-colors">
-                        <span class="material-symbols-outlined text-[18px]">view_kanban</span>
-                    </button>
+            <!-- Bulk Operations Action Bar (Appears when items are selected) -->
+            <div id="orders-bulk-bar" class="hidden px-xs">
+                <div class="bg-on-surface text-surface-lowest rounded-2xl p-3 shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-fade-in">
+                    <div class="flex items-center gap-3">
+                        <span class="text-[13px] font-bold" id="bulk-selected-count">0 orders selected</span>
+                        <button onclick="window.clearBulkSelection()" class="text-[12px] text-secondary hover:underline">Deselect All</button>
+                    </div>
+                    <div class="flex items-center gap-2 w-full sm:w-auto flex-wrap">
+                        <button onclick="window.bulkExportCSV()" class="px-3 py-1.5 rounded-xl bg-surface-container-high/20 hover:bg-surface-container-high/30 text-[12px] font-bold flex items-center gap-1 active-scale transition-apple">
+                            <span class="material-symbols-outlined text-[15px]">download</span>
+                            <span>Export CSV</span>
+                        </button>
+                        <button onclick="window.bulkPrintTravelers()" class="px-3 py-1.5 rounded-xl bg-surface-container-high/20 hover:bg-surface-container-high/30 text-[12px] font-bold flex items-center gap-1 active-scale transition-apple">
+                            <span class="material-symbols-outlined text-[15px]">print</span>
+                            <span>Print Travelers</span>
+                        </button>
+                        <button onclick="window.openBulkAdvanceModal()" class="px-3.5 py-1.5 rounded-xl bg-primary text-white text-[12px] font-bold flex items-center gap-1 active-scale transition-apple">
+                            <span>Advance Stage</span>
+                            <span class="material-symbols-outlined text-[15px]">arrow_forward</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 
             <!-- Orders List Container -->
-            <div id="orders-list" class="flex flex-col gap-4 px-xs">
-                <!-- Order cards rendered by index.js -->
+            <div id="orders-list" class="flex flex-col gap-3 px-xs">
+                <!-- Order cards rendered dynamically by index.js -->
             </div>
 
-            <!-- Orders Kanban Container -->
+            <!-- Orders Kanban Container (7 Canonical Columns) -->
             <div id="orders-kanban" class="hidden flex gap-4 px-xs pb-4 overflow-x-auto snap-x snap-mandatory no-scrollbar" style="scroll-padding-left: 16px;">
-                <!-- Kanban columns rendered by index.js -->
+                <!-- Kanban columns rendered dynamically by index.js -->
             </div>
             
         </main>
@@ -171,36 +256,34 @@
     <!-- Bottom Nav -->
     <div id="bottom-nav-container"></div>
     
-    <!-- FAB for New Order -->
+    <!-- Floating Action Button for New Order -->
     <div id="fab-container" data-icon="add" data-action="window.location.href='create-order.html'"></div>
     
     <!-- Bottom Sheets Container -->
     <div id="sheets-container"></div>
     
-    <script type="module" src="../js/orders/index.js?v=5.2"></script>
+    <script type="module" src="../js/orders/index.js?v=5.5"></script>
     <script src="../js/utils/sheet.js"></script>
     <script src="../js/app.js"></script>
 
     <script>
-        // Stage filter chip logic (runs after index.js initialises window.setFilter)
-        let currentStageFilter = 'all';
-
-        window.setStageFilter = function(stage) {
-            currentStageFilter = stage;
-
-            // Update chip styles
+        // Stage filter chip sync
+        window.setStageFilter = function(stageKey) {
             document.querySelectorAll('.stage-chip').forEach(btn => {
-                const isActive = btn.dataset.stage === stage;
+                const isActive = btn.dataset.stage === stageKey;
                 btn.className = 'stage-chip ' + (isActive ? 'active' : 'inactive');
             });
-
-            // Re-render with stage filter applied
-            // We patch into the existing renderOrders by triggering a custom event
-            document.dispatchEvent(new CustomEvent('stageFilterChanged', { detail: { stage } }));
+            document.dispatchEvent(new CustomEvent('stageFilterChanged', { detail: { stage: stageKey } }));
         };
 
-        // Expose current stage filter for index.js to read
-        window.getStageFilter = function() { return currentStageFilter; };
+        // Urgency filter chip sync
+        window.setUrgencyFilter = function(urgency) {
+            document.querySelectorAll('.urgency-chip').forEach(btn => {
+                const isActive = btn.dataset.urgency === urgency;
+                btn.className = 'urgency-chip ' + (isActive ? 'active' : 'inactive');
+            });
+            document.dispatchEvent(new CustomEvent('urgencyFilterChanged', { detail: { urgency } }));
+        };
     </script>
 </body>
 </html>

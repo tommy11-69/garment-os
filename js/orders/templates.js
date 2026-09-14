@@ -181,10 +181,13 @@ export function getOrderDetailsHeader(order) {
             </div>
             ${bottleneckAlert}
 
-            <div class="flex gap-4 mt-3 border-b border-outline-variant/50 overflow-x-auto no-scrollbar">
-                <button onclick="window.switchOrderTab('overview')" id="od-tab-btn-overview" class="od-tab-btn shrink-0 px-2 py-2 text-[14px] font-semibold text-primary border-b-2 border-primary transition-colors">Overview</button>
-                <button onclick="window.switchOrderTab('production')" id="od-tab-btn-production" class="od-tab-btn shrink-0 px-2 py-2 text-[14px] font-medium text-secondary border-b-2 border-transparent hover:text-on-surface transition-colors">Production Floor</button>
-                <button onclick="window.switchOrderTab('timeline')" id="od-tab-btn-timeline" class="od-tab-btn shrink-0 px-2 py-2 text-[14px] font-medium text-secondary border-b-2 border-transparent hover:text-on-surface transition-colors">Timeline</button>
+            <div class="flex gap-3 mt-3 border-b border-outline-variant/50 overflow-x-auto no-scrollbar">
+                <button onclick="window.switchOrderTab('overview')" id="od-tab-btn-overview" class="od-tab-btn shrink-0 px-2 py-2 text-[13px] font-semibold text-primary border-b-2 border-primary transition-colors">1. Overview &amp; Margin</button>
+                <button onclick="window.switchOrderTab('products')" id="od-tab-btn-products" class="od-tab-btn shrink-0 px-2 py-2 text-[13px] font-medium text-secondary border-b-2 border-transparent hover:text-on-surface transition-colors">2. Products &amp; Sizes</button>
+                <button onclick="window.switchOrderTab('bom')" id="od-tab-btn-bom" class="od-tab-btn shrink-0 px-2 py-2 text-[13px] font-medium text-secondary border-b-2 border-transparent hover:text-on-surface transition-colors">3. Automated BOM</button>
+                <button onclick="window.switchOrderTab('floor')" id="od-tab-btn-floor" class="od-tab-btn shrink-0 px-2 py-2 text-[13px] font-medium text-secondary border-b-2 border-transparent hover:text-on-surface transition-colors">4. Floor Stages</button>
+                <button onclick="window.switchOrderTab('docs')" id="od-tab-btn-docs" class="od-tab-btn shrink-0 px-2 py-2 text-[13px] font-medium text-secondary border-b-2 border-transparent hover:text-on-surface transition-colors">5. Print Docs</button>
+                <button onclick="window.switchOrderTab('timeline')" id="od-tab-btn-timeline" class="od-tab-btn shrink-0 px-2 py-2 text-[13px] font-medium text-secondary border-b-2 border-transparent hover:text-on-surface transition-colors">6. Audit Trail</button>
             </div>
         </div>
     `;
@@ -192,20 +195,35 @@ export function getOrderDetailsHeader(order) {
 
 export function getOrderDetailsContent(order) {
     if (!order) return '';
-    let customerName = order.customerName || order.customerId;
+
+    let customer = {};
     if (typeof api.getCustomerSync === 'function') {
-        const c = api.getCustomerSync(order.customerId);
-        if (c) customerName = c.name;
+        customer = api.getCustomerSync(order.customerId) || {};
     }
+    const customerName    = customer.name || order.customerName || order.customerId;
+    const customerCompany = customer.company || 'Direct Buyer / Brand';
+    const customerGst     = customer.gstNumber || customer.taxId || '33AAAAA0000A1Z5';
+    const customerAddress = customer.shippingAddress || customer.address || 'Standard Buyer Delivery Hub, Tirupur';
+    const orderNotes      = order.notes || order.instructions || 'Standard export polybag packaging. 50 pcs per 7-ply export master carton.';
 
     const rollup = calculateOrderRollup(order);
+    const orderValue = order.value || 0;
+    const unitPrice = order.qty > 0 ? (orderValue / order.qty) : 0;
+    const incurredCost = order.incurredCost || Math.round(orderValue * 0.68);
+    const grossProfit = orderValue - incurredCost;
+    const marginPct = orderValue > 0 ? Math.round((grossProfit / orderValue) * 100) : 0;
+
+    let marginColor = 'bg-[#008A00]/10 text-[#008A00] border-[#008A00]/20';
+    if (marginPct < 18) marginColor = 'bg-error/10 text-error border-error/20';
+    else if (marginPct < 26) marginColor = 'bg-[#FF9500]/10 text-[#FF9500] border-[#FF9500]/20';
+
     const paymentReceived = order.paymentReceived || 0;
-    const paymentPending = Math.max((order.value || 0) - paymentReceived, 0);
-    const paymentPct = order.value ? Math.min((paymentReceived / order.value) * 100, 100) : 0;
+    const paymentPending = Math.max(orderValue - paymentReceived, 0);
+    const paymentPct = orderValue ? Math.min((paymentReceived / orderValue) * 100, 100) : 0;
 
     return `
+        <!-- TAB 1: COMMERCIAL OVERVIEW & MARGIN LEDGER -->
         <div id="od-tab-overview" class="od-tab-content block p-4">
-            
             <!-- HERO ACTION: Open in Production Floor Hub -->
             <div onclick="window.location.href='production.html?orderId=${order.id}&stage=${rollup.activeStageKey}'"
                 class="bg-gradient-to-r from-primary to-blue-700 text-white rounded-2xl p-4 mb-4 shadow-sm flex items-center justify-between cursor-pointer active-scale transition-all">
@@ -225,120 +243,420 @@ export function getOrderDetailsContent(order) {
                 </div>
             </div>
 
-
+            <!-- BUYER COMMERCIAL DOSSIER -->
             <div class="bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant mb-4 shadow-sm">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-[14px] font-semibold text-secondary uppercase tracking-wider">Products &amp; Specs</h3>
-                    <span class="px-2 py-1 rounded-md text-[12px] font-bold bg-surface-variant text-on-surface-variant">${order.qty} pcs</span>
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-[13px] font-bold text-secondary uppercase tracking-wider">Buyer Commercial Dossier</h3>
+                    <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-primary/10 text-primary">PO: ${order.customerPO || order.id}</span>
                 </div>
-                <div class="flex flex-col gap-3 mb-4">
-                    <div class="grid grid-cols-2 gap-y-2 pb-3 border-b border-outline-variant/30 text-[13px]">
-                        <div><span class="text-secondary">Customer:</span> <span class="font-semibold text-on-surface">${customerName}</span></div>
-                        <div><span class="text-secondary">Delivery:</span> <span class="font-semibold text-on-surface">${order.deliveryDate || 'Not set'}</span></div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[13px] pb-3 border-b border-outline-variant/40">
+                    <div>
+                        <span class="text-secondary block text-[11px] font-semibold uppercase">Buyer / Customer</span>
+                        <span class="font-bold text-on-surface text-[15px]">${customerName}</span>
+                        <span class="text-secondary text-[12px] block">${customerCompany}</span>
+                    </div>
+                    <div>
+                        <span class="text-secondary block text-[11px] font-semibold uppercase">GSTIN / Tax ID</span>
+                        <span class="font-mono font-bold text-on-surface">${customerGst}</span>
+                    </div>
+                    <div>
+                        <span class="text-secondary block text-[11px] font-semibold uppercase">Delivery Destination</span>
+                        <span class="font-medium text-on-surface">${customerAddress}</span>
+                    </div>
+                    <div>
+                        <span class="text-secondary block text-[11px] font-semibold uppercase">Target Delivery Date</span>
+                        <span class="font-bold text-on-surface">${order.deliveryDate || 'Not specified'}</span>
                     </div>
                 </div>
-                <div class="flex flex-col gap-4">
-                    ${(() => {
-                        if (order.products && order.products.length > 0) {
-                            return order.products.map((p, pIdx) => {
-                                const isKids = p.category === 'Kids';
-                                const sizeKeys = isKids
-                                    ? ['24', '26', '28', '30', '32', '34', '36', '38']
-                                    : ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'XXXXL'];
-                                
-                                const sizesHtml = sizeKeys.map(k => `
-                                    <div class="text-center bg-surface-container/60 rounded-lg py-1 px-0.5 border border-outline-variant/30">
-                                        <p class="text-[9px] font-bold text-secondary uppercase leading-none">${k}</p>
-                                        <p class="text-[12px] font-bold text-on-surface mt-0.5">${p.sizes[k] || 0}</p>
-                                    </div>
-                                `).join('');
-
-                                const stages = order.workflowType === 'direct_fulfillment' ? ['Procurement', 'Dispatch', 'Delivered'] : ['Fabric', 'Cutting', 'Stitching', 'Printing/Embroidery', 'Ironing & Packing', 'Dispatch'];
-                                const stageOptions = stages.map(s => `
-                                    <option value="${s}" ${p.status === s ? 'selected' : ''}>${s}</option>
-                                `).join('');
-                                const currentNormStage = normalizeStageKey(p.status);
-                                const stageDef = STAGE_DEFINITIONS[currentNormStage] || STAGE_DEFINITIONS.fabric;
-
-                                return `
-                                    <div class="border-b border-outline-variant/30 last:border-0 pb-4 last:pb-0">
-                                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2.5">
-                                            <div>
-                                                <h4 class="text-[14px] font-bold text-on-surface leading-tight">${p.name || 'Unnamed Product'}</h4>
-                                                <div class="flex items-center gap-2 mt-0.5 flex-wrap">
-                                                    <span class="inline-block text-[11px] font-semibold text-secondary bg-surface-variant/40 px-1.5 py-0.5 rounded">${p.category || 'Adults'} Category · ${p.qty} pcs</span>
-                                                    <span class="inline-flex items-center gap-1 text-[11px] font-bold ${stageDef.color} ${stageDef.bgColor} px-2 py-0.5 rounded-md">
-                                                        <span class="material-symbols-outlined text-[13px]">${stageDef.icon}</span>
-                                                        ${stageDef.label}
-                                                    </span>
-                                                </div>
-                                            </div>
-                                            <div class="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
-                                                <button type="button" onclick="window.location.href='production.html?orderId=${order.id}&stage=${currentNormStage}&productId=${pIdx}'" 
-                                                    class="px-2.5 py-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-[11px] font-bold flex items-center gap-1 active-scale transition-all">
-                                                    <span class="material-symbols-outlined text-[14px]">precision_manufacturing</span>
-                                                    <span>Floor Workspace</span>
-                                                    <span class="material-symbols-outlined text-[13px]">arrow_forward</span>
-                                                </button>
-                                                <select onchange="window.updateProductStage('${order.id}', ${pIdx}, this.value)" class="text-[11px] font-bold text-secondary bg-surface-variant/60 border-0 rounded-lg px-2 py-1.5 outline-none focus:ring-2 focus:ring-primary/20">
-                                                    ${stageOptions}
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div class="grid grid-cols-8 gap-1">
-                                            ${sizesHtml}
-                                        </div>
-                                    </div>
-                                `;
-                            }).join('');
-
-                        } else {
-                            // Legacy single product orders fallback
-                            return `
-                                <div class="grid grid-cols-2 gap-y-3">
-                                    <div><p class="text-[12px] text-secondary">Fabric</p><p class="text-[14px] font-medium text-on-surface">${order.fabric || '-'}</p></div>
-                                    <div><p class="text-[12px] text-secondary">Sizes</p><p class="text-[14px] font-medium text-on-surface">${order.sizes || '-'}</p></div>
-                                </div>
-                            `;
-                        }
-                    })()}
+                <div class="pt-3 text-[12px]">
+                    <span class="text-secondary block font-semibold uppercase text-[10px]">Packing & Handling Instructions</span>
+                    <p class="text-on-surface mt-0.5">${orderNotes}</p>
                 </div>
             </div>
-            
+
+            <!-- FINANCIAL MARGIN & COSTING LEDGER -->
             <div class="bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant shadow-sm mb-4">
                 <div class="flex justify-between items-center mb-3">
-                    <h3 class="text-[14px] font-semibold text-secondary uppercase tracking-wider">Financials</h3>
-                    <span class="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider px-2 py-1 rounded-md ${paymentPending === 0 ? 'bg-[#008A00]/10 text-[#008A00]' : 'bg-[#FF9F0A]/10 text-[#FF9F0A]'}">${paymentPending === 0 ? 'Paid' : 'Pending'}</span>
-                </div>
-                
-                <div class="flex justify-between items-end mb-4">
-                    <div><p class="text-[12px] text-secondary">Order Value</p><p class="text-[24px] font-bold text-on-surface">₹${(order.value || 0).toLocaleString()}</p></div>
+                    <h3 class="text-[13px] font-bold text-secondary uppercase tracking-wider">Commercial Margin Ledger</h3>
+                    <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${marginColor}">
+                        ${marginPct}% Gross Margin
+                    </span>
                 </div>
 
-                <div class="w-full bg-surface-variant h-1.5 rounded-full overflow-hidden mb-2">
-                    <div class="h-full ${paymentPending === 0 ? 'bg-[#008A00]' : 'bg-primary'}" style="width: ${paymentPct}%"></div>
+                <div class="grid grid-cols-3 gap-2.5 mb-4 p-3 rounded-xl bg-surface-container/50 border border-outline-variant/40 text-center">
+                    <div>
+                        <p class="text-[10px] font-bold text-secondary uppercase">Quoted Revenue</p>
+                        <p class="text-[16px] font-extrabold text-on-surface mt-0.5">&#8377;${orderValue.toLocaleString()}</p>
+                        <span class="text-[10px] text-secondary">&#8377;${unitPrice.toFixed(0)}/pc</span>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold text-secondary uppercase">Est. Floor Cost</p>
+                        <p class="text-[16px] font-extrabold text-secondary mt-0.5">&#8377;${incurredCost.toLocaleString()}</p>
+                        <span class="text-[10px] text-secondary">&#8377;${(incurredCost / (order.qty || 1)).toFixed(0)}/pc</span>
+                    </div>
+                    <div>
+                        <p class="text-[10px] font-bold text-secondary uppercase">Est. Gross Profit</p>
+                        <p class="text-[16px] font-extrabold ${grossProfit >= 0 ? 'text-[#008A00]' : 'text-error'} mt-0.5">&#8377;${grossProfit.toLocaleString()}</p>
+                        <span class="text-[10px] font-bold ${grossProfit >= 0 ? 'text-[#008A00]' : 'text-error'}">${marginPct}%</span>
+                    </div>
                 </div>
-                
+
+                <!-- Payment Status Bar -->
+                <div class="flex justify-between items-center text-[12px] mb-1.5">
+                    <span class="text-secondary font-medium">Buyer Payment Status</span>
+                    <span class="font-bold ${paymentPending === 0 ? 'text-[#008A00]' : 'text-orange-500'}">
+                        ${paymentPending === 0 ? 'Fully Settled' : 'Payment Due'}
+                    </span>
+                </div>
+                <div class="w-full bg-surface-variant h-2 rounded-full overflow-hidden mb-2">
+                    <div class="h-full ${paymentPending === 0 ? 'bg-[#008A00]' : 'bg-primary'} transition-all" style="width: ${paymentPct}%"></div>
+                </div>
                 <div class="flex justify-between items-center text-[13px]">
-                    <div class="flex flex-col"><span class="text-secondary">Paid</span><span class="font-semibold text-on-surface">₹${paymentReceived.toLocaleString()}</span></div>
-                    <div class="flex flex-col text-right"><span class="text-secondary">Due</span><span class="font-semibold ${paymentPending > 0 ? 'text-[#FF9F0A]' : 'text-secondary'}">₹${paymentPending.toLocaleString()}</span></div>
+                    <div><span class="text-secondary">Collected:</span> <strong class="text-on-surface">&#8377;${paymentReceived.toLocaleString()}</strong></div>
+                    <div><span class="text-secondary">Balance Due:</span> <strong class="${paymentPending > 0 ? 'text-orange-600 font-bold' : 'text-secondary'}">&#8377;${paymentPending.toLocaleString()}</strong></div>
                 </div>
 
-                <div class="mt-4 pt-4 border-t border-outline-variant/50">
-                    <button onclick="window.logPayment()" class="w-full py-3 bg-surface-variant text-on-surface font-semibold text-[14px] rounded-xl active-scale transition-colors">Log Payment</button>
+                <div class="mt-4 pt-3 border-t border-outline-variant/40 flex gap-2">
+                    <button onclick="window.logPayment()" class="flex-1 py-2.5 bg-surface-variant text-on-surface font-semibold text-[13px] rounded-xl active-scale transition-colors">
+                        Log Payment
+                    </button>
+                    <button onclick="window.printProformaInvoice('${order.id}')" class="px-4 py-2.5 bg-primary/10 text-primary hover:bg-primary/20 font-bold text-[13px] rounded-xl active-scale transition-colors flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[16px]">receipt_long</span>
+                        <span>Invoice</span>
+                    </button>
                 </div>
             </div>
         </div>
-        <div id="od-tab-production" class="od-tab-content hidden p-4">
+
+        <!-- TAB 2: PRODUCTS & MULTI-SIZE MATRIX BREAKDOWN -->
+        <div id="od-tab-products" class="od-tab-content hidden p-4">
+            ${renderProductsMatrixTab(order)}
+        </div>
+
+        <!-- TAB 3: AUTOMATED BILL OF MATERIALS (BOM) CALCULATOR -->
+        <div id="od-tab-bom" class="od-tab-content hidden p-4">
+            ${renderBOMCalculatorTab(order)}
+        </div>
+
+        <!-- TAB 4: PRODUCTION FLOOR WORKSPACES -->
+        <div id="od-tab-floor" class="od-tab-content hidden p-4">
             ${renderProductionDataTab(order)}
         </div>
+
+        <!-- TAB 5: PRINTABLE FACTORY DOCUMENTS & TRAVELERS -->
+        <div id="od-tab-docs" class="od-tab-content hidden p-4">
+            ${renderPrintDocsTab(order)}
+        </div>
+
+        <!-- TAB 6: AUDIT TIMELINE -->
         <div id="od-tab-timeline" class="od-tab-content hidden p-4">
             <div class="flex flex-col gap-4">
-                ${(order.timeline || []).map(t => `<div class="flex gap-4"><div class="flex flex-col items-center"><div class="w-3 h-3 rounded-full bg-primary"></div><div class="w-px h-full bg-outline-variant my-1"></div></div><div class="pb-4"><p class="text-[14px] font-semibold text-on-surface">${t.status || t.title || 'Updated'}</p><p class="text-[12px] text-secondary">${new Date(t.timestamp || t.date).toLocaleString()} • ${t.user || 'System'}</p></div></div>`).join('')}
-                ${!(order.timeline || []).length ? '<p class="text-secondary text-sm">No timeline events yet.</p>' : ''}
+                ${(order.timeline || []).map(t => `
+                    <div class="flex gap-4">
+                        <div class="flex flex-col items-center">
+                            <div class="w-3 h-3 rounded-full bg-primary"></div>
+                            <div class="w-px h-full bg-outline-variant my-1"></div>
+                        </div>
+                        <div class="pb-4">
+                            <p class="text-[14px] font-semibold text-on-surface">${t.status || t.title || 'Updated'}</p>
+                            <p class="text-[12px] text-secondary">${new Date(t.timestamp || t.date).toLocaleString()} • ${t.user || 'System'}</p>
+                            ${t.note ? `<p class="text-[12px] text-on-surface-variant mt-1 p-2 rounded-lg bg-surface-container">${t.note}</p>` : ''}
+                        </div>
+                    </div>
+                `).join('')}
+                ${!(order.timeline || []).length ? '<p class="text-secondary text-sm p-4 text-center">No timeline events recorded yet.</p>' : ''}
             </div>
         </div>
         <div class="h-20"></div>
+    `;
+}
+
+// ─── Products & Size Breakdown Matrix Tab ─────────────────────────────────────
+function renderProductsMatrixTab(order) {
+    const products = (Array.isArray(order.products) && order.products.length > 0)
+        ? order.products
+        : [{
+            name: order.product || 'Garment Item',
+            category: 'Adults',
+            qty: order.qty || 0,
+            status: order.status || 'Fabric',
+            sizes: order.stageData?.cutting?.sizes || {}
+        }];
+
+    return `
+        <div class="flex flex-col gap-4">
+            <div class="flex justify-between items-center">
+                <h3 class="text-[13px] font-bold text-secondary uppercase tracking-wider">Itemized Products &amp; Size Breakdown</h3>
+                <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-surface-variant text-on-surface-variant">${order.qty} pcs total</span>
+            </div>
+
+            ${products.map((p, pIdx) => {
+                const isKids = p.category === 'Kids';
+                const sizeKeys = isKids
+                    ? ['24', '26', '28', '30', '32', '34', '36', '38']
+                    : ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'XXXXL'];
+
+                const sizesObj = (p.sizes && typeof p.sizes === 'object') ? p.sizes : {};
+
+                const sizesGridHtml = sizeKeys.map(sz => `
+                    <div class="text-center bg-surface-container/70 rounded-xl py-1.5 px-1 border border-outline-variant/40">
+                        <p class="text-[9px] font-bold text-secondary uppercase">${sz}</p>
+                        <p class="text-[13px] font-extrabold text-on-surface mt-0.5">${sizesObj[sz] || 0}</p>
+                    </div>
+                `).join('');
+
+                const currentNormStage = normalizeStageKey(p.status);
+                const stageDef = STAGE_DEFINITIONS[currentNormStage] || STAGE_DEFINITIONS.fabric;
+
+                return `
+                    <div class="bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant shadow-sm">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3 pb-3 border-b border-outline-variant/40">
+                            <div>
+                                <h4 class="text-[16px] font-bold text-on-surface">${p.name}</h4>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <span class="text-[11px] font-bold text-secondary uppercase tracking-wide bg-surface-variant px-2 py-0.5 rounded-md">${p.category || 'Adults'}</span>
+                                    <span class="text-[12px] font-bold text-on-surface">${p.qty || 0} pcs</span>
+                                    <span class="inline-flex items-center gap-1 text-[11px] font-bold ${stageDef.color} ${stageDef.bgColor} px-2 py-0.5 rounded-md">
+                                        <span class="material-symbols-outlined text-[13px]">${stageDef.icon}</span>
+                                        ${stageDef.label}
+                                    </span>
+                                </div>
+                            </div>
+                            <button onclick="window.location.href='production.html?orderId=${order.id}&stage=${currentNormStage}&productId=${pIdx}'"
+                                class="px-3 py-1.5 rounded-xl bg-primary text-white text-[12px] font-bold flex items-center gap-1 shadow-xs active-scale transition-apple hover:bg-primary-hover">
+                                <span class="material-symbols-outlined text-[15px]">precision_manufacturing</span>
+                                <span>Floor Workspace</span>
+                                <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+                            </button>
+                        </div>
+                        <p class="text-[11px] font-bold text-secondary uppercase mb-2">Size Ratio Matrix (pcs)</p>
+                        <div class="grid grid-cols-4 sm:grid-cols-8 gap-1.5">
+                            ${sizesGridHtml}
+                        </div>
+                    </div>
+                `;
+            }).join('')}
+        </div>
+    `;
+}
+
+// ─── Automated Bill of Materials (BOM) Calculator Tab ─────────────────────────
+function renderBOMCalculatorTab(order) {
+    const totalQty = order.qty || 0;
+    const fabricType = order.fabric || '100% Combed Cotton Single Jersey, 180 GSM';
+    const isHoodieOrFleece = fabricType.toLowerCase().includes('hood') || fabricType.toLowerCase().includes('fleece');
+    
+    // Industrial consumption benchmark
+    const avgConsumptionKg = isHoodieOrFleece ? 0.65 : 0.24; // kg per pc
+    const netFabricKg = Math.round(totalQty * avgConsumptionKg * 10) / 10;
+    const grossFabricKg = Math.round(netFabricKg * 1.05 * 10) / 10; // +5% cutting/wastage buffer
+    const estRolls = Math.ceil(grossFabricKg / 20); // standard 20kg roll
+    const estFabricPricePerKg = isHoodieOrFleece ? 440 : 380;
+    const estFabricCost = Math.round(grossFabricKg * estFabricPricePerKg);
+
+    // Trims benchmarks
+    const threadCones = Math.ceil(totalQty / 150);
+    const polybags = totalQty;
+    const labels = totalQty;
+    const cartons = Math.ceil(totalQty / 50);
+
+    return `
+        <div class="flex flex-col gap-4">
+            <!-- Header Summary Banner -->
+            <div class="bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant shadow-sm">
+                <div class="flex justify-between items-start mb-2">
+                    <div>
+                        <span class="text-[11px] font-bold text-secondary uppercase tracking-wider">Automated Requirement Estimator</span>
+                        <h3 class="text-[18px] font-extrabold text-on-surface mt-0.5">Bill of Materials (BOM)</h3>
+                    </div>
+                    <span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#5856D6]/10 text-[#5856D6] border border-[#5856D6]/20">
+                        Order Qty: ${totalQty.toLocaleString()} pcs
+                    </span>
+                </div>
+                <p class="text-[12px] text-secondary">Dynamically calculated based on apparel style consumption, standard Tirupur roll metrics, and export trims benchmarks.</p>
+            </div>
+
+            <!-- Fabric Sourcing Specification -->
+            <div class="bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant shadow-sm">
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="material-symbols-outlined text-[20px] text-primary">texture</span>
+                    <h4 class="text-[14px] font-bold text-on-surface uppercase tracking-wide">1. Primary Fabric Allocation</h4>
+                </div>
+
+                <div class="p-3 rounded-xl bg-surface-container/50 border border-outline-variant/40 mb-3">
+                    <p class="text-[11px] font-bold text-secondary uppercase">Material &amp; Construction</p>
+                    <p class="text-[14px] font-bold text-on-surface mt-0.5">${fabricType}</p>
+                </div>
+
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-center mb-3">
+                    <div class="p-2.5 rounded-xl bg-surface-container/40 border border-outline-variant/30">
+                        <span class="text-[10px] font-bold text-secondary uppercase block">Per-Pc Consumption</span>
+                        <strong class="text-[15px] text-on-surface">${avgConsumptionKg} kg</strong>
+                    </div>
+                    <div class="p-2.5 rounded-xl bg-surface-container/40 border border-outline-variant/30">
+                        <span class="text-[10px] font-bold text-secondary uppercase block">Gross Fabric (+5%)</span>
+                        <strong class="text-[15px] text-primary">${grossFabricKg} kg</strong>
+                    </div>
+                    <div class="p-2.5 rounded-xl bg-surface-container/40 border border-outline-variant/30">
+                        <span class="text-[10px] font-bold text-secondary uppercase block">Rolls Required</span>
+                        <strong class="text-[15px] text-on-surface">${estRolls} Rolls</strong>
+                        <span class="text-[9px] text-secondary block">(@20kg/roll)</span>
+                    </div>
+                    <div class="p-2.5 rounded-xl bg-surface-container/40 border border-outline-variant/30">
+                        <span class="text-[10px] font-bold text-secondary uppercase block">Est. Fabric Cost</span>
+                        <strong class="text-[15px] text-[#008A00]">&#8377;${estFabricCost.toLocaleString()}</strong>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between text-[12px] pt-2 border-t border-outline-variant/30 text-secondary">
+                    <span>Knitting &amp; Dyeing Route: Standard Inward QC</span>
+                    <a href="production.html?orderId=${order.id}&stage=fabric" class="text-primary font-bold hover:underline flex items-center gap-0.5">
+                        <span>Check Fabric Floor</span>
+                        <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Trims & Packaging Specification Table -->
+            <div class="bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant shadow-sm">
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="material-symbols-outlined text-[20px] text-[#5856D6]">inventory</span>
+                    <h4 class="text-[14px] font-bold text-on-surface uppercase tracking-wide">2. Trims, Labels &amp; Packaging Matrix</h4>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-[12px]">
+                        <thead>
+                            <tr class="border-b border-outline-variant/50 text-secondary uppercase text-[10px]">
+                                <th class="py-2 pr-2">Item Description</th>
+                                <th class="py-2 px-2">Specification</th>
+                                <th class="py-2 px-2 text-right">Required Qty</th>
+                                <th class="py-2 pl-2 text-right">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-outline-variant/30">
+                            <tr>
+                                <td class="py-2.5 pr-2 font-bold text-on-surface">Sewing Thread</td>
+                                <td class="py-2.5 px-2 text-secondary">40/2 Spun Polyester (Color Matched)</td>
+                                <td class="py-2.5 px-2 text-right font-mono font-bold">${threadCones} Cones</td>
+                                <td class="py-2.5 pl-2 text-right"><span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 font-bold text-[10px]">In Stock</span></td>
+                            </tr>
+                            <tr>
+                                <td class="py-2.5 pr-2 font-bold text-on-surface">Brand Woven Label</td>
+                                <td class="py-2.5 px-2 text-secondary">High-Definition Damask Center Fold</td>
+                                <td class="py-2.5 px-2 text-right font-mono font-bold">${labels} pcs</td>
+                                <td class="py-2.5 pl-2 text-right"><span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 font-bold text-[10px]">Allotted</span></td>
+                            </tr>
+                            <tr>
+                                <td class="py-2.5 pr-2 font-bold text-on-surface">Wash &amp; Care Label</td>
+                                <td class="py-2.5 px-2 text-secondary">Printed Satin with RN &amp; Composition</td>
+                                <td class="py-2.5 px-2 text-right font-mono font-bold">${labels} pcs</td>
+                                <td class="py-2.5 pl-2 text-right"><span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 font-bold text-[10px]">Allotted</span></td>
+                            </tr>
+                            <tr>
+                                <td class="py-2.5 pr-2 font-bold text-on-surface">Size Pips</td>
+                                <td class="py-2.5 px-2 text-secondary">Woven Loop Fold (XS to 4XL)</td>
+                                <td class="py-2.5 px-2 text-right font-mono font-bold">${labels} pcs</td>
+                                <td class="py-2.5 pl-2 text-right"><span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 font-bold text-[10px]">In Stock</span></td>
+                            </tr>
+                            <tr>
+                                <td class="py-2.5 pr-2 font-bold text-on-surface">Hangtag &amp; Tag Pin</td>
+                                <td class="py-2.5 px-2 text-secondary">350 GSM Cardstock + 25mm Nylon Barb</td>
+                                <td class="py-2.5 px-2 text-right font-mono font-bold">${labels} pcs</td>
+                                <td class="py-2.5 pl-2 text-right"><span class="px-2 py-0.5 rounded bg-orange-500/10 text-orange-600 font-bold text-[10px]">Inward Due</span></td>
+                            </tr>
+                            <tr>
+                                <td class="py-2.5 pr-2 font-bold text-on-surface">Individual Polybag</td>
+                                <td class="py-2.5 px-2 text-secondary">40 Micron Self-Adhesive Polypropylene</td>
+                                <td class="py-2.5 px-2 text-right font-mono font-bold">${polybags} pcs</td>
+                                <td class="py-2.5 pl-2 text-right"><span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 font-bold text-[10px]">In Stock</span></td>
+                            </tr>
+                            <tr>
+                                <td class="py-2.5 pr-2 font-bold text-on-surface">Master Cartons</td>
+                                <td class="py-2.5 px-2 text-secondary">7-Ply Export Corrugated (50 pcs/ctn)</td>
+                                <td class="py-2.5 px-2 text-right font-mono font-bold">${cartons} Boxes</td>
+                                <td class="py-2.5 pl-2 text-right"><span class="px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-600 font-bold text-[10px]">Available</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// ─── Printable Documents & Job Travelers Tab ──────────────────────────────────
+function renderPrintDocsTab(order) {
+    return `
+        <div class="flex flex-col gap-4">
+            <div class="bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant shadow-sm">
+                <h3 class="text-[14px] font-bold text-on-surface uppercase tracking-wider mb-1">Printable Factory Documentation</h3>
+                <p class="text-[12px] text-secondary">Generate industrial job tickets, production travelers, carton packing slips, and proforma invoices formatted for thermal or laser printing.</p>
+            </div>
+
+            <!-- DOCUMENT 1: FACTORY JOB TRAVELER & CUT TICKET -->
+            <div class="p-4 rounded-2xl bg-surface-container-lowest border border-outline-variant shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div class="flex items-center gap-3 min-w-0">
+                    <div class="w-12 h-12 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-[24px]">assignment</span>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h4 class="text-[16px] font-bold text-on-surface">Factory Job Traveler &amp; Cut Ticket</h4>
+                            <span class="px-2 py-0.5 rounded bg-surface-variant text-secondary text-[10px] font-extrabold uppercase">A4 Format</span>
+                        </div>
+                        <p class="text-[12px] text-secondary mt-0.5">Accompanies fabric rolls and cut bundles across all floor departments. Includes marker breakdown, bundle matrix, and supervisor sign-offs.</p>
+                    </div>
+                </div>
+                <button onclick="window.printJobTraveler('${order.id}')"
+                    class="px-4 py-2.5 rounded-xl bg-primary text-white text-[13px] font-bold flex items-center gap-1.5 shadow-xs active-scale transition-apple hover:bg-primary-hover shrink-0 w-full sm:w-auto justify-center">
+                    <span class="material-symbols-outlined text-[17px]">print</span>
+                    <span>Print Job Traveler</span>
+                </button>
+            </div>
+
+            <!-- DOCUMENT 2: COMMERCIAL PROFORMA INVOICE -->
+            <div class="p-4 rounded-2xl bg-surface-container-lowest border border-outline-variant shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div class="flex items-center gap-3 min-w-0">
+                    <div class="w-12 h-12 rounded-2xl bg-[#008A00]/10 text-[#008A00] flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-[24px]">receipt_long</span>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h4 class="text-[16px] font-bold text-on-surface">Commercial Proforma Invoice</h4>
+                            <span class="px-2 py-0.5 rounded bg-surface-variant text-secondary text-[10px] font-extrabold uppercase">Official Tax Slip</span>
+                        </div>
+                        <p class="text-[12px] text-secondary mt-0.5">Itemized commercial invoice with GSTIN breakdown, banking details, payment terms, and delivery instructions.</p>
+                    </div>
+                </div>
+                <button onclick="window.printProformaInvoice('${order.id}')"
+                    class="px-4 py-2.5 rounded-xl bg-[#008A00] text-white text-[13px] font-bold flex items-center gap-1.5 shadow-xs active-scale transition-apple hover:opacity-90 shrink-0 w-full sm:w-auto justify-center">
+                    <span class="material-symbols-outlined text-[17px]">print</span>
+                    <span>Print Proforma Invoice</span>
+                </button>
+            </div>
+
+            <!-- DOCUMENT 3: MASTER CARTON SHIPPING SLIPS -->
+            <div class="p-4 rounded-2xl bg-surface-container-lowest border border-outline-variant shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div class="flex items-center gap-3 min-w-0">
+                    <div class="w-12 h-12 rounded-2xl bg-[#5856D6]/10 text-[#5856D6] flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-[24px]">label</span>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h4 class="text-[16px] font-bold text-on-surface">Carton Master Packing Slips</h4>
+                            <span class="px-2 py-0.5 rounded bg-surface-variant text-secondary text-[10px] font-extrabold uppercase">Thermal 4x6</span>
+                        </div>
+                        <p class="text-[12px] text-secondary mt-0.5">Outer box shipping labels with carton sequence (e.g. Box 1 of 8), destination barcode, style code, and size quantities.</p>
+                    </div>
+                </div>
+                <button onclick="window.printCartonSlips('${order.id}')"
+                    class="px-4 py-2.5 rounded-xl bg-surface-variant text-on-surface hover:bg-surface-container-high text-[13px] font-bold flex items-center gap-1.5 shadow-xs active-scale transition-apple shrink-0 w-full sm:w-auto justify-center">
+                    <span class="material-symbols-outlined text-[17px]">print</span>
+                    <span>Print Carton Slips</span>
+                </button>
+            </div>
+        </div>
     `;
 }
 

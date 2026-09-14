@@ -1,12 +1,17 @@
 import { api } from '../services/api.js?v=5.2';
 import { renderers } from '../renderers.js?v=5.2';
 import { getOrderSheetsHTML, getOrderDetailsHeader, getOrderDetailsContent, getOrdersAnalyticsHTML } from './templates.js?v=5.2';
+import { calculateOrderRollup, STAGE_DEFINITIONS, normalizeStageKey } from '../production/domain/workflowEngine.js?v=5.5';
 
 let currentOrders = [];
 let activeOrder = null;
 let currentFilter = 'active';
+let currentStageFilter = 'all';
+let currentUrgencyFilter = 'all';
+let currentSortKey = 'urgency';
 let currentSearchQuery = '';
 let currentViewMode = 'list';
+let selectedOrderIds = new Set();
 
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -27,14 +32,29 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.error("Failed to load orders:", e);
     }
 
-    // 3. Bind events
+    // 3. Bind search input
     document.getElementById('orders-search-input')?.addEventListener('input', (e) => {
         currentSearchQuery = e.target.value.trim().toLowerCase();
         renderOrders();
     });
 
-    // Stage filter chip events from orders.html
-    document.addEventListener('stageFilterChanged', () => renderOrders());
+    // 4. Bind sort select
+    document.getElementById('orders-sort-select')?.addEventListener('change', (e) => {
+        currentSortKey = e.target.value;
+        renderOrders();
+    });
+
+    // 5. Stage filter chip events from orders.html
+    document.addEventListener('stageFilterChanged', (e) => {
+        currentStageFilter = e.detail?.stage || 'all';
+        renderOrders();
+    });
+
+    // 6. Urgency filter chip events from orders.html
+    document.addEventListener('urgencyFilterChanged', (e) => {
+        currentUrgencyFilter = e.detail?.urgency || 'all';
+        renderOrders();
+    });
 
     // Open from URL if present
     const params = new URLSearchParams(window.location.search);
@@ -89,6 +109,58 @@ function renderAnalyticsSummary() {
     });
 }
 
+function applyUrgencyFilter(orders, urgencyKey) {
+    if (!urgencyKey || urgencyKey === 'all') return orders;
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+
+    return orders.filter(o => {
+        if (!o.deliveryDate) return false;
+        const d = new Date(o.deliveryDate);
+        d.setHours(0, 0, 0, 0);
+        const daysLeft = Math.ceil((d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+        if (urgencyKey === 'overdue') return daysLeft < 0;
+        if (urgencyKey === 'this_week') return daysLeft >= 0 && daysLeft <= 7;
+        if (urgencyKey === 'two_weeks') return daysLeft >= 0 && daysLeft <= 14;
+        return true;
+    });
+}
+
+function applySorting(orders, sortKey) {
+    const sorted = [...orders];
+    if (sortKey === 'urgency') {
+        return sorted.sort((a, b) => {
+            if (!a.deliveryDate && !b.deliveryDate) return 0;
+            if (!a.deliveryDate) return 1;
+            if (!b.deliveryDate) return -1;
+            return new Date(a.deliveryDate).getTime() - new Date(b.deliveryDate).getTime();
+        });
+    } else if (sortKey === 'value_desc') {
+        return sorted.sort((a, b) => (b.value || 0) - (a.value || 0));
+    } else if (sortKey === 'qty_desc') {
+        return sorted.sort((a, b) => (b.qty || 0) - (a.qty || 0));
+    } else if (sortKey === 'progress_asc') {
+        return sorted.sort((a, b) => {
+            const aProg = (a.progressPercentage !== undefined && a.progressPercentage !== null)
+                ? a.progressPercentage
+                : calculateOrderRollup(a).overallPercentage;
+            const bProg = (b.progressPercentage !== undefined && b.progressPercentage !== null)
+                ? b.progressPercentage
+                : calculateOrderRollup(b).overallPercentage;
+            return aProg - bProg;
+        });
+    } else if (sortKey === 'date_desc') {
+        return sorted.sort((a, b) => {
+            const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            if (aTime !== bTime) return bTime - aTime;
+            return (b.id || '').localeCompare(a.id || '');
+        });
+    }
+    return sorted;
+}
+
 function renderOrders() {
     const listContainer   = document.getElementById('orders-list');
     const kanbanContainer = document.getElementById('orders-kanban');
@@ -97,31 +169,37 @@ function renderOrders() {
 
     let filtered = currentOrders;
 
-    // Segmented tab
+    // 1. Segmented tab (Active / Completed)
     if (currentFilter === 'active') {
         filtered = filtered.filter(o => !['Dispatched', 'Delivered', 'Closed', 'Archived'].includes(o.status));
     } else if (currentFilter === 'completed') {
         filtered = filtered.filter(o => ['Dispatched', 'Delivered', 'Closed', 'Archived'].includes(o.status));
     }
 
-    // Stage chip filter
-    const stageFilter = (typeof window.getStageFilter === 'function') ? window.getStageFilter() : 'all';
-    if (stageFilter && stageFilter !== 'all') {
-        filtered = filtered.filter(o => o.status === stageFilter);
+    // 2. Canonical stage filter chip
+    if (currentStageFilter && currentStageFilter !== 'all') {
+        filtered = filtered.filter(o => normalizeStageKey(o.status) === currentStageFilter);
     }
 
-    // Search
+    // 3. Deadline urgency filter
+    filtered = applyUrgencyFilter(filtered, currentUrgencyFilter);
+
+    // 4. Search input
     if (currentSearchQuery) {
         filtered = filtered.filter(o =>
-            (o.id      && o.id.toLowerCase().includes(currentSearchQuery)) ||
-            (o.product && o.product.toLowerCase().includes(currentSearchQuery)) ||
+            (o.id          && o.id.toLowerCase().includes(currentSearchQuery)) ||
+            (o.product     && o.product.toLowerCase().includes(currentSearchQuery)) ||
             (o.customerName && o.customerName.toLowerCase().includes(currentSearchQuery)) ||
             (o.customerId   && o.customerId.toLowerCase().includes(currentSearchQuery)) ||
+            (o.fabric       && o.fabric.toLowerCase().includes(currentSearchQuery)) ||
             (o.status       && o.status.toLowerCase().includes(currentSearchQuery))
         );
     }
 
-    // Empty CTA — show when there are zero orders at all (not just filtered)
+    // 5. Multi-criteria sorting
+    filtered = applySorting(filtered, currentSortKey);
+
+    // Empty CTA — show when zero orders in DB
     if (emptyCTA) emptyCTA.classList.toggle('hidden', currentOrders.length > 0);
 
     if (currentViewMode === 'list') {
@@ -129,15 +207,16 @@ function renderOrders() {
         kanbanContainer.classList.add('hidden');
         
         if (filtered.length === 0) {
-            listContainer.innerHTML = `<div class="p-8 text-center">
-                <span class="material-symbols-outlined text-[48px] mb-3 block text-secondary opacity-40">inbox</span>
-                <p class="text-[15px] font-semibold text-on-surface">No orders here</p>
-                <p class="text-[13px] text-secondary mt-1">Try a different filter or stage</p>
+            listContainer.innerHTML = `<div class="p-10 text-center bg-surface-container-lowest rounded-3xl border border-outline-variant/60 shadow-xs">
+                <span class="material-symbols-outlined text-[48px] mb-2 block text-secondary opacity-40">inbox</span>
+                <p class="text-[15px] font-bold text-on-surface">No matching orders</p>
+                <p class="text-[13px] text-secondary mt-1">Try clearing urgency filters, stage chips, or search queries</p>
             </div>`;
             return;
         }
 
-        listContainer.innerHTML = filtered.map(o => renderers.orderCard(o)).join('');
+        const isBulk = selectedOrderIds.size > 0;
+        listContainer.innerHTML = filtered.map(o => renderers.orderCard(o, isBulk, selectedOrderIds.has(o.id))).join('');
     } else {
         listContainer.classList.add('hidden');
         kanbanContainer.classList.remove('hidden');
@@ -149,73 +228,166 @@ function renderKanban(filteredOrders) {
     const kanbanContainer = document.getElementById('orders-kanban');
     if (!kanbanContainer) return;
 
-    const stages = ['Fabric', 'Cutting', 'Stitching', 'Printing/Embroidery', 'Ironing & Packing', 'Dispatched'];
-    
-    kanbanContainer.innerHTML = stages.map(stage => {
-        const stageOrders = filteredOrders.filter(o => o.status === stage);
-        
-        // Setup styles based on stage
-        let stageColor = 'bg-surface-variant text-on-surface-variant';
-        let badgeColor = 'bg-surface-container-high text-secondary';
-        
-        if (stage === 'Finished' || stage === 'Dispatched') {
-            stageColor = 'bg-[#008A00]/10 text-[#008A00] border border-[#008A00]/20';
-            badgeColor = 'bg-[#008A00] text-white';
-        } else if (stage === 'Stitching') {
-            stageColor = 'bg-[#FF9F0A]/10 text-[#FF9F0A] border border-[#FF9F0A]/20';
-            badgeColor = 'bg-[#FF9F0A] text-white';
-        } else if (stage === 'Printing') {
-            stageColor = 'bg-[#0A84FF]/10 text-[#0A84FF] border border-[#0A84FF]/20';
-            badgeColor = 'bg-[#0A84FF] text-white';
-        }
-        
+    const KANBAN_STAGES = [
+        'procurement',
+        'fabric',
+        'cutting',
+        'print_wash',
+        'stitching',
+        'packing',
+        'dispatch'
+    ];
+
+    kanbanContainer.innerHTML = KANBAN_STAGES.map((stgKey, stgIdx) => {
+        const stageDef = STAGE_DEFINITIONS[stgKey] || {};
+        const stageOrders = filteredOrders.filter(o => normalizeStageKey(o.status) === stgKey);
+
         const columnHeader = `
-            <div class="flex justify-between items-center mb-3">
-                <span class="text-[13px] font-bold uppercase tracking-wider px-2 py-1 rounded-md ${stageColor}">${stage}</span>
-                <span class="text-[12px] font-bold px-2 py-1 rounded-full ${badgeColor}">${stageOrders.length}</span>
+            <div class="flex justify-between items-center mb-3 px-1">
+                <div class="flex items-center gap-2 min-w-0">
+                    <div class="w-7 h-7 rounded-lg ${stageDef.bgColor} ${stageDef.color} flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-[17px]">${stageDef.icon}</span>
+                    </div>
+                    <span class="text-[13px] font-extrabold uppercase tracking-wider text-on-surface truncate">${stageDef.shortLabel}</span>
+                </div>
+                <span class="text-[12px] font-extrabold px-2 py-0.5 rounded-full ${stageDef.bgColor} ${stageDef.color}">${stageOrders.length}</span>
             </div>
         `;
 
-        const columnCards = stageOrders.map(o => `
-            <div onclick="window.openOrderDetails('${o.id}')" class="cursor-pointer bg-surface-container-lowest p-3 rounded-xl border border-outline-variant shadow-sm active-scale transition-apple mb-2">
-                <div class="flex justify-between items-start mb-2">
-                    <span class="text-[11px] font-semibold text-secondary uppercase">${o.id}</span>
-                    <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-surface-variant text-on-surface-variant">${o.qty}</span>
+        const columnCards = stageOrders.map(o => {
+            const customerName = api.getCustomerSync?.(o.customerId)?.name || o.customerName || o.customerId;
+            const rollup = calculateOrderRollup(o);
+            const displayProgress = (o.progressPercentage !== undefined && o.progressPercentage !== null)
+                ? o.progressPercentage
+                : rollup.overallPercentage;
+
+            // Delivery countdown
+            let urgencyHtml = '';
+            if (o.deliveryDate) {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                const d = new Date(o.deliveryDate);
+                d.setHours(0, 0, 0, 0);
+                const days = Math.ceil((d.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                if (days < 0) {
+                    urgencyHtml = `<span class="text-[10px] font-bold text-error bg-error/10 px-1.5 py-0.5 rounded">${Math.abs(days)}d Overdue</span>`;
+                } else if (days <= 5) {
+                    urgencyHtml = `<span class="text-[10px] font-bold text-orange-600 bg-orange-500/10 px-1.5 py-0.5 rounded">${days}d left</span>`;
+                } else {
+                    urgencyHtml = `<span class="text-[10px] font-medium text-secondary">${days}d left</span>`;
+                }
+            }
+
+            // Inline sizes breakdown
+            const primaryProduct = Array.isArray(o.products) && o.products.length > 0 ? o.products[0] : null;
+            const sizesObj = primaryProduct?.sizes || o.stageData?.cutting?.cutQuantitiesBySize || o.sizes;
+            let sizesBadges = '';
+            if (typeof sizesObj === 'object' && sizesObj !== null && Object.keys(sizesObj).length > 0) {
+                sizesBadges = `
+                    <div class="flex items-center gap-1 overflow-x-auto no-scrollbar py-1 text-[10px]">
+                        ${Object.entries(sizesObj).slice(0, 4).map(([sz, q]) => `
+                            <span class="px-1 py-0.5 rounded bg-surface-container border border-outline-variant/40">
+                                <strong>${sz}</strong>:${q}
+                            </span>
+                        `).join('')}
+                    </div>
+                `;
+            }
+
+            return `
+                <div onclick="window.openOrderDetails('${o.id}')" 
+                    class="cursor-pointer bg-surface-container-lowest p-3.5 rounded-2xl border border-outline-variant shadow-xs active-scale transition-apple mb-2 hover:border-primary">
+                    <div class="flex justify-between items-start mb-1.5">
+                        <span class="text-[11px] font-mono font-bold text-primary uppercase">${o.id}</span>
+                        <div class="flex items-center gap-1">
+                            ${urgencyHtml}
+                            <span class="text-[11px] font-bold px-1.5 py-0.5 rounded-md bg-surface-variant text-on-surface-variant">${o.qty} pcs</span>
+                        </div>
+                    </div>
+                    <h4 class="text-[14px] font-bold text-on-surface line-clamp-1">${o.product || 'Garment'}</h4>
+                    <p class="text-[12px] text-secondary line-clamp-1 mt-0.5">${customerName}</p>
+
+                    ${sizesBadges}
+
+                    <!-- Progress Bar -->
+                    <div class="mt-2.5">
+                        <div class="flex justify-between items-center text-[10px] mb-1">
+                            <span class="text-secondary font-medium">Progress</span>
+                            <span class="font-bold text-primary">${displayProgress}%</span>
+                        </div>
+                        <div class="w-full h-1.5 rounded-full bg-surface-variant overflow-hidden">
+                            <div class="h-full bg-primary rounded-full transition-all" style="width: ${displayProgress}%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Stage Advance & Floor Controls -->
+                    <div class="mt-3 pt-2.5 border-t border-outline-variant/40 flex items-center justify-between">
+                        <div class="flex items-center gap-1">
+                            ${stgIdx > 0 ? `
+                                <button type="button" onclick="event.stopPropagation(); window.advanceOrderStage('${o.id}', -1)"
+                                    class="w-6 h-6 rounded-md bg-surface-variant hover:bg-surface-container-high text-secondary hover:text-on-surface flex items-center justify-center transition-colors" title="Move back">
+                                    <span class="material-symbols-outlined text-[14px]">arrow_back</span>
+                                </button>
+                            ` : ''}
+                            ${stgIdx < KANBAN_STAGES.length - 1 ? `
+                                <button type="button" onclick="event.stopPropagation(); window.advanceOrderStage('${o.id}', 1)"
+                                    class="px-2 h-6 rounded-md bg-primary/10 hover:bg-primary/20 text-primary text-[10px] font-bold flex items-center gap-0.5 transition-colors" title="Advance stage">
+                                    <span>Advance</span>
+                                    <span class="material-symbols-outlined text-[13px]">arrow_forward</span>
+                                </button>
+                            ` : `
+                                <span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#008A00]/10 text-[#008A00]">Complete</span>
+                            `}
+                        </div>
+                        <button type="button" onclick="event.stopPropagation(); window.location.href='production.html?orderId=${o.id}&stage=${stgKey}'"
+                            class="text-[11px] font-bold text-secondary hover:text-primary flex items-center gap-0.5 transition-colors" title="Open Floor Workspace">
+                            <span>Floor</span>
+                            <span class="material-symbols-outlined text-[13px]">open_in_new</span>
+                        </button>
+                    </div>
                 </div>
-                <h4 class="text-[14px] font-bold text-on-surface mb-1 line-clamp-1">${o.product}</h4>
-                <p class="text-[12px] text-secondary line-clamp-1">${api.getCustomerSync?.(o.customerId)?.name || o.customerId}</p>
-            </div>
-        `).join('');
+            `;
+        }).join('');
 
         return `
-            <div class="min-w-[280px] max-w-[280px] snap-center flex flex-col h-full bg-surface-container/30 rounded-2xl p-3 border border-outline-variant/50">
+            <div class="min-w-[290px] max-w-[290px] snap-center flex flex-col h-full bg-surface-container/30 rounded-2xl p-3 border border-outline-variant/60 shadow-xs">
                 ${columnHeader}
-                <div class="flex-1 overflow-y-auto hide-scrollbar flex flex-col gap-1 min-h-[300px]">
+                <div class="flex-1 overflow-y-auto hide-scrollbar flex flex-col gap-1 min-h-[340px]">
                     ${columnCards}
-                    ${stageOrders.length === 0 ? '<div class="flex-1 flex items-center justify-center p-4 border-2 border-dashed border-outline-variant rounded-xl opacity-50"><p class="text-[12px] text-secondary font-medium">Empty</p></div>' : ''}
+                    ${stageOrders.length === 0 ? `
+                        <div class="flex-1 flex flex-col items-center justify-center p-6 border-2 border-dashed border-outline-variant/50 rounded-2xl opacity-40 text-center">
+                            <span class="material-symbols-outlined text-[24px] text-secondary mb-1">${stageDef.icon}</span>
+                            <p class="text-[12px] text-secondary font-medium">No orders in ${stageDef.shortLabel}</p>
+                        </div>
+                    ` : ''}
                 </div>
             </div>
         `;
     }).join('');
 }
 
+window.setSortMode = function(sortKey) {
+    currentSortKey = sortKey;
+    renderOrders();
+};
+
 window.setViewMode = function(mode) {
     currentViewMode = mode;
     
-    // Update button states
+    // Update button states matching orders.html
     const listBtn = document.getElementById('view-list-btn');
     const kanbanBtn = document.getElementById('view-kanban-btn');
     
     if (mode === 'list') {
-        listBtn.className = 'w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center transition-colors';
-        kanbanBtn.className = 'w-8 h-8 rounded-lg text-secondary hover:bg-surface-variant flex items-center justify-center transition-colors';
+        if (listBtn) listBtn.className = 'px-2.5 py-1.5 rounded-lg bg-primary/10 text-primary text-[12px] font-bold flex items-center gap-1 transition-colors';
+        if (kanbanBtn) kanbanBtn.className = 'px-2.5 py-1.5 rounded-lg text-secondary hover:bg-surface-variant text-[12px] font-bold flex items-center gap-1 transition-colors';
     } else {
-        kanbanBtn.className = 'w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center transition-colors';
-        listBtn.className = 'w-8 h-8 rounded-lg text-secondary hover:bg-surface-variant flex items-center justify-center transition-colors';
+        if (kanbanBtn) kanbanBtn.className = 'px-2.5 py-1.5 rounded-lg bg-primary/10 text-primary text-[12px] font-bold flex items-center gap-1 transition-colors';
+        if (listBtn) listBtn.className = 'px-2.5 py-1.5 rounded-lg text-secondary hover:bg-surface-variant text-[12px] font-bold flex items-center gap-1 transition-colors';
     }
     
     renderOrders();
-}
+};
 
 window.setFilter = function(filter) {
     currentFilter = filter;
@@ -233,7 +405,7 @@ window.setFilter = function(filter) {
         document.getElementById('tab-active')?.classList.add('text-secondary');
     }
     renderOrders();
-}
+};
 
 window.openOrderDetails = async function (orderId) {
     activeOrder = currentOrders.find(o => o.id === orderId);
@@ -567,7 +739,7 @@ window.logPayment = function() {
     document.getElementById('log-payment-amount').value = paymentPending || '';
     document.getElementById('log-payment-note').value = '';
     window.openSheet('logPaymentSheet');
-}
+};
 
 window.submitLogPayment = async function() {
     if (!activeOrder) return;
@@ -599,4 +771,516 @@ window.submitLogPayment = async function() {
     } catch (e) {
         window.showToast?.('Failed to log payment', 'error');
     }
+};
+
+// ==============================================================================
+// CANONICAL STAGE ADVANCEMENT & WORKFLOW INTEGRATION
+// ==============================================================================
+const CANONICAL_STAGE_ORDER = [
+    { key: 'procurement', label: 'Procurement' },
+    { key: 'fabric',      label: 'Fabric' },
+    { key: 'cutting',     label: 'Cutting' },
+    { key: 'print_wash',  label: 'Printing/Embroidery' },
+    { key: 'stitching',   label: 'Stitching' },
+    { key: 'packing',     label: 'Ironing & Packing' },
+    { key: 'dispatch',    label: 'Dispatched' }
+];
+
+window.advanceOrderStage = async function(orderId, delta) {
+    const order = currentOrders.find(o => o.id === orderId);
+    if (!order) return;
+
+    const currentKey = normalizeStageKey(order.status);
+    let currentIdx = CANONICAL_STAGE_ORDER.findIndex(s => s.key === currentKey);
+    if (currentIdx === -1) currentIdx = 0;
+
+    const nextIdx = Math.max(0, Math.min(CANONICAL_STAGE_ORDER.length - 1, currentIdx + delta));
+    if (nextIdx === currentIdx) return;
+
+    const nextStage = CANONICAL_STAGE_ORDER[nextIdx];
+    try {
+        window.showToast?.(`Moving #${orderId} to ${nextStage.label}...`, 'info');
+        await api.updateOrderStatus(orderId, nextStage.label);
+        window.showToast?.(`Order moved to ${nextStage.label}`, 'success');
+        await loadOrders();
+    } catch (err) {
+        console.error("Failed to advance stage:", err);
+        window.showToast?.('Failed to advance stage', 'error');
+    }
+};
+
+// ==============================================================================
+// BULK OPERATIONS
+// ==============================================================================
+window.toggleOrderSelection = function(orderId) {
+    if (selectedOrderIds.has(orderId)) {
+        selectedOrderIds.delete(orderId);
+    } else {
+        selectedOrderIds.add(orderId);
+    }
+    updateBulkToolbar();
+    renderOrders();
+};
+
+window.clearBulkSelection = function() {
+    selectedOrderIds.clear();
+    updateBulkToolbar();
+    renderOrders();
+};
+
+function updateBulkToolbar() {
+    const bar = document.getElementById('orders-bulk-bar');
+    const countEl = document.getElementById('bulk-selected-count');
+    if (!bar) return;
+    if (selectedOrderIds.size > 0) {
+        bar.classList.remove('hidden');
+        if (countEl) countEl.textContent = `${selectedOrderIds.size} order${selectedOrderIds.size > 1 ? 's' : ''} selected`;
+    } else {
+        bar.classList.add('hidden');
+    }
+}
+
+window.bulkExportCSV = function() {
+    const ordersToExport = selectedOrderIds.size > 0
+        ? currentOrders.filter(o => selectedOrderIds.has(o.id))
+        : currentOrders;
+    generateAndDownloadCSV(ordersToExport, 'garment_os_selected_orders.csv');
+};
+
+window.exportAllOrdersCSV = function() {
+    generateAndDownloadCSV(currentOrders, 'garment_os_order_book.csv');
+};
+
+function generateAndDownloadCSV(orders, filename) {
+    if (!orders || orders.length === 0) {
+        window.showToast?.('No orders to export', 'error');
+        return;
+    }
+    const headers = ['Order ID', 'Buyer Name', 'Product Style', 'Total Qty', 'Quoted Value (INR)', 'Production Stage', 'Progress %', 'Target Delivery', 'Payment Status'];
+    const rows = orders.map(o => {
+        const custName = api.getCustomerSync?.(o.customerId)?.name || o.customerName || o.customerId || '';
+        const progress = (o.progressPercentage !== undefined && o.progressPercentage !== null)
+            ? o.progressPercentage
+            : calculateOrderRollup(o).overallPercentage;
+        return [
+            `"${o.id || ''}"`,
+            `"${custName.replace(/"/g, '""')}"`,
+            `"${(o.product || '').replace(/"/g, '""')}"`,
+            o.qty || 0,
+            o.value || 0,
+            `"${o.status || ''}"`,
+            progress,
+            `"${o.deliveryDate || ''}"`,
+            `"${o.paymentStatus || 'Unpaid'}"`
+        ].join(',');
+    });
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.showToast?.(`Exported ${orders.length} orders to CSV`, 'success');
+}
+
+window.bulkPrintTravelers = function() {
+    const ordersToPrint = selectedOrderIds.size > 0
+        ? currentOrders.filter(o => selectedOrderIds.has(o.id))
+        : currentOrders;
+    if (ordersToPrint.length === 0) return;
+
+    const travelersHtml = ordersToPrint.map(o => generateJobTravelerHTML(o)).join('<div style="page-break-after: always; height: 1px;"></div>');
+    openPrintWindow('Batch Production Job Travelers', travelersHtml);
+};
+
+window.openBulkAdvanceModal = async function() {
+    if (selectedOrderIds.size === 0) return;
+    const count = selectedOrderIds.size;
+    if (!confirm(`Advance ${count} selected order${count > 1 ? 's' : ''} to their next production stage?`)) return;
+
+    window.showToast?.(`Advancing ${count} orders...`, 'info');
+    let updated = 0;
+    for (const orderId of selectedOrderIds) {
+        const order = currentOrders.find(o => o.id === orderId);
+        if (order) {
+            const currentKey = normalizeStageKey(order.status);
+            let currentIdx = CANONICAL_STAGE_ORDER.findIndex(s => s.key === currentKey);
+            if (currentIdx < CANONICAL_STAGE_ORDER.length - 1) {
+                const nextStage = CANONICAL_STAGE_ORDER[currentIdx + 1];
+                await api.updateOrderStatus(orderId, nextStage.label);
+                updated++;
+            }
+        }
+    }
+    selectedOrderIds.clear();
+    updateBulkToolbar();
+    await loadOrders();
+    window.showToast?.(`Advanced ${updated} orders to next stage`, 'success');
+};
+
+// ==============================================================================
+// PRINTABLE DOCUMENT GENERATORS (A4 Laser & 4x6 Thermal)
+// ==============================================================================
+window.printJobTraveler = function(orderId) {
+    const order = currentOrders.find(o => o.id === orderId);
+    if (!order) return;
+    const html = generateJobTravelerHTML(order);
+    openPrintWindow(`Job Traveler - ${order.id}`, html);
+};
+
+window.printProformaInvoice = function(orderId) {
+    const order = currentOrders.find(o => o.id === orderId);
+    if (!order) return;
+    const html = generateProformaInvoiceHTML(order);
+    openPrintWindow(`Proforma Invoice - ${order.id}`, html);
+};
+
+window.printCartonSlips = function(orderId) {
+    const order = currentOrders.find(o => o.id === orderId);
+    if (!order) return;
+    const html = generateCartonSlipsHTML(order);
+    openPrintWindow(`Carton Slips - ${order.id}`, html);
+};
+
+function openPrintWindow(title, bodyContent) {
+    const printWindow = window.open('', '_blank', 'width=920,height=1000');
+    if (!printWindow) {
+        alert('Please allow popups for Garment OS to preview and print documents.');
+        return;
+    }
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <meta charset="utf-8"/>
+            <title>${title}</title>
+            <link rel="preconnect" href="https://fonts.googleapis.com">
+            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+            <style>
+                @page { size: A4 portrait; margin: 12mm 15mm; }
+                * { box-sizing: border-box; margin: 0; padding: 0; }
+                body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; color: #111827; background: #fff; font-size: 12px; line-height: 1.4; padding: 20px; }
+                .doc-container { max-width: 800px; margin: 0 auto; }
+                .text-mono { font-family: 'JetBrains Mono', monospace; }
+                table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+                th, td { border: 1px solid #d1d5db; padding: 6px 8px; text-align: left; }
+                th { background-color: #f3f4f6; font-weight: 700; font-size: 10px; text-transform: uppercase; }
+                .barcode-box { letter-spacing: 4px; font-size: 20px; font-family: monospace; font-weight: bold; padding: 6px 12px; border: 2px solid #111; display: inline-block; }
+                @media print {
+                    body { padding: 0; }
+                    .no-print { display: none !important; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="no-print" style="margin-bottom: 20px; text-align: right;">
+                <button onclick="window.print()" style="padding: 10px 24px; background: #0A84FF; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 14px; box-shadow: 0 2px 6px rgba(10,132,255,0.3);">🖨️ Print Document</button>
+            </div>
+            <div class="doc-container">
+                ${bodyContent}
+            </div>
+            <script>
+                window.onload = function() {
+                    setTimeout(function() { window.print(); }, 400);
+                };
+            </script>
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+}
+
+function generateJobTravelerHTML(order) {
+    const customer = api.getCustomerSync?.(order.customerId) || {};
+    const customerName = customer.name || order.customerName || order.customerId;
+    const rollup = calculateOrderRollup(order);
+
+    const primaryProduct = (Array.isArray(order.products) && order.products.length > 0) ? order.products[0] : {};
+    const sizeKeys = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'XXXXL'];
+    const sizesObj = primaryProduct.sizes || order.stageData?.cutting?.sizes || {};
+
+    const sizesHeader = sizeKeys.map(k => `<th style="text-align:center;">${k}</th>`).join('');
+    const sizesRow = sizeKeys.map(k => `<td style="text-align:center; font-weight:bold;">${sizesObj[k] || 0}</td>`).join('');
+
+    return `
+        <div style="border: 2px solid #111; padding: 18px; border-radius: 8px; margin-bottom: 20px;">
+            <!-- Header -->
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom: 2px solid #111; padding-bottom: 12px; margin-bottom: 12px;">
+                <div>
+                    <h1 style="font-size: 20px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">Garment OS Factory Job Traveler</h1>
+                    <p style="font-size: 12px; color: #4b5563; font-weight: 600; margin-top: 2px;">Tirupur Apparel Export Zone • Operational Traveler &amp; Cut Ticket</p>
+                </div>
+                <div style="text-align: right;">
+                    <div class="barcode-box">||| ${order.id} ||||</div>
+                    <p style="font-size: 10px; font-weight: bold; color: #6b7280; margin-top: 3px;">PRINTED: ${new Date().toLocaleDateString('en-IN')}</p>
+                </div>
+            </div>
+
+            <!-- Meta Grid -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; font-size: 12px; margin-bottom: 14px;">
+                <div><strong>Order ID:</strong> <span class="text-mono">${order.id}</span></div>
+                <div><strong>Buyer:</strong> ${customerName}</div>
+                <div><strong>Buyer PO #:</strong> ${order.customerPO || order.id}</div>
+                <div><strong>Target Delivery:</strong> ${order.deliveryDate || 'Not specified'}</div>
+                <div><strong>Priority:</strong> <span style="text-transform:uppercase; font-weight:bold;">${order.priority || 'Normal'}</span></div>
+                <div><strong>Total Order Qty:</strong> <strong style="font-size: 14px;">${order.qty} pcs</strong></div>
+            </div>
+
+            <!-- Product & Fabric Specs -->
+            <div style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 10px; border-radius: 6px; margin-bottom: 14px;">
+                <div style="display:grid; grid-template-columns: 2fr 3fr; gap: 8px;">
+                    <div><strong>Style / Product:</strong> ${order.product || 'Garment Item'}</div>
+                    <div><strong>Fabric Spec:</strong> ${order.fabric || '100% Combed Cotton Single Jersey, 180 GSM'}</div>
+                    <div><strong>Route Preset:</strong> ${(order.workflowType || 'default').replace(/_/g, ' ')}</div>
+                    <div><strong>Current Factory Stage:</strong> <strong>${rollup.activeStageDef.label}</strong></div>
+                </div>
+            </div>
+
+            <!-- Marker & Size Matrix -->
+            <h3 style="font-size: 12px; font-weight: 800; text-transform: uppercase; margin-bottom: 4px;">Planned Size Ratio &amp; Bundle Matrix</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Spec</th>
+                        ${sizesHeader}
+                        <th style="text-align:center;">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>Planned Qty</strong></td>
+                        ${sizesRow}
+                        <td style="text-align:center; font-weight:bold; background:#f3f4f6;">${order.qty} pcs</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Actual Cut Qty</strong></td>
+                        ${sizeKeys.map(() => `<td style="text-align:center; color:#9ca3af;">—</td>`).join('')}
+                        <td style="text-align:center; color:#9ca3af;">—</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- Department Workstation Signoffs -->
+            <h3 style="font-size: 12px; font-weight: 800; text-transform: uppercase; margin-top: 14px; margin-bottom: 4px;">Department Checkpoints &amp; Quality Sign-Off</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 25%;">Floor Department</th>
+                        <th style="width: 15%;">Target Date</th>
+                        <th style="width: 15%; text-align:center;">Output Pcs</th>
+                        <th style="width: 15%; text-align:center;">Rejects / Defect</th>
+                        <th style="width: 30%;">Supervisor Signature</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td><strong>1. Sourcing &amp; Trims</strong></td>
+                        <td>${order.deliveryDate || '—'}</td>
+                        <td style="text-align:center;"></td>
+                        <td style="text-align:center;"></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td><strong>2. Fabric Inward &amp; Roll QC</strong></td>
+                        <td>${order.deliveryDate || '—'}</td>
+                        <td style="text-align:center;"></td>
+                        <td style="text-align:center;"></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td><strong>3. Spreading &amp; Cutting</strong></td>
+                        <td>${order.deliveryDate || '—'}</td>
+                        <td style="text-align:center;"></td>
+                        <td style="text-align:center;"></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td><strong>4. Print / Embroidery / Wash</strong></td>
+                        <td>${order.deliveryDate || '—'}</td>
+                        <td style="text-align:center;"></td>
+                        <td style="text-align:center;"></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td><strong>5. Sewing Line Assembly</strong></td>
+                        <td>${order.deliveryDate || '—'}</td>
+                        <td style="text-align:center;"></td>
+                        <td style="text-align:center;"></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td><strong>6. Ironing &amp; Polybagging</strong></td>
+                        <td>${order.deliveryDate || '—'}</td>
+                        <td style="text-align:center;"></td>
+                        <td style="text-align:center;"></td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td><strong>7. Carton Packing &amp; Gate Pass</strong></td>
+                        <td>${order.deliveryDate || '—'}</td>
+                        <td style="text-align:center;"></td>
+                        <td style="text-align:center;"></td>
+                        <td></td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <div style="margin-top: 14px; display:flex; justify-content:space-between; align-items:flex-end; font-size:11px; color:#4b5563;">
+                <p>Note: This traveler must accompany the cut bundles at all times across sewing lines.</p>
+                <div style="border-top: 1px dashed #4b5563; width: 180px; text-align:center; padding-top: 4px;">Factory Manager Authorization</div>
+            </div>
+        </div>
+    `;
+}
+
+function generateProformaInvoiceHTML(order) {
+    const customer = api.getCustomerSync?.(order.customerId) || {};
+    const customerName = customer.name || order.customerName || order.customerId;
+    const customerCompany = customer.company || 'Buyer Organization';
+    const customerGst = customer.gstNumber || customer.taxId || '33AAAAA0000A1Z5';
+    const customerAddress = customer.shippingAddress || customer.address || 'Tirupur Apparel Logistics Hub';
+
+    const orderValue = order.value || 0;
+    const unitPrice = order.qty > 0 ? (orderValue / order.qty) : 0;
+    const subtotal = Math.round((orderValue / 1.05) * 100) / 100;
+    const gstTotal = Math.round((orderValue - subtotal) * 100) / 100;
+    const cgst = Math.round((gstTotal / 2) * 100) / 100;
+    const sgst = cgst;
+
+    return `
+        <div style="border: 1px solid #d1d5db; padding: 24px; border-radius: 8px;">
+            <!-- Seller Info -->
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom: 2px solid #111; padding-bottom: 16px; margin-bottom: 16px;">
+                <div>
+                    <h1 style="font-size: 22px; font-weight: 800; color: #0A84FF;">GARMENT OS APPAREL FACTORY</h1>
+                    <p style="font-size: 11px; color: #374151; margin-top: 3px;">
+                        Tirupur Apparel Export Zone, Ring Road, Tirupur, Tamil Nadu - 641602<br/>
+                        <strong>GSTIN:</strong> 33AAAAA0000A1Z5 | <strong>PAN:</strong> AABCG1234F | <strong>Email:</strong> billing@garmentos.com
+                    </p>
+                </div>
+                <div style="text-align: right;">
+                    <h2 style="font-size: 16px; font-weight: 800; text-transform: uppercase;">PROFORMA INVOICE</h2>
+                    <p class="text-mono" style="font-size: 13px; font-weight: bold; margin-top: 4px;">PI-${order.id}</p>
+                    <p style="font-size: 11px; color: #4b5563;">Date: ${new Date().toLocaleDateString('en-IN')}</p>
+                </div>
+            </div>
+
+            <!-- Buyer Details -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; background: #f9fafb; padding: 12px; border-radius: 6px; border: 1px solid #e5e7eb;">
+                <div>
+                    <span style="font-size: 10px; font-weight: bold; text-transform: uppercase; color: #6b7280;">Billed To / Consignee:</span>
+                    <p style="font-size: 14px; font-weight: bold; margin-top: 2px;">${customerName}</p>
+                    <p style="font-size: 12px; color: #374151;">${customerCompany}</p>
+                    <p style="font-size: 11px; color: #374151; margin-top: 2px;">${customerAddress}</p>
+                    <p style="font-size: 11px; font-weight: bold; margin-top: 2px;">GSTIN: ${customerGst}</p>
+                </div>
+                <div>
+                    <span style="font-size: 10px; font-weight: bold; text-transform: uppercase; color: #6b7280;">Order &amp; Payment Specs:</span>
+                    <p style="font-size: 12px; margin-top: 2px;"><strong>Buyer PO Ref:</strong> ${order.customerPO || order.id}</p>
+                    <p style="font-size: 12px;"><strong>Target Dispatch:</strong> ${order.deliveryDate || 'Within 14 Days'}</p>
+                    <p style="font-size: 12px;"><strong>Payment Terms:</strong> 50% Advance, 50% Against Dispatch Challan</p>
+                    <p style="font-size: 12px;"><strong>Payment Status:</strong> <span style="font-weight:bold;">${order.paymentStatus || 'Unpaid'}</span></p>
+                </div>
+            </div>
+
+            <!-- Itemized Table -->
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 5%;">#</th>
+                        <th style="width: 45%;">Style Description &amp; Specifications</th>
+                        <th style="width: 15%; text-align:center;">HSN / SAC</th>
+                        <th style="width: 10%; text-align:right;">Qty (pcs)</th>
+                        <th style="width: 12%; text-align:right;">Unit Rate (₹)</th>
+                        <th style="width: 13%; text-align:right;">Total (₹)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>1</td>
+                        <td>
+                            <strong>${order.product || 'Garment Item'}</strong>
+                            <p style="font-size: 11px; color: #4b5563; margin-top: 2px;">${order.fabric || '100% Combed Cotton Single Jersey, 180 GSM'}</p>
+                        </td>
+                        <td style="text-align:center;" class="text-mono">61091000</td>
+                        <td style="text-align:right; font-weight:bold;">${order.qty}</td>
+                        <td style="text-align:right;">₹${unitPrice.toFixed(2)}</td>
+                        <td style="text-align:right; font-weight:bold;">₹${orderValue.toLocaleString('en-IN')}</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <!-- Financial Totals Grid -->
+            <div style="display:flex; justify-content:space-between; margin-top: 12px; gap: 20px;">
+                <div style="flex:1; font-size: 11px; color: #374151; background:#f9fafb; padding:10px; border-radius:6px; border:1px solid #e5e7eb;">
+                    <strong>Bank Remittance Details:</strong><br/>
+                    Bank: HDFC Bank Ltd • Industrial Finance Branch<br/>
+                    A/C Name: Garment OS Technologies Private Limited<br/>
+                    A/C No: 50200087654321 • IFSC Code: HDFC0001234
+                </div>
+                <div style="width: 280px; font-size: 12px;">
+                    <div style="display:flex; justify-content:space-between; padding: 4px 0;">
+                        <span>Subtotal (Excl. Tax):</span>
+                        <strong>₹${subtotal.toLocaleString('en-IN')}</strong>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; padding: 4px 0; color:#4b5563;">
+                        <span>CGST @ 2.5%:</span>
+                        <span>₹${cgst.toLocaleString('en-IN')}</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; padding: 4px 0; color:#4b5563;">
+                        <span>SGST @ 2.5%:</span>
+                        <span>₹${sgst.toLocaleString('en-IN')}</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; padding: 8px 0; border-top: 2px solid #111; font-size: 15px; font-weight: 800; margin-top: 4px;">
+                        <span>Grand Total:</span>
+                        <span style="color: #0A84FF;">₹${orderValue.toLocaleString('en-IN')}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Signature -->
+            <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top: 30px; font-size: 11px;">
+                <p>This is a computer-generated commercial proforma invoice.</p>
+                <div style="text-align:center; width: 180px; border-top: 1px solid #111; padding-top: 4px;">
+                    <strong>For Garment OS Hub</strong><br/>
+                    Authorized Signatory
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function generateCartonSlipsHTML(order) {
+    const totalQty = order.qty || 1;
+    const cartonCapacity = 50;
+    const totalCartons = Math.ceil(totalQty / cartonCapacity);
+
+    let slipsHtml = '';
+    for (let i = 1; i <= totalCartons; i++) {
+        const boxQty = (i === totalCartons && totalQty % cartonCapacity !== 0) ? (totalQty % cartonCapacity) : cartonCapacity;
+        slipsHtml += `
+            <div style="width: 400px; height: 300px; border: 2px solid #111; padding: 14px; margin: 0 auto 20px auto; border-radius: 8px; page-break-after: always; display:flex; flex-direction:column; justify-content:space-between;">
+                <div style="border-bottom: 2px solid #111; padding-bottom: 6px; display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-weight:800; font-size:14px; color:#0A84FF;">GARMENT OS EXPORT HUB</span>
+                    <span style="font-weight:bold; font-size:12px; background:#111; color:#fff; padding:2px 6px; rounded:4px;">BOX ${i} OF ${totalCartons}</span>
+                </div>
+                <div style="margin: 6px 0; font-size: 11px;">
+                    <p><strong>Order ID:</strong> <span class="text-mono">${order.id}</span></p>
+                    <p><strong>Buyer:</strong> ${order.customerName || order.customerId}</p>
+                    <p><strong>Style:</strong> ${order.product || 'Garment Item'}</p>
+                    <p><strong>Box Quantity:</strong> <strong style="font-size:14px;">${boxQty} pcs</strong></p>
+                </div>
+                <div style="text-align:center; padding: 8px 0; border: 1px dashed #111; border-radius: 4px;">
+                    <div class="barcode-box">||| ${order.id}-C${i} |||</div>
+                </div>
+                <div style="font-size: 9px; color: #4b5563; text-align:center; margin-top: 4px;">
+                    Handle with Care • Keep Dry • Tirupur Apparel Corridor
+                </div>
+            </div>
+        `;
+    }
+    return slipsHtml;
 }
