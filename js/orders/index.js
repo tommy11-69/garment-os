@@ -66,18 +66,26 @@ function renderAnalyticsSummary() {
 
     const activeOrders = currentOrders.filter(o => !['Dispatched', 'Delivered', 'Closed', 'Archived'].includes(o.status));
     
-    const totalValue    = activeOrders.reduce((sum, o) => sum + (o.value || 0), 0);
-    const pendingUnits  = activeOrders.reduce((sum, o) => sum + (o.qty || 0), 0);
-    const cuttingCount  = activeOrders.filter(o => o.status === 'Cutting').length;
-    const stitchingCount = activeOrders.filter(o => o.status === 'Stitching').length;
-    const printingCount = activeOrders.filter(o => (o.status || '').includes('Printing')).length;
+    const totalValue     = activeOrders.reduce((sum, o) => sum + (o.value || 0), 0);
+    const pendingUnits   = activeOrders.reduce((sum, o) => sum + (o.qty || 0), 0);
+    const cuttingCount   = activeOrders.filter(o => (o.status || '').toLowerCase().includes('cut')).length;
+    const stitchingCount = activeOrders.filter(o => (o.status || '').toLowerCase().includes('stitch')).length;
+    const printingCount  = activeOrders.filter(o => (o.status || '').toLowerCase().includes('print')).length;
+    
+    const now = Date.now();
+    const riskCount      = activeOrders.filter(o => {
+        if (!o.deliveryDate) return false;
+        const days = (new Date(o.deliveryDate).getTime() - now) / (1000 * 60 * 60 * 24);
+        return days <= 4;
+    }).length;
 
     container.innerHTML = getOrdersAnalyticsHTML({
         totalValue,
         pendingUnits,
         cuttingCount,
         stitchingCount,
-        printingCount
+        printingCount,
+        riskCount
     });
 }
 
@@ -346,6 +354,8 @@ window.submitNewOrder = async function() {
         return;
     }
     
+    const workflowType = document.getElementById('create-workflow')?.value || 'default';
+    
     const newOrder = {
         customerId,
         product,
@@ -355,6 +365,15 @@ window.submitNewOrder = async function() {
         colors: document.getElementById('create-colors')?.value || '',
         status: document.getElementById('create-status')?.value || 'Draft',
         priority: document.getElementById('create-priority')?.value || 'Normal',
+        workflowType,
+        products: [{
+            name: product,
+            category: 'Adults',
+            qty,
+            status: document.getElementById('create-status')?.value || 'Fabric',
+            workflowType,
+            sizes: {}
+        }],
         value: (qty * unitPrice),
         incurredCost: 0,
         deliveryDate: document.getElementById('create-delivery')?.value || '',

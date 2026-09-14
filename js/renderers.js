@@ -197,6 +197,18 @@ export const renderers = {
                         ${ProgressBar({ label: `${displayPercentage}% Complete`, secondaryLabel: order.progressLabel || `${rollup.activeStageDef.shortLabel} phase`, percentage: displayPercentage, color: order.progressColor || 'bg-primary' })}
                     </div>
                     ${renderStagePipeline(order)}
+                    <div class="mt-3 pt-2.5 border-t border-outline-variant/40 flex items-center justify-between">
+                        <div class="flex items-center gap-1.5 text-[12px] text-secondary">
+                            <span class="material-symbols-outlined text-[16px] text-primary">inventory_2</span>
+                            <span><strong>${(order.qty || 0).toLocaleString()} pcs</strong> • ${order.product || 'Garments'}</span>
+                        </div>
+                        <button type="button" 
+                            onclick="event.stopPropagation(); window.location.href='production.html?orderId=${order.id}&stage=${rollup.activeStageKey}'" 
+                            class="px-3.5 py-1.5 rounded-xl bg-primary text-white text-[12px] font-bold active-scale transition-apple shadow-xs flex items-center gap-1.5 hover:bg-primary-hover">
+                            <span>Open Floor</span>
+                            <span class="material-symbols-outlined text-[15px]">arrow_forward</span>
+                        </button>
+                    </div>
                 </div>
             </div>
         `;

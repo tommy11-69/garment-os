@@ -69,8 +69,21 @@ export async function getOrderSheetsHTML() {
         <div id="order-step-4" class="wizard-step hidden">
             <h3 class="text-[18px] font-bold text-on-surface mb-4">Routing & Setup</h3>
             <div class="grid grid-cols-2 gap-4 mb-4">
-                ${SelectInput({ label: 'Status', id: 'create-status', options: statusOptions })}
+                ${SelectInput({ label: 'Initial Status', id: 'create-status', options: statusOptions })}
                 ${SelectInput({ label: 'Priority', id: 'create-priority', options: [{label:'Normal', value:'Normal'},{label:'High', value:'High'},{label:'Urgent', value:'Urgent'}] })}
+            </div>
+            <div class="mb-4">
+                ${SelectInput({ 
+                    label: 'Workflow Route Preset', 
+                    id: 'create-workflow', 
+                    options: [
+                        {label: 'Standard Knits (Fabric → Cut → Stitch → Print → Pack)', value: 'default'},
+                        {label: 'Print Panels First (Cut → Print → Stitch → Pack)', value: 'print_before_stitch'},
+                        {label: 'Garment Wash (Cut → Stitch → Wash → Pack)', value: 'wash_before_stitch'},
+                        {label: 'Stitch First, Embroidery Later', value: 'stitch_before_embroidery'},
+                        {label: 'Direct Fulfillment / Trading (Procure → Dispatch)', value: 'direct_fulfillment'}
+                    ] 
+                })}
             </div>
             ${TextInput({ label: 'Delivery Deadline', id: 'create-delivery', type: 'date' })}
         </div>
@@ -396,21 +409,34 @@ function renderProductionDataTab(order) {
 }
 
 
-export function getOrdersAnalyticsHTML({ totalValue, pendingUnits, cuttingCount, stitchingCount, printingCount }) {
+export function getOrdersAnalyticsHTML({ totalValue, pendingUnits, cuttingCount, stitchingCount, printingCount, riskCount = 0 }) {
     return `
-        <div class="grid grid-cols-2 gap-3 mb-2">
-            <div class="bg-surface-container-lowest border border-outline-variant p-4 rounded-2xl shadow-sm flex flex-col justify-between">
-                <span class="text-[12px] font-semibold text-secondary uppercase tracking-wider">Active Pipeline</span>
-                <span class="text-[20px] font-bold text-on-surface mt-1">₹${totalValue.toLocaleString()}</span>
-                <span class="text-[11px] text-secondary mt-1">${pendingUnits.toLocaleString()} total units</span>
-            </div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
             <div class="bg-surface-container-lowest border border-outline-variant p-4 rounded-2xl shadow-sm">
-                <span class="text-[12px] font-semibold text-secondary uppercase tracking-wider mb-2 block">Stages Summary</span>
-                <div class="flex flex-col gap-1 text-[13px]">
-                    <div class="flex justify-between text-on-surface"><span class="font-medium">Cutting</span><span class="font-bold text-primary">${cuttingCount}</span></div>
-                    <div class="flex justify-between text-on-surface"><span class="font-medium">Stitching</span><span class="font-bold text-[#FF9F0A]">${stitchingCount}</span></div>
-                    <div class="flex justify-between text-on-surface"><span class="font-medium">Printing</span><span class="font-bold text-[#008A00]">${printingCount}</span></div>
+                <p class="text-[11px] font-bold text-secondary uppercase tracking-wider">Active Order Book</p>
+                <h3 class="text-[22px] font-extrabold text-on-surface mt-1">₹${(totalValue || 0).toLocaleString()}</h3>
+                <p class="text-[12px] text-secondary mt-0.5">${(pendingUnits || 0).toLocaleString()} pcs in pipeline</p>
+            </div>
+
+            <div class="bg-surface-container-lowest border border-outline-variant p-4 rounded-2xl shadow-sm">
+                <p class="text-[11px] font-bold text-secondary uppercase tracking-wider">Active Pieces</p>
+                <h3 class="text-[22px] font-extrabold text-primary mt-1">${(pendingUnits || 0).toLocaleString()}</h3>
+                <p class="text-[12px] text-secondary mt-0.5">Floor manufacturing</p>
+            </div>
+
+            <div class="bg-surface-container-lowest border border-outline-variant p-4 rounded-2xl shadow-sm">
+                <p class="text-[11px] font-bold text-secondary uppercase tracking-wider">Floor Department Queues</p>
+                <div class="flex items-center gap-2 mt-1.5 flex-wrap text-[12px]">
+                    <span class="px-2 py-0.5 rounded bg-[#FF9500]/10 text-[#FF9500] font-bold">Cut: ${cuttingCount || 0}</span>
+                    <span class="px-2 py-0.5 rounded bg-[#34C759]/10 text-[#34C759] font-bold">Stitch: ${stitchingCount || 0}</span>
+                    <span class="px-2 py-0.5 rounded bg-[#AF52DE]/10 text-[#AF52DE] font-bold">Print: ${printingCount || 0}</span>
                 </div>
+            </div>
+
+            <div class="bg-surface-container-lowest border border-outline-variant p-4 rounded-2xl shadow-sm">
+                <p class="text-[11px] font-bold text-secondary uppercase tracking-wider">Delivery Watchlist</p>
+                <h3 class="text-[22px] font-extrabold ${riskCount > 0 ? 'text-error' : 'text-[#34C759]'} mt-1">${riskCount}</h3>
+                <p class="text-[12px] text-secondary mt-0.5">${riskCount > 0 ? 'Orders nearing deadline' : 'On schedule'}</p>
             </div>
         </div>
     `;
