@@ -154,92 +154,93 @@ $method = $_SERVER['REQUEST_METHOD'];
 $rawInput = file_get_contents('php://input');
 $body = json_decode($rawInput, true) ?: [];
 
-// Auto-migrate schema fixes
-try {
-    $colInfo = $pdo->query("SHOW COLUMNS FROM `sessions` LIKE 'expiresAt'")->fetch();
-    if ($colInfo && strpos(strtolower($colInfo['Type']), 'bigint') === false) {
-        $pdo->exec("ALTER TABLE `sessions` MODIFY `expiresAt` BIGINT NOT NULL");
-    }
-
-    $pdo->exec("CREATE TABLE IF NOT EXISTS `vendors` (
-        `_rowid` INT AUTO_INCREMENT PRIMARY KEY,
-        `id` VARCHAR(191) UNIQUE NOT NULL,
-        `name` LONGTEXT NOT NULL,
-        `contactPerson` LONGTEXT DEFAULT '',
-        `phone` LONGTEXT DEFAULT '',
-        `email` LONGTEXT DEFAULT '',
-        `address` LONGTEXT DEFAULT '',
-        `city` LONGTEXT DEFAULT '',
-        `state` LONGTEXT DEFAULT '',
-        `pincode` LONGTEXT DEFAULT '',
-        `gstin` LONGTEXT DEFAULT '',
-        `vendorType` LONGTEXT DEFAULT 'Other',
-        `paymentTerms` LONGTEXT DEFAULT '',
-        `bankName` LONGTEXT DEFAULT '',
-        `accountNumber` LONGTEXT DEFAULT '',
-        `ifsc` LONGTEXT DEFAULT '',
-        `upiId` LONGTEXT DEFAULT '',
-        `notes` LONGTEXT DEFAULT '',
-        `status` LONGTEXT DEFAULT 'Active',
-        `statusColor` LONGTEXT DEFAULT 'bg-[#008A00]/10 text-[#008A00]',
-        `isActive` INT DEFAULT 1,
-        `createdAt` DATETIME DEFAULT CURRENT_TIMESTAMP,
-        `updatedAt` DATETIME DEFAULT CURRENT_TIMESTAMP
-    )");
-
-    // ── WebAuthn Tables (auto-create) ────────────────────────────────
-    $pdo->exec("CREATE TABLE IF NOT EXISTS `webauthn_credentials` (
-        `id` INT AUTO_INCREMENT PRIMARY KEY,
-        `userId` VARCHAR(191) NOT NULL,
-        `credentialId` TEXT NOT NULL,
-        `publicKey` LONGTEXT NOT NULL,
-        `counter` BIGINT DEFAULT 0,
-        `deviceName` VARCHAR(191) DEFAULT 'My Device',
-        `deviceAllowed` TINYINT DEFAULT 1,
-        `createdAt` DATETIME DEFAULT CURRENT_TIMESTAMP
-    )");
-
-    $pdo->exec("CREATE TABLE IF NOT EXISTS `webauthn_challenges` (
-        `id` INT AUTO_INCREMENT PRIMARY KEY,
-        `challenge` VARCHAR(512) NOT NULL,
-        `userId` VARCHAR(191) DEFAULT NULL,
-        `expiresAt` DATETIME NOT NULL
-    )");
-
-    // ── Inventory Columns Migration ──────────────────────────────────
-    $invCols = $pdo->query("SHOW COLUMNS FROM `inventory`")->fetchAll();
-    $existingInvCols = array_column($invCols, 'Field');
-    $neededInvCols = [
-        'category'        => "LONGTEXT DEFAULT 'Fabric'",
-        'subCategory'     => "LONGTEXT DEFAULT ''",
-        'costPrice'       => "DOUBLE DEFAULT 0",
-        'totalValue'      => "DOUBLE DEFAULT 0",
-        'minStock'        => "DOUBLE DEFAULT 0",
-        'location'        => "LONGTEXT DEFAULT ''",
-        'supplier'        => "LONGTEXT DEFAULT ''",
-        'supplierId'      => "LONGTEXT DEFAULT ''",
-        'color'           => "LONGTEXT DEFAULT ''",
-        'specifications'  => "LONGTEXT DEFAULT '{}'",
-        'notes'           => "LONGTEXT DEFAULT ''",
-        'movementHistory' => "LONGTEXT DEFAULT '[]'"
-    ];
-    foreach ($neededInvCols as $cName => $cDef) {
-        if (!in_array($cName, $existingInvCols, true)) {
-            $pdo->exec("ALTER TABLE `inventory` ADD COLUMN `{$cName}` {$cDef}");
+// Auto-migrate schema fixes (only runs once or when marker is missing)
+$migrationMarker = __DIR__ . '/.migrated_v55';
+if (!file_exists($migrationMarker)) {
+    try {
+        $colInfo = $pdo->query("SHOW COLUMNS FROM `sessions` LIKE 'expiresAt'")->fetch();
+        if ($colInfo && strpos(strtolower($colInfo['Type']), 'bigint') === false) {
+            $pdo->exec("ALTER TABLE `sessions` MODIFY `expiresAt` BIGINT NOT NULL");
         }
-    }
 
-    // ── Transactions Attachments Column Migration ─────────────────────
-    $txCols = $pdo->query("SHOW COLUMNS FROM `transactions`")->fetchAll();
-    $existingTxCols = array_column($txCols, 'Field');
-    if (!in_array('attachments', $existingTxCols, true)) {
-        $pdo->exec("ALTER TABLE `transactions` ADD COLUMN `attachments` LONGTEXT DEFAULT '[]'");
-    }
-} catch (Exception $e) { /* ignore */ }
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `vendors` (
+            `_rowid` INT AUTO_INCREMENT PRIMARY KEY,
+            `id` VARCHAR(191) UNIQUE NOT NULL,
+            `name` LONGTEXT NOT NULL,
+            `contactPerson` LONGTEXT DEFAULT '',
+            `phone` LONGTEXT DEFAULT '',
+            `email` LONGTEXT DEFAULT '',
+            `address` LONGTEXT DEFAULT '',
+            `city` LONGTEXT DEFAULT '',
+            `state` LONGTEXT DEFAULT '',
+            `pincode` LONGTEXT DEFAULT '',
+            `gstin` LONGTEXT DEFAULT '',
+            `vendorType` LONGTEXT DEFAULT 'Other',
+            `paymentTerms` LONGTEXT DEFAULT '',
+            `bankName` LONGTEXT DEFAULT '',
+            `accountNumber` LONGTEXT DEFAULT '',
+            `ifsc` LONGTEXT DEFAULT '',
+            `upiId` LONGTEXT DEFAULT '',
+            `notes` LONGTEXT DEFAULT '',
+            `status` LONGTEXT DEFAULT 'Active',
+            `statusColor` LONGTEXT DEFAULT 'bg-[#008A00]/10 text-[#008A00]',
+            `isActive` INT DEFAULT 1,
+            `createdAt` DATETIME DEFAULT CURRENT_TIMESTAMP,
+            `updatedAt` DATETIME DEFAULT CURRENT_TIMESTAMP
+        )");
 
-// ── Billing Tables Auto-Migration ────────────────────────────────────
-try {
-    $pdo->exec("CREATE TABLE IF NOT EXISTS `billing_counters` (
+        // ── WebAuthn Tables (auto-create) ────────────────────────────────
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `webauthn_credentials` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `userId` VARCHAR(191) NOT NULL,
+            `credentialId` TEXT NOT NULL,
+            `publicKey` LONGTEXT NOT NULL,
+            `counter` BIGINT DEFAULT 0,
+            `deviceName` VARCHAR(191) DEFAULT 'My Device',
+            `deviceAllowed` TINYINT DEFAULT 1,
+            `createdAt` DATETIME DEFAULT CURRENT_TIMESTAMP
+        )");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `webauthn_challenges` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `challenge` VARCHAR(512) NOT NULL,
+            `userId` VARCHAR(191) DEFAULT NULL,
+            `expiresAt` DATETIME NOT NULL
+        )");
+
+        // ── Inventory Columns Migration ──────────────────────────────────
+        $invCols = $pdo->query("SHOW COLUMNS FROM `inventory`")->fetchAll();
+        $existingInvCols = array_column($invCols, 'Field');
+        $neededInvCols = [
+            'category'        => "LONGTEXT DEFAULT 'Fabric'",
+            'subCategory'     => "LONGTEXT DEFAULT ''",
+            'costPrice'       => "DOUBLE DEFAULT 0",
+            'totalValue'      => "DOUBLE DEFAULT 0",
+            'minStock'        => "DOUBLE DEFAULT 0",
+            'location'        => "LONGTEXT DEFAULT ''",
+            'supplier'        => "LONGTEXT DEFAULT ''",
+            'supplierId'      => "LONGTEXT DEFAULT ''",
+            'color'           => "LONGTEXT DEFAULT ''",
+            'specifications'  => "LONGTEXT DEFAULT '{}'",
+            'notes'           => "LONGTEXT DEFAULT ''",
+            'movementHistory' => "LONGTEXT DEFAULT '[]'"
+        ];
+        foreach ($neededInvCols as $cName => $cDef) {
+            if (!in_array($cName, $existingInvCols, true)) {
+                $pdo->exec("ALTER TABLE `inventory` ADD COLUMN `{$cName}` {$cDef}");
+            }
+        }
+
+        // ── Transactions Attachments Column Migration ─────────────────────
+        $txCols = $pdo->query("SHOW COLUMNS FROM `transactions`")->fetchAll();
+        $existingTxCols = array_column($txCols, 'Field');
+        if (!in_array('attachments', $existingTxCols, true)) {
+            $pdo->exec("ALTER TABLE `transactions` ADD COLUMN `attachments` LONGTEXT DEFAULT '[]'");
+        }
+
+        // ── Billing Tables Auto-Migration ────────────────────────────────────
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `billing_counters` (
+
         `id` INT AUTO_INCREMENT PRIMARY KEY,
         `type_key` VARCHAR(50) UNIQUE NOT NULL,
         `last_seq` INT NOT NULL DEFAULT 0
@@ -318,6 +319,7 @@ try {
         `createdAt` DATETIME DEFAULT CURRENT_TIMESTAMP
     )");
 
+
     $pdo->exec("CREATE TABLE IF NOT EXISTS `system_telemetry_baselines` (
         `metric_key` VARCHAR(100) PRIMARY KEY,
         `mean_val` DOUBLE NOT NULL DEFAULT 0,
@@ -326,7 +328,11 @@ try {
         `last_anomaly_at` DATETIME DEFAULT NULL,
         `updatedAt` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     )");
+    // Mark migration as completed so subsequent requests skip heavy DDL
+    @file_put_contents($migrationMarker, date('c'));
 } catch (Exception $e) { /* ignore */ }
+}
+
 
 try {
 
