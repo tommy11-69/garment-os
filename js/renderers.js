@@ -1,4 +1,5 @@
 import { ProgressBar } from './components/index.js?v=5.2';
+import { calculateOrderRollup, normalizeStageKey, STAGE_DEFINITIONS } from './production/domain/workflowEngine.js?v=5.5';
 
 // ─── Stage Pipeline Helper ────────────────────────────────────────────────────
 const STAGE_SEQUENCES = {
@@ -142,11 +143,41 @@ export const renderers = {
         const pmtStatus = order.paymentStatus || 'Unpaid';
         const pmtDot = pmtStatus === 'Paid' ? 'bg-[#008A00]' : pmtStatus === 'Partial' ? 'bg-orange-400' : 'bg-error';
 
+        // Dynamic workflow roll-up calculation
+        const rollup = calculateOrderRollup(order);
+        const displayPercentage = (order.progressPercentage !== undefined && order.progressPercentage !== null && order.progressPercentage > 0)
+            ? order.progressPercentage
+            : rollup.overallPercentage;
+
+        // Bottleneck warning badge
+        const bottleneckBadge = rollup.isBottleneck ? `
+            <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-600 text-[11px] font-bold mt-2">
+                <span class="material-symbols-outlined text-[14px]">warning</span>
+                <span>Bottleneck: ${rollup.activeStageDef.label}</span>
+            </div>
+        ` : '';
+
+        // Product-level stage badges (if multiple products exist)
+        let productChipsHtml = '';
+        if (rollup.productsSummary && rollup.productsSummary.length > 1) {
+            productChipsHtml = `
+                <div class="flex flex-wrap gap-1.5 mt-2.5">
+                    ${rollup.productsSummary.map(p => `
+                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-surface-variant text-on-surface-variant border border-outline-variant/40">
+                            <span class="font-bold">${p.name}:</span>
+                            <span class="text-primary font-bold">${p.stageLabel}</span>
+                            <span class="text-secondary text-[9px]">(${p.percentage}%)</span>
+                        </span>
+                    `).join('')}
+                </div>
+            `;
+        }
+
         return `
             <div role="button" tabindex="0" onclick="${isBulkMode ? `window.toggleOrderSelection('${order.id}')` : `window.openOrderDetails('${order.id}')`}" class="bg-surface-container-lowest rounded-[24px] border ${isSelected ? 'border-primary ring-1 ring-primary' : 'border-outline-variant'} p-lg shadow-sm active-bg transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary flex items-center">
                 ${checkboxHtml}
                 <div class="flex-1 w-full min-w-0">
-                    <div class="flex items-start justify-between mb-4">
+                    <div class="flex items-start justify-between mb-3">
                         <div>
                             <span class="text-[13px] font-semibold text-primary mb-1 block">${order.id}</span>
                             <h4 class="text-[18px] font-bold text-on-surface mb-0.5">${order.customerName}</h4>
@@ -156,9 +187,15 @@ export const renderers = {
                                 ${deliveryBadge}
                             </div>
                         </div>
-                        <span class="px-2.5 py-1 rounded-full text-[11px] font-medium shrink-0 ml-2 ${order.statusColor}">${order.status}</span>
+                        <div class="flex flex-col items-end gap-1 shrink-0 ml-2">
+                            <span class="px-2.5 py-1 rounded-full text-[11px] font-medium ${order.statusColor}">${order.status}</span>
+                            ${bottleneckBadge}
+                        </div>
                     </div>
-                    ${ProgressBar({ label: `${order.progressPercentage}% Complete`, secondaryLabel: order.progressLabel, percentage: order.progressPercentage, color: order.progressColor })}
+                    ${productChipsHtml}
+                    <div class="mt-3">
+                        ${ProgressBar({ label: `${displayPercentage}% Complete`, secondaryLabel: order.progressLabel || `${rollup.activeStageDef.shortLabel} phase`, percentage: displayPercentage, color: order.progressColor || 'bg-primary' })}
+                    </div>
                     ${renderStagePipeline(order)}
                 </div>
             </div>

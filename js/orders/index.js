@@ -499,10 +499,11 @@ window.updateProductStage = async function(orderId, productIdx, newStage) {
     
     try {
         window.showToast?.(`Updating stage of ${order.products[productIdx].name} to ${newStage}...`, 'info');
-        await orderStore.updateOrder(orderId, {
+        await api.updateOrder(orderId, {
             products: order.products,
             status: overallStatus
         });
+
         
         window.showToast?.('Stage updated successfully', 'success');
         

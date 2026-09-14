@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html class="light" lang="en">
 <head>
     <!-- Favicon & PWA Icons -->
@@ -32,11 +32,19 @@
     <div id="topbar-container"></div>
 
     <div class="mobile-wrapper">
-        <main id="main-content-area" class="flex-1 p-md flex flex-col gap-lg">
+        <main id="main-content-area" class="flex-1 p-md flex flex-col gap-lg max-w-7xl mx-auto w-full">
             
-            <div class="px-xs pt-sm">
-                <h2 class="text-[28px] leading-tight font-semibold tracking-tight text-on-surface mb-1">Dispatch</h2>
-                <p class="text-body text-secondary">3 Shipments Today</p>
+            <div class="px-xs pt-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                    <h2 class="text-[28px] leading-tight font-extrabold tracking-tight text-on-surface mb-1">Dispatch & Gate Pass</h2>
+                    <p class="text-[13px] text-secondary">Active Shipments, Gate Passes & Carrier Logistics</p>
+                </div>
+                <div>
+                    <a href="production.html?stage=dispatch" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary text-white text-[13px] font-bold shadow-xs active-scale transition-apple">
+                        <span class="material-symbols-outlined text-[16px]">local_shipping</span>
+                        <span>Open Dispatch Workspace</span>
+                    </a>
+                </div>
             </div>
             
             <div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-1 flex">
@@ -45,79 +53,18 @@
                 <button class="flex-1 py-2 text-sm font-semibold rounded-lg text-secondary active:bg-surface-variant/50">Delivered</button>
             </div>
 
-            <!-- Dispatch Cards -->
+            <!-- Dispatch Cards Container -->
             <div id="dispatch-list" class="flex flex-col gap-md"></div>
-                        <span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-[#FF9F0A]/10 text-[#FF9F0A] uppercase tracking-wider">In Transit</span>
-                    </div>
-                    
-                    <div class="bg-surface-variant/50 rounded-xl p-3 flex flex-col gap-2 mb-4">
-                        <div class="flex justify-between items-center">
-                            <span class="text-[13px] text-secondary">Courier</span>
-                            <span class="text-[14px] font-semibold text-on-surface">FedEx Express</span>
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-[13px] text-secondary">Tracking No.</span>
-                            <span class="text-[14px] font-semibold text-primary">FX-99827361</span>
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-[13px] text-secondary">Expected</span>
-                            <span class="text-[14px] font-semibold text-on-surface">Oct 28, 2026</span>
-                        </div>
-                    </div>
-
-                    <button class="w-full bg-surface-container-high text-on-surface font-bold text-[14px] py-3 rounded-xl active-scale transition-apple">
-                        Track Shipment
-                    </button>
-                </div>
-
-                <!-- Shipment 2 -->
-                <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant p-lg shadow-sm">
-                    <div class="flex justify-between items-start mb-4">
-                        <div class="flex items-center gap-3">
-                            <div class="w-12 h-12 rounded-full bg-surface-variant flex items-center justify-center">
-                                <span class="material-symbols-outlined text-[24px] text-primary">inventory_2</span>
-                            </div>
-                            <div>
-                                <h3 class="text-[17px] font-bold text-on-surface leading-tight">Arvind Fashions</h3>
-                                <span class="text-[13px] text-secondary">INV-2026-141</span>
-                            </div>
-                        </div>
-                        <span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-primary/10 text-primary uppercase tracking-wider">Ready</span>
-                    </div>
-                    
-                    <div class="bg-surface-variant/50 rounded-xl p-3 flex flex-col gap-2 mb-4">
-                        <div class="flex justify-between items-center">
-                            <span class="text-[13px] text-secondary">Courier</span>
-                            <span class="text-[14px] font-semibold text-on-surface">DHL Freight</span>
-                        </div>
-                        <div class="flex justify-between items-center">
-                            <span class="text-[13px] text-secondary">Boxes</span>
-                            <span class="text-[14px] font-semibold text-on-surface">12 Cartons</span>
-                        </div>
-                    </div>
-
-                    <div class="flex gap-2">
-                        <button class="flex-1 bg-surface-container-high text-on-surface font-bold text-[14px] py-3 rounded-xl active-scale transition-apple">
-                            Print Labels
-                        </button>
-                        <button onclick="openSheet('dispatchOrderSheet')" class="flex-1 bg-primary text-white font-bold text-[14px] py-3 rounded-xl active-scale transition-apple shadow-sm">
-                            Mark Dispatched
-                        </button>
-                    </div>
-                </div>
-
-            </div>
             
             <div class="h-6"></div>
         </main>
     </div>
+
     <div id="fab-container" data-icon="local_shipping" data-action="openSheet('dispatchOrderSheet')"></div>
     <div id="bottom-nav-container"></div>
-    
     <div id="sheets-container"></div>
     
-    <script type="module" src="../js/dispatch/index.js?v=5.2"></script>
-    
+    <script type="module" src="../js/dispatch/index.js?v=5.5"></script>
     <script src="../js/utils/sheet.js"></script>
     <script src="../js/app.js"></script>
 </body>

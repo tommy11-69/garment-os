@@ -199,13 +199,12 @@
     <script>
         // Detect API endpoint based on environment
         function getAPIBase() {
-            const hostname = window.location.hostname;
-            if (hostname === 'localhost' || hostname === '127.0.0.1') {
-                return 'http://localhost:8787';
+            // When served via Cloudflare Workers or local dev server (wrangler dev), use relative paths
+            const port = window.location.port;
+            if (port === '8787' || port === '8788' || window.location.hostname.includes('garment-os')) {
+                return '';
             }
-            const protocol = window.location.protocol;
-            const port = window.location.port ? `:${window.location.port}` : '';
-            return `${protocol}//${hostname}${port}`;
+            return '';
         }
         
         const API_BASE = getAPIBase();

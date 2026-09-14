@@ -1,6 +1,7 @@
 import { api } from '../services/api.js?v=5.2';
 import { SelectInput, TextInput, TextareaInput } from '../components/inputs.js?v=5.2';
 import { BottomSheet } from '../components/index.js?v=5.2';
+import { calculateOrderRollup, STAGE_DEFINITIONS, normalizeStageKey } from '../production/domain/workflowEngine.js?v=5.5';
 
 export async function getOrderSheetsHTML() {
     let customers = [];
@@ -117,55 +118,59 @@ export async function getOrderSheetsHTML() {
 export function getOrderDetailsHeader(order) {
     if (!order) return '';
 
-    // Workflow-aware stage sequence for the stepper
-    const STAGE_SEQS = {
-        default:             ['Fabric', 'Cutting', 'Stitching', 'Print', 'Iron', 'Dispatch'],
-        print_before_stitch: ['Fabric', 'Cutting', 'Print', 'Stitching', 'Iron', 'Dispatch'],
-        wash_before_stitch:  ['Fabric', 'Cutting', 'Wash', 'Stitching', 'Print', 'Iron', 'Dispatch'],
-        direct_fulfillment:  ['Procurement', 'Dispatch'],
-    };
-    const wf     = order.workflowType || 'default';
-    const stages = STAGE_SEQS[wf] || STAGE_SEQS.default;
-    const status = order.status || '';
-    let currentIdx = stages.findIndex(s => status.toLowerCase().includes(s.toLowerCase()));
-    if (currentIdx < 0) currentIdx = 0;
-    if (['Dispatched','Delivered','Closed','Archived'].includes(status)) currentIdx = stages.length - 1;
-    const progress = stages.length > 1 ? Math.min((currentIdx / (stages.length - 1)) * 100, 100) : 0;
+    const rollup = calculateOrderRollup(order);
+    const progress = rollup.overallPercentage;
 
-    const stepperHtml = `
-        <div class="mt-4 px-1">
-            <div class="flex justify-between relative mb-2">
-                <div class="absolute top-2.5 left-0 w-full h-1 bg-surface-variant rounded-full -z-10"></div>
-                <div class="absolute top-2.5 left-0 h-1 bg-primary rounded-full -z-10 transition-all duration-500" style="width: ${progress}%"></div>
-                ${stages.map((s, i) => `
-                    <div class="flex flex-col items-center gap-1">
-                        <div class="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ${i <= currentIdx ? 'bg-primary text-on-primary shadow-sm' : 'bg-surface-container-high text-secondary'}">
-                            ${i < currentIdx ? '<span class="material-symbols-outlined text-[12px]">check</span>' : i+1}
-                        </div>
-                        <span class="text-[9px] font-medium uppercase tracking-wider ${i <= currentIdx ? 'text-primary' : 'text-secondary'}">${s}</span>
-                    </div>
-                `).join('')}
-            </div>
+    // Delivery & Bottleneck Status
+    const today = new Date();
+    const deliveryDate = order.deliveryDate ? new Date(order.deliveryDate) : null;
+    const daysLeft = deliveryDate ? Math.ceil((deliveryDate - today) / (1000 * 60 * 60 * 24)) : null;
+    let countdownBadge = '';
+    if (daysLeft !== null) {
+        if (daysLeft < 0) countdownBadge = `<span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-error/10 text-error">${Math.abs(daysLeft)}d Overdue</span>`;
+        else if (daysLeft <= 4) countdownBadge = `<span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-600">${daysLeft}d Remaining</span>`;
+        else countdownBadge = `<span class="text-[11px] font-semibold text-secondary">${daysLeft}d Left</span>`;
+    }
+
+    const bottleneckAlert = rollup.isBottleneck ? `
+        <div class="mt-2.5 flex items-center gap-2 px-3 py-1.5 rounded-xl bg-orange-500/10 border border-orange-500/20 text-orange-700 text-[12px] font-medium">
+            <span class="material-symbols-outlined text-[16px] text-orange-600">warning</span>
+            <span>Delivery Risk: Production bottleneck currently at <strong>${rollup.activeStageDef.label}</strong></span>
         </div>
-    `;
+    ` : '';
 
     return `
         <div class="px-4 py-3 border-b border-outline-variant bg-surface-container-lowest sticky top-0 z-20">
             <div class="flex items-center justify-between mb-2">
-                <div class="flex flex-col">
-                    <span class="text-[12px] font-medium text-secondary uppercase tracking-wider">${order.id}</span>
-                    <h2 class="text-[18px] font-bold text-on-surface line-clamp-1">${order.product}</h2>
+                <div class="flex flex-col min-w-0 pr-2">
+                    <div class="flex items-center gap-2">
+                        <span class="text-[12px] font-mono font-bold text-primary uppercase tracking-wider">${order.id}</span>
+                        ${countdownBadge}
+                    </div>
+                    <h2 class="text-[18px] font-bold text-on-surface line-clamp-1 mt-0.5">${order.product || 'Custom Apparel'}</h2>
                 </div>
-                <div class="flex gap-2">
+                <div class="flex gap-2 shrink-0">
                     <button onclick="window.openEditOrder()" class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-secondary active-scale transition-apple"><span class="material-symbols-outlined text-[18px]">edit</span></button>
                     <button onclick="window.showConfirmation({title: 'Delete Order?', message: 'Are you sure you want to delete this order?', confirmText: 'Delete', type: 'danger', onConfirm: window.deleteOrder})" class="w-8 h-8 rounded-full bg-error-container/30 flex items-center justify-center text-error active-scale transition-apple"><span class="material-symbols-outlined text-[18px]">delete</span></button>
                     <button onclick="window.closeSheet('orderDetailsSheet')" class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-secondary active-scale transition-apple"><span class="material-symbols-outlined text-[20px]">close</span></button>
                 </div>
             </div>
-            ${stepperHtml}
-            <div class="flex gap-4 mt-4 border-b border-outline-variant/50 overflow-x-auto no-scrollbar">
+
+            <!-- Weighted Production Progress Bar -->
+            <div class="mt-3">
+                <div class="flex justify-between items-center text-[12px] mb-1">
+                    <span class="text-secondary font-medium">Weighted Factory Progress</span>
+                    <span class="font-bold text-primary">${progress}%</span>
+                </div>
+                <div class="w-full h-2 rounded-full bg-surface-variant overflow-hidden">
+                    <div class="h-full bg-primary rounded-full transition-all duration-500" style="width: ${progress}%"></div>
+                </div>
+            </div>
+            ${bottleneckAlert}
+
+            <div class="flex gap-4 mt-3 border-b border-outline-variant/50 overflow-x-auto no-scrollbar">
                 <button onclick="window.switchOrderTab('overview')" id="od-tab-btn-overview" class="od-tab-btn shrink-0 px-2 py-2 text-[14px] font-semibold text-primary border-b-2 border-primary transition-colors">Overview</button>
-                <button onclick="window.switchOrderTab('production')" id="od-tab-btn-production" class="od-tab-btn shrink-0 px-2 py-2 text-[14px] font-medium text-secondary border-b-2 border-transparent hover:text-on-surface transition-colors">Production</button>
+                <button onclick="window.switchOrderTab('production')" id="od-tab-btn-production" class="od-tab-btn shrink-0 px-2 py-2 text-[14px] font-medium text-secondary border-b-2 border-transparent hover:text-on-surface transition-colors">Production Floor</button>
                 <button onclick="window.switchOrderTab('timeline')" id="od-tab-btn-timeline" class="od-tab-btn shrink-0 px-2 py-2 text-[14px] font-medium text-secondary border-b-2 border-transparent hover:text-on-surface transition-colors">Timeline</button>
             </div>
         </div>
@@ -174,42 +179,39 @@ export function getOrderDetailsHeader(order) {
 
 export function getOrderDetailsContent(order) {
     if (!order) return '';
-    let customerName = order.customerId;
+    let customerName = order.customerName || order.customerId;
     if (typeof api.getCustomerSync === 'function') {
         const c = api.getCustomerSync(order.customerId);
         if (c) customerName = c.name;
     }
-    
-    const tasks = order.tasks || [];
-    const tasksHtml = tasks.length > 0 ? `
-        <div class="bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant shadow-sm mb-4">
-            <h3 class="text-[14px] font-semibold text-secondary uppercase tracking-wider mb-3">Tasks (${order.status})</h3>
-            <div class="flex flex-col gap-3">
-                ${tasks.map(t => `
-                    <label class="flex items-start gap-3 cursor-pointer group">
-                        <input type="checkbox" onchange="window.toggleOrderTask('${t.id}', this.checked)" ${t.completed ? 'checked' : ''} class="mt-0.5 w-5 h-5 rounded border-outline-variant text-primary focus:ring-primary bg-surface-container">
-                        <span class="text-[14px] font-medium ${t.completed ? 'text-secondary line-through' : 'text-on-surface'} transition-colors">${t.title}</span>
-                    </label>
-                `).join('')}
-            </div>
-        </div>
-    ` : '';
 
+    const rollup = calculateOrderRollup(order);
     const paymentReceived = order.paymentReceived || 0;
     const paymentPending = Math.max((order.value || 0) - paymentReceived, 0);
     const paymentPct = order.value ? Math.min((paymentReceived / order.value) * 100, 100) : 0;
 
     return `
         <div id="od-tab-overview" class="od-tab-content block p-4">
-            <div class="flex gap-2 overflow-x-auto no-scrollbar pb-2 mb-4">
-                <button onclick="window.handleStatusTransition('Cutting')" class="shrink-0 px-4 py-2 bg-surface-container-highest text-on-surface text-[13px] font-semibold rounded-lg active-scale">Move to Cutting</button>
-                <button onclick="window.handleStatusTransition('Stitching')" class="shrink-0 px-4 py-2 bg-surface-container-highest text-on-surface text-[13px] font-semibold rounded-lg active-scale">Move to Stitching</button>
-                <button onclick="window.handleStatusTransition('Printing/Embroidery')" class="shrink-0 px-4 py-2 bg-surface-container-highest text-on-surface text-[13px] font-semibold rounded-lg active-scale">Move to Printing</button>
-                <button onclick="window.handleStatusTransition('Ironing & Packing')" class="shrink-0 px-4 py-2 bg-surface-container-highest text-on-surface text-[13px] font-semibold rounded-lg active-scale">Move to Ironing</button>
-                <button onclick="window.handleStatusTransition('Dispatched')" class="shrink-0 px-4 py-2 bg-[#008A00]/10 text-[#008A00] text-[13px] font-bold rounded-lg active-scale border border-[#008A00]/20">Mark Dispatched</button>
-            </div>
             
-            ${tasksHtml}
+            <!-- HERO ACTION: Open in Production Floor Hub -->
+            <div onclick="window.location.href='production.html?orderId=${order.id}&stage=${rollup.activeStageKey}'"
+                class="bg-gradient-to-r from-primary to-blue-700 text-white rounded-2xl p-4 mb-4 shadow-sm flex items-center justify-between cursor-pointer active-scale transition-all">
+                <div class="flex items-center gap-3">
+                    <div class="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-[24px]">precision_manufacturing</span>
+                    </div>
+                    <div>
+                        <p class="text-[11px] font-bold uppercase tracking-wider text-white/80">Active Factory Floor Stage</p>
+                        <h4 class="text-[16px] font-bold leading-tight mt-0.5">${rollup.activeStageDef.label}</h4>
+                        <p class="text-[12px] text-white/90 mt-0.5">${rollup.overallPercentage}% Weighted Progress • ${rollup.totalOrderQty} pcs</p>
+                    </div>
+                </div>
+                <div class="bg-white text-primary px-3.5 py-2 rounded-xl text-[13px] font-bold flex items-center gap-1 shrink-0 shadow-sm">
+                    <span>Open Floor</span>
+                    <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+                </div>
+            </div>
+
 
             <div class="bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant mb-4 shadow-sm">
                 <div class="flex justify-between items-center mb-4">
@@ -242,17 +244,33 @@ export function getOrderDetailsContent(order) {
                                 const stageOptions = stages.map(s => `
                                     <option value="${s}" ${p.status === s ? 'selected' : ''}>${s}</option>
                                 `).join('');
+                                const currentNormStage = normalizeStageKey(p.status);
+                                const stageDef = STAGE_DEFINITIONS[currentNormStage] || STAGE_DEFINITIONS.fabric;
 
                                 return `
                                     <div class="border-b border-outline-variant/30 last:border-0 pb-4 last:pb-0">
-                                        <div class="flex justify-between items-start gap-3 mb-2.5">
+                                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-2.5">
                                             <div>
                                                 <h4 class="text-[14px] font-bold text-on-surface leading-tight">${p.name || 'Unnamed Product'}</h4>
-                                                <span class="inline-block text-[11px] font-semibold text-secondary mt-0.5 bg-surface-variant/40 px-1.5 py-0.5 rounded">${p.category} Category · ${p.qty} pcs</span>
+                                                <div class="flex items-center gap-2 mt-0.5 flex-wrap">
+                                                    <span class="inline-block text-[11px] font-semibold text-secondary bg-surface-variant/40 px-1.5 py-0.5 rounded">${p.category || 'Adults'} Category · ${p.qty} pcs</span>
+                                                    <span class="inline-flex items-center gap-1 text-[11px] font-bold ${stageDef.color} ${stageDef.bgColor} px-2 py-0.5 rounded-md">
+                                                        <span class="material-symbols-outlined text-[13px]">${stageDef.icon}</span>
+                                                        ${stageDef.label}
+                                                    </span>
+                                                </div>
                                             </div>
-                                            <select onchange="window.updateProductStage('${order.id}', ${pIdx}, this.value)" class="text-[12px] font-bold text-primary bg-primary/10 border-0 rounded-lg px-2.5 py-1.5 outline-none focus:ring-2 focus:ring-primary/20">
-                                                ${stageOptions}
-                                            </select>
+                                            <div class="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+                                                <button type="button" onclick="window.location.href='production.html?orderId=${order.id}&stage=${currentNormStage}&productId=${pIdx}'" 
+                                                    class="px-2.5 py-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-[11px] font-bold flex items-center gap-1 active-scale transition-all">
+                                                    <span class="material-symbols-outlined text-[14px]">precision_manufacturing</span>
+                                                    <span>Floor Workspace</span>
+                                                    <span class="material-symbols-outlined text-[13px]">arrow_forward</span>
+                                                </button>
+                                                <select onchange="window.updateProductStage('${order.id}', ${pIdx}, this.value)" class="text-[11px] font-bold text-secondary bg-surface-variant/60 border-0 rounded-lg px-2 py-1.5 outline-none focus:ring-2 focus:ring-primary/20">
+                                                    ${stageOptions}
+                                                </select>
+                                            </div>
                                         </div>
                                         <div class="grid grid-cols-8 gap-1">
                                             ${sizesHtml}
@@ -260,6 +278,7 @@ export function getOrderDetailsContent(order) {
                                     </div>
                                 `;
                             }).join('');
+
                         } else {
                             // Legacy single product orders fallback
                             return `
@@ -312,103 +331,70 @@ export function getOrderDetailsContent(order) {
 
 // ─── Production Data Tab ──────────────────────────────────────────────────────
 function renderProductionDataTab(order) {
-    const sd = (order.stageData && typeof order.stageData === 'object') ? order.stageData : {};
-    const fabric  = sd.fabric  || {};
-    const cutting = sd.cutting || {};
-    const print   = sd.printing || {};
-    const stitch  = sd.stitching || {};
-    const iron    = sd.ironingPacking || {};
-    const dispatch = sd.dispatch || {};
-    const wash    = sd.wash || null;
-
+    const rollup = calculateOrderRollup(order);
     const wf = (order.workflowType || 'default').replace(/_/g, ' ');
 
-    // Workflow badge
-    const wfBadge = `<div class="flex items-center gap-2 mb-4">
-        <span class="text-[11px] font-bold text-secondary uppercase tracking-wider">Workflow:</span>
-        <span class="px-2.5 py-1 rounded-md text-[11px] font-bold bg-primary/10 text-primary capitalize">${wf}</span>
-    </div>`;
+    const stagesList = [
+        { key: 'procurement', label: 'Procurement & Sourcing', icon: 'shopping_cart', desc: 'Supplier POs, yarn & trims inward' },
+        { key: 'fabric', label: 'Fabric & Inward', icon: 'texture', desc: 'Roll tally, GSM, Dia, shrinkage & QC' },
+        { key: 'cutting', label: 'Cutting & Bundles', icon: 'content_cut', desc: 'Size ratio breakdown, bundles, scrap %' },
+        { key: 'print_wash', label: 'Print, Embroidery & Wash', icon: 'palette', desc: 'Strike-off sample, panel outward/inward' },
+        { key: 'stitching', label: 'Stitching & Assembly', icon: 'precision_manufacturing', desc: 'Sewing lines, hourly output & defect audit' },
+        { key: 'packing', label: 'Finishing & Packing', icon: 'inventory_2', desc: 'Thread trim, ironing, carton master matrix' },
+        { key: 'dispatch', label: 'Dispatch & Gate Pass', icon: 'local_shipping', desc: 'Delivery Challan, carrier LR & handover' }
+    ];
 
-    if (order.workflowType === 'direct_fulfillment') {
-        const procurement = sd.procurement || {};
-        return wfBadge + `
-            <div class="bg-surface-container-lowest border border-outline-variant rounded-2xl p-4 mb-3">
-                <div class="flex items-center gap-2 mb-3">
-                    <span class="material-symbols-outlined text-[18px] text-primary">shopping_cart</span>
-                    <h4 class="text-[13px] font-bold text-secondary uppercase tracking-wider">Procurement</h4>
+    return `
+        <div class="flex flex-col gap-4">
+            <!-- Header Status -->
+            <div class="bg-surface-container-lowest border border-outline-variant rounded-2xl p-4 shadow-sm">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-2">
+                        <span class="text-[11px] font-bold text-secondary uppercase tracking-wider">Workflow Route:</span>
+                        <span class="px-2.5 py-1 rounded-md text-[11px] font-bold bg-primary/10 text-primary capitalize">${wf}</span>
+                    </div>
+                    <span class="text-[13px] font-bold text-primary">${rollup.overallPercentage}% Complete</span>
                 </div>
-                <div class="grid grid-cols-2 gap-y-2.5">
-                    <div><p class="text-[11px] text-secondary">Vendor</p><p class="text-[14px] font-semibold text-on-surface">${procurement.vendorName || '-'}</p></div>
-                    <div><p class="text-[11px] text-secondary">Purchase Cost</p><p class="text-[14px] font-bold text-primary">${procurement.purchaseCost ? 'Rs.'+(+procurement.purchaseCost).toLocaleString('en-IN') : '-'}</p></div>
-                    <div><p class="text-[11px] text-secondary">Arrival Date</p><p class="text-[14px] font-semibold text-on-surface">${procurement.expectedArrival || '-'}</p></div>
+                <div class="w-full h-2 rounded-full bg-surface-variant overflow-hidden mb-3">
+                    <div class="h-full bg-primary rounded-full" style="width: ${rollup.overallPercentage}%"></div>
+                </div>
+                <div class="flex justify-between items-center text-[12px] text-secondary">
+                    <span>Active Bottleneck: <strong class="text-on-surface">${rollup.activeStageDef.label}</strong></span>
+                    <span>Total Order: <strong class="text-on-surface">${rollup.totalOrderQty} pcs</strong></span>
                 </div>
             </div>
-        `;
-    }
 
-    // Fabric card
-    const fabricCard = `
-        <div class="bg-surface-container-lowest border border-outline-variant rounded-2xl p-4 mb-3">
-            <div class="flex items-center gap-2 mb-3">
-                <span class="material-symbols-outlined text-[18px] text-primary">texture</span>
-                <h4 class="text-[13px] font-bold text-secondary uppercase tracking-wider">Fabric</h4>
+            <!-- Operational Stage Workspaces Launcher -->
+            <div class="flex flex-col gap-2">
+                <h4 class="text-[13px] font-bold text-secondary uppercase tracking-wider px-1">Floor Stage Workspaces</h4>
+                <div class="grid grid-cols-1 gap-2.5">
+                    ${stagesList.map(stg => {
+                        const isCurrent = rollup.activeStageKey === stg.key;
+                        return `
+                            <div onclick="window.location.href='production.html?orderId=${order.id}&stage=${stg.key}'"
+                                class="p-3.5 rounded-2xl bg-surface-container-lowest border ${isCurrent ? 'border-primary ring-1 ring-primary/30 bg-primary/5' : 'border-outline-variant'} flex items-center justify-between cursor-pointer active-scale transition-apple shadow-xs hover:border-primary">
+                                <div class="flex items-center gap-3 min-w-0 pr-2">
+                                    <div class="w-10 h-10 rounded-xl ${isCurrent ? 'bg-primary text-white' : 'bg-surface-variant text-secondary'} flex items-center justify-center shrink-0">
+                                        <span class="material-symbols-outlined text-[20px]">${stg.icon}</span>
+                                    </div>
+                                    <div class="min-w-0">
+                                        <div class="flex items-center gap-2">
+                                            <h5 class="text-[14px] font-bold text-on-surface truncate">${stg.label}</h5>
+                                            ${isCurrent ? '<span class="text-[10px] font-bold px-1.5 py-0.2 rounded bg-primary text-white uppercase">Active</span>' : ''}
+                                        </div>
+                                        <p class="text-[12px] text-secondary truncate mt-0.5">${stg.desc}</p>
+                                    </div>
+                                </div>
+                                <span class="material-symbols-outlined text-secondary text-[18px] shrink-0">arrow_forward_ios</span>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
             </div>
-            <div class="grid grid-cols-2 gap-y-2.5">
-                <div><p class="text-[11px] text-secondary">Type</p><p class="text-[14px] font-semibold text-on-surface">${fabric.type || '-'} ${fabric.subType ? '— '+fabric.subType : ''}</p></div>
-                <div><p class="text-[11px] text-secondary">GSM</p><p class="text-[14px] font-semibold text-on-surface">${fabric.gsm || '-'}</p></div>
-                <div><p class="text-[11px] text-secondary">Dia</p><p class="text-[14px] font-semibold text-on-surface">${fabric.dia ? fabric.dia+' in' : '-'}</p></div>
-                <div><p class="text-[11px] text-secondary">Total Kg</p><p class="text-[14px] font-semibold text-on-surface">${fabric.totalKg ? fabric.totalKg+' kg' : '-'}</p></div>
-                <div><p class="text-[11px] text-secondary">Rate/Kg</p><p class="text-[14px] font-semibold text-on-surface">${fabric.ratePerKg ? 'Rs.'+fabric.ratePerKg : '-'}</p></div>
-                <div><p class="text-[11px] text-secondary">Total Cost</p><p class="text-[14px] font-bold text-primary">${fabric.totalCost ? 'Rs.'+(+fabric.totalCost).toLocaleString('en-IN') : '-'}</p></div>
-                <div class="col-span-2"><p class="text-[11px] text-secondary">Pcs/Kg</p><p class="text-[14px] font-semibold text-on-surface">${fabric.pcsPerKg ? (+fabric.pcsPerKg).toFixed(2) : '-'}</p></div>
-            </div>
-        </div>`;
-
-    // Cutting card — size breakdown
-    const sizes = cutting.sizes || {};
-    const sizeKeys = ['XS','S','M','L','XL','XXL','XXXL'];
-    const sizesHtml = sizeKeys.some(k => sizes[k] > 0)
-        ? `<div class="grid grid-cols-7 gap-1 mt-2">
-            ${sizeKeys.map(k => `<div class="text-center"><p class="text-[10px] font-bold text-secondary uppercase">${k}</p><p class="text-[13px] font-bold text-on-surface">${sizes[k] || 0}</p></div>`).join('')}
-           </div>`
-        : '<p class="text-[13px] text-secondary italic">No size data recorded</p>';
-
-    const cuttingCard = `
-        <div class="bg-surface-container-lowest border border-outline-variant rounded-2xl p-4 mb-3">
-            <div class="flex items-center gap-2 mb-3">
-                <span class="material-symbols-outlined text-[18px] text-primary">content_cut</span>
-                <h4 class="text-[13px] font-bold text-secondary uppercase tracking-wider">Cutting</h4>
-            </div>
-            ${sizesHtml}
-        </div>`;
-
-    // Wash card (only if present)
-    const washCard = wash ? `
-        <div class="bg-surface-container-lowest border border-outline-variant rounded-2xl p-4 mb-3">
-            <div class="flex items-center gap-2 mb-3">
-                <span class="material-symbols-outlined text-[18px] text-primary">local_laundry_service</span>
-                <h4 class="text-[13px] font-bold text-secondary uppercase tracking-wider">Wash</h4>
-            </div>
-            <p class="text-[14px] font-semibold text-on-surface">${wash.type || '-'}</p>
-            ${wash.notes ? `<p class="text-[13px] text-secondary mt-1">${wash.notes}</p>` : ''}
-        </div>` : '';
-
-    // Printing card
-    const printCard = `
-        <div class="bg-surface-container-lowest border border-outline-variant rounded-2xl p-4 mb-3">
-            <div class="flex items-center gap-2 mb-3">
-                <span class="material-symbols-outlined text-[18px] text-primary">${print.type === 'Embroidery' ? 'embroidery' : 'print'}</span>
-                <h4 class="text-[13px] font-bold text-secondary uppercase tracking-wider">Printing / Embroidery</h4>
-            </div>
-            <div class="grid grid-cols-2 gap-y-2">
-                <div><p class="text-[11px] text-secondary">Type</p><p class="text-[14px] font-semibold text-on-surface">${print.type || '-'}</p></div>
-                ${print.printingSubType ? `<div><p class="text-[11px] text-secondary">Method</p><p class="text-[14px] font-semibold text-on-surface">${print.printingSubType}</p></div>` : ''}
-            </div>
-            ${print.notes ? `<p class="text-[13px] text-secondary mt-2">${print.notes}</p>` : ''}
-        </div>`;
-
-    return wfBadge + fabricCard + cuttingCard + washCard + printCard;
+        </div>
+    `;
 }
+
 
 export function getOrdersAnalyticsHTML({ totalValue, pendingUnits, cuttingCount, stitchingCount, printingCount }) {
     return `
