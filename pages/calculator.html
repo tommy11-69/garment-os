@@ -227,10 +227,64 @@
                             <input id="shared-qty" type="number" min="0" placeholder="200" class="calc-input w-full" oninput="onSharedQtyChange()">
                         </div>
                         <div>
-                            <label class="field-label">Pcs per Kg</label>
-                            <input id="u-pcs-per-kg" type="number" min="0" step="0.1" placeholder="2.5" class="calc-input w-full" oninput="calcUnified()">
+                            <label class="field-label flex justify-between items-center">
+                                <span>Pcs per Kg</span>
+                                <button type="button" onclick="togglePatternMode()" class="text-primary text-[10px] font-bold tracking-wider flex items-center gap-1 bg-primary/10 px-2 py-0.5 rounded uppercase"><span class="material-symbols-outlined text-[13px]">architecture</span> Auto-Calc</button>
+                            </label>
+                            <input id="u-pcs-per-kg" type="number" min="0" step="0.1" placeholder="2.5" class="calc-input w-full" oninput="if(window.calcUnified) window.calcUnified()">
                         </div>
                     </div>
+                    
+                    <!-- Auto-Calc Pattern Block -->
+                    <div id="pattern-calc-block" class="hidden flex-col gap-3 p-3 bg-surface-container rounded-xl border border-outline/10 mt-2">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-[13px] font-bold text-on-surface flex items-center gap-1"><span class="material-symbols-outlined text-[16px] text-primary">straighten</span> Pattern Calculator</span>
+                            <button type="button" onclick="togglePatternMode()" class="text-secondary"><span class="material-symbols-outlined text-[16px]">close</span></button>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="field-label text-[11px] mb-1">Body L + Marg</label>
+                                <div class="flex items-center gap-1">
+                                    <input id="pat-body-l" type="number" placeholder="70" class="calc-input w-full px-2 py-1.5 text-[13px]" oninput="calcPattern()">
+                                    <span class="text-secondary font-bold">+</span>
+                                    <input id="pat-body-l-m" type="number" value="6" class="calc-input w-10 px-1 py-1.5 text-center text-[13px] bg-surface-container-high" oninput="calcPattern()">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="field-label text-[11px] mb-1">Chest + Marg</label>
+                                <div class="flex items-center gap-1">
+                                    <input id="pat-chest" type="number" placeholder="54" class="calc-input w-full px-2 py-1.5 text-[13px]" oninput="calcPattern()">
+                                    <span class="text-secondary font-bold">+</span>
+                                    <input id="pat-chest-m" type="number" value="4" class="calc-input w-10 px-1 py-1.5 text-center text-[13px] bg-surface-container-high" oninput="calcPattern()">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="field-label text-[11px] mb-1">Sleeve L + Marg</label>
+                                <div class="flex items-center gap-1">
+                                    <input id="pat-sleeve-l" type="number" placeholder="22" class="calc-input w-full px-2 py-1.5 text-[13px]" oninput="calcPattern()">
+                                    <span class="text-secondary font-bold">+</span>
+                                    <input id="pat-sleeve-l-m" type="number" value="4" class="calc-input w-10 px-1 py-1.5 text-center text-[13px] bg-surface-container-high" oninput="calcPattern()">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="field-label text-[11px] mb-1">Slv Dia + Marg</label>
+                                <div class="flex items-center gap-1">
+                                    <input id="pat-sleeve-dia" type="number" placeholder="18" class="calc-input w-full px-2 py-1.5 text-[13px]" oninput="calcPattern()">
+                                    <span class="text-secondary font-bold">+</span>
+                                    <input id="pat-sleeve-dia-m" type="number" value="4" class="calc-input w-10 px-1 py-1.5 text-center text-[13px] bg-surface-container-high" oninput="calcPattern()">
+                                </div>
+                            </div>
+                            <div class="col-span-2 flex items-center gap-3 mt-1">
+                                <div class="flex-1">
+                                    <label class="field-label text-[11px] mb-1">GSM</label>
+                                    <input id="pat-gsm" type="number" placeholder="180" class="calc-input w-full px-2 py-1.5 text-[13px]" oninput="calcPattern()">
+                                </div>
+                                <div class="flex-1 bg-white border border-primary/20 rounded-lg p-2 text-right">
+                                    <div class="text-[10px] text-secondary font-bold uppercase tracking-wide">Wt/Pc</div>
+                                    <div class="text-[14px] font-bold text-primary"><span id="pat-wt-res">0.0</span> <span class="text-[10px]">gms</span></div>
+                                </div>
+                            </div>
+                        </div>
                     <!-- Auto kg info -->
                     <div id="u-kg-info" class="hidden bg-primary/5 border border-primary/20 rounded-xl px-4 py-2.5 flex justify-between items-center">
                         <span class="text-[13px] text-secondary font-medium">Total Fabric Required</span>
@@ -727,6 +781,42 @@
     <div id="bottom-nav-container"></div>
     <div id="sheets-container"></div>
 
+    <script>
+        function togglePatternMode() {
+            const block = document.getElementById('pattern-calc-block');
+            block.classList.toggle('hidden');
+            block.classList.toggle('flex');
+        }
+
+        function calcPattern() {
+            const bodyL = parseFloat(document.getElementById('pat-body-l').value) || 0;
+            const bodyLM = parseFloat(document.getElementById('pat-body-l-m').value) || 0;
+            const chest = parseFloat(document.getElementById('pat-chest').value) || 0;
+            const chestM = parseFloat(document.getElementById('pat-chest-m').value) || 0;
+            const slvL = parseFloat(document.getElementById('pat-sleeve-l').value) || 0;
+            const slvLM = parseFloat(document.getElementById('pat-sleeve-l-m').value) || 0;
+            const slvDia = parseFloat(document.getElementById('pat-sleeve-dia').value) || 0;
+            const slvDiaM = parseFloat(document.getElementById('pat-sleeve-dia-m').value) || 0;
+            const gsm = parseFloat(document.getElementById('pat-gsm').value) || 0;
+
+            if (gsm === 0 || (bodyL === 0 && chest === 0)) {
+                document.getElementById('pat-wt-res').textContent = '0.0';
+                return;
+            }
+
+            const bodyGms = (bodyL + bodyLM) * (chest + chestM) * 2 * gsm / 10000;
+            const sleeveGms = (slvL + slvLM) * (slvDia + slvDiaM) * 2 * gsm / 10000;
+            const totalGms = bodyGms + sleeveGms;
+
+            document.getElementById('pat-wt-res').textContent = totalGms.toFixed(1);
+
+            if (totalGms > 0) {
+                const pcsPerKg = 1000 / totalGms;
+                document.getElementById('u-pcs-per-kg').value = pcsPerKg.toFixed(2);
+                if (window.calcUnified) window.calcUnified();
+            }
+        }
+    </script>
     <script type="module" src="../js/calculator/index.js?v=5.2"></script>
     <script src="../js/utils/sheet.js"></script>
     <script src="../js/app.js"></script>

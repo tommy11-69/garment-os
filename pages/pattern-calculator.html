@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+
+<head>
+    <!-- Favicon & PWA Icons -->
+    <link rel="icon" type="image/png" sizes="192x192" href="../assets/icon-192.png">
+    <link rel="icon" type="image/webp" href="../assets/logo-primary.webp">
+    <link rel="apple-touch-icon" sizes="180x180" href="../assets/apple-touch-icon.png">
+    <link rel="manifest" href="../manifest.json">
+    <meta name="theme-color" content="#0059b5">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport" />
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Pattern Calculator - Garment OS</title>
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap"
+        rel="stylesheet" />
+
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="../js/tailwind.config.js"></script>
+
+    <link rel="stylesheet" href="../css/layout.css">
+    <link rel="stylesheet" href="../css/typography.css">
+    <link rel="stylesheet" href="../css/utilities.css">
+    <link rel="stylesheet" href="../css/calculator.css">
+
+    <style>
+        body.bg-background {
+            background-color: #f4f5f7;
+            background-image:
+                radial-gradient(at 0% 0%, hsla(210, 100%, 93%, 1) 0, transparent 50%),
+                radial-gradient(at 100% 0%, hsla(280, 100%, 93%, 1) 0, transparent 50%),
+                radial-gradient(at 100% 100%, hsla(30, 100%, 93%, 1) 0, transparent 50%),
+                radial-gradient(at 0% 100%, hsla(160, 100%, 93%, 1) 0, transparent 50%);
+            background-attachment: fixed;
+        }
+
+        /* Hide number spinners */
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
+
+        .result-card-glow {
+            box-shadow: 0 8px 32px rgba(0, 113, 227, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
+        }
+
+        .margin-input {
+            width: 60px !important;
+            padding-left: 0.5rem !important;
+            padding-right: 0.5rem !important;
+            text-align: center;
+            background-color: var(--color-surface-container-high, #E5E2E9);
+            color: var(--color-secondary, #5C5E61);
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body class="font-body text-body antialiased bg-background" style="padding-bottom: 310px;">
+    <div id="topbar-container"></div>
+
+    <div class="mobile-wrapper max-w-2xl mx-auto">
+        <main id="main-content-area" class="flex-1 p-md flex flex-col gap-lg">
+            <!-- Header -->
+            <div class="px-xs pt-sm flex justify-between items-start">
+                <div>
+                    <h2 class="text-[28px] leading-tight font-semibold tracking-tight text-on-surface mb-1">Pattern Calculator</h2>
+                    <p class="text-[14px] text-secondary">Calculate fabric consumption per piece (in grams)</p>
+                </div>
+            </div>
+
+            <form id="pattern-calc-form" onsubmit="event.preventDefault();" class="flex flex-col gap-lg">
+                
+                <!-- Body Section -->
+                <div class="bg-white/60 backdrop-blur-xl border border-white/50 rounded-[28px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-md flex flex-col gap-4">
+                    <h3 class="text-[16px] font-bold text-on-surface flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[20px] text-primary">accessibility_new</span>
+                        Body Block
+                    </h3>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <!-- Body Length -->
+                        <div>
+                            <label class="field-label mb-1 block">Body Length (cm)</label>
+                            <div class="flex items-center gap-2">
+                                <input id="body-length" type="number" min="0" placeholder="70" class="calc-input w-full" oninput="calculate()">
+                                <div class="relative flex items-center" title="Margin">
+                                    <span class="absolute -top-4 text-[10px] text-secondary font-semibold w-full text-center">Margin</span>
+                                    <span class="text-secondary text-sm font-bold mr-1">+</span>
+                                    <input id="body-length-margin" type="number" value="6" class="calc-input margin-input rounded-lg" oninput="calculate()">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Chest -->
+                        <div>
+                            <label class="field-label mb-1 block">Chest (cm)</label>
+                            <div class="flex items-center gap-2">
+                                <input id="chest" type="number" min="0" placeholder="54" class="calc-input w-full" oninput="calculate()">
+                                <div class="relative flex items-center" title="Margin">
+                                    <span class="absolute -top-4 text-[10px] text-secondary font-semibold w-full text-center">Margin</span>
+                                    <span class="text-secondary text-sm font-bold mr-1">+</span>
+                                    <input id="chest-margin" type="number" value="4" class="calc-input margin-input rounded-lg" oninput="calculate()">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sleeve Section -->
+                <div class="bg-white/60 backdrop-blur-xl border border-white/50 rounded-[28px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-md flex flex-col gap-4">
+                    <h3 class="text-[16px] font-bold text-on-surface flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[20px] text-[#FF9F0A]">styler</span>
+                        Sleeve Block
+                    </h3>
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <!-- Sleeve Length -->
+                        <div>
+                            <label class="field-label mb-1 block">Sleeve Length (cm)</label>
+                            <div class="flex items-center gap-2">
+                                <input id="sleeve-length" type="number" min="0" placeholder="22" class="calc-input w-full" oninput="calculate()">
+                                <div class="relative flex items-center" title="Margin">
+                                    <span class="absolute -top-4 text-[10px] text-secondary font-semibold w-full text-center">Margin</span>
+                                    <span class="text-secondary text-sm font-bold mr-1">+</span>
+                                    <input id="sleeve-length-margin" type="number" value="4" class="calc-input margin-input rounded-lg" oninput="calculate()">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sleeve Dia -->
+                        <div>
+                            <label class="field-label mb-1 block">Sleeve Dia (cm)</label>
+                            <div class="flex items-center gap-2">
+                                <input id="sleeve-dia" type="number" min="0" placeholder="18" class="calc-input w-full" oninput="calculate()">
+                                <div class="relative flex items-center" title="Margin">
+                                    <span class="absolute -top-4 text-[10px] text-secondary font-semibold w-full text-center">Margin</span>
+                                    <span class="text-secondary text-sm font-bold mr-1">+</span>
+                                    <input id="sleeve-dia-margin" type="number" value="4" class="calc-input margin-input rounded-lg" oninput="calculate()">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fabric Spec -->
+                <div class="bg-white/60 backdrop-blur-xl border border-white/50 rounded-[28px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-md flex flex-col gap-4">
+                    <h3 class="text-[16px] font-bold text-on-surface flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[20px] text-secondary">layers</span>
+                        Fabric Spec
+                    </h3>
+                    <div class="w-1/2 pr-2">
+                        <label class="field-label mb-1 block">GSM (g/m²)</label>
+                        <input id="gsm" type="number" min="0" placeholder="180" class="calc-input w-full" oninput="calculate()">
+                    </div>
+                </div>
+
+            </form>
+
+            <!-- Fixed Bottom Results -->
+            <div class="fixed bottom-0 left-0 right-0 p-4 pb-6 bg-white/80 backdrop-blur-2xl border-t border-outline/10 z-50">
+                <div class="max-w-2xl mx-auto flex gap-3">
+                    
+                    <!-- Breakdown blocks -->
+                    <div class="flex-1 bg-surface-container rounded-2xl p-3 flex flex-col justify-center border border-outline/10">
+                        <div class="text-[11px] font-semibold text-secondary uppercase tracking-wider mb-0.5">Body Weight</div>
+                        <div class="flex items-end gap-1">
+                            <span id="res-body-gms" class="text-xl font-bold text-on-surface">0.0</span>
+                            <span class="text-[12px] font-medium text-secondary mb-1">gms</span>
+                        </div>
+                    </div>
+
+                    <div class="flex-1 bg-surface-container rounded-2xl p-3 flex flex-col justify-center border border-outline/10">
+                        <div class="text-[11px] font-semibold text-secondary uppercase tracking-wider mb-0.5">Sleeve Weight</div>
+                        <div class="flex items-end gap-1">
+                            <span id="res-sleeve-gms" class="text-xl font-bold text-on-surface">0.0</span>
+                            <span class="text-[12px] font-medium text-secondary mb-1">gms</span>
+                        </div>
+                    </div>
+
+                    <!-- Total Block -->
+                    <div class="flex-1 bg-primary text-white rounded-2xl p-3 flex flex-col justify-center result-card-glow transform transition-transform hover:scale-[1.02]">
+                        <div class="text-[11px] font-bold text-white/80 uppercase tracking-wider mb-0.5">Total Weight/Pc</div>
+                        <div class="flex items-end gap-1">
+                            <span id="res-total-gms" class="text-2xl leading-none font-bold">0.0</span>
+                            <span class="text-[12px] font-semibold text-white/90">gms</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        function calculate() {
+            // Get inputs
+            const bodyLength = parseFloat(document.getElementById('body-length').value) || 0;
+            const bodyLengthMargin = parseFloat(document.getElementById('body-length-margin').value) || 0;
+            const chest = parseFloat(document.getElementById('chest').value) || 0;
+            const chestMargin = parseFloat(document.getElementById('chest-margin').value) || 0;
+            
+            const sleeveLength = parseFloat(document.getElementById('sleeve-length').value) || 0;
+            const sleeveLengthMargin = parseFloat(document.getElementById('sleeve-length-margin').value) || 0;
+            const sleeveDia = parseFloat(document.getElementById('sleeve-dia').value) || 0;
+            const sleeveDiaMargin = parseFloat(document.getElementById('sleeve-dia-margin').value) || 0;
+            
+            const gsm = parseFloat(document.getElementById('gsm').value) || 0;
+
+            // Only calculate if main dimensions and GSM are present
+            if (bodyLength === 0 && chest === 0 && sleeveLength === 0 && sleeveDia === 0 || gsm === 0) {
+                updateResults(0, 0, 0);
+                return;
+            }
+
+            // Formulas:
+            // Body = (Body Length + Margin) * (Chest + Margin) * 2 * GSM / 10000
+            const bodyGms = (bodyLength + bodyLengthMargin) * (chest + chestMargin) * 2 * gsm / 10000;
+            
+            // Sleeve = (Sleeve + Margin) * (Sleeve Dia + Margin) * 2 * GSM / 10000
+            const sleeveGms = (sleeveLength + sleeveLengthMargin) * (sleeveDia + sleeveDiaMargin) * 2 * gsm / 10000;
+            
+            // Total
+            const totalGms = bodyGms + sleeveGms;
+
+            updateResults(bodyGms, sleeveGms, totalGms);
+        }
+
+        function updateResults(body, sleeve, total) {
+            document.getElementById('res-body-gms').textContent = body > 0 ? body.toFixed(1) : '0.0';
+            document.getElementById('res-sleeve-gms').textContent = sleeve > 0 ? sleeve.toFixed(1) : '0.0';
+            document.getElementById('res-total-gms').textContent = total > 0 ? total.toFixed(1) : '0.0';
+        }
+
+        // Initialize with empty state
+        calculate();
+    </script>
+</body>
+</html>
