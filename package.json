@@ -2,13 +2,11 @@
   "name": "garment-os",
   "version": "1.0.0",
   "description": "Garment OS Manufacturing Operating System",
-  "main": "backend/worker.js",
+  "main": "dev/worker.js",
   "scripts": {
-    "start": "node backend/server.js",
-    "dev:backend": "node backend/server.js",
     "dev:worker": "wrangler dev -c wrangler.dev.jsonc --persist-to ../.wrangler_state_garment",
-    "seed": "node backend/scripts/seed.js",
-    "test:smoke": "node backend/scripts/smoke-test.js",
+    "audit:live": "node dev/scripts/audit_live_api.js",
+    "test:smoke": "node dev/scripts/smoke-test.js",
     "deploy": "wrangler deploy"
   },
   "dependencies": {},

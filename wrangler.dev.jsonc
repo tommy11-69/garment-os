@@ -1,7 +1,7 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "garment-os",
-	"main": "backend/worker.js",
+	"main": "dev/worker.js",
 	"compatibility_date": "2024-11-01",
 	"assets": {
 		"directory": "./",
