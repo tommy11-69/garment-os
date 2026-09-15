@@ -215,7 +215,7 @@ class ProductionApp {
                         <div class="flex items-center gap-1.5 overflow-x-auto pb-1">
                             ${products.map((p, idx) => `
                                 <button onclick="window.productionRouter.switchProduct(${idx})" 
-                                    class="px-3 py-1 rounded-xl text-[12px] font-bold active-scale transition-apple ${idx === this.activeProductIndex ? 'bg-on-surface text-surface-lowest shadow-xs' : 'bg-surface-container text-on-surface hover:bg-surface-variant'}">
+                                    class="px-3 py-1 rounded-xl text-[12px] font-bold active-scale transition-apple ${idx === this.activeProductIndex ? 'bg-primary text-white shadow-sm' : 'bg-surface-container text-on-surface hover:bg-surface-variant'}">
                                     ${p.name} (${p.qty} pcs)
                                 </button>
                             `).join('')}

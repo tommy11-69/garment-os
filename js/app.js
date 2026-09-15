@@ -6,20 +6,141 @@
  * @param {string} targetId - The ID of the element to inject the component into
  * @param {function} callback - Optional callback to run after the component is loaded
  */
+/**
+ * Loads a component HTML into a target element with resilient multi-path fallbacks
+ * @param {string} url - The URL of the component to load
+ * @param {string} targetId - The ID of the element to inject the component into
+ * @param {function} callback - Optional callback to run after the component is loaded
+ */
 async function loadComponent(url, targetId, callback) {
-    try {
-        const response = await fetch(url);
-        if (!response.ok) throw new Error(`Failed to load ${url}`);
-        const html = await response.text();
-        const el = document.getElementById(targetId);
-        if (el) {
-            el.innerHTML = html;
-            if (callback) callback();
+    const filename = url.split('/').pop();
+    const candidatePaths = [
+        url,
+        `../components/${filename}`,
+        `./components/${filename}`,
+        `/components/${filename}`,
+        `components/${filename}`
+    ];
+    const pathsToTry = [...new Set(candidatePaths)];
+
+    let html = null;
+    for (const path of pathsToTry) {
+        try {
+            const response = await fetch(path);
+            if (response.ok) {
+                html = await response.text();
+                break;
+            }
+        } catch (e) {
+            // Try next fallback path
         }
-    } catch (error) {
-        console.error('Error loading component:', error);
+    }
+
+    const el = document.getElementById(targetId);
+    if (el) {
+        if (html) {
+            el.innerHTML = html;
+        }
+        if (callback) callback();
     }
 }
+
+// Helper to set active link state on sidebar navigation links
+function updateSidebarActiveState(currentPage) {
+    const sidebarLinks = document.querySelectorAll('.sidebar-nav-link[data-page]');
+    sidebarLinks.forEach(link => {
+        if (link.dataset.page === currentPage) {
+            link.classList.add('sidebar-nav-link--active');
+            link.setAttribute('aria-current', 'page');
+            const icon = link.querySelector('.material-symbols-outlined');
+            if (icon) {
+                icon.style.fontVariationSettings = "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24";
+            }
+        } else {
+            link.classList.remove('sidebar-nav-link--active');
+            link.removeAttribute('aria-current');
+            const icon = link.querySelector('.material-symbols-outlined');
+            if (icon) {
+                icon.style.fontVariationSettings = "'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24";
+            }
+        }
+    });
+}
+
+const STATIC_SIDEBAR_HTML = `<nav class="sidebar-nav" id="sidebar-nav" role="navigation" aria-label="Main navigation">
+    <div class="flex items-center gap-3 px-5 h-[68px] shrink-0 border-b border-outline-variant/30">
+        <div class="w-8 h-8 rounded-xl bg-primary flex items-center justify-center shrink-0 shadow-sm">
+            <span class="material-symbols-outlined text-white text-[18px]" style="font-variation-settings:'FILL' 1;">checkroom</span>
+        </div>
+        <div class="min-w-0">
+            <h1 class="text-[14px] font-bold text-on-surface tracking-tight leading-tight truncate">Garment OS</h1>
+            <p class="text-[10px] font-semibold text-secondary uppercase tracking-[0.07em]">Enterprise</p>
+        </div>
+    </div>
+    <div class="flex-1 overflow-y-auto py-3 flex flex-col" style="gap: 1px;">
+        <div class="px-5 pb-1.5 pt-3">
+            <span class="text-[10px] font-bold text-secondary uppercase tracking-[0.08em]">Workspace</span>
+        </div>
+        <a href="dashboard.html" data-page="dashboard" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+            <span class="material-symbols-outlined text-[20px] shrink-0">dashboard</span>
+            <span class="text-[13px] font-semibold leading-none">Dashboard</span>
+        </a>
+        <a href="calculator.html" data-page="calculator" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+            <span class="material-symbols-outlined text-[20px] shrink-0">calculate</span>
+            <span class="text-[13px] font-semibold leading-none">Costing</span>
+        </a>
+        <a href="orders.html" data-page="orders" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+            <span class="material-symbols-outlined text-[20px] shrink-0">receipt_long</span>
+            <span class="text-[13px] font-semibold leading-none">Orders</span>
+        </a>
+        <a href="billings.html" data-page="billings" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+            <span class="material-symbols-outlined text-[20px] shrink-0">receipt</span>
+            <span class="text-[13px] font-semibold leading-none">Billings</span>
+        </a>
+        <a href="finance.html" data-page="finance" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+            <span class="material-symbols-outlined text-[20px] shrink-0">payments</span>
+            <span class="text-[13px] font-semibold leading-none">Finance</span>
+        </a>
+        <a href="reports.html" data-page="reports" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+            <span class="material-symbols-outlined text-[20px] shrink-0">analytics</span>
+            <span class="text-[13px] font-semibold leading-none">Reports</span>
+        </a>
+        <div class="mx-4 my-2 border-t border-outline-variant/40"></div>
+        <div class="px-5 pb-1.5 pt-1">
+            <span class="text-[10px] font-bold text-secondary uppercase tracking-[0.08em]">Management</span>
+        </div>
+        <a href="customers.html" data-page="customers" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+            <span class="material-symbols-outlined text-[20px] shrink-0">groups</span>
+            <span class="text-[13px] font-semibold leading-none">Customers</span>
+        </a>
+        <a href="inventory.html" data-page="inventory" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+            <span class="material-symbols-outlined text-[20px] shrink-0">inventory_2</span>
+            <span class="text-[13px] font-semibold leading-none">Inventory</span>
+        </a>
+        <a href="vendors.html" data-page="vendors" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+            <span class="material-symbols-outlined text-[20px] shrink-0">storefront</span>
+            <span class="text-[13px] font-semibold leading-none">Vendors</span>
+        </a>
+        <a href="production.html" data-page="production" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+            <span class="material-symbols-outlined text-[20px] shrink-0">precision_manufacturing</span>
+            <span class="text-[13px] font-semibold leading-none">Production</span>
+        </a>
+        <a href="dispatch.html" data-page="dispatch" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+            <span class="material-symbols-outlined text-[20px] shrink-0">local_shipping</span>
+            <span class="text-[13px] font-semibold leading-none">Dispatch</span>
+        </a>
+    </div>
+    <div class="shrink-0 border-t border-outline-variant/30 py-3 flex flex-col" style="gap: 1px;">
+        <a href="more.html" data-page="more" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+            <span class="material-symbols-outlined text-[20px] shrink-0">grid_view</span>
+            <span class="text-[13px] font-semibold leading-none">More</span>
+        </a>
+        <a href="settings.html" data-page="settings" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+            <span class="material-symbols-outlined text-[20px] shrink-0">settings</span>
+            <span class="text-[13px] font-semibold leading-none">Settings</span>
+        </a>
+    </div>
+</nav>`;
 
 // ── Subtle Top Progress Bar Controller (Non-blocking) ─────
 function initTopProgressBar() {
@@ -75,29 +196,22 @@ function initApp() {
     }
 
     // ── Load Desktop/Tablet Sidebar Navigation ──
-    // Create the container programmatically — no HTML changes needed on any page.
-    // CSS in responsive.css hides it on mobile (< 768px).
-    if (!document.getElementById('sidebar-container')) {
-        const sidebarContainer = document.createElement('div');
+    let sidebarContainer = document.getElementById('sidebar-container');
+    if (!sidebarContainer) {
+        sidebarContainer = document.createElement('div');
         sidebarContainer.id = 'sidebar-container';
         document.body.insertBefore(sidebarContainer, document.body.firstChild);
     }
+    
+    // Immediately populate static sidebar HTML synchronously to prevent any blank gap or disappearance
+    if (!sidebarContainer.innerHTML || sidebarContainer.innerHTML.trim() === '') {
+        sidebarContainer.innerHTML = STATIC_SIDEBAR_HTML;
+    }
+    updateSidebarActiveState(currentPage);
+
+    // Fetch dynamic component asynchronously with fallback candidate paths
     loadComponent('../components/sidebar-nav.html', 'sidebar-container', () => {
-        // Set active state on sidebar links
-        const sidebarLinks = document.querySelectorAll('.sidebar-nav-link[data-page]');
-        sidebarLinks.forEach(link => {
-            if (link.dataset.page === currentPage) {
-                link.classList.add('sidebar-nav-link--active');
-                link.setAttribute('aria-current', 'page');
-                // Ensure icon fill is set to filled state
-                const icon = link.querySelector('.material-symbols-outlined');
-                if (icon) {
-                    icon.style.fontVariationSettings = "'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24";
-                }
-            } else {
-                link.removeAttribute('aria-current');
-            }
-        });
+        updateSidebarActiveState(currentPage);
     });
 
     // ── Load Mobile Bottom Navigation ──

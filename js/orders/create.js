@@ -356,10 +356,16 @@ window.coSetProductCategory = function(idx, category) {
     const prod = coState.products[idx];
     if (!prod) return;
     prod.category = category;
-    prod.sizes = category === 'Adults'
-        ? { XS: 0, S: 0, M: 0, L: 0, XL: 0, XXL: 0, XXXL: 0, XXXXL: 0 }
-        : { '24': 0, '26': 0, '28': 0, '30': 0, '32': 0, '34': 0, '36': 0, '38': 0 };
-    applyRatioPresetInternal(idx, 'even');
+    if (category === 'Adults') {
+        prod.sizes = { XS: 0, S: 0, M: 0, L: 0, XL: 0, XXL: 0, XXXL: 0, XXXXL: 0 };
+        applyRatioPresetInternal(idx, 'even');
+    } else if (category === 'Kids') {
+        prod.sizes = { '24': 0, '26': 0, '28': 0, '30': 0, '32': 0, '34': 0, '36': 0, '38': 0 };
+        applyRatioPresetInternal(idx, 'even');
+    } else {
+        prod.category = 'General';
+        prod.sizes = { 'Free Size': prod.qty || 0 };
+    }
     renderProducts();
     calculateFinancials();
 };
@@ -368,8 +374,29 @@ window.coUpdateProductTargetQty = function(idx, targetVal) {
     const prod = coState.products[idx];
     if (!prod) return;
     prod.qty = parseInt(targetVal) || 0;
-    applyRatioPresetInternal(idx, 'even');
-    renderProducts();
+
+    if (prod.category === 'General') {
+        prod.sizes = { 'Free Size': prod.qty };
+        const genDisplay = qs(`general-qty-display-${idx}`);
+        if (genDisplay) genDisplay.textContent = `${prod.qty} pcs`;
+    } else {
+        applyRatioPresetInternal(idx, 'even');
+        const isAdults = prod.category === 'Adults';
+        const sizeKeys = isAdults
+            ? ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'XXXXL']
+            : ['24', '26', '28', '30', '32', '34', '36', '38'];
+        sizeKeys.forEach(sz => {
+            const input = qs(`size-input-${idx}-${sz}`);
+            if (input) input.value = prod.sizes[sz] || '';
+        });
+    }
+
+    const totalQty = coState.products.reduce((s, p) => s + (p.qty || 0), 0);
+    const totalPcsEl = qs('co-header-total-pcs');
+    if (totalPcsEl) totalPcsEl.textContent = `${totalQty.toLocaleString()} pcs total`;
+
+    updateProductSumBadge(idx);
+    updateProductBOMDisplay(idx);
     calculateFinancials();
 };
 
@@ -386,7 +413,11 @@ window.coUpdateProductSizeCell = function(idx, sizeKey, cellVal) {
 function applyRatioPresetInternal(idx, presetType) {
     const prod = coState.products[idx];
     if (!prod) return;
-    const target   = prod.qty || 0;
+    const target = prod.qty || 0;
+    if (prod.category === 'General') {
+        prod.sizes = { 'Free Size': target };
+        return;
+    }
     const isAdults = prod.category === 'Adults';
 
     if (presetType === 'clear') {
@@ -429,8 +460,9 @@ window.coApplyRatioPreset = function(idx, presetType) {
 function updateProductSumBadge(idx) {
     const prod = coState.products[idx];
     if (!prod) return;
+    const isGeneral = prod.category === 'General';
     const currentSum = Object.values(prod.sizes).reduce((s, v) => s + (v || 0), 0);
-    const isMatch    = currentSum === prod.qty;
+    const isMatch    = isGeneral ? (prod.qty > 0) : (currentSum === prod.qty);
     const badge      = qs(`p-sum-badge-${idx}`);
     if (badge) {
         badge.className = `px-2.5 py-1 rounded-full text-[11px] font-bold ${
@@ -438,26 +470,44 @@ function updateProductSumBadge(idx) {
                 ? 'bg-[#008A00]/10 text-[#008A00] border border-[#008A00]/20'
                 : 'bg-error/10 text-error border border-error/20'
         }`;
-        badge.textContent = `${currentSum} / ${prod.qty} pcs`;
+        badge.textContent = isGeneral ? `${prod.qty || 0} pcs (General)` : `${currentSum} / ${prod.qty} pcs`;
     }
 }
 
 // ─── Product Card Renderer ───────────────────────────────────────────────────
 function renderProductCard(prod, idx) {
+    const isGeneral = prod.category === 'General';
     const isAdults  = prod.category === 'Adults';
     const sizeKeys  = isAdults
         ? ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'XXXXL']
         : ['24', '26', '28', '30', '32', '34', '36', '38'];
 
     const currentSum = Object.values(prod.sizes).reduce((s, v) => s + (v || 0), 0);
-    const isMatch    = currentSum === prod.qty;
+    const isMatch    = isGeneral ? (prod.qty > 0) : (currentSum === prod.qty);
     const bom        = computeProductBOM(prod);
 
     // Size inputs
-    const sizeInputsHtml = sizeKeys.map(sz => `
+    const sizeInputsHtml = isGeneral ? `
+        <div class="col-span-full bg-surface-container/50 border border-outline-variant/60 rounded-xl p-3.5 flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                    <span class="material-symbols-outlined text-[20px]">layers</span>
+                </div>
+                <div>
+                    <p class="text-[13px] font-bold text-on-surface">General / Free Size Quantity</p>
+                    <p class="text-[11px] text-secondary">Single batch volume without size distribution matrix.</p>
+                </div>
+            </div>
+            <div class="text-right">
+                <span class="text-[10px] font-bold text-secondary uppercase block">Batch Total</span>
+                <span id="general-qty-display-${idx}" class="text-[15px] font-extrabold text-primary">${prod.qty || 0} pcs</span>
+            </div>
+        </div>
+    ` : sizeKeys.map(sz => `
         <div class="flex flex-col items-center gap-1 bg-surface-container/60 rounded-xl p-2 border border-outline-variant/40">
             <span class="text-[10px] font-bold text-secondary uppercase">${sz}</span>
             <input type="number" min="0" placeholder="0" value="${prod.sizes[sz] || ''}"
+                id="size-input-${idx}-${sz}"
                 oninput="window.coUpdateProductSizeCell(${idx}, '${sz}', this.value)"
                 class="w-full text-center font-bold text-[14px] bg-transparent border-0 p-0 focus:ring-0 outline-none text-on-surface">
         </div>
@@ -550,7 +600,7 @@ function renderProductCard(prod, idx) {
             </div>
             <div class="flex items-center gap-2 shrink-0 ml-3">
                 <span id="p-sum-badge-${idx}" class="px-2.5 py-1 rounded-full text-[11px] font-bold ${isMatch ? 'bg-[#008A00]/10 text-[#008A00] border border-[#008A00]/20' : 'bg-error/10 text-error border border-error/20'}">
-                    ${currentSum} / ${prod.qty} pcs
+                    ${isGeneral ? `${prod.qty || 0} pcs (General)` : `${currentSum} / ${prod.qty} pcs`}
                 </span>
                 ${coState.products.length > 1 ? `
                     <button type="button" onclick="window.coRemoveProduct(${idx})"
@@ -569,26 +619,32 @@ function renderProductCard(prod, idx) {
             </div>
 
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-3 flex-wrap">
                     <!-- Category toggle -->
                     <div class="flex rounded-xl border border-outline-variant overflow-hidden text-[12px] font-bold">
                         <button type="button" onclick="window.coSetProductCategory(${idx}, 'Adults')"
-                            class="${isAdults ? 'bg-primary text-white' : 'bg-surface text-secondary'} px-3 py-1.5 transition-all">
+                            class="${isAdults ? 'bg-primary text-white' : 'bg-surface text-secondary hover:bg-surface-variant'} px-3 py-1.5 transition-all">
                             Adults
                         </button>
                         <button type="button" onclick="window.coSetProductCategory(${idx}, 'Kids')"
-                            class="${!isAdults ? 'bg-primary text-white' : 'bg-surface text-secondary'} px-3 py-1.5 transition-all border-l border-outline-variant">
+                            class="${prod.category === 'Kids' ? 'bg-primary text-white' : 'bg-surface text-secondary hover:bg-surface-variant'} px-3 py-1.5 transition-all border-l border-outline-variant">
                             Kids
+                        </button>
+                        <button type="button" onclick="window.coSetProductCategory(${idx}, 'General')"
+                            class="${isGeneral ? 'bg-primary text-white' : 'bg-surface text-secondary hover:bg-surface-variant'} px-3 py-1.5 transition-all border-l border-outline-variant">
+                            General (No Sizes)
                         </button>
                     </div>
                     <!-- Target qty -->
                     <div class="flex items-center gap-2">
                         <label class="text-[10px] font-bold text-secondary uppercase whitespace-nowrap">Target Qty</label>
                         <input type="number" min="1" value="${prod.qty || ''}" placeholder="0"
+                            id="target-qty-${idx}"
                             oninput="window.coUpdateProductTargetQty(${idx}, this.value)"
                             class="w-24 bg-surface border border-outline-variant rounded-xl px-3 py-1.5 text-[15px] font-extrabold text-primary outline-none focus:ring-2 focus:ring-primary/20 text-center">
                     </div>
                 </div>
+                ${!isGeneral ? `
                 <!-- Ratio presets -->
                 <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
                     <span class="text-[10px] font-bold text-secondary uppercase mr-1 whitespace-nowrap">Presets:</span>
@@ -596,10 +652,11 @@ function renderProductCard(prod, idx) {
                     <button type="button" onclick="window.coApplyRatioPreset(${idx}, 'bell')"  class="ratio-btn px-2.5 py-1 rounded-lg border border-outline-variant text-[11px] font-bold text-secondary bg-surface whitespace-nowrap">Bell Curve</button>
                     <button type="button" onclick="window.coApplyRatioPreset(${idx}, 'clear')" class="ratio-btn px-2.5 py-1 rounded-lg border border-outline-variant text-[11px] font-bold text-error   bg-surface whitespace-nowrap">Clear</button>
                 </div>
+                ` : ''}
             </div>
 
             <!-- Size grid -->
-            <div class="grid grid-cols-4 sm:grid-cols-8 gap-2">
+            <div class="${isGeneral ? 'grid grid-cols-1' : 'grid grid-cols-4 sm:grid-cols-8 gap-2'}">
                 ${sizeInputsHtml}
             </div>
         </div>
@@ -1032,10 +1089,17 @@ function validateCurrentStep() {
         for (let i = 0; i < coState.products.length; i++) {
             const p = coState.products[i];
             if (!p.name.trim()) { showToast(`Please enter a name for Product #${i + 1}`, 'error'); return false; }
-            const sizeSum = Object.values(p.sizes).reduce((s, v) => s + (v || 0), 0);
-            if (sizeSum !== p.qty) {
-                showToast(`Size breakdown sum (${sizeSum}) for "${p.name}" must equal target qty (${p.qty} pcs)`, 'error');
-                return false;
+            if (p.category === 'General') {
+                if (!p.qty || p.qty <= 0) {
+                    showToast(`Please enter a valid quantity for Product #${i + 1} — "${p.name}"`, 'error');
+                    return false;
+                }
+            } else {
+                const sizeSum = Object.values(p.sizes).reduce((s, v) => s + (v || 0), 0);
+                if (sizeSum !== p.qty) {
+                    showToast(`Size breakdown sum (${sizeSum}) for "${p.name}" must equal target qty (${p.qty} pcs)`, 'error');
+                    return false;
+                }
             }
             if (!p.fabric.gsm || p.fabric.gsm <= 0) {
                 showToast(`Please enter fabric GSM for Product #${i + 1} — "${p.name}"`, 'error');

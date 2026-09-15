@@ -396,6 +396,7 @@ function renderProductsMatrixTab(order) {
             </div>
 
             ${products.map((p, pIdx) => {
+                const isGeneral = p.category === 'General' || p.category === 'Free Size';
                 const isKids = p.category === 'Kids';
                 const sizeKeys = isKids
                     ? ['24', '26', '28', '30', '32', '34', '36', '38']
@@ -403,12 +404,28 @@ function renderProductsMatrixTab(order) {
 
                 const sizesObj = (p.sizes && typeof p.sizes === 'object') ? p.sizes : {};
 
-                const sizesGridHtml = sizeKeys.map(sz => `
-                    <div class="text-center bg-surface-container/70 rounded-xl py-1.5 px-1 border border-outline-variant/40">
-                        <p class="text-[9px] font-bold text-secondary uppercase">${sz}</p>
-                        <p class="text-[13px] font-extrabold text-on-surface mt-0.5">${sizesObj[sz] || 0}</p>
+                const sizesContentHtml = isGeneral ? `
+                    <div class="flex items-center justify-between bg-surface-container/60 rounded-xl p-3 border border-outline-variant/40">
+                        <div class="flex items-center gap-2">
+                            <span class="material-symbols-outlined text-[18px] text-primary">layers</span>
+                            <div>
+                                <p class="text-[12px] font-bold text-on-surface">General / Free Size Quantity</p>
+                                <p class="text-[10px] text-secondary">Single batch volume without size distribution matrix</p>
+                            </div>
+                        </div>
+                        <span class="px-3 py-1 rounded-full text-[12px] font-extrabold bg-primary/10 text-primary border border-primary/20">${p.qty || 0} pcs</span>
                     </div>
-                `).join('');
+                ` : `
+                    <p class="text-[11px] font-bold text-secondary uppercase mb-2">Size Ratio Matrix (pcs)</p>
+                    <div class="grid grid-cols-4 sm:grid-cols-8 gap-1.5">
+                        ${sizeKeys.map(sz => `
+                            <div class="text-center bg-surface-container/70 rounded-xl py-1.5 px-1 border border-outline-variant/40">
+                                <p class="text-[9px] font-bold text-secondary uppercase">${sz}</p>
+                                <p class="text-[13px] font-extrabold text-on-surface mt-0.5">${sizesObj[sz] || 0}</p>
+                            </div>
+                        `).join('')}
+                    </div>
+                `;
 
                 const pWf = p.workflowType || order.workflowType || 'default';
                 const pStages = getProductWorkflowStages(p, pWf);
@@ -437,10 +454,7 @@ function renderProductsMatrixTab(order) {
                                 <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
                             </button>
                         </div>
-                        <p class="text-[11px] font-bold text-secondary uppercase mb-2">Size Ratio Matrix (pcs)</p>
-                        <div class="grid grid-cols-4 sm:grid-cols-8 gap-1.5">
-                            ${sizesGridHtml}
-                        </div>
+                        ${sizesContentHtml}
                     </div>
                 `;
             }).join('')}
