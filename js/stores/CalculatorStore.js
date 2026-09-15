@@ -12,6 +12,10 @@ class CalculatorStore extends BaseStore {
             u: {
                 qty: 0, pcsPerKg: 0, garmentType: 'T-Shirt', cmtMode: 'combined',
                 fabricPriceKg: 0, wastage: 0, fabricCostPc: 0,
+                // Pattern Auto-Calc inputs
+                bodyL: 0, bodyLM: 6, chest: 0, chestM: 4,
+                slvL: 0, slvLM: 4, slvDia: 0, slvDiaM: 4,
+                gsm: 0, weightGms: 0, patternCalcOpen: false,
                 cmt: 0, cutting: 0, fusing: 0, wages: 0, packing: 0,
                 printing: 0, sublimation: 0, allowances: 0, overheads: 0,
                 acc1: 0, acc2: 0, acc3: 0, pattern: 0,
@@ -63,6 +67,9 @@ class CalculatorStore extends BaseStore {
             u: { 
                 ...this.state.u, 
                 qty:0, pcsPerKg:0, fabricPriceKg:0, wastage:0, fabricCostPc:0, 
+                bodyL: 0, bodyLM: 6, chest: 0, chestM: 4,
+                slvL: 0, slvLM: 4, slvDia: 0, slvDiaM: 4,
+                gsm: 0, weightGms: 0, patternCalcOpen: false,
                 cmt:0, cutting:0, fusing:0, wages:0, packing:0,
                 printing:0, sublimation:0, allowances:0, overheads:0, 
                 acc1:0, acc2:0, acc3:0, pattern:0,

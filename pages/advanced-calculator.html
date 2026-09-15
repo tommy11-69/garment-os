@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Advanced BOM Costing - Garment OS</title>
+
+    <script>
+      (function() {
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+        window.toggleTheme = window.toggleTheme || function() {
+          const isDark = document.documentElement.classList.toggle('dark');
+          localStorage.setItem('theme', isDark ? 'dark' : 'light');
+          if (typeof window.updateThemeToggleUI === 'function') {
+            window.updateThemeToggleUI(isDark);
+          }
+          window.dispatchEvent(new CustomEvent('gos-theme-changed', { detail: { isDark } }));
+        };
+      })();
+    </script>
+
+    <link rel="icon" type="image/png" sizes="192x192" href="../assets/icon-192.png">
+    <link rel="icon" type="image/webp" href="../assets/logo-primary.webp">
+    <meta name="theme-color" content="#0059b5">
+
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet" />
+
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="../js/tailwind.config.js"></script>
+
+    <link rel="stylesheet" href="../css/layout.css">
+    <link rel="stylesheet" href="../css/typography.css">
+    <link rel="stylesheet" href="../css/utilities.css">
+    <link rel="stylesheet" href="../css/calculator.css">
+
+</head>
+<body class="font-body text-body antialiased bg-background dark:bg-slate-950 text-on-surface dark:text-slate-100 selection:bg-primary/20">
+
+    <div id="sidebar-container"></div>
+    <div id="topbar-container"></div>
+    
+    <div class="main-wrapper">
+        <main class="page-container pb-32">
+            <!-- Header -->
+            <div class="flex items-center justify-between mb-4 mt-2">
+                <div class="flex flex-col">
+                    <div class="inline-flex bg-surface-variant/40 dark:bg-slate-800/60 p-1 rounded-xl w-fit mb-2">
+                        <button onclick="window.location.href='calculator.html'" class="px-5 py-2 text-[13px] font-bold rounded-lg text-secondary dark:text-slate-400 hover:text-on-surface dark:hover:text-slate-200 transition-colors">Quick</button>
+                        <button class="px-5 py-2 text-[13px] font-bold rounded-lg bg-surface dark:bg-slate-700 text-on-surface dark:text-slate-100 shadow-sm cursor-default">Advanced</button>
+                    </div>
+                    <p class="text-[14px] text-secondary dark:text-slate-400 mt-1">Multi-fabric BOM, Size Ratio & Advanced CMT</p>
+                </div>
+                <div class="flex items-center gap-2 print:hidden">
+                    <button id="btn-print" onclick="window.print()" class="w-10 h-10 rounded-xl bg-surface-variant/30 text-secondary hover:bg-surface-variant/50 transition-colors flex items-center justify-center">
+                        <span class="material-symbols-outlined text-[20px]">print</span>
+                    </button>
+                    <button id="btn-save-draft" class="btn-secondary h-10 px-4 text-[13px]">Save Draft</button>
+                    <button id="btn-create-quote" class="btn-primary h-10 px-4 text-[13px] bg-primary text-white rounded-xl font-semibold shadow-sm hover:opacity-90 active:scale-95 transition-all">Create Quote</button>
+                </div>
+            </div>
+
+            <!-- Global Inputs -->
+            <div class="bg-surface dark:bg-slate-900 rounded-3xl p-5 mb-6 shadow-sm border border-outline-variant/30 dark:border-slate-800">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-[12px] font-semibold text-on-surface dark:text-slate-300 ml-1 mb-1 block">Client / Buyer</label>
+                        <input type="text" id="adv-client" placeholder="e.g. Acme Corp" class="w-full bg-surface-variant/30 dark:bg-slate-800 border-none rounded-2xl px-4 py-3 text-[15px] font-semibold outline-none focus:ring-2 focus:ring-primary/20">
+                    </div>
+                    <div>
+                        <label class="text-[12px] font-semibold text-on-surface dark:text-slate-300 ml-1 mb-1 block">Garment Type</label>
+                        <input type="text" id="adv-garment-type" placeholder="e.g. Zip Hoodie" value="Garment" class="w-full bg-surface-variant/30 dark:bg-slate-800 border-none rounded-2xl px-4 py-3 text-[15px] font-semibold outline-none focus:ring-2 focus:ring-primary/20">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modules Container (Rendered by JS) -->
+            <div id="adv-modules-container" class="flex flex-col gap-6">
+                <!-- Size Ratio Module -->
+                <div id="mod-sizes"></div>
+                <!-- Fabrics Module -->
+                <div id="mod-fabrics"></div>
+                <!-- Trims Module -->
+                <div id="mod-trims"></div>
+                <!-- CMT & VAS Module -->
+                <div id="mod-vas"></div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Fixed Bottom Result Bar -->
+    <div class="fixed bottom-0 left-0 lg:left-[260px] right-0 bg-surface/90 dark:bg-slate-900/90 backdrop-blur-xl border-t border-outline-variant/30 dark:border-slate-800 p-4 pb-safe-4 z-40">
+        <div class="max-w-[1200px] mx-auto flex items-center justify-between gap-4">
+            <div class="flex flex-col">
+                <span class="text-[11px] font-semibold text-secondary uppercase tracking-wider">Total Est. Cost</span>
+                <span id="adv-total-cost" class="text-[20px] font-extrabold text-on-surface dark:text-slate-100">₹0.00</span>
+            </div>
+            <div class="flex items-center gap-3">
+                <div class="flex flex-col items-end">
+                    <span class="text-[11px] font-semibold text-secondary uppercase tracking-wider">Cost/pc</span>
+                    <span id="adv-cost-pc" class="text-[16px] font-bold text-on-surface dark:text-slate-100">₹0.00</span>
+                </div>
+                <div class="w-px h-10 bg-outline-variant/30 dark:bg-slate-700"></div>
+                <div class="flex flex-col items-end">
+                    <span class="text-[11px] font-semibold text-secondary uppercase tracking-wider">Profit Margin</span>
+                    <input type="number" id="adv-profit-pct" class="w-16 h-8 text-right bg-surface-variant/50 dark:bg-slate-800 border-none rounded-lg text-[14px] font-bold outline-none" value="30">%
+                </div>
+                <div class="w-px h-10 bg-outline-variant/30 dark:bg-slate-700"></div>
+                <div class="flex flex-col items-end">
+                    <span class="text-[11px] font-semibold text-secondary uppercase tracking-wider">Selling Price/pc</span>
+                    <span id="adv-sp-pc" class="text-[18px] font-extrabold text-[#00B386]">₹0.00</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="bottom-nav-container"></div>
+    <div id="sheets-container"></div>
+
+    <script src="../js/app.js"></script>
+    <script type="module" src="../js/stores/AdvancedCalculatorStore.js"></script>
+    <script type="module" src="../js/advanced-calculator/index.js"></script>
+    <script src="../js/utils/sheet.js"></script>
+</body>
+</html>

@@ -199,6 +199,75 @@ function buildDetailHTML(c, sheetId) {
         return `${summaryCard}${fallbackCard}`;
     }
 
+    if (u.mode === 'advanced' || c.mode === 'advanced') {
+        // ── Advanced Calculator Detailed View ──
+        
+        // 1. Size Ratios
+        let sizeBody = '';
+        if (u.sizes && u.sizes.length) {
+            sizeBody = u.sizes.map(s => fieldRow(`${s.name} (Ratio: ${s.ratio})`, `${s.qty} pcs`)).join('');
+            sizeBody += fieldRow('Total Order Qty', `${u.totalQty} pcs`);
+        }
+        const sizeCard = sizeBody ? card('straighten', 'Size Ratio', '#FF9F0A', sizeBody) : '';
+        
+        // 2. Multi-Fabric Engine
+        let fabricBody = '';
+        if (u.components && u.components.length) {
+            u.components.forEach(comp => {
+                fabricBody += `
+                <div class="py-3 border-b border-outline-variant/15 last:border-0">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-[13px] font-bold text-on-surface">${comp.name}</span>
+                        <span class="text-[14px] font-bold text-[#0071E3]">${rs(comp.costPc)} / pc</span>
+                    </div>
+                    <div class="text-[11px] text-secondary font-medium flex justify-between">
+                        <span>Price: ${rs(comp.fabricPriceKg)}/kg</span>
+                        <span>Wt: ${comp.weightGms?.toFixed(1) || 0} gms</span>
+                        <span>GSM: ${comp.gsm || 0}</span>
+                    </div>
+                </div>`;
+            });
+            const totalFab = u.components.reduce((acc, comp) => acc + (comp.costPc || 0), 0);
+            fabricBody += fieldRow('Total Fabric / pc', rs(totalFab));
+        }
+        const fabricCard = fabricBody ? card('layers', 'Multi-Fabric BOM', '#0071E3', fabricBody) : '';
+
+        // 3. Trims Engine
+        let trimsBody = '';
+        if (u.trims && u.trims.length) {
+            u.trims.forEach(trim => {
+                trimsBody += fieldRow(`${trim.name} (${trim.cons} @ ${rs(trim.rate)})`, rs(trim.costPc));
+            });
+            const totalTrims = u.trims.reduce((acc, trim) => acc + (trim.costPc || 0), 0);
+            trimsBody += fieldRow('Total Trims / pc', rs(totalTrims));
+        }
+        const trimsCard = trimsBody ? card('category', 'Trims BOM', '#FF3B30', trimsBody) : '';
+
+        // 4. VAS & CMT
+        const vasBody = [
+            u.cmt > 0 ? fieldRow('CMT', rs(u.cmt)) : '',
+            u.washing > 0 ? fieldRow('Washing', rs(u.washing)) : '',
+            u.embroidery > 0 ? fieldRow('Embroidery', rs(u.embroidery)) : '',
+            u.printing > 0 ? fieldRow('Printing', rs(u.printing)) : '',
+            u.freight > 0 ? fieldRow('Freight/Logistics', rs(u.freight)) : '',
+            u.other > 0 ? fieldRow('Other', rs(u.other)) : '',
+        ].filter(Boolean).join('');
+        const totalVAS = (u.cmt||0) + (u.washing||0) + (u.embroidery||0) + (u.printing||0) + (u.freight||0) + (u.other||0);
+        const vasCard = vasBody ? card('precision_manufacturing', `CMT & VAS (Total: ${rs(totalVAS)})`, '#AF52DE', vasBody) : '';
+
+        return `${summaryCard}${sizeCard}${fabricCard}${trimsCard}${vasCard}`;
+    }
+
+    // ── 1.5 Pattern & Fabric Weight Card
+    const hasPattern = u.weightGms > 0;
+    const patternBody = hasPattern ? [
+        fieldRow('Body + Margins', `${u.bodyL||0} + ${u.bodyLM||0}`, `Chest: ${u.chest||0} + ${u.chestM||0}`),
+        fieldRow('Sleeve + Margins', `${u.slvL||0} + ${u.slvLM||0}`, `Dia: ${u.slvDia||0} + ${u.slvDiaM||0}`),
+        fieldRow('Fabric GSM', u.gsm ? u.gsm + ' gsm' : '—'),
+        fieldRow('Weight / pc', u.weightGms ? u.weightGms.toFixed(1) + ' gms' : '—')
+    ].filter(Boolean).join('') : '';
+    const patternCard = hasPattern ? card('straighten', 'Pattern & Fabric Weight', '#5856D6', patternBody) : '';
+
     // ── 2. Fabric Card
     const fabricBody = [
         u.fabricPriceKg > 0 ? fieldRow('Fabric Price / kg', rs(u.fabricPriceKg)) : '',
@@ -293,7 +362,7 @@ function buildDetailHTML(c, sheetId) {
         </div>
     `) : '';
 
-    return `${summaryCard}${fabricCard}${cmtCard}${printCard}${allowCard}${accCard}${breakdownCard}`;
+    return `${summaryCard}${patternCard}${fabricCard}${cmtCard}${printCard}${allowCard}${accCard}${breakdownCard}`;
 }
 
 // ── Open Costing Sheet ─────────────────────────────────────────────

@@ -857,6 +857,59 @@ export default {
                     } catch (e) { /* ignore */ }
                 }
 
+                // Auto-migrate costings columns if missing
+                if (table === 'costings') {
+                    try {
+                        const tableInfo = await env.DB.prepare(`PRAGMA table_info(costings)`).all();
+                        const existing = new Set(tableInfo.results.map(c => c.name));
+                        const needed = [
+                            ['clientName', "TEXT DEFAULT ''"],
+                            ['garmentType', "TEXT DEFAULT ''"],
+                            ['currency', "TEXT DEFAULT '₹'"],
+                            ['mode', "TEXT DEFAULT 'unified'"],
+                            ['qty', "REAL DEFAULT 0"],
+                            ['pcsPerKg', "REAL DEFAULT 0"],
+                            ['weightGms', "REAL DEFAULT 0"],
+                            ['fabricPriceKg', "REAL DEFAULT 0"],
+                            ['wastage', "REAL DEFAULT 0"],
+                            ['fabricCostPc', "REAL DEFAULT 0"],
+                            ['bodyL', "REAL DEFAULT 0"],
+                            ['bodyLM', "REAL DEFAULT 0"],
+                            ['chest', "REAL DEFAULT 0"],
+                            ['chestM', "REAL DEFAULT 0"],
+                            ['slvL', "REAL DEFAULT 0"],
+                            ['slvLM', "REAL DEFAULT 0"],
+                            ['slvDia', "REAL DEFAULT 0"],
+                            ['slvDiaM', "REAL DEFAULT 0"],
+                            ['gsm', "REAL DEFAULT 0"],
+                            ['cmtMode', "TEXT DEFAULT 'combined'"],
+                            ['cmt', "REAL DEFAULT 0"],
+                            ['cutting', "REAL DEFAULT 0"],
+                            ['fusing', "REAL DEFAULT 0"],
+                            ['wages', "REAL DEFAULT 0"],
+                            ['packing', "REAL DEFAULT 0"],
+                            ['printing', "REAL DEFAULT 0"],
+                            ['sublimation', "REAL DEFAULT 0"],
+                            ['allowances', "REAL DEFAULT 0"],
+                            ['overheads', "REAL DEFAULT 0"],
+                            ['acc1', "REAL DEFAULT 0"],
+                            ['acc2', "REAL DEFAULT 0"],
+                            ['acc3', "REAL DEFAULT 0"],
+                            ['pattern', "REAL DEFAULT 0"],
+                            ['totalCost', "REAL DEFAULT 0"],
+                            ['profitPct', "REAL DEFAULT 0"],
+                            ['totalSales', "REAL DEFAULT 0"],
+                            ['profitDone', "REAL DEFAULT 0"],
+                            ['patternCalcOpen', "INTEGER DEFAULT 0"]
+                        ];
+                        for (const [col, typeDef] of needed) {
+                            if (!existing.has(col)) {
+                                await env.DB.prepare(`ALTER TABLE costings ADD COLUMN ${col} ${typeDef}`).run().catch(() => {});
+                            }
+                        }
+                    } catch (e) { /* ignore */ }
+                }
+
                 // ── GET ─────────────────────────────────────────
                 if (request.method === 'GET') {
                     if (id) {
@@ -920,7 +973,7 @@ export default {
                     const placeholders = cols.map(() => '?').join(', ');
 
                     await env.DB.prepare(
-                        `INSERT INTO ${table} (${cols.join(', ')}) VALUES (${placeholders})`
+                        `INSERT OR REPLACE INTO ${table} (${cols.join(', ')}) VALUES (${placeholders})`
                     ).bind(...vals).run();
 
                     const inserted = await env.DB.prepare(`SELECT * FROM ${table} WHERE id = ?`).bind(data.id).first();

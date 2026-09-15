@@ -260,8 +260,11 @@
 
             <!-- ── Header ── -->
             <div class="px-xs pt-sm flex justify-between items-start">
-                <div>
-                    <h2 class="text-[28px] leading-tight font-semibold tracking-tight text-on-surface dark:text-white mb-1">Costing</h2>
+                <div class="flex flex-col">
+                    <div class="inline-flex bg-surface-variant/40 dark:bg-slate-800/60 p-1 rounded-xl w-fit mb-2">
+                        <button class="px-5 py-2 text-[13px] font-bold rounded-lg bg-surface dark:bg-slate-700 text-on-surface dark:text-slate-100 shadow-sm cursor-default">Quick</button>
+                        <button onclick="window.location.href='advanced-calculator.html'" class="px-5 py-2 text-[13px] font-bold rounded-lg text-secondary dark:text-slate-400 hover:text-on-surface dark:hover:text-slate-200 transition-colors">Advanced</button>
+                    </div>
                     <p class="text-[14px] text-secondary dark:text-slate-400" id="calc-subtitle">Profit/Cost Calculator</p>
                 </div>
                 <!-- Saved Costings Button -->
@@ -850,6 +853,7 @@
             const block = document.getElementById('pattern-calc-block');
             block.classList.toggle('hidden');
             block.classList.toggle('flex');
+            if (window.calcUnified) window.calcUnified();
         }
 
         function calcPattern() {

@@ -144,7 +144,7 @@ const STATIC_SIDEBAR_HTML = `<nav class="sidebar-nav bg-white dark:bg-slate-900 
             <span class="material-symbols-outlined text-[20px] shrink-0">dashboard</span>
             <span class="text-[13px] font-semibold leading-none">Dashboard</span>
         </a>
-        <a href="calculator.html" data-page="calculator" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary dark:text-slate-400 transition-colors duration-150 group outline-none">
+        <a href="advanced-calculator.html" data-page="advanced-calculator" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary dark:text-slate-400 transition-colors duration-150 group outline-none">
             <span class="material-symbols-outlined text-[20px] shrink-0">calculate</span>
             <span class="text-[13px] font-semibold leading-none">Costing</span>
         </a>

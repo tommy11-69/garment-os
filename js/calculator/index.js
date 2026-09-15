@@ -104,6 +104,34 @@ function restoreSession() {
                 if (btn) btn.click();
             }
 
+            // Restore pattern calculator fields
+            setVal('pat-body-l', u.bodyL);
+            setVal('pat-body-l-m', u.bodyLM);
+            setVal('pat-chest', u.chest);
+            setVal('pat-chest-m', u.chestM);
+            setVal('pat-sleeve-l', u.slvL);
+            setVal('pat-sleeve-l-m', u.slvLM);
+            setVal('pat-sleeve-dia', u.slvDia);
+            setVal('pat-sleeve-dia-m', u.slvDiaM);
+            setVal('pat-gsm', u.gsm);
+            if (u.weightGms > 0) {
+                const wtRes = $('pat-wt-res');
+                if (wtRes) wtRes.textContent = u.weightGms.toFixed(1);
+            }
+            
+            // Re-open pattern calculator if it was open
+            if (u.patternCalcOpen) {
+                const block = $('pattern-calc-block');
+                if (block && block.classList.contains('hidden')) {
+                    if (typeof window.togglePatternMode === 'function') {
+                        window.togglePatternMode();
+                    } else {
+                        block.classList.remove('hidden');
+                        block.classList.add('flex');
+                    }
+                }
+            }
+
             window.updateAllTotals();
             window.calcUnified();
 
@@ -396,11 +424,20 @@ window.calcUnified = function() {
     const cpPc = fabricCostPc + cmtTotalPc + printingTotalPc + allowancesTotalPc + lumpSumPc;
     const totalCost = cpPc * qty;
 
+    const patternBlock = $('pattern-calc-block');
+    const patternCalcOpen = patternBlock ? (!patternBlock.classList.contains('hidden')) : false;
+
     calculatorStore.updateU({ 
         qty, pcsPerKg, fabricPriceKg, wastage, fabricCostPc,
         cmt, cutting, fusing, wages, packing,
         printing, sublimation, allowances, overheads,
         acc1, acc2, acc3, pattern,
+        bodyL: num('pat-body-l'), bodyLM: num('pat-body-l-m'),
+        chest: num('pat-chest'), chestM: num('pat-chest-m'),
+        slvL: num('pat-sleeve-l'), slvLM: num('pat-sleeve-l-m'),
+        slvDia: num('pat-sleeve-dia'), slvDiaM: num('pat-sleeve-dia-m'),
+        gsm: num('pat-gsm'), weightGms: parseFloat($('pat-wt-res')?.textContent) || 0,
+        patternCalcOpen,
         cp: cpPc, totalCost 
     });
 
@@ -664,6 +701,15 @@ window.resetCalc = function() {
     $('u-breakdown')?.classList.add('hidden');
     
     [$('shared-client'), $('u-qty')].forEach(el => { if (el) el.value = ''; });
+    
+    // Hide pattern block if open
+    const block = $('pattern-calc-block');
+    if (block && !block.classList.contains('hidden')) {
+        block.classList.add('hidden');
+        block.classList.remove('flex');
+    }
+    const wtRes = $('pat-wt-res');
+    if (wtRes) wtRes.textContent = '0.0';
 
     try { sessionStorage.removeItem(SESSION_KEY); } catch (_) {}
     window.showToast?.('Calculator cleared', 'info');
@@ -703,6 +749,40 @@ function buildCostingPayload(s, client, overrides = {}) {
         garmentType:   s.garmentType || 'T-Shirt',
         currency:      state.currency || '₹',
         mode:          'unified',
+        qty:           s.qty || 0,
+        pcsPerKg:      s.pcsPerKg || 0,
+        weightGms:     s.weightGms || 0,
+        fabricPriceKg: s.fabricPriceKg || 0,
+        wastage:       s.wastage || 0,
+        fabricCostPc:  s.fabricCostPc || 0,
+        bodyL:         s.bodyL || 0,
+        bodyLM:        s.bodyLM || 0,
+        chest:         s.chest || 0,
+        chestM:        s.chestM || 0,
+        slvL:          s.slvL || 0,
+        slvLM:         s.slvLM || 0,
+        slvDia:        s.slvDia || 0,
+        slvDiaM:       s.slvDiaM || 0,
+        gsm:           s.gsm || 0,
+        cmtMode:       s.cmtMode || 'combined',
+        cmt:           s.cmt || 0,
+        cutting:       s.cutting || 0,
+        fusing:        s.fusing || 0,
+        wages:         s.wages || 0,
+        packing:       s.packing || 0,
+        printing:      s.printing || 0,
+        sublimation:   s.sublimation || 0,
+        allowances:    s.allowances || 0,
+        overheads:     s.overheads || 0,
+        acc1:          s.acc1 || 0,
+        acc2:          s.acc2 || 0,
+        acc3:          s.acc3 || 0,
+        pattern:       s.pattern || 0,
+        totalCost:     s.totalCost || 0,
+        profitPct:     s.profitPct || 0,
+        totalSales:    s.totalSales || 0,
+        profitDone:    s.profitDone || 0,
+        patternCalcOpen: s.patternCalcOpen ? 1 : 0,
         totalUnitCost: s.cp          || 0,
         retailPrice:   s.sp          || 0,
         // Full calculator state — restored exactly when user clicks Edit
