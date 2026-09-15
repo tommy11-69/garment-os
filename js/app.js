@@ -307,8 +307,19 @@ function initApp() {
         });
     });
 
-    // ── Load Mobile Top Bar ──
-    loadComponent('../components/topbar-mobile.html', 'topbar-container');
+    // ── Load Mobile Top Bar & Notification System ──
+    loadComponent('../components/topbar-mobile.html', 'topbar-container', () => {
+        if (window.updateTopbarBadge) window.updateTopbarBadge();
+    });
+
+    // Dynamically load notification system & OS splash loading screen
+    import('./components/splashScreen.js?v=5.2').catch(err => console.warn('Splash screen init warning:', err));
+    import('./components/notificationCenter.js?v=5.2').then(m => {
+        window.openNotificationCenter = m.openNotificationCenter;
+        window.closeNotificationCenter = m.closeNotificationCenter;
+        window.updateTopbarBadge = m.updateTopbarBadge;
+        if (m.updateTopbarBadge) m.updateTopbarBadge();
+    }).catch(err => console.warn('Notification system init warning:', err));
     
     // ── Load FAB if container exists ──
     const fabContainer = document.getElementById('fab-container');

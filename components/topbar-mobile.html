@@ -3,7 +3,10 @@
     <!-- max-w-md matching .mobile-wrapper -->
     <div class="max-w-[480px] mx-auto w-full h-[64px] flex items-center justify-between px-md relative">
         <div class="flex items-center gap-sm flex-1">
-            <h1 class="font-display text-card-title font-semibold tracking-tight text-on-surface dark:text-slate-100" id="page-title">U x S Garment OS</h1>
+            <a href="dashboard.html" class="flex items-center">
+                <img src="../assets/logo-full-dark.png" alt="Udhayaa Textiles" class="h-8 w-auto object-contain hidden dark:block" onerror="this.src='../assets/logo-monogram-dark.png'">
+                <img src="../assets/logo-full-light.png" alt="Udhayaa Textiles" class="h-8 w-auto object-contain block dark:hidden" onerror="this.src='../assets/logo-monogram-dark.png'">
+            </a>
         </div>
         
         <div class="flex items-center gap-sm">
@@ -13,9 +16,9 @@
             <button aria-label="Search" class="w-[44px] h-[44px] rounded-full flex items-center justify-center text-on-surface-variant dark:text-slate-300 hover:bg-surface-variant/50 dark:hover:bg-slate-800 transition-colors">
                 <span class="material-symbols-outlined text-[24px]" aria-hidden="true">search</span>
             </button>
-            <button aria-label="Notifications" class="w-[44px] h-[44px] rounded-full flex items-center justify-center text-on-surface-variant dark:text-slate-300 hover:bg-surface-variant/50 dark:hover:bg-slate-800 transition-colors relative">
+            <button type="button" onclick="window.openNotificationCenter?.()" aria-label="Notifications" title="Notifications" class="w-[44px] h-[44px] rounded-full flex items-center justify-center text-on-surface-variant dark:text-slate-300 hover:bg-surface-variant/50 dark:hover:bg-slate-800 transition-colors relative">
                 <span class="material-symbols-outlined text-[24px]" aria-hidden="true">notifications</span>
-                <span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full border border-surface dark:border-slate-900"></span>
+                <span class="notif-badge hidden absolute top-1.5 right-1.5 bg-error text-white text-[10px] font-extrabold w-4 h-4 rounded-full flex items-center justify-center">0</span>
             </button>
         </div>
     </div>
