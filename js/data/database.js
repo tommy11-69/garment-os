@@ -27,7 +27,7 @@ class Database {
         // Handle unauthorized or expired token
         if (response.status === 401) {
             localStorage.removeItem('gos_token');
-            window.location.replace('../auth/login');
+            window.location.replace('/auth/login.html');
             return Promise.reject(new Error("Unauthorized. Redirecting to login."));
         }
         

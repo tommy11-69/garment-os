@@ -257,7 +257,7 @@ function initApp() {
     }
 
     if (!token) {
-        window.location.replace('../auth/login');
+        window.location.replace('/auth/login.html');
         return;
     }
 
