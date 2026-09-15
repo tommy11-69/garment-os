@@ -14,27 +14,27 @@ function updateArrayItem(arrayKey, index, updates) {
 function renderSizes() {
     const { sizes, totalQty } = store.state;
     let html = `
-    <div class="bg-surface dark:bg-slate-900 border border-outline-variant/30 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
+    <div class="bg-surface dark:bg-slate-900 border border-outline-variant/30 dark:border-slate-800 rounded-3xl p-5 shadow-sm print:shadow-none print:border-none print:p-0 print:mb-4">
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-[16px] font-bold text-on-surface dark:text-slate-100 flex items-center gap-2">
-                <span class="material-symbols-outlined text-primary text-[20px]">straighten</span> Size Ratio
+                <span class="material-symbols-outlined text-primary text-[20px] print:hidden">straighten</span> Size Ratio
             </h2>
-            <div class="bg-primary/10 text-primary px-3 py-1 rounded-xl text-[12px] font-bold">
+            <div class="bg-primary/10 text-primary px-3 py-1 rounded-xl text-[12px] font-bold print:bg-transparent print:p-0">
                 Total: ${totalQty} pcs
             </div>
         </div>
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 print:grid-cols-4">
             ${sizes.map((s, i) => `
-                <div class="bg-surface-variant/30 dark:bg-slate-800 rounded-2xl p-3 flex flex-col gap-1 border border-outline-variant/10 dark:border-slate-700">
+                <div class="bg-surface-variant/30 dark:bg-slate-800 rounded-2xl p-3 flex flex-col gap-1 border border-outline-variant/10 dark:border-slate-700 print:border-slate-300 print:bg-transparent">
                     <div class="flex justify-between items-center">
                         <span class="text-[13px] font-bold">${s.name}</span>
-                        <input type="number" class="size-ratio-input w-12 h-6 text-[12px] bg-white dark:bg-slate-900 border-none rounded text-center outline-none p-0" data-idx="${i}" value="${s.ratio}" placeholder="Ratio">
+                        <input type="number" class="size-ratio-input w-12 h-6 text-[12px] bg-white dark:bg-slate-900 border-none rounded text-center outline-none p-0 print:bg-transparent print:p-0" data-idx="${i}" value="${s.ratio}" placeholder="Ratio">
                     </div>
                     <div class="text-[11px] text-secondary text-right mt-1">${s.qty} pcs</div>
                 </div>
             `).join('')}
         </div>
-        <div class="mt-4 flex items-center justify-between bg-surface-container-low dark:bg-slate-900/50 p-3 rounded-2xl border border-outline-variant/30 dark:border-slate-800">
+        <div class="mt-4 flex items-center justify-between bg-surface-container-low dark:bg-slate-900/50 p-3 rounded-2xl border border-outline-variant/30 dark:border-slate-800 print:hidden">
              <span class="text-[13px] font-semibold text-secondary">Target Order Quantity</span>
              <input type="number" id="adv-target-qty" value="${totalQty}" class="w-24 h-8 text-[14px] font-bold text-right bg-white dark:bg-slate-800 border-none rounded-xl outline-none focus:ring-2 focus:ring-primary/20">
         </div>
@@ -71,52 +71,52 @@ function recalcSizes() {
 function renderFabrics() {
     const { components } = store.state;
     let html = `
-    <div class="bg-surface dark:bg-slate-900 border border-outline-variant/30 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
+    <div class="bg-surface dark:bg-slate-900 border border-outline-variant/30 dark:border-slate-800 rounded-3xl p-5 shadow-sm print:shadow-none print:border-none print:p-0 print:mb-4">
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-[16px] font-bold text-on-surface dark:text-slate-100 flex items-center gap-2">
-                <span class="material-symbols-outlined text-[#0071E3] text-[20px]">layers</span> Multi-Fabric BOM
+                <span class="material-symbols-outlined text-[#0071E3] text-[20px] print:hidden">layers</span> Multi-Fabric BOM
             </h2>
-            <button id="btn-add-fabric" class="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20 transition-colors">
+            <button id="btn-add-fabric" class="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20 transition-colors print:hidden">
                 <span class="material-symbols-outlined text-[20px]">add</span>
             </button>
         </div>
         <div class="flex flex-col gap-4">
             ${components.map((c, i) => `
-                <div class="bg-surface-variant/20 dark:bg-slate-800/50 rounded-2xl p-4 border border-outline-variant/30 dark:border-slate-700 relative group">
+                <div class="bg-surface-variant/20 dark:bg-slate-800/50 rounded-2xl p-4 border border-outline-variant/30 dark:border-slate-700 relative group print:bg-transparent print:border-slate-300 print:p-2">
                     ${components.length > 1 ? `
-                    <button class="btn-remove-fabric absolute top-3 right-3 w-6 h-6 rounded-full bg-error/10 text-error flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity" data-idx="${i}">
+                    <button class="btn-remove-fabric absolute top-3 right-3 w-6 h-6 rounded-full bg-error/10 text-error flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity print:hidden" data-idx="${i}">
                         <span class="material-symbols-outlined text-[14px]">close</span>
                     </button>` : ''}
                     
-                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3 pr-8">
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3 pr-8 print:pr-0 print:grid-cols-4">
                         <div>
                             <label class="text-[10px] uppercase font-bold text-secondary tracking-wider block mb-1">Component Name</label>
-                            <input type="text" class="fabric-inp w-full bg-white dark:bg-slate-800 border-none rounded-xl text-[13px] p-2 outline-none" data-field="name" data-idx="${i}" value="${c.name}">
+                            <input type="text" class="fabric-inp w-full bg-white dark:bg-slate-800 border-none rounded-xl text-[13px] p-2 outline-none print:bg-transparent print:p-0" data-field="name" data-idx="${i}" value="${c.name}">
                         </div>
                         <div>
                             <label class="text-[10px] uppercase font-bold text-secondary tracking-wider block mb-1">Price / kg (₹)</label>
-                            <input type="number" class="fabric-inp w-full bg-white dark:bg-slate-800 border-none rounded-xl text-[13px] p-2 outline-none" data-field="fabricPriceKg" data-idx="${i}" value="${c.fabricPriceKg}">
+                            <input type="number" class="fabric-inp w-full bg-white dark:bg-slate-800 border-none rounded-xl text-[13px] p-2 outline-none print:bg-transparent print:p-0" data-field="fabricPriceKg" data-idx="${i}" value="${c.fabricPriceKg}">
                         </div>
                         <div>
                             <label class="text-[10px] uppercase font-bold text-secondary tracking-wider block mb-1">Fabric GSM</label>
-                            <input type="number" class="fabric-inp w-full bg-white dark:bg-slate-800 border-none rounded-xl text-[13px] p-2 outline-none" data-field="gsm" data-idx="${i}" value="${c.gsm}">
+                            <input type="number" class="fabric-inp w-full bg-white dark:bg-slate-800 border-none rounded-xl text-[13px] p-2 outline-none print:bg-transparent print:p-0" data-field="gsm" data-idx="${i}" value="${c.gsm}">
                         </div>
                         <div>
                             <label class="text-[10px] uppercase font-bold text-secondary tracking-wider block mb-1">Wastage %</label>
-                            <input type="number" class="fabric-inp w-full bg-white dark:bg-slate-800 border-none rounded-xl text-[13px] p-2 outline-none" data-field="wastage" data-idx="${i}" value="${c.wastage}">
+                            <input type="number" class="fabric-inp w-full bg-white dark:bg-slate-800 border-none rounded-xl text-[13px] p-2 outline-none print:bg-transparent print:p-0" data-field="wastage" data-idx="${i}" value="${c.wastage}">
                         </div>
                     </div>
                     
-                    <div class="grid grid-cols-4 gap-2 mb-3 bg-white dark:bg-slate-900 rounded-xl p-2 border border-outline-variant/10 dark:border-slate-700">
-                        <div class="col-span-4 text-[11px] font-bold text-secondary mb-1">Base Pattern Dimensions (inches)</div>
-                        <div><input type="number" class="fabric-inp w-full border-none rounded bg-surface-variant/30 dark:bg-slate-800 text-[12px] p-1.5 text-center" placeholder="Body L" data-field="bodyL" data-idx="${i}" value="${c.bodyL || ''}"></div>
-                        <div><input type="number" class="fabric-inp w-full border-none rounded bg-surface-variant/30 dark:bg-slate-800 text-[12px] p-1.5 text-center" placeholder="Body +M" data-field="bodyLM" data-idx="${i}" value="${c.bodyLM || ''}"></div>
-                        <div><input type="number" class="fabric-inp w-full border-none rounded bg-surface-variant/30 dark:bg-slate-800 text-[12px] p-1.5 text-center" placeholder="Chest W" data-field="chest" data-idx="${i}" value="${c.chest || ''}"></div>
-                        <div><input type="number" class="fabric-inp w-full border-none rounded bg-surface-variant/30 dark:bg-slate-800 text-[12px] p-1.5 text-center" placeholder="Chest +M" data-field="chestM" data-idx="${i}" value="${c.chestM || ''}"></div>
-                        <div><input type="number" class="fabric-inp w-full border-none rounded bg-surface-variant/30 dark:bg-slate-800 text-[12px] p-1.5 text-center" placeholder="Slv L" data-field="slvL" data-idx="${i}" value="${c.slvL || ''}"></div>
-                        <div><input type="number" class="fabric-inp w-full border-none rounded bg-surface-variant/30 dark:bg-slate-800 text-[12px] p-1.5 text-center" placeholder="Slv +M" data-field="slvLM" data-idx="${i}" value="${c.slvLM || ''}"></div>
-                        <div><input type="number" class="fabric-inp w-full border-none rounded bg-surface-variant/30 dark:bg-slate-800 text-[12px] p-1.5 text-center" placeholder="Slv Dia" data-field="slvDia" data-idx="${i}" value="${c.slvDia || ''}"></div>
-                        <div><input type="number" class="fabric-inp w-full border-none rounded bg-surface-variant/30 dark:bg-slate-800 text-[12px] p-1.5 text-center" placeholder="Dia +M" data-field="slvDiaM" data-idx="${i}" value="${c.slvDiaM || ''}"></div>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 mb-3 bg-white dark:bg-slate-900 rounded-xl p-2 border border-outline-variant/10 dark:border-slate-700 print:bg-transparent print:border-none print:p-0 print:grid-cols-8">
+                        <div class="col-span-2 sm:col-span-4 lg:col-span-8 print:col-span-8 text-[11px] font-bold text-secondary mb-1">Base Pattern Dimensions (inches)</div>
+                        <div><input type="number" class="fabric-inp w-full border-none rounded bg-surface-variant/30 dark:bg-slate-800 text-[12px] p-1.5 text-center print:bg-transparent print:p-0" placeholder="Body L" data-field="bodyL" data-idx="${i}" value="${c.bodyL || ''}"></div>
+                        <div><input type="number" class="fabric-inp w-full border-none rounded bg-surface-variant/30 dark:bg-slate-800 text-[12px] p-1.5 text-center print:bg-transparent print:p-0" placeholder="Body +M" data-field="bodyLM" data-idx="${i}" value="${c.bodyLM || ''}"></div>
+                        <div><input type="number" class="fabric-inp w-full border-none rounded bg-surface-variant/30 dark:bg-slate-800 text-[12px] p-1.5 text-center print:bg-transparent print:p-0" placeholder="Chest W" data-field="chest" data-idx="${i}" value="${c.chest || ''}"></div>
+                        <div><input type="number" class="fabric-inp w-full border-none rounded bg-surface-variant/30 dark:bg-slate-800 text-[12px] p-1.5 text-center print:bg-transparent print:p-0" placeholder="Chest +M" data-field="chestM" data-idx="${i}" value="${c.chestM || ''}"></div>
+                        <div><input type="number" class="fabric-inp w-full border-none rounded bg-surface-variant/30 dark:bg-slate-800 text-[12px] p-1.5 text-center print:bg-transparent print:p-0" placeholder="Slv L" data-field="slvL" data-idx="${i}" value="${c.slvL || ''}"></div>
+                        <div><input type="number" class="fabric-inp w-full border-none rounded bg-surface-variant/30 dark:bg-slate-800 text-[12px] p-1.5 text-center print:bg-transparent print:p-0" placeholder="Slv +M" data-field="slvLM" data-idx="${i}" value="${c.slvLM || ''}"></div>
+                        <div><input type="number" class="fabric-inp w-full border-none rounded bg-surface-variant/30 dark:bg-slate-800 text-[12px] p-1.5 text-center print:bg-transparent print:p-0" placeholder="Slv Dia" data-field="slvDia" data-idx="${i}" value="${c.slvDia || ''}"></div>
+                        <div><input type="number" class="fabric-inp w-full border-none rounded bg-surface-variant/30 dark:bg-slate-800 text-[12px] p-1.5 text-center print:bg-transparent print:p-0" placeholder="Dia +M" data-field="slvDiaM" data-idx="${i}" value="${c.slvDiaM || ''}"></div>
                     </div>
                     
                     <div class="flex items-center justify-between mt-2 pt-2 border-t border-outline-variant/20 dark:border-slate-700">
@@ -166,42 +166,44 @@ function renderFabrics() {
 function renderTrims() {
     const { trims } = store.state;
     let html = `
-    <div class="bg-surface dark:bg-slate-900 border border-outline-variant/30 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
+    <div class="bg-surface dark:bg-slate-900 border border-outline-variant/30 dark:border-slate-800 rounded-3xl p-5 shadow-sm print:shadow-none print:border-none print:p-0 print:mb-4">
         <div class="flex items-center justify-between mb-4">
             <h2 class="text-[16px] font-bold text-on-surface dark:text-slate-100 flex items-center gap-2">
-                <span class="material-symbols-outlined text-[#FF3B30] text-[20px]">category</span> Trims & BOM
+                <span class="material-symbols-outlined text-[#FF3B30] text-[20px] print:hidden">category</span> Trims & BOM
             </h2>
-            <button id="btn-add-trim" class="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20 transition-colors">
+            <button id="btn-add-trim" class="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20 transition-colors print:hidden">
                 <span class="material-symbols-outlined text-[20px]">add</span>
             </button>
         </div>
-        <div class="flex flex-col gap-2">
-            <!-- Header -->
-            <div class="grid grid-cols-12 gap-2 px-2 pb-1 border-b border-outline-variant/20 dark:border-slate-800">
-                <div class="col-span-4 text-[10px] font-bold text-secondary uppercase">Item Name</div>
-                <div class="col-span-3 text-[10px] font-bold text-secondary uppercase text-center">Cons / pc</div>
-                <div class="col-span-3 text-[10px] font-bold text-secondary uppercase text-right">Rate (₹)</div>
-                <div class="col-span-2 text-[10px] font-bold text-secondary uppercase text-right">Cost</div>
-            </div>
-            ${trims.map((t, i) => `
-                <div class="grid grid-cols-12 gap-2 items-center bg-surface-variant/20 dark:bg-slate-800/40 p-2 rounded-xl group relative">
-                    <button class="btn-remove-trim absolute -left-2 -top-2 w-5 h-5 rounded-full bg-error text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10" data-idx="${i}">
-                        <span class="material-symbols-outlined text-[12px]">close</span>
-                    </button>
-                    <div class="col-span-4">
-                        <input type="text" class="trim-inp w-full bg-white dark:bg-slate-900 border-none rounded-lg text-[12px] p-1.5 outline-none" data-field="name" data-idx="${i}" value="${t.name}">
-                    </div>
-                    <div class="col-span-3">
-                        <input type="number" class="trim-inp w-full bg-white dark:bg-slate-900 border-none rounded-lg text-[12px] p-1.5 text-center outline-none" data-field="cons" data-idx="${i}" value="${t.cons}" placeholder="e.g. 1.2">
-                    </div>
-                    <div class="col-span-3">
-                        <input type="number" class="trim-inp w-full bg-white dark:bg-slate-900 border-none rounded-lg text-[12px] p-1.5 text-right outline-none" data-field="rate" data-idx="${i}" value="${t.rate}">
-                    </div>
-                    <div class="col-span-2 text-right pr-1">
-                        <span id="trim-cost-${i}" class="text-[13px] font-bold text-on-surface dark:text-slate-200">₹${t.costPc?.toFixed(2) || '0.00'}</span>
-                    </div>
+        <div class="flex flex-col gap-2 overflow-x-auto pb-2 hide-scrollbar">
+            <div class="min-w-[400px] print:min-w-0 flex flex-col gap-2">
+                <!-- Header -->
+                <div class="grid grid-cols-12 gap-2 px-2 pb-1 border-b border-outline-variant/20 dark:border-slate-800">
+                    <div class="col-span-4 text-[10px] font-bold text-secondary uppercase">Item Name</div>
+                    <div class="col-span-3 text-[10px] font-bold text-secondary uppercase text-center">Cons / pc</div>
+                    <div class="col-span-3 text-[10px] font-bold text-secondary uppercase text-right">Rate (₹)</div>
+                    <div class="col-span-2 text-[10px] font-bold text-secondary uppercase text-right">Cost</div>
                 </div>
-            `).join('')}
+                ${trims.map((t, i) => `
+                    <div class="grid grid-cols-12 gap-2 items-center bg-surface-variant/20 dark:bg-slate-800/40 p-2 rounded-xl group relative print:bg-transparent print:border-b print:border-slate-200 print:rounded-none">
+                        <button class="btn-remove-trim absolute -left-2 -top-2 w-5 h-5 rounded-full bg-error text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 print:hidden" data-idx="${i}">
+                            <span class="material-symbols-outlined text-[12px]">close</span>
+                        </button>
+                        <div class="col-span-4">
+                            <input type="text" class="trim-inp w-full bg-white dark:bg-slate-900 border-none rounded-lg text-[12px] p-1.5 outline-none print:bg-transparent print:p-0" data-field="name" data-idx="${i}" value="${t.name}">
+                        </div>
+                        <div class="col-span-3">
+                            <input type="number" class="trim-inp w-full bg-white dark:bg-slate-900 border-none rounded-lg text-[12px] p-1.5 text-center outline-none print:bg-transparent print:p-0" data-field="cons" data-idx="${i}" value="${t.cons}" placeholder="e.g. 1.2">
+                        </div>
+                        <div class="col-span-3">
+                            <input type="number" class="trim-inp w-full bg-white dark:bg-slate-900 border-none rounded-lg text-[12px] p-1.5 text-right outline-none print:bg-transparent print:p-0" data-field="rate" data-idx="${i}" value="${t.rate}">
+                        </div>
+                        <div class="col-span-2 text-right pr-1">
+                            <span id="trim-cost-${i}" class="text-[13px] font-bold text-on-surface dark:text-slate-200">₹${t.costPc?.toFixed(2) || '0.00'}</span>
+                        </div>
+                    </div>
+                `).join('')}
+            </div>
         </div>
     </div>
     `;
@@ -241,51 +243,51 @@ function renderTrims() {
 function renderVAS() {
     const s = store.state;
     let html = `
-    <div class="bg-surface dark:bg-slate-900 border border-outline-variant/30 dark:border-slate-800 rounded-3xl p-5 shadow-sm">
+    <div class="bg-surface dark:bg-slate-900 border border-outline-variant/30 dark:border-slate-800 rounded-3xl p-5 shadow-sm print:shadow-none print:border-none print:p-0 print:mb-4">
         <h2 class="text-[16px] font-bold text-on-surface dark:text-slate-100 flex items-center gap-2 mb-4">
-            <span class="material-symbols-outlined text-[#AF52DE] text-[20px]">precision_manufacturing</span> CMT & Value Adds
+            <span class="material-symbols-outlined text-[#AF52DE] text-[20px] print:hidden">precision_manufacturing</span> CMT & Value Adds
         </h2>
-        <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 print:grid-cols-3">
             <div>
                 <label class="text-[11px] font-semibold text-secondary block mb-1">CMT Total / pc</label>
                 <div class="relative">
                     <span class="absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-[13px]">₹</span>
-                    <input type="number" id="adv-cmt" value="${s.cmt}" class="w-full bg-surface-variant/30 dark:bg-slate-800 border-none rounded-xl pl-7 py-2.5 text-[14px] font-semibold outline-none focus:ring-2 focus:ring-primary/20">
+                    <input type="number" id="adv-cmt" value="${s.cmt}" class="w-full bg-surface-variant/30 dark:bg-slate-800 border-none rounded-xl pl-7 py-2.5 text-[14px] font-semibold outline-none focus:ring-2 focus:ring-primary/20 print:bg-transparent print:pl-5 print:py-1">
                 </div>
             </div>
             <div>
                 <label class="text-[11px] font-semibold text-secondary block mb-1">Washing / pc</label>
                 <div class="relative">
                     <span class="absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-[13px]">₹</span>
-                    <input type="number" id="adv-washing" value="${s.washing}" class="w-full bg-surface-variant/30 dark:bg-slate-800 border-none rounded-xl pl-7 py-2.5 text-[14px] font-semibold outline-none focus:ring-2 focus:ring-primary/20">
+                    <input type="number" id="adv-washing" value="${s.washing}" class="w-full bg-surface-variant/30 dark:bg-slate-800 border-none rounded-xl pl-7 py-2.5 text-[14px] font-semibold outline-none focus:ring-2 focus:ring-primary/20 print:bg-transparent print:pl-5 print:py-1">
                 </div>
             </div>
             <div>
                 <label class="text-[11px] font-semibold text-secondary block mb-1">Embroidery / pc</label>
                 <div class="relative">
                     <span class="absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-[13px]">₹</span>
-                    <input type="number" id="adv-emb" value="${s.embroidery}" class="w-full bg-surface-variant/30 dark:bg-slate-800 border-none rounded-xl pl-7 py-2.5 text-[14px] font-semibold outline-none focus:ring-2 focus:ring-primary/20">
+                    <input type="number" id="adv-emb" value="${s.embroidery}" class="w-full bg-surface-variant/30 dark:bg-slate-800 border-none rounded-xl pl-7 py-2.5 text-[14px] font-semibold outline-none focus:ring-2 focus:ring-primary/20 print:bg-transparent print:pl-5 print:py-1">
                 </div>
             </div>
             <div>
                 <label class="text-[11px] font-semibold text-secondary block mb-1">Printing / pc</label>
                 <div class="relative">
                     <span class="absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-[13px]">₹</span>
-                    <input type="number" id="adv-printing" value="${s.printing}" class="w-full bg-surface-variant/30 dark:bg-slate-800 border-none rounded-xl pl-7 py-2.5 text-[14px] font-semibold outline-none focus:ring-2 focus:ring-primary/20">
+                    <input type="number" id="adv-printing" value="${s.printing}" class="w-full bg-surface-variant/30 dark:bg-slate-800 border-none rounded-xl pl-7 py-2.5 text-[14px] font-semibold outline-none focus:ring-2 focus:ring-primary/20 print:bg-transparent print:pl-5 print:py-1">
                 </div>
             </div>
             <div>
                 <label class="text-[11px] font-semibold text-secondary block mb-1">Freight/Logistics / pc</label>
                 <div class="relative">
                     <span class="absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-[13px]">₹</span>
-                    <input type="number" id="adv-freight" value="${s.freight}" class="w-full bg-surface-variant/30 dark:bg-slate-800 border-none rounded-xl pl-7 py-2.5 text-[14px] font-semibold outline-none focus:ring-2 focus:ring-primary/20">
+                    <input type="number" id="adv-freight" value="${s.freight}" class="w-full bg-surface-variant/30 dark:bg-slate-800 border-none rounded-xl pl-7 py-2.5 text-[14px] font-semibold outline-none focus:ring-2 focus:ring-primary/20 print:bg-transparent print:pl-5 print:py-1">
                 </div>
             </div>
             <div>
                 <label class="text-[11px] font-semibold text-secondary block mb-1">Other / pc</label>
                 <div class="relative">
                     <span class="absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-[13px]">₹</span>
-                    <input type="number" id="adv-other" value="${s.other}" class="w-full bg-surface-variant/30 dark:bg-slate-800 border-none rounded-xl pl-7 py-2.5 text-[14px] font-semibold outline-none focus:ring-2 focus:ring-primary/20">
+                    <input type="number" id="adv-other" value="${s.other}" class="w-full bg-surface-variant/30 dark:bg-slate-800 border-none rounded-xl pl-7 py-2.5 text-[14px] font-semibold outline-none focus:ring-2 focus:ring-primary/20 print:bg-transparent print:pl-5 print:py-1">
                 </div>
             </div>
         </div>
@@ -386,12 +388,54 @@ function updateUIOutputs() {
 
 // ── Initialization & Subscriptions ─────────────────────────────────
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    // 1. Check for ID in URL to load existing costing
+    const urlParams = new URLSearchParams(window.location.search);
+    const existingId = urlParams.get('id');
+    let loadedId = null;
+
+    if (existingId) {
+        try {
+            const { api } = await import('/js/services/api.js');
+            const costing = await api.getCostingById(existingId);
+            if (costing && costing.uData) {
+                store.state = { ...costing.uData };
+                loadedId = existingId;
+                
+                // Show delete button
+                const btnDelete = document.getElementById('btn-delete');
+                if (btnDelete) {
+                    btnDelete.classList.remove('hidden');
+                    btnDelete.addEventListener('click', async () => {
+                        if (confirm('Are you sure you want to delete this advanced costing?')) {
+                            try {
+                                await api.deleteCosting(loadedId);
+                                window.showToast?.('Costing deleted successfully', 'success');
+                                setTimeout(() => window.location.href = 'costings.html', 800);
+                            } catch (e) {
+                                console.error(e);
+                                window.showToast?.('Failed to delete', 'error');
+                            }
+                        }
+                    });
+                }
+            }
+        } catch (e) {
+            console.error("Failed to load costing", e);
+        }
+    }
+
+    // 2. Initial Render
     renderSizes();
     renderFabrics();
     renderTrims();
     renderVAS();
     recalcAll();
+    
+    // Set global inputs from store if loaded
+    document.getElementById('adv-client').value = store.state.clientName || '';
+    document.getElementById('adv-garment-type').value = store.state.garmentType || 'Garment';
+    document.getElementById('adv-profit-pct').value = store.state.profitPct || 30;
     
     document.getElementById('adv-profit-pct').addEventListener('input', (e) => {
         store.update({ profitPct: parseFloat(e.target.value) || 0 });
@@ -404,10 +448,11 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('adv-client').addEventListener('input', (e) => store.state.clientName = e.target.value);
     document.getElementById('adv-garment-type').addEventListener('input', (e) => store.state.garmentType = e.target.value);
     
-    document.getElementById('btn-save-draft').addEventListener('click', saveAdvancedCosting);
+    document.getElementById('btn-save-draft').addEventListener('click', () => saveAdvancedCosting(loadedId));
+    document.getElementById('btn-create-quote').addEventListener('click', () => saveAdvancedCosting(loadedId, 'Quote'));
 });
 
-async function saveAdvancedCosting() {
+async function saveAdvancedCosting(existingId = null, saveStatus = 'Draft') {
     window.startSubtleLoading?.();
     const btn = document.getElementById('btn-save-draft');
     btn.disabled = true;
@@ -415,7 +460,7 @@ async function saveAdvancedCosting() {
     
     const s = store.state;
     const payload = {
-        id: 'adv_' + Date.now().toString(),
+        id: existingId || 'adv_' + Date.now().toString(),
         styleRef: s.garmentType,
         clientId: s.clientName,
         clientName: s.clientName,
@@ -424,14 +469,19 @@ async function saveAdvancedCosting() {
         mode: 'advanced', // critical for the backend & viewer sheet
         totalUnitCost: s.cpPc,
         retailPrice: s.spPc,
-        status: 'Draft',
+        status: saveStatus,
         uData: s, // Store massive JSON state entirely
     };
     
     try {
         const { api } = await import('/js/services/api.js');
-        await api.saveCosting(payload);
-        window.showToast?.('Advanced Costing Saved!', 'success');
+        if (existingId) {
+            await api.updateCosting(existingId, payload);
+            window.showToast?.(`Advanced Costing Updated (${saveStatus})`, 'success');
+        } else {
+            await api.saveCosting(payload);
+            window.showToast?.(`Advanced Costing Saved (${saveStatus})`, 'success');
+        }
         setTimeout(() => window.location.href = 'costings.html', 800);
     } catch (e) {
         console.error(e);
