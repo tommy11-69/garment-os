@@ -1,7 +1,7 @@
 import { api } from '../services/api.js?v=5.2';
 import { SelectInput, TextInput, TextareaInput } from '../components/inputs.js?v=5.2';
 import { BottomSheet } from '../components/index.js?v=5.2';
-import { calculateOrderRollup, STAGE_DEFINITIONS, normalizeStageKey } from '../production/domain/workflowEngine.js?v=5.5';
+import { calculateOrderRollup, STAGE_DEFINITIONS, normalizeStageKey, getProductWorkflowStages, WORKFLOW_ROUTES } from '../production/domain/workflowEngine.js?v=5.5';
 
 export async function getOrderSheetsHTML() {
     let customers = [];
@@ -152,6 +152,11 @@ export function getOrderDetailsHeader(order) {
         </div>
     ` : '';
 
+    const primaryProd = (Array.isArray(order.products) && order.products.length > 0) ? order.products[0] : null;
+    const headerTitle = primaryProd?.name
+        ? `${primaryProd.name}${order.products.length > 1 ? ` (+${order.products.length - 1} more)` : ''}`
+        : (order.product || 'Custom Apparel');
+
     return `
         <div class="px-4 py-3 border-b border-outline-variant bg-surface-container-lowest sticky top-0 z-20">
             <div class="flex items-center justify-between mb-2">
@@ -160,7 +165,7 @@ export function getOrderDetailsHeader(order) {
                         <span class="text-[12px] font-mono font-bold text-primary uppercase tracking-wider">${order.id}</span>
                         ${countdownBadge}
                     </div>
-                    <h2 class="text-[18px] font-bold text-on-surface line-clamp-1 mt-0.5">${order.product || 'Custom Apparel'}</h2>
+                    <h2 class="text-[18px] font-bold text-on-surface line-clamp-1 mt-0.5">${headerTitle}</h2>
                 </div>
                 <div class="flex gap-2 shrink-0">
                     <button onclick="window.openEditOrder()" class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-secondary active-scale transition-apple"><span class="material-symbols-outlined text-[18px]">edit</span></button>
@@ -405,8 +410,11 @@ function renderProductsMatrixTab(order) {
                     </div>
                 `).join('');
 
-                const currentNormStage = normalizeStageKey(p.status);
-                const stageDef = STAGE_DEFINITIONS[currentNormStage] || STAGE_DEFINITIONS.fabric;
+                const pWf = p.workflowType || order.workflowType || 'default';
+                const pStages = getProductWorkflowStages(p, pWf);
+                const initialStage = pStages[0] || 'procurement';
+                const currentNormStage = normalizeStageKey(p.status || initialStage);
+                const stageDef = STAGE_DEFINITIONS[currentNormStage] || STAGE_DEFINITIONS[initialStage] || STAGE_DEFINITIONS.procurement;
 
                 return `
                     <div class="bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant shadow-sm">
@@ -662,18 +670,36 @@ function renderPrintDocsTab(order) {
 
 // ─── Production Data Tab ──────────────────────────────────────────────────────
 function renderProductionDataTab(order) {
+    const primaryProd = (Array.isArray(order.products) && order.products.length > 0)
+        ? order.products[0]
+        : null;
+    const workflowType = primaryProd?.workflowType || order.workflowType || 'default';
+    const stageKeys = getProductWorkflowStages(primaryProd, workflowType);
     const rollup = calculateOrderRollup(order);
-    const wf = (order.workflowType || 'default').replace(/_/g, ' ');
 
-    const stagesList = [
-        { key: 'procurement', label: 'Procurement & Sourcing', icon: 'shopping_cart', desc: 'Supplier POs, yarn & trims inward' },
-        { key: 'fabric', label: 'Fabric & Inward', icon: 'texture', desc: 'Roll tally, GSM, Dia, shrinkage & QC' },
-        { key: 'cutting', label: 'Cutting & Bundles', icon: 'content_cut', desc: 'Size ratio breakdown, bundles, scrap %' },
-        { key: 'print_wash', label: 'Print, Embroidery & Wash', icon: 'palette', desc: 'Strike-off sample, panel outward/inward' },
-        { key: 'stitching', label: 'Stitching & Assembly', icon: 'precision_manufacturing', desc: 'Sewing lines, hourly output & defect audit' },
-        { key: 'packing', label: 'Finishing & Packing', icon: 'inventory_2', desc: 'Thread trim, ironing, carton master matrix' },
-        { key: 'dispatch', label: 'Dispatch & Gate Pass', icon: 'local_shipping', desc: 'Delivery Challan, carrier LR & handover' }
-    ];
+    const WORKFLOW_TITLES = {
+        default: 'Standard Knits (Fabric → Cut → Stitch → Print → Pack)',
+        print_before_stitch: 'Print-First Route (Print Cut Panels Before Sewing)',
+        wash_before_stitch: 'Panel-Wash Route (Pre-Wash Panels Before Assembly)',
+        stitch_before_embroidery: 'Post-Assembly Embellishment',
+        direct_fulfillment: 'Trading / Direct Fulfillment (Source & Dispatch)',
+        full_vertical: 'Full Vertical Integration (Yarn → Winding → Knitting → Dyeing → Cut → Stitch)'
+    };
+    const wfName = WORKFLOW_TITLES[workflowType] || workflowType.replace(/_/g, ' ');
+
+    const stagesList = stageKeys.map(key => {
+        const def = STAGE_DEFINITIONS[key] || {
+            label: key,
+            icon: 'circle',
+            description: ''
+        };
+        return {
+            key,
+            label: def.label,
+            icon: def.icon || 'circle',
+            desc: def.description || ''
+        };
+    });
 
     return `
         <div class="flex flex-col gap-4">
@@ -682,7 +708,7 @@ function renderProductionDataTab(order) {
                 <div class="flex items-center justify-between mb-3">
                     <div class="flex items-center gap-2">
                         <span class="text-[11px] font-bold text-secondary uppercase tracking-wider">Workflow Route:</span>
-                        <span class="px-2.5 py-1 rounded-md text-[11px] font-bold bg-primary/10 text-primary capitalize">${wf}</span>
+                        <span class="px-2.5 py-1 rounded-md text-[11px] font-bold bg-primary/10 text-primary capitalize">${wfName}</span>
                     </div>
                     <span class="text-[13px] font-bold text-primary">${rollup.overallPercentage}% Complete</span>
                 </div>

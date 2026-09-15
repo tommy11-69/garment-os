@@ -3,13 +3,20 @@
  * Supplier POs, yarn inward, trims receipt, and supplier challan tracking.
  */
 
-import { STAGE_DEFINITIONS } from '../domain/workflowEngine.js?v=5.5';
+import { STAGE_DEFINITIONS, getProductWorkflowStages } from '../domain/workflowEngine.js?v=5.5';
 
 export const ProcurementWorkspace = {
     render(order, activeProduct, stageData) {
         const proc = stageData?.procurement || {};
         const targetQty = Number(activeProduct?.qty) || Number(order?.qty) || 0;
         
+        // Resolve dynamic next stage in this product's workflow
+        const stages = getProductWorkflowStages(activeProduct, order?.workflowType);
+        const currentIdx = stages.indexOf('procurement');
+        const nextStageKey = (currentIdx >= 0 && currentIdx < stages.length - 1) ? stages[currentIdx + 1] : 'fabric';
+        const nextDef = STAGE_DEFINITIONS[nextStageKey] || { label: 'Next Stage', shortLabel: 'Next Stage' };
+        const nextLabel = nextDef.shortLabel || nextDef.label;
+
         // Calculate estimated yarn required (approx 200g per t-shirt / garment average if not specified)
         const estimatedYarnNeededKg = Math.round(targetQty * 0.22);
         const yarnOrdered = Number(proc.yarnKgOrdered) || estimatedYarnNeededKg;
@@ -47,7 +54,7 @@ export const ProcurementWorkspace = {
                             </button>
                             <button type="button" onclick="window.productionRouter.saveCurrentStage(true)" 
                                 class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-primary text-white text-[13px] font-bold hover:bg-primary-hover active-scale transition-apple shadow-sm flex items-center justify-center gap-1.5">
-                                <span>Release to Fabric</span>
+                                <span>Release to ${nextLabel}</span>
                                 <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
                             </button>
                         </div>

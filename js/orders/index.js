@@ -1,7 +1,7 @@
 import { api } from '../services/api.js?v=5.2';
 import { renderers } from '../renderers.js?v=5.2';
 import { getOrderSheetsHTML, getOrderDetailsHeader, getOrderDetailsContent, getOrdersAnalyticsHTML } from './templates.js?v=5.2';
-import { calculateOrderRollup, STAGE_DEFINITIONS, normalizeStageKey } from '../production/domain/workflowEngine.js?v=5.5';
+import { calculateOrderRollup, STAGE_DEFINITIONS, normalizeStageKey, getProductWorkflowStages } from '../production/domain/workflowEngine.js?v=5.5';
 
 let currentOrders = [];
 let activeOrder = null;
@@ -228,15 +228,15 @@ function renderKanban(filteredOrders) {
     const kanbanContainer = document.getElementById('orders-kanban');
     if (!kanbanContainer) return;
 
-    const KANBAN_STAGES = [
-        'procurement',
-        'fabric',
-        'cutting',
-        'print_wash',
-        'stitching',
-        'packing',
-        'dispatch'
-    ];
+    const hasVerticalOrders = filteredOrders.some(o => {
+        const k = normalizeStageKey(o.status);
+        const wf = o.products?.[0]?.workflowType || o.workflowType;
+        return k === 'winding' || k === 'knitting' || k === 'dyeing' || wf === 'full_vertical';
+    });
+
+    const KANBAN_STAGES = hasVerticalOrders
+        ? ['procurement', 'winding', 'knitting', 'dyeing', 'fabric', 'cutting', 'print_wash', 'stitching', 'packing', 'dispatch']
+        : ['procurement', 'fabric', 'cutting', 'print_wash', 'stitching', 'packing', 'dispatch'];
 
     kanbanContainer.innerHTML = KANBAN_STAGES.map((stgKey, stgIdx) => {
         const stageDef = STAGE_DEFINITIONS[stgKey] || {};
@@ -790,18 +790,21 @@ window.advanceOrderStage = async function(orderId, delta) {
     const order = currentOrders.find(o => o.id === orderId);
     if (!order) return;
 
+    const primaryProd = (Array.isArray(order.products) && order.products.length > 0) ? order.products[0] : null;
+    const stages = getProductWorkflowStages(primaryProd, order.workflowType);
     const currentKey = normalizeStageKey(order.status);
-    let currentIdx = CANONICAL_STAGE_ORDER.findIndex(s => s.key === currentKey);
+    let currentIdx = stages.indexOf(currentKey);
     if (currentIdx === -1) currentIdx = 0;
 
-    const nextIdx = Math.max(0, Math.min(CANONICAL_STAGE_ORDER.length - 1, currentIdx + delta));
+    const nextIdx = Math.max(0, Math.min(stages.length - 1, currentIdx + delta));
     if (nextIdx === currentIdx) return;
 
-    const nextStage = CANONICAL_STAGE_ORDER[nextIdx];
+    const nextStageKey = stages[nextIdx];
+    const nextDef = STAGE_DEFINITIONS[nextStageKey] || { label: nextStageKey };
     try {
-        window.showToast?.(`Moving #${orderId} to ${nextStage.label}...`, 'info');
-        await api.updateOrderStatus(orderId, nextStage.label);
-        window.showToast?.(`Order moved to ${nextStage.label}`, 'success');
+        window.showToast?.(`Moving #${orderId} to ${nextDef.label}...`, 'info');
+        await api.updateOrderStatus(orderId, nextDef.label);
+        window.showToast?.(`Order moved to ${nextDef.label}`, 'success');
         await loadOrders();
     } catch (err) {
         console.error("Failed to advance stage:", err);
@@ -822,6 +825,22 @@ window.toggleOrderSelection = function(orderId) {
     renderOrders();
 };
 
+window.toggleSelectAll = function() {
+    if (selectedOrderIds.size === currentOrders.length && currentOrders.length > 0) {
+        selectedOrderIds.clear();
+    } else {
+        currentOrders.forEach(o => selectedOrderIds.add(o.id));
+    }
+    updateBulkToolbar();
+    renderOrders();
+};
+
+window.clearOrderSelection = function() {
+    selectedOrderIds.clear();
+    updateBulkToolbar();
+    renderOrders();
+};
+
 window.clearBulkSelection = function() {
     selectedOrderIds.clear();
     updateBulkToolbar();
@@ -829,16 +848,50 @@ window.clearBulkSelection = function() {
 };
 
 function updateBulkToolbar() {
-    const bar = document.getElementById('orders-bulk-bar');
+    const bar = document.getElementById('bulk-actions-bar') || document.getElementById('orders-bulk-bar');
     const countEl = document.getElementById('bulk-selected-count');
     if (!bar) return;
-    if (selectedOrderIds.size > 0) {
+
+    const count = selectedOrderIds.size;
+    if (count > 0) {
         bar.classList.remove('hidden');
-        if (countEl) countEl.textContent = `${selectedOrderIds.size} order${selectedOrderIds.size > 1 ? 's' : ''} selected`;
+        if (countEl) countEl.textContent = `${count} order${count > 1 ? 's' : ''} selected`;
     } else {
         bar.classList.add('hidden');
     }
 }
+
+window.bulkAdvanceOrders = async function() {
+    if (selectedOrderIds.size === 0) return;
+    const count = selectedOrderIds.size;
+    if (!confirm(`Advance ${count} selected order${count > 1 ? 's' : ''} to their next production stage?`)) return;
+
+    window.showToast?.(`Advancing ${count} orders...`, 'info');
+    let updated = 0;
+    for (const orderId of selectedOrderIds) {
+        const order = currentOrders.find(o => o.id === orderId);
+        if (order) {
+            const primaryProd = (Array.isArray(order.products) && order.products.length > 0) ? order.products[0] : null;
+            const stages = getProductWorkflowStages(primaryProd, order.workflowType);
+            const currentKey = normalizeStageKey(order.status);
+            let currentIdx = stages.indexOf(currentKey);
+            if (currentIdx < stages.length - 1) {
+                const nextStageKey = stages[currentIdx + 1];
+                const nextDef = STAGE_DEFINITIONS[nextStageKey] || { label: nextStageKey };
+                await api.updateOrderStatus(orderId, nextDef.label);
+                updated++;
+            }
+        }
+    }
+    selectedOrderIds.clear();
+    updateBulkToolbar();
+    await loadOrders();
+    window.showToast?.(`Advanced ${updated} orders to next stage`, 'success');
+};
+
+window.openBulkAdvanceModal = async function() {
+    await window.bulkAdvanceOrders();
+};
 
 window.bulkExportCSV = function() {
     const ordersToExport = selectedOrderIds.size > 0

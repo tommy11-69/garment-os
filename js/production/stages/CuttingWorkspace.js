@@ -3,12 +3,19 @@
  * Marker planning, lay count, size ratio cut matrix, scrap %, and bundle ticket generation.
  */
 
-import { STAGE_DEFINITIONS } from '../domain/workflowEngine.js?v=5.5';
+import { STAGE_DEFINITIONS, getProductWorkflowStages } from '../domain/workflowEngine.js?v=5.5';
 
 export const CuttingWorkspace = {
     render(order, activeProduct, stageData) {
         const cut = stageData?.cutting || {};
         const targetQty = Number(activeProduct?.qty) || Number(order?.qty) || 0;
+
+        // Resolve dynamic next stage in this product's workflow
+        const stages = getProductWorkflowStages(activeProduct, order?.workflowType);
+        const currentIdx = stages.indexOf('cutting');
+        const nextStageKey = (currentIdx >= 0 && currentIdx < stages.length - 1) ? stages[currentIdx + 1] : 'stitching';
+        const nextDef = STAGE_DEFINITIONS[nextStageKey] || { label: 'Next Stage', shortLabel: 'Next Stage' };
+        const nextLabel = nextDef.shortLabel || nextDef.label;
         
         // Size breakdown from product or default standard ratio (S, M, L, XL, XXL)
         const productSizes = activeProduct?.sizes || order?.stageData?.cutting?.cutQuantitiesBySize || {};
@@ -67,7 +74,7 @@ export const CuttingWorkspace = {
                             </button>
                             <button type="button" onclick="window.productionRouter.saveCurrentStage(true)" 
                                 class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-primary text-white text-[13px] font-bold hover:bg-primary-hover active-scale transition-apple shadow-sm flex items-center justify-center gap-1.5">
-                                <span>Handoff to Next Stage</span>
+                                <span>Handoff to ${nextLabel}</span>
                                 <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
                             </button>
                         </div>

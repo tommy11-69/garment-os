@@ -1,58 +1,40 @@
 import { ProgressBar } from './components/index.js?v=5.2';
-import { calculateOrderRollup, normalizeStageKey, STAGE_DEFINITIONS } from './production/domain/workflowEngine.js?v=5.5';
-
-// ─── Stage Pipeline Helper ────────────────────────────────────────────────────
-const STAGE_SEQUENCES = {
-    default:             ['Procurement', 'Fabric', 'Cutting', 'Stitching', 'Print/Wash', 'Packing', 'Dispatch'],
-    print_before_stitch: ['Procurement', 'Fabric', 'Cutting', 'Print/Wash', 'Stitching', 'Packing', 'Dispatch'],
-    wash_before_stitch:  ['Procurement', 'Fabric', 'Cutting', 'Print/Wash', 'Stitching', 'Packing', 'Dispatch'],
-    direct_fulfillment:  ['Procurement', 'Dispatch']
-};
-
-// Short labels for the pipeline chips
-const STAGE_SHORT = {
-    'Procurement': 'Source',
-    'Fabric': 'Fabric',
-    'Cutting': 'Cut',
-    'Stitching': 'Stitch',
-    'Print/Wash': 'Print',
-    'Wash': 'Wash',
-    'Packing': 'Pack',
-    'Dispatch': 'Dispatch',
-};
+import { calculateOrderRollup, normalizeStageKey, STAGE_DEFINITIONS, getProductWorkflowStages, WORKFLOW_ROUTES } from './production/domain/workflowEngine.js?v=5.5';
 
 function renderStagePipeline(order) {
-    const wf     = order.workflowType || 'default';
-    const stages = STAGE_SEQUENCES[wf] || STAGE_SEQUENCES.default;
+    // Determine workflow type from the primary product (new schema) or order-level fallback
+    const primaryProduct = Array.isArray(order.products) && order.products.length > 0
+        ? order.products[0]
+        : null;
+    const workflowType = primaryProduct?.workflowType || order.workflowType || 'default';
+
+    // Get the real ordered list of stage keys for this workflow
+    const stageKeys = getProductWorkflowStages(primaryProduct, workflowType);
+
+    // Determine the active stage key from the order status
     const currentNorm = normalizeStageKey(order.status);
-
-    const normStageMap = {
-        'procurement': 'Procurement',
-        'fabric': 'Fabric',
-        'cutting': 'Cutting',
-        'stitching': 'Stitching',
-        'print_wash': 'Print/Wash',
-        'packing': 'Packing',
-        'dispatch': 'Dispatch'
-    };
-
-    let activeIdx = stages.findIndex(s => s.toLowerCase().includes(currentNorm.replace('_', '')) || (normStageMap[currentNorm] === s));
+    let activeIdx = stageKeys.indexOf(currentNorm);
     if (activeIdx < 0) activeIdx = 0;
-    if (['Dispatched', 'Delivered', 'Closed', 'Archived'].includes(order.status)) activeIdx = stages.length;
+    if (['Dispatched', 'Delivered', 'Closed', 'Archived'].includes(order.status)) {
+        activeIdx = stageKeys.length; // all done
+    }
 
-    const chips = stages.map((s, i) => {
+    const chips = stageKeys.map((key, i) => {
+        const def      = STAGE_DEFINITIONS[key] || { shortLabel: key, label: key };
         const isDone   = i < activeIdx;
         const isActive = i === activeIdx;
         const chipCls  = isDone
-            ? 'bg-[#008A00] text-white'
+            ? 'bg-[#34C759] text-white'
             : isActive
                 ? 'bg-primary text-white shadow-xs'
                 : 'bg-surface-variant text-secondary';
-        const icon = isDone ? '<span class="material-symbols-outlined text-[10px] leading-none">check</span>' : '';
-        return `<span class="shrink-0 px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wide ${chipCls} flex items-center gap-0.5">${icon}${STAGE_SHORT[s] || s}</span>`;
+        const icon = isDone
+            ? '<span class="material-symbols-outlined text-[10px] leading-none">check</span>'
+            : '';
+        const label = def.shortLabel || def.label || key;
+        return `<span class="shrink-0 px-1.5 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wide ${chipCls} flex items-center gap-0.5">${icon}${label}</span>`;
     });
 
-    // Connector dots between chips
     const pipelineItems = chips.reduce((arr, chip, i) => {
         arr.push(chip);
         if (i < chips.length - 1) arr.push(`<span class="text-outline-variant text-[10px] shrink-0">›</span>`);
@@ -233,7 +215,14 @@ export const renderers = {
                     <div class="mt-3 pt-2.5 border-t border-outline-variant/40 flex items-center justify-between">
                         <div class="flex items-center gap-1.5 text-[12px] text-secondary">
                             <span class="material-symbols-outlined text-[16px] text-primary">inventory_2</span>
-                            <span><strong>${(order.qty || 0).toLocaleString()} pcs</strong> • ${order.product || 'Garments'}</span>
+                            <span><strong>${(order.qty || 0).toLocaleString()} pcs</strong>${
+                                (() => {
+                                    const primary = Array.isArray(order.products) && order.products.length > 0
+                                        ? order.products[0] : null;
+                                    const name = primary?.name || order.product || '';
+                                    return name ? ` • ${name}` : '';
+                                })()
+                            }</span>
                         </div>
                         <div class="flex items-center gap-2">
                             <button type="button" 

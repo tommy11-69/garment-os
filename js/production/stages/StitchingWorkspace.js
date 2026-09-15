@@ -3,12 +3,19 @@
  * Sewing line allocation, hourly output targets, inline defect audit, and repair tracking.
  */
 
-import { STAGE_DEFINITIONS } from '../domain/workflowEngine.js?v=5.5';
+import { STAGE_DEFINITIONS, getProductWorkflowStages } from '../domain/workflowEngine.js?v=5.5';
 
 export const StitchingWorkspace = {
     render(order, activeProduct, stageData) {
         const st = stageData?.stitching || {};
         const targetQty = Number(activeProduct?.qty) || Number(order?.qty) || 0;
+
+        // Resolve dynamic next stage in this product's workflow
+        const stages = getProductWorkflowStages(activeProduct, order?.workflowType);
+        const currentIdx = stages.indexOf('stitching');
+        const nextStageKey = (currentIdx >= 0 && currentIdx < stages.length - 1) ? stages[currentIdx + 1] : 'packing';
+        const nextDef = STAGE_DEFINITIONS[nextStageKey] || { label: 'Next Stage', shortLabel: 'Next Stage' };
+        const nextLabel = nextDef.shortLabel || nextDef.label;
 
         const lineId = st.lineId || 'Sewing Line 1';
         const dailyTarget = Number(st.dailyTarget) || Math.min(targetQty, 400);
@@ -62,7 +69,7 @@ export const StitchingWorkspace = {
                             </button>
                             <button type="button" onclick="window.productionRouter.saveCurrentStage(true)" 
                                 class="flex-1 sm:flex-none px-4 py-2.5 rounded-xl bg-primary text-white text-[13px] font-bold hover:bg-primary-hover active-scale transition-apple shadow-sm flex items-center justify-center gap-1.5">
-                                <span>Send to Packing</span>
+                                <span>Advance to ${nextLabel}</span>
                                 <span class="material-symbols-outlined text-[16px]">arrow_forward</span>
                             </button>
                         </div>

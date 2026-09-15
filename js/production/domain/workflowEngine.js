@@ -266,7 +266,7 @@ export function calculateOrderRollup(order) {
     if (!order) {
         return {
             overallPercentage: 0,
-            activeStage: 'fabric',
+            activeStage: 'procurement',
             status: 'Draft',
             isBottleneck: false,
             productsSummary: []
@@ -280,7 +280,7 @@ export function calculateOrderRollup(order) {
             name: order.product || 'Standard Garment',
             qty: Number(order.qty) || 0,
             category: 'Adults',
-            status: order.status || 'Fabric',
+            status: order.status || 'Procurement',
             workflowType: order.workflowType || 'default',
             sizes: order.stageData?.cutting?.sizes || {}
         }];
@@ -288,27 +288,30 @@ export function calculateOrderRollup(order) {
     const totalOrderQty = products.reduce((sum, p) => sum + (Number(p.qty) || 0), 0) || Number(order.qty) || 1;
     let weightedScoreSum = 0;
     let lowestStageIndex = 999;
-    let bottleneckStageKey = 'fabric';
+    let bottleneckStageKey = 'procurement';
 
     const productsSummary = products.map((prod, index) => {
         const prodQty = Number(prod.qty) || 0;
         const stages = getProductWorkflowStages(prod, order.workflowType);
-        const currentStageKey = normalizeStageKey(prod.status || order.status);
+        const initialStage = stages[0] || 'procurement';
+        const rawStatus = prod.status || order.status || initialStage;
+        const currentStageKey = normalizeStageKey(rawStatus);
         
         let stageIdx = stages.indexOf(currentStageKey);
         if (stageIdx === -1) {
             stageIdx = 0;
         }
+        const activeStageKey = stages[stageIdx];
 
         // Percentage for this product in its workflow (0% to 100%)
         const prodPct = stages.length > 1
             ? Math.min(100, Math.round((stageIdx / (stages.length - 1)) * 100))
-            : (currentStageKey === 'dispatch' ? 100 : 50);
+            : (activeStageKey === 'dispatch' ? 100 : 50);
 
         // Track global lowest operational phase
         if (stageIdx < lowestStageIndex) {
             lowestStageIndex = stageIdx;
-            bottleneckStageKey = stages[stageIdx];
+            bottleneckStageKey = activeStageKey;
         }
 
         weightedScoreSum += (prodQty * prodPct);
@@ -317,8 +320,8 @@ export function calculateOrderRollup(order) {
             index,
             name: prod.name || `Item #${index + 1}`,
             qty: prodQty,
-            currentStageKey,
-            stageLabel: STAGE_DEFINITIONS[currentStageKey]?.label || currentStageKey,
+            currentStageKey: activeStageKey,
+            stageLabel: STAGE_DEFINITIONS[activeStageKey]?.label || activeStageKey,
             percentage: prodPct,
             workflow: stages
         };
@@ -340,7 +343,7 @@ export function calculateOrderRollup(order) {
     return {
         overallPercentage,
         activeStageKey: bottleneckStageKey,
-        activeStageDef: STAGE_DEFINITIONS[bottleneckStageKey] || STAGE_DEFINITIONS.fabric,
+        activeStageDef: STAGE_DEFINITIONS[bottleneckStageKey] || STAGE_DEFINITIONS.procurement,
         isBottleneck,
         totalOrderQty,
         productsSummary

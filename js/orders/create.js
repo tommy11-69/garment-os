@@ -101,22 +101,22 @@ const WIZARD_STEPS = [
 function makeDefaultProduct(n = 1) {
     return {
         id:                  `prod-${Date.now()}-${n}`,
-        name:                n === 1 ? '100% Cotton Crewneck T-Shirt' : `Garment Item #${n}`,
+        name:                '',
         category:            'Adults',
-        qty:                 n === 1 ? 500 : 100,
+        qty:                 0,
         sizes:               { XS: 0, S: 0, M: 0, L: 0, XL: 0, XXL: 0, XXXL: 0, XXXXL: 0 },
         fabric: {
-            type:       'Cotton',
-            subtype:    'Single Jersey (100% Combed Cotton)',
-            gsm:        180,
-            dia:        34,
-            ratePerKg:  380
+            type:       '',
+            subtype:    '',
+            gsm:        '',
+            dia:        '',
+            ratePerKg:  ''
         },
         workflowType:         'default',
-        decorationType:       'Screen',
-        decorationPlacement:  'Center Chest',
-        decorationColors:     '2 Colors',
-        unitPrice:            240
+        decorationType:       '',
+        decorationPlacement:  '',
+        decorationColors:     '',
+        unitPrice:            ''
     };
 }
 
@@ -1119,20 +1119,30 @@ window.coSaveOrder = async function(launchOption = 'orders_tower') {
     const flatStageData = mergeLineItemsToFlatStageData(lineItems);
 
     // Enriched products array
-    const productsData = coState.products.map(prod => ({
-        id:                  prod.id,
-        name:                prod.name.trim(),
-        category:            prod.category,
-        qty:                 prod.qty,
-        unitPrice:           Number(prod.unitPrice) || 0,
-        status:              prod.workflowType === 'direct_fulfillment' ? 'Procurement' : 'Fabric',
-        workflowType:        prod.workflowType,
-        sizes:               { ...prod.sizes },
-        fabric:              { ...prod.fabric },
-        decorationType:      prod.decorationType,
-        decorationPlacement: prod.decorationPlacement || '',
-        decorationColors:    prod.decorationColors    || ''
-    }));
+    const productsData = coState.products.map(prod => {
+        const stages = WORKFLOW_ROUTES[prod.workflowType] || WORKFLOW_ROUTES.default;
+        const initialStageKey = stages[0] || 'procurement';
+        const initialDef = STAGE_DEFINITIONS[initialStageKey] || { label: 'Procurement' };
+        return {
+            id:                  prod.id,
+            name:                prod.name.trim(),
+            category:            prod.category,
+            qty:                 prod.qty,
+            unitPrice:           Number(prod.unitPrice) || 0,
+            status:              initialDef.label,
+            workflowType:        prod.workflowType,
+            sizes:               { ...prod.sizes },
+            fabric:              { ...prod.fabric },
+            decorationType:      prod.decorationType,
+            decorationPlacement: prod.decorationPlacement || '',
+            decorationColors:    prod.decorationColors    || ''
+        };
+    });
+
+    const primaryProd = coState.products[0];
+    const primaryStages = WORKFLOW_ROUTES[primaryProd?.workflowType] || WORKFLOW_ROUTES.default;
+    const initialStageKey = primaryStages[0] || 'procurement';
+    const initialDef = STAGE_DEFINITIONS[initialStageKey] || { label: 'Procurement' };
 
     const orderData = {
         customerId:          val('co-customer'),
@@ -1144,10 +1154,10 @@ window.coSaveOrder = async function(launchOption = 'orders_tower') {
         incurredCost:        estimatedCost,
         deliveryDate:        val('co-delivery'),
         priority:            coState.priority,
-        workflowType:        coState.products[0]?.workflowType || 'default',
-        status:              coState.products[0]?.workflowType === 'direct_fulfillment' ? 'Procurement' : 'Fabric',
-        progressPercentage:  10,
-        progressLabel:       'Fabric Inward Phase',
+        workflowType:        primaryProd?.workflowType || 'default',
+        status:              initialDef.label,
+        progressPercentage:  0,
+        progressLabel:       `${initialDef.label} Phase`,
         paymentStatus:       pmtStatus,
         paymentReceived:     advancePayment,
         paymentTerms:        val('co-payment-terms'),
