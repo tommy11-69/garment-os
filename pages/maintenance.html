@@ -13,13 +13,23 @@
     <meta name="description" content="Garment OS is under maintenance"/>
     <title>Under Maintenance — Garment OS</title>
 
-    <!-- Zero-Flicker Dark Mode Theme Resolver -->
+    <!-- Zero-Flicker Dark Mode Theme Resolver & Global Handler -->
     <script>
+      (function() {
         if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            document.documentElement.classList.add('dark');
+          document.documentElement.classList.add('dark');
         } else {
-            document.documentElement.classList.remove('dark');
+          document.documentElement.classList.remove('dark');
         }
+        window.toggleTheme = window.toggleTheme || function() {
+          const isDark = document.documentElement.classList.toggle('dark');
+          localStorage.setItem('theme', isDark ? 'dark' : 'light');
+          if (typeof window.updateThemeToggleUI === 'function') {
+            window.updateThemeToggleUI(isDark);
+          }
+          window.dispatchEvent(new CustomEvent('gos-theme-changed', { detail: { isDark } }));
+        };
+      })();
     </script>
 
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>

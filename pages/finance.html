@@ -7,13 +7,23 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Garment OS - Finance</title>
     
-    <!-- Zero-Flicker Dark Mode Theme Resolver -->
+    <!-- Zero-Flicker Dark Mode Theme Resolver & Global Handler -->
     <script>
+      (function() {
         if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            document.documentElement.classList.add('dark');
+          document.documentElement.classList.add('dark');
         } else {
-            document.documentElement.classList.remove('dark');
+          document.documentElement.classList.remove('dark');
         }
+        window.toggleTheme = window.toggleTheme || function() {
+          const isDark = document.documentElement.classList.toggle('dark');
+          localStorage.setItem('theme', isDark ? 'dark' : 'light');
+          if (typeof window.updateThemeToggleUI === 'function') {
+            window.updateThemeToggleUI(isDark);
+          }
+          window.dispatchEvent(new CustomEvent('gos-theme-changed', { detail: { isDark } }));
+        };
+      })();
     </script>
     
     <!-- Favicon & PWA Icons -->
@@ -431,9 +441,9 @@
     
     <div id="sheets-container"></div>
     
+    <script src="../js/app.js?v=5.5"></script>
     <script type="module" src="../js/finance/index.js?v=5.5"></script>
     <script src="../js/utils/sheet.js?v=5.5"></script>
-    <script src="../js/app.js?v=5.5"></script>
 
     <!-- ── Chart Engine (pure SVG, no library) ── -->
     <script>

@@ -7,13 +7,23 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Garment OS - Production Hub</title>
     
-    <!-- Zero-Flicker Dark Mode Theme Resolver -->
+    <!-- Zero-Flicker Dark Mode Theme Resolver & Global Handler -->
     <script>
+      (function() {
         if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            document.documentElement.classList.add('dark');
+          document.documentElement.classList.add('dark');
         } else {
-            document.documentElement.classList.remove('dark');
+          document.documentElement.classList.remove('dark');
         }
+        window.toggleTheme = window.toggleTheme || function() {
+          const isDark = document.documentElement.classList.toggle('dark');
+          localStorage.setItem('theme', isDark ? 'dark' : 'light');
+          if (typeof window.updateThemeToggleUI === 'function') {
+            window.updateThemeToggleUI(isDark);
+          }
+          window.dispatchEvent(new CustomEvent('gos-theme-changed', { detail: { isDark } }));
+        };
+      })();
     </script>
     
     <!-- Favicon & PWA Icons -->
@@ -230,9 +240,9 @@
     <!-- Floating Toast Notifications -->
     <div id="toast-container" class="fixed bottom-20 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
+    <script src="../js/app.js"></script>
     <script type="module" src="../js/production/index.js?v=5.5"></script>
     <script src="../js/utils/sheet.js"></script>
-    <script src="../js/app.js"></script>
 
     <script>
         // Global Toast Notification Helper

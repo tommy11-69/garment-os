@@ -14,12 +14,23 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Garment OS - Orders Commercial Control Tower</title>
 
+    <!-- Zero-Flicker Dark Mode Theme Resolver & Global Handler -->
     <script>
-      if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-      }
+      (function() {
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+        window.toggleTheme = window.toggleTheme || function() {
+          const isDark = document.documentElement.classList.toggle('dark');
+          localStorage.setItem('theme', isDark ? 'dark' : 'light');
+          if (typeof window.updateThemeToggleUI === 'function') {
+            window.updateThemeToggleUI(isDark);
+          }
+          window.dispatchEvent(new CustomEvent('gos-theme-changed', { detail: { isDark } }));
+        };
+      })();
     </script>
     
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
@@ -374,9 +385,9 @@
     <!-- Bottom Sheets Container -->
     <div id="sheets-container"></div>
     
+    <script src="../js/app.js"></script>
     <script type="module" src="../js/orders/index.js?v=5.5"></script>
     <script src="../js/utils/sheet.js"></script>
-    <script src="../js/app.js"></script>
 
     <script>
         // Stage filter chip sync
