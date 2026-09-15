@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html class="light" lang="en">
+<html lang="en">
 <head>
     <!-- Favicon & PWA Icons -->
     <link rel="icon" type="image/png" sizes="192x192" href="../assets/icon-192.png">
@@ -13,6 +13,14 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Garment OS - Orders Commercial Control Tower</title>
+
+    <script>
+      if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    </script>
     
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com" rel="preconnect"/>
@@ -60,9 +68,18 @@
             border-color: rgba(0,0,0,0.06);
             color: #6b7280;
         }
+        .dark .stage-chip.inactive {
+            background: #1e293b;
+            border-color: #334155;
+            color: #94a3b8;
+        }
         .stage-chip.inactive:hover {
             background: var(--color-surface-variant, #e5e5ea);
             color: var(--color-on-surface, #1d1d1f);
+        }
+        .dark .stage-chip.inactive:hover {
+            background: #334155;
+            color: #f8fafc;
         }
 
         /* Urgency filter pill */
@@ -80,88 +97,105 @@
             background: #1d1d1f;
             color: white;
         }
+        .dark .urgency-chip.active {
+            background: #f8fafc;
+            color: #0f172a;
+        }
         .urgency-chip.inactive {
             background: var(--color-surface-container, #f2f2f7);
             color: #6b7280;
         }
+        .dark .urgency-chip.inactive {
+            background: #1e293b;
+            color: #94a3b8;
+        }
     </style>
 </head>
-<body class="font-body text-body antialiased bg-background">
+<body class="font-body text-body antialiased bg-background dark:bg-slate-950 text-on-surface dark:text-slate-100">
 
     <!-- Desktop & Tablet Sidebar Navigation -->
     <div id="sidebar-container">
-        <nav class="sidebar-nav" id="sidebar-nav" role="navigation" aria-label="Main navigation">
-            <div class="flex items-center gap-3 px-5 h-[68px] shrink-0 border-b border-outline-variant/30">
-                <div class="w-8 h-8 rounded-xl bg-primary flex items-center justify-center shrink-0 shadow-sm">
-                    <span class="material-symbols-outlined text-white text-[18px]" style="font-variation-settings:'FILL' 1;">checkroom</span>
+        <nav class="sidebar-nav bg-white dark:bg-slate-900 border-r border-outline-variant/30 dark:border-slate-800" id="sidebar-nav" role="navigation" aria-label="Main navigation">
+            <div class="flex items-center justify-between px-5 h-[68px] shrink-0 border-b border-outline-variant/30 dark:border-slate-800">
+                <div class="flex items-center gap-3 min-w-0">
+                    <div class="w-8 h-8 rounded-xl bg-primary flex items-center justify-center shrink-0 shadow-sm">
+                        <span class="material-symbols-outlined text-white text-[18px]" style="font-variation-settings:'FILL' 1;">checkroom</span>
+                    </div>
+                    <div class="min-w-0">
+                        <h1 class="text-[14px] font-bold text-on-surface dark:text-slate-100 tracking-tight leading-tight truncate">Garment OS</h1>
+                        <p class="text-[10px] font-semibold text-secondary dark:text-slate-400 uppercase tracking-[0.07em]">Enterprise</p>
+                    </div>
                 </div>
-                <div class="min-w-0">
-                    <h1 class="text-[14px] font-bold text-on-surface tracking-tight leading-tight truncate">Garment OS</h1>
-                    <p class="text-[10px] font-semibold text-secondary uppercase tracking-[0.07em]">Enterprise</p>
-                </div>
+                <button type="button" onclick="toggleTheme()" class="theme-toggle-btn w-8 h-8 rounded-xl flex items-center justify-center text-secondary dark:text-slate-400 hover:bg-surface-variant/40 dark:hover:bg-slate-800 transition-colors" title="Toggle Dark/Light Mode" aria-label="Toggle theme">
+                    <span class="material-symbols-outlined text-[19px]">dark_mode</span>
+                </button>
             </div>
             <div class="flex-1 overflow-y-auto py-3 flex flex-col" style="gap: 1px;">
                 <div class="px-5 pb-1.5 pt-3">
-                    <span class="text-[10px] font-bold text-secondary uppercase tracking-[0.08em]">Workspace</span>
+                    <span class="text-[10px] font-bold text-secondary dark:text-slate-400 uppercase tracking-[0.08em]">Workspace</span>
                 </div>
-                <a href="dashboard.html" data-page="dashboard" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+                <a href="dashboard.html" data-page="dashboard" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary dark:text-slate-400 transition-colors duration-150 group outline-none">
                     <span class="material-symbols-outlined text-[20px] shrink-0">dashboard</span>
                     <span class="text-[13px] font-semibold leading-none">Dashboard</span>
                 </a>
-                <a href="calculator.html" data-page="calculator" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+                <a href="calculator.html" data-page="calculator" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary dark:text-slate-400 transition-colors duration-150 group outline-none">
                     <span class="material-symbols-outlined text-[20px] shrink-0">calculate</span>
                     <span class="text-[13px] font-semibold leading-none">Costing</span>
                 </a>
-                <a href="orders.html" data-page="orders" class="sidebar-nav-link sidebar-nav-link--active mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none" aria-current="page">
+                <a href="orders.html" data-page="orders" class="sidebar-nav-link sidebar-nav-link--active mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary dark:text-slate-400 transition-colors duration-150 group outline-none" aria-current="page">
                     <span class="material-symbols-outlined text-[20px] shrink-0" style="font-variation-settings:'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;">receipt_long</span>
                     <span class="text-[13px] font-semibold leading-none">Orders</span>
                 </a>
-                <a href="billings.html" data-page="billings" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+                <a href="billings.html" data-page="billings" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary dark:text-slate-400 transition-colors duration-150 group outline-none">
                     <span class="material-symbols-outlined text-[20px] shrink-0">receipt</span>
                     <span class="text-[13px] font-semibold leading-none">Billings</span>
                 </a>
-                <a href="finance.html" data-page="finance" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+                <a href="finance.html" data-page="finance" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary dark:text-slate-400 transition-colors duration-150 group outline-none">
                     <span class="material-symbols-outlined text-[20px] shrink-0">payments</span>
                     <span class="text-[13px] font-semibold leading-none">Finance</span>
                 </a>
-                <a href="reports.html" data-page="reports" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+                <a href="reports.html" data-page="reports" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary dark:text-slate-400 transition-colors duration-150 group outline-none">
                     <span class="material-symbols-outlined text-[20px] shrink-0">analytics</span>
                     <span class="text-[13px] font-semibold leading-none">Reports</span>
                 </a>
-                <div class="mx-4 my-2 border-t border-outline-variant/40"></div>
+                <div class="mx-4 my-2 border-t border-outline-variant/40 dark:border-slate-800"></div>
                 <div class="px-5 pb-1.5 pt-1">
-                    <span class="text-[10px] font-bold text-secondary uppercase tracking-[0.08em]">Management</span>
+                    <span class="text-[10px] font-bold text-secondary dark:text-slate-400 uppercase tracking-[0.08em]">Management</span>
                 </div>
-                <a href="customers.html" data-page="customers" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+                <a href="customers.html" data-page="customers" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary dark:text-slate-400 transition-colors duration-150 group outline-none">
                     <span class="material-symbols-outlined text-[20px] shrink-0">groups</span>
                     <span class="text-[13px] font-semibold leading-none">Customers</span>
                 </a>
-                <a href="inventory.html" data-page="inventory" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+                <a href="inventory.html" data-page="inventory" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary dark:text-slate-400 transition-colors duration-150 group outline-none">
                     <span class="material-symbols-outlined text-[20px] shrink-0">inventory_2</span>
                     <span class="text-[13px] font-semibold leading-none">Inventory</span>
                 </a>
-                <a href="vendors.html" data-page="vendors" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+                <a href="vendors.html" data-page="vendors" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary dark:text-slate-400 transition-colors duration-150 group outline-none">
                     <span class="material-symbols-outlined text-[20px] shrink-0">storefront</span>
                     <span class="text-[13px] font-semibold leading-none">Vendors</span>
                 </a>
-                <a href="production.html" data-page="production" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+                <a href="production.html" data-page="production" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary dark:text-slate-400 transition-colors duration-150 group outline-none">
                     <span class="material-symbols-outlined text-[20px] shrink-0">precision_manufacturing</span>
                     <span class="text-[13px] font-semibold leading-none">Production</span>
                 </a>
-                <a href="dispatch.html" data-page="dispatch" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+                <a href="dispatch.html" data-page="dispatch" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary dark:text-slate-400 transition-colors duration-150 group outline-none">
                     <span class="material-symbols-outlined text-[20px] shrink-0">local_shipping</span>
                     <span class="text-[13px] font-semibold leading-none">Dispatch</span>
                 </a>
             </div>
-            <div class="shrink-0 border-t border-outline-variant/30 py-3 flex flex-col" style="gap: 1px;">
-                <a href="more.html" data-page="more" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+            <div class="shrink-0 border-t border-outline-variant/30 dark:border-slate-800 py-3 flex flex-col" style="gap: 1px;">
+                <a href="more.html" data-page="more" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary dark:text-slate-400 transition-colors duration-150 group outline-none">
                     <span class="material-symbols-outlined text-[20px] shrink-0">grid_view</span>
                     <span class="text-[13px] font-semibold leading-none">More</span>
                 </a>
-                <a href="settings.html" data-page="settings" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+                <a href="settings.html" data-page="settings" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary dark:text-slate-400 transition-colors duration-150 group outline-none">
                     <span class="material-symbols-outlined text-[20px] shrink-0">settings</span>
                     <span class="text-[13px] font-semibold leading-none">Settings</span>
                 </a>
+                <button type="button" onclick="toggleTheme()" class="theme-toggle-btn mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary dark:text-slate-400 hover:bg-surface-variant/40 dark:hover:bg-slate-800 transition-colors duration-150 group outline-none text-left">
+                    <span class="material-symbols-outlined text-[20px] shrink-0">dark_mode</span>
+                    <span class="theme-label text-[13px] font-semibold leading-none">Theme</span>
+                </button>
             </div>
         </nav>
     </div>
@@ -176,17 +210,17 @@
             <div class="px-xs pt-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div>
                     <div class="flex items-center gap-2">
-                        <h2 class="text-[26px] sm:text-[30px] leading-tight font-extrabold tracking-tight text-on-surface">Orders Control Tower</h2>
-                        <span class="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-primary/10 text-primary uppercase tracking-wider">
+                        <h2 class="text-[26px] sm:text-[30px] leading-tight font-extrabold tracking-tight text-on-surface dark:text-slate-100">Orders Control Tower</h2>
+                        <span class="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-primary/10 text-primary dark:text-primary-fixed uppercase tracking-wider">
                             Commercial Truth
                         </span>
                     </div>
-                    <p class="text-[13px] text-secondary mt-0.5">Commercial oversight, multi-item size breakdown, margin health & floor tracking</p>
+                    <p class="text-[13px] text-secondary dark:text-slate-400 mt-0.5">Commercial oversight, multi-item size breakdown, margin health & floor tracking</p>
                 </div>
                 
                 <div class="flex items-center gap-2">
                     <button onclick="window.exportAllOrdersCSV()" title="Export CSV"
-                        class="px-3.5 py-2 rounded-xl bg-surface-container-high border border-outline-variant text-on-surface text-[13px] font-bold active-scale transition-apple hover:bg-surface-variant flex items-center gap-1.5 shadow-xs">
+                        class="px-3.5 py-2 rounded-xl bg-surface-container-high dark:bg-slate-800 border border-outline-variant dark:border-slate-700 text-on-surface dark:text-slate-100 text-[13px] font-bold active-scale transition-apple hover:bg-surface-variant dark:hover:bg-slate-700 flex items-center gap-1.5 shadow-xs">
                         <span class="material-symbols-outlined text-[17px]">download</span>
                         <span class="hidden sm:inline">Export CSV</span>
                     </button>
@@ -223,15 +257,15 @@
             <div id="orders-search-container" class="px-xs flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
                 <!-- Search Input -->
                 <div class="relative flex-1">
-                    <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[20px]">search</span>
+                    <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary dark:text-slate-400 text-[20px]">search</span>
                     <input id="orders-search-input" type="text" placeholder="Search orders, PO #, buyer, fabric, styles..."
-                        class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl pl-11 pr-4 py-2.5 text-[14px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple placeholder:text-secondary shadow-xs">
+                        class="w-full bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant dark:border-slate-800 rounded-xl pl-11 pr-4 py-2.5 text-[14px] text-on-surface dark:text-slate-100 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple placeholder:text-secondary dark:placeholder:text-slate-500 shadow-xs">
                 </div>
 
                 <!-- Sort Dropdown -->
                 <div class="flex items-center gap-2 shrink-0">
                     <select id="orders-sort-select" onchange="window.setSortMode(this.value)" 
-                        class="bg-surface-container-lowest border border-outline-variant rounded-xl px-3 py-2.5 text-[13px] font-bold text-on-surface focus:border-primary outline-none shadow-xs">
+                        class="bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant dark:border-slate-800 rounded-xl px-3 py-2.5 text-[13px] font-bold text-on-surface dark:text-slate-100 focus:border-primary outline-none shadow-xs">
                         <option value="urgency">⚡ Sort: Urgency (Due Earliest)</option>
                         <option value="value_desc">💰 Sort: Order Value (High → Low)</option>
                         <option value="qty_desc">📦 Sort: Quantity (High → Low)</option>
@@ -240,7 +274,7 @@
                     </select>
 
                     <button onclick="window.openSheet('filterOrderSheet')" 
-                        class="w-10 h-10 shrink-0 rounded-xl bg-surface-container-lowest border border-outline-variant flex items-center justify-center text-secondary active-scale transition-apple hover:text-primary shadow-xs" 
+                        class="w-10 h-10 shrink-0 rounded-xl bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant dark:border-slate-800 flex items-center justify-center text-secondary dark:text-slate-400 active-scale transition-apple hover:text-primary shadow-xs" 
                         id="orders-filter-btn" title="Advanced Filters">
                         <span class="material-symbols-outlined text-[20px]">tune</span>
                     </button>
@@ -252,14 +286,14 @@
                 
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                     <!-- Active / Completed Segmented Tabs -->
-                    <div class="flex p-1 bg-surface-container-lowest border border-outline-variant rounded-xl shadow-xs w-full sm:w-auto min-w-[220px]">
-                        <button id="tab-active" onclick="window.setFilter('active')" class="flex-1 px-4 py-1.5 text-[13px] font-bold rounded-lg bg-surface-variant text-on-surface transition-colors">Active Orders</button>
-                        <button id="tab-completed" onclick="window.setFilter('completed')" class="flex-1 px-4 py-1.5 text-[13px] font-bold rounded-lg text-secondary hover:text-on-surface transition-colors">Completed</button>
+                    <div class="flex p-1 bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant dark:border-slate-800 rounded-xl shadow-xs w-full sm:w-auto min-w-[220px]">
+                        <button id="tab-active" onclick="window.setFilter('active')" class="flex-1 px-4 py-1.5 text-[13px] font-bold rounded-lg bg-surface-variant dark:bg-slate-800 text-on-surface dark:text-slate-100 transition-colors">Active Orders</button>
+                        <button id="tab-completed" onclick="window.setFilter('completed')" class="flex-1 px-4 py-1.5 text-[13px] font-bold rounded-lg text-secondary dark:text-slate-400 hover:text-on-surface dark:hover:text-slate-200 transition-colors">Completed</button>
                     </div>
 
                     <!-- Deadline Urgency Pills -->
                     <div class="flex items-center gap-1.5 overflow-x-auto pb-0.5">
-                        <span class="text-[11px] font-bold text-secondary uppercase shrink-0 mr-1">Deadline:</span>
+                        <span class="text-[11px] font-bold text-secondary dark:text-slate-400 uppercase shrink-0 mr-1">Deadline:</span>
                         <button class="urgency-chip active" data-urgency="all" onclick="window.setUrgencyFilter('all')">All</button>
                         <button class="urgency-chip inactive" data-urgency="overdue" onclick="window.setUrgencyFilter('overdue')">Overdue</button>
                         <button class="urgency-chip inactive" data-urgency="this_week" onclick="window.setUrgencyFilter('this_week')">Due in 7 Days</button>
@@ -269,12 +303,12 @@
                     <!-- View Mode Toggle -->
                     <div class="flex items-center gap-1 shrink-0 self-end sm:self-auto">
                         <button id="view-list-btn" onclick="window.setViewMode('list')" 
-                            class="px-2.5 py-1.5 rounded-lg bg-primary/10 text-primary text-[12px] font-bold flex items-center gap-1 transition-colors" title="List View">
+                            class="px-2.5 py-1.5 rounded-lg bg-primary/10 text-primary dark:text-primary-fixed text-[12px] font-bold flex items-center gap-1 transition-colors" title="List View">
                             <span class="material-symbols-outlined text-[16px]">view_list</span>
                             <span class="hidden sm:inline">List</span>
                         </button>
                         <button id="view-kanban-btn" onclick="window.setViewMode('kanban')" 
-                            class="px-2.5 py-1.5 rounded-lg text-secondary hover:bg-surface-variant text-[12px] font-bold flex items-center gap-1 transition-colors" title="Kanban View">
+                            class="px-2.5 py-1.5 rounded-lg text-secondary dark:text-slate-400 hover:bg-surface-variant dark:hover:bg-slate-800 text-[12px] font-bold flex items-center gap-1 transition-colors" title="Kanban View">
                             <span class="material-symbols-outlined text-[16px]">view_kanban</span>
                             <span class="hidden sm:inline">Kanban</span>
                         </button>

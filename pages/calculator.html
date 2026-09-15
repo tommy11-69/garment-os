@@ -1,7 +1,22 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html class="light" lang="en">
 
 <head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Cost Calculator - Garment OS</title>
+
+    <!-- Zero-Flicker Dark Mode Theme Resolver -->
+    <script>
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+
     <!-- Favicon & PWA Icons -->
     <link rel="icon" type="image/png" sizes="192x192" href="../assets/icon-192.png">
     <link rel="icon" type="image/webp" href="../assets/logo-primary.webp">
@@ -9,11 +24,6 @@
     <link rel="manifest" href="../manifest.json">
     <meta name="theme-color" content="#0059b5">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta charset="utf-8" />
-    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Cost Calculator - Garment OS</title>
 
     <link
         href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
@@ -36,6 +46,10 @@
         .calc-tab-btn.active {
             background: var(--color-on-surface, #1C1B1F);
             color: var(--color-surface, #FFFBFE);
+        }
+        .dark .calc-tab-btn.active {
+            background: #38bdf8;
+            color: #0f172a;
         }
 
         .calc-tab-panel {
@@ -93,14 +107,23 @@
         .profit-positive {
             color: #008A00;
         }
+        .dark .profit-positive {
+            color: #4ade80;
+        }
 
         .profit-negative {
             color: #FF3B30;
+        }
+        .dark .profit-negative {
+            color: #f87171;
         }
 
         /* Result card glow */
         .result-card-glow {
             box-shadow: 0 8px 32px rgba(0, 113, 227, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
+        }
+        .dark .result-card-glow {
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 2px 8px rgba(56, 189, 248, 0.1);
         }
 
         /* Hide number spinners */
@@ -116,6 +139,9 @@
 
         .section-divider {
             border-color: rgba(0, 0, 0, 0.06);
+        }
+        .dark .section-divider {
+            border-color: rgba(255, 255, 255, 0.08);
         }
 
         /* Garment type chips */
@@ -138,6 +164,12 @@
             white-space: nowrap;
             box-shadow: inset 0 2px 4px rgba(255,255,255,0.6), 0 2px 8px rgba(0,0,0,0.02);
         }
+        .dark .garment-chip {
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(30, 41, 59, 0.7);
+            color: #94a3b8;
+            box-shadow: inset 0 1px 2px rgba(255,255,255,0.05), 0 2px 8px rgba(0,0,0,0.2);
+        }
 
         .garment-chip.active {
             background: var(--color-primary, #0071E3);
@@ -146,11 +178,22 @@
             box-shadow: 0 4px 12px rgba(0, 113, 227, 0.25), inset 0 2px 4px rgba(255,255,255,0.2);
             transform: translateY(-1px);
         }
+        .dark .garment-chip.active {
+            background: #0284c7;
+            border-color: #38bdf8;
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(56, 189, 248, 0.3);
+        }
 
         .garment-chip:hover:not(.active) {
             background: rgba(255, 255, 255, 0.95);
             border-color: rgba(0,0,0,0.15);
             transform: translateY(-1px);
+        }
+        .dark .garment-chip:hover:not(.active) {
+            background: rgba(51, 65, 85, 0.8);
+            border-color: rgba(255, 255, 255, 0.2);
+            color: #f1f5f9;
         }
 
         .garment-chip:active {
@@ -183,11 +226,22 @@
                 radial-gradient(at 0% 100%, hsla(160, 100%, 93%, 1) 0, transparent 50%);
             background-attachment: fixed;
         }
+        .dark body.bg-background,
+        body.dark.bg-background,
+        body.dark {
+            background-color: #0b0f19 !important;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(30, 58, 138, 0.25) 0, transparent 50%), 
+                radial-gradient(at 100% 0%, rgba(88, 28, 135, 0.2) 0, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(120, 53, 15, 0.15) 0, transparent 50%),
+                radial-gradient(at 0% 100%, rgba(6, 78, 59, 0.2) 0, transparent 50%) !important;
+            background-attachment: fixed;
+        }
     </style>
     <link rel="stylesheet" href="../css/responsive.css">
 </head>
 
-<body class="font-body text-body antialiased bg-background" style="padding-bottom: 310px;">
+<body class="font-body text-body antialiased bg-background dark:bg-slate-950 text-on-surface dark:text-slate-100" style="padding-bottom: 310px;">
 
     <div id="topbar-container"></div>
 
@@ -197,29 +251,28 @@
             <!-- ── Header ── -->
             <div class="px-xs pt-sm flex justify-between items-start">
                 <div>
-                    <h2 class="text-[28px] leading-tight font-semibold tracking-tight text-on-surface mb-1">Costing</h2>
-                    <p class="text-[14px] text-secondary" id="calc-subtitle">Profit/Cost Calculator</p>
+                    <h2 class="text-[28px] leading-tight font-semibold tracking-tight text-on-surface dark:text-white mb-1">Costing</h2>
+                    <p class="text-[14px] text-secondary dark:text-slate-400" id="calc-subtitle">Profit/Cost Calculator</p>
                 </div>
                 <!-- Saved Costings Button -->
                 <button onclick="window.location.href = 'costings.html'" 
-                    class="flex items-center gap-1.5 bg-white/60 backdrop-blur-xl border border-white/50 shadow-sm rounded-xl px-3 py-2 active-scale transition-apple">
-                    <span class="material-symbols-outlined text-[18px] text-primary">folder_open</span>
-                    <span class="text-[13px] font-bold text-on-surface">Saved Costings</span>
+                    class="flex items-center gap-1.5 bg-white/60 dark:bg-slate-800/80 backdrop-blur-xl border border-white/50 dark:border-slate-700 shadow-sm rounded-xl px-3 py-2 active-scale transition-apple">
+                    <span class="material-symbols-outlined text-[18px] text-primary dark:text-blue-400">folder_open</span>
+                    <span class="text-[13px] font-bold text-on-surface dark:text-slate-200">Saved Costings</span>
                 </button>
             </div>
 
-                        <!-- ════════════════════════════════════════ -->
+            <!-- ════════════════════════════════════════ -->
             <!-- UNIFIED CALCULATOR FORM                 -->
             <!-- ════════════════════════════════════════ -->
             <form id="unified-calc-form" onsubmit="event.preventDefault();" class="flex flex-col gap-lg">
                 <!-- ── Order Info ── -->
-                <div id="shared-order-info" class="bg-white/60 backdrop-blur-xl border border-white/50 rounded-[28px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] p-md flex flex-col gap-4">
-                    <h3 class="text-[15px] font-bold text-on-surface flex items-center gap-2">
-                        <span class="material-symbols-outlined text-[18px] text-secondary">info</span>
+                <div id="shared-order-info" class="bg-white/60 dark:bg-slate-900/80 backdrop-blur-xl border border-white/50 dark:border-slate-800 rounded-[28px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.3)] p-md flex flex-col gap-4">
+                    <h3 class="text-[15px] font-bold text-on-surface dark:text-white flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[18px] text-secondary dark:text-slate-400">info</span>
                         Garment &amp; Specs
                     </h3>
                     <div class="grid grid-cols-2 gap-3">
-                        <div class="col-span-2">
                             <label class="field-label">Client / Style Name</label>
                             <input id="shared-client" type="text" placeholder="e.g. Chennai Silks" class="calc-input w-full">
                         </div>

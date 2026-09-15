@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en" class="light">
 <head>
     <!-- Favicon & PWA Icons -->
@@ -13,6 +13,15 @@
     <meta name="description" content="Network error — Garment OS"/>
     <title>Connection Error — Garment OS</title>
 
+    <!-- Zero-Flicker Dark Mode Theme Resolver -->
+    <script>
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com" rel="preconnect"/>
     <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
@@ -22,7 +31,7 @@
     <script src="../js/tailwind.config.js"></script>
 
     <style>
-        body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; background-color: #F5F5F7; }
+        body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
         .btn {
             display: inline-flex; align-items: center; gap: 8px;
             padding: 14px 28px; border-radius: 14px;
@@ -35,6 +44,8 @@
         .btn-primary:hover { background: #004FA3; }
         .btn-secondary { background: #FFFFFF; color: #1B1B1D; border: 1px solid #C1C6D6; }
         .btn-secondary:hover { background: #F0EDEF; }
+        .dark .btn-secondary { background: #0f172a; color: #f1f5f9; border-color: #334155; }
+        .dark .btn-secondary:hover { background: #1e293b; }
         @keyframes pulse-ring {
             0% { transform: scale(0.8); opacity: 1; }
             100% { transform: scale(1.4); opacity: 0; }
@@ -46,16 +57,23 @@
     </style>
     <link rel="stylesheet" href="../css/responsive.css">
 </head>
-<body class="min-h-screen flex items-center justify-center p-6">
+<body class="min-h-screen flex items-center justify-center p-6 bg-[#F5F5F7] dark:bg-slate-950 text-on-surface dark:text-slate-100 transition-colors">
+    <!-- Top Right Theme Switcher -->
+    <div class="fixed top-5 right-5 z-50">
+        <button id="theme-toggle-err" onclick="toggleThemeLocal()" class="w-10 h-10 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all cursor-pointer" aria-label="Toggle Dark Mode">
+            <span class="material-symbols-outlined text-[20px]" id="theme-icon">dark_mode</span>
+        </button>
+    </div>
+
     <div class="max-w-[400px] w-full text-center">
 
         <!-- SVG Illustration -->
         <div class="mb-8 mx-auto w-fit relative">
             <svg width="200" height="160" viewBox="0 0 200 160" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="100" cy="90" r="70" fill="#FFDAD6" opacity="0.4"/>
+                <circle cx="100" cy="90" r="70" class="fill-[#FFDAD6] dark:fill-red-950/40" opacity="0.4"/>
                 <!-- Wifi signal broken -->
-                <path d="M65 75 Q100 45 135 75" stroke="#C1C6D6" stroke-width="5" stroke-linecap="round" fill="none"/>
-                <path d="M75 88 Q100 65 125 88" stroke="#C1C6D6" stroke-width="5" stroke-linecap="round" fill="none"/>
+                <path d="M65 75 Q100 45 135 75" class="stroke-[#C1C6D6] dark:stroke-slate-700" stroke-width="5" stroke-linecap="round" fill="none"/>
+                <path d="M75 88 Q100 65 125 88" class="stroke-[#C1C6D6] dark:stroke-slate-700" stroke-width="5" stroke-linecap="round" fill="none"/>
                 <path d="M85 101 Q100 85 115 101" stroke="#BA1A1A" stroke-width="5" stroke-linecap="round" fill="none" opacity="0.5"/>
                 <!-- Broken indicator dot -->
                 <circle cx="100" cy="112" r="6" fill="#BA1A1A"/>
@@ -64,16 +82,16 @@
                 <line x1="141" y1="41" x2="155" y2="55" stroke="white" stroke-width="3" stroke-linecap="round"/>
                 <line x1="155" y1="41" x2="141" y2="55" stroke="white" stroke-width="3" stroke-linecap="round"/>
                 <!-- Decorative dots -->
-                <circle cx="40" cy="60" r="4" fill="#E4E2E4"/>
-                <circle cx="165" cy="100" r="3" fill="#E4E2E4"/>
+                <circle cx="40" cy="60" r="4" class="fill-[#E4E2E4] dark:fill-slate-800"/>
+                <circle cx="165" cy="100" r="3" class="fill-[#E4E2E4] dark:fill-slate-800"/>
             </svg>
         </div>
 
-        <h1 class="text-[32px] font-bold text-on-surface mb-3 tracking-tight">Something Went Wrong</h1>
-        <p class="text-[16px] text-secondary leading-relaxed mb-2">
+        <h1 class="text-[32px] font-bold text-on-surface dark:text-white mb-3 tracking-tight">Something Went Wrong</h1>
+        <p class="text-[16px] text-secondary dark:text-slate-400 leading-relaxed mb-2">
             We couldn't connect to the server. Check your internet connection and try again.
         </p>
-        <p id="retry-count" class="text-[14px] text-secondary mb-6">Retrying in <span id="countdown">5</span>s...</p>
+        <p id="retry-count" class="text-[14px] text-secondary dark:text-slate-400 mb-6">Retrying in <span id="countdown">5</span>s...</p>
 
         <div class="flex flex-col gap-3 mb-8">
             <button onclick="retryConnection()" class="btn btn-primary justify-center w-full">
@@ -87,28 +105,46 @@
         </div>
 
         <!-- Status checklist -->
-        <div class="bg-white rounded-2xl border border-outline-variant p-4 text-left">
-            <p class="text-[13px] font-semibold text-on-surface mb-3">Troubleshooting checklist</p>
+        <div class="bg-white dark:bg-slate-900 rounded-2xl border border-outline-variant dark:border-slate-800 p-4 text-left">
+            <p class="text-[13px] font-semibold text-on-surface dark:text-white mb-3">Troubleshooting checklist</p>
             <div class="flex flex-col gap-2">
-                <div class="flex items-center gap-2 text-[13px] text-secondary">
-                    <span class="material-symbols-outlined text-[16px] text-[#008A00]" style="font-variation-settings:'FILL' 1;">check_circle</span>
+                <div class="flex items-center gap-2 text-[13px] text-secondary dark:text-slate-400">
+                    <span class="material-symbols-outlined text-[16px] text-[#008A00] dark:text-emerald-400" style="font-variation-settings:'FILL' 1;">check_circle</span>
                     Check your internet connection
                 </div>
-                <div class="flex items-center gap-2 text-[13px] text-secondary">
-                    <span class="material-symbols-outlined text-[16px] text-[#008A00]" style="font-variation-settings:'FILL' 1;">check_circle</span>
+                <div class="flex items-center gap-2 text-[13px] text-secondary dark:text-slate-400">
+                    <span class="material-symbols-outlined text-[16px] text-[#008A00] dark:text-emerald-400" style="font-variation-settings:'FILL' 1;">check_circle</span>
                     Try refreshing the page
                 </div>
-                <div class="flex items-center gap-2 text-[13px] text-secondary">
-                    <span class="material-symbols-outlined text-[16px] text-secondary">radio_button_unchecked</span>
+                <div class="flex items-center gap-2 text-[13px] text-secondary dark:text-slate-400">
+                    <span class="material-symbols-outlined text-[16px] text-secondary dark:text-slate-500">radio_button_unchecked</span>
                     Contact support if issue persists
                 </div>
             </div>
         </div>
 
-        <p class="text-[12px] text-secondary mt-6">Error code: 503 • Garment OS</p>
+        <p class="text-[12px] text-secondary dark:text-slate-500 mt-6">Error code: 503 • Garment OS</p>
     </div>
 
     <script>
+        function updateIcon() {
+            const isDark = document.documentElement.classList.contains('dark');
+            const icon = document.getElementById('theme-icon');
+            if (icon) icon.textContent = isDark ? 'light_mode' : 'dark_mode';
+        }
+        function toggleThemeLocal() {
+            const isDark = document.documentElement.classList.contains('dark');
+            if (isDark) {
+                document.documentElement.classList.remove('dark');
+                localStorage.setItem('theme', 'light');
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+            }
+            updateIcon();
+        }
+        updateIcon();
+
         function retryConnection() {
             const icon = document.getElementById('retry-icon');
             const text = document.getElementById('retry-text');
@@ -121,7 +157,6 @@
             document.head.appendChild(style);
 
             setTimeout(() => {
-                // In production, this would re-attempt the failed request
                 window.location.reload();
             }, 2000);
         }

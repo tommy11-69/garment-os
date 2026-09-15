@@ -1,6 +1,21 @@
 <!DOCTYPE html>
 <html class="light" lang="en">
 <head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Garment OS - Dispatch</title>
+    
+    <!-- Zero-Flicker Dark Mode Theme Resolver -->
+    <script>
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+    
     <!-- Favicon & PWA Icons -->
     <link rel="icon" type="image/png" sizes="192x192" href="../assets/icon-192.png">
     <link rel="icon" type="image/webp" href="../assets/logo-primary.webp">
@@ -8,16 +23,11 @@
     <link rel="manifest" href="../manifest.json">
     <meta name="theme-color" content="#0059b5">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta charset="utf-8"/>
-    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Garment OS - Dispatch</title>
     
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com" rel="preconnect"/>
     <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
     
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <script src="../js/tailwind.config.js"></script>
@@ -27,7 +37,7 @@
     <link rel="stylesheet" href="../css/utilities.css">
     <link rel="stylesheet" href="../css/responsive.css">
 </head>
-<body class="font-body text-body antialiased bg-background">
+<body class="font-body text-body antialiased bg-background dark:bg-slate-950 text-on-surface dark:text-slate-100">
 
     <div id="topbar-container"></div>
 
@@ -36,8 +46,8 @@
             
             <div class="px-xs pt-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
-                    <h2 class="text-[28px] leading-tight font-extrabold tracking-tight text-on-surface mb-1">Dispatch & Gate Pass</h2>
-                    <p class="text-[13px] text-secondary">Active Shipments, Gate Passes & Carrier Logistics</p>
+                    <h2 class="text-[28px] leading-tight font-extrabold tracking-tight text-on-surface dark:text-white mb-1">Dispatch & Gate Pass</h2>
+                    <p class="text-[13px] text-secondary dark:text-slate-400">Active Shipments, Gate Passes & Carrier Logistics</p>
                 </div>
                 <div>
                     <a href="production.html?stage=dispatch" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-primary text-white text-[13px] font-bold shadow-xs active-scale transition-apple">
@@ -48,9 +58,9 @@
             </div>
             
             <div class="bg-surface-container-lowest border border-outline-variant rounded-xl p-1 flex">
-                <button class="flex-1 py-2 text-sm font-semibold rounded-lg bg-surface-variant text-on-surface shadow-sm">In Transit</button>
-                <button class="flex-1 py-2 text-sm font-semibold rounded-lg text-secondary active:bg-surface-variant/50">Ready</button>
-                <button class="flex-1 py-2 text-sm font-semibold rounded-lg text-secondary active:bg-surface-variant/50">Delivered</button>
+                <button class="flex-1 py-2 text-sm font-semibold rounded-lg bg-surface-variant dark:bg-slate-800 text-on-surface dark:text-white shadow-sm">In Transit</button>
+                <button class="flex-1 py-2 text-sm font-semibold rounded-lg text-secondary dark:text-slate-400 active:bg-surface-variant/50">Ready</button>
+                <button class="flex-1 py-2 text-sm font-semibold rounded-lg text-secondary dark:text-slate-400 active:bg-surface-variant/50">Delivered</button>
             </div>
 
             <!-- Dispatch Cards Container -->

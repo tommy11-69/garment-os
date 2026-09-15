@@ -6,6 +6,11 @@
     -webkit-backdrop-filter: blur(20px) saturate(180%);
 }
 
+.dark .glass-panel {
+    background: rgba(15, 23, 42, 0.85);
+    border-color: rgba(51, 65, 85, 0.5);
+}
+
 .card {
     background-color: #FFFFFF;
     border-radius: 24px;
@@ -15,16 +20,73 @@
     transition: all 200ms ease-out;
 }
 
+.dark .card {
+    background-color: #0f172a;
+    border-color: #1e293b;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.2), 0 8px 16px rgba(0,0,0,0.3);
+}
+
 @media (hover: hover) and (pointer: fine) {
     .card:hover {
         transform: translateY(-2px);
         border-color: #C1C1C6;
+    }
+    .dark .card:hover {
+        border-color: #334155;
     }
 }
 
 .accent-primary { color: #0071E3; }
 .bg-accent-primary { background-color: #0071E3; }
 .bg-accent-primary-light { background-color: rgba(0, 113, 227, 0.05); }
+.dark .bg-accent-primary-light { background-color: rgba(0, 113, 227, 0.15); }
+
+/* Semantic Dark Mode Fallbacks for Theme Tokens */
+.dark .bg-surface-container-lowest,
+.dark .bg-surface-container-low {
+    background-color: #0f172a;
+}
+.dark .bg-surface-container {
+    background-color: #1e293b;
+}
+.dark .bg-surface-container-high,
+.dark .bg-surface-container-highest,
+.dark .bg-surface-variant {
+    background-color: #334155;
+}
+.dark .bg-surface,
+.dark .bg-background {
+    background-color: #0b0f19;
+}
+.dark .text-on-surface,
+.dark .text-on-background {
+    color: #f1f5f9;
+}
+.dark .text-secondary,
+.dark .text-on-surface-variant {
+    color: #94a3b8;
+}
+.dark .border-outline-variant {
+    border-color: #1e293b;
+}
+.dark .border-outline {
+    border-color: #334155;
+}
+.dark input:not([type="checkbox"]):not([type="radio"]),
+.dark select,
+.dark textarea {
+    background-color: #1e293b;
+    border-color: #334155;
+    color: #f8fafc;
+}
+.dark input::placeholder,
+.dark textarea::placeholder {
+    color: #64748b;
+}
+.dark .shadow-sm,
+.dark .shadow-soft {
+    box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+}
 
 /* Custom scrollbar for horizontal scrolling */
 .kanban-scroll::-webkit-scrollbar {
@@ -36,6 +98,9 @@
 .kanban-scroll::-webkit-scrollbar-thumb {
     background-color: #dcd9dc;
     border-radius: 9999px;
+}
+.dark .kanban-scroll::-webkit-scrollbar-thumb {
+    background-color: #334155;
 }
 
 /* Custom Scrollbar Hiding utility for mobile */
@@ -67,6 +132,9 @@
     pointer-events: none;
     transition: opacity 300ms ease;
 }
+.dark .bottom-sheet-overlay {
+    background-color: rgba(0, 0, 0, 0.7);
+}
 .bottom-sheet-overlay.active {
     opacity: 1;
     pointer-events: auto;
@@ -87,6 +155,11 @@
     overflow-y: auto;
     box-shadow: 0 -8px 24px rgba(0,0,0,0.1);
 }
+.dark .bottom-sheet-content {
+    background-color: #0f172a;
+    box-shadow: 0 -8px 24px rgba(0,0,0,0.4);
+    border-top: 1px solid #1e293b;
+}
 @media (min-width: 640px) {
     .bottom-sheet-content {
         left: 50%;
@@ -105,6 +178,9 @@
     background-color: #D2D2D7;
     border-radius: 3px;
     margin: 12px auto 24px;
+}
+.dark .sheet-handle {
+    background-color: #334155;
 }
 
 /* Bottom Sheet Content - Allow dropdowns to escape overflow clipping */
@@ -126,6 +202,9 @@
 .active-bg:active {
     background-color: rgba(0, 0, 0, 0.05);
     transition: background-color 100ms ease;
+}
+.dark .active-bg:active {
+    background-color: rgba(255, 255, 255, 0.08);
 }
 
 /* Skeleton Loaders */
@@ -165,3 +244,4 @@
     position: absolute !important;
     z-index: 9999 !important;
 }
+

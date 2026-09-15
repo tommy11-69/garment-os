@@ -1,6 +1,19 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html class="light" lang="en">
 <head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Garment OS - Settings</title>
+    
+    <!-- Zero-Flicker Dark Mode Theme Resolver -->
+    <script>
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+    
     <!-- Favicon & PWA Icons -->
     <link rel="icon" type="image/png" sizes="192x192" href="../assets/icon-192.png">
     <link rel="icon" type="image/webp" href="../assets/logo-primary.webp">
@@ -8,9 +21,6 @@
     <link rel="manifest" href="../manifest.json">
     <meta name="theme-color" content="#0059b5">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta charset="utf-8"/>
-    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <title>Garment OS - Settings</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com" rel="preconnect"/>
@@ -25,43 +35,96 @@
     <link rel="stylesheet" href="../css/utilities.css">
     <link rel="stylesheet" href="../css/responsive.css">
 </head>
-<body class="font-body text-body antialiased bg-surface">
+<body class="font-body text-body antialiased bg-surface dark:bg-slate-950 text-on-surface dark:text-slate-100">
 
     <div class="mobile-wrapper min-h-screen flex flex-col">
         <!-- Top App Bar -->
-        <header class="h-[64px] flex items-center px-4 shrink-0 bg-surface z-10 sticky top-0 border-b border-outline-variant/30">
-            <button onclick="window.history.back()" class="w-10 h-10 rounded-full flex items-center justify-center hover:bg-surface-variant active:bg-surface-variant/80 transition-colors mr-2">
-                <span class="material-symbols-outlined text-[24px] text-on-surface">arrow_back</span>
+        <header class="h-[64px] flex items-center justify-between px-4 shrink-0 bg-surface dark:bg-slate-900 z-10 sticky top-0 border-b border-outline-variant/30 dark:border-slate-800 transition-colors">
+            <div class="flex items-center">
+                <button onclick="window.history.back()" class="w-10 h-10 rounded-full flex items-center justify-center hover:bg-surface-variant dark:hover:bg-slate-800 active:bg-surface-variant/80 transition-colors mr-2">
+                    <span class="material-symbols-outlined text-[24px] text-on-surface dark:text-slate-200">arrow_back</span>
+                </button>
+                <h1 class="text-[20px] font-semibold text-on-surface dark:text-white">Account Settings</h1>
+            </div>
+
+            <!-- Quick Theme Switch Toggle in Header -->
+            <button type="button" class="theme-toggle-btn w-9 h-9 rounded-xl border border-outline-variant dark:border-slate-800 bg-surface-container dark:bg-slate-800 text-secondary dark:text-slate-300 flex items-center justify-center active-scale transition-apple hover:text-on-surface dark:hover:text-white" title="Toggle theme">
+                <span class="material-symbols-outlined text-[18px]">dark_mode</span>
             </button>
-            <h1 class="text-[20px] font-semibold text-on-surface">Account Settings</h1>
         </header>
 
         <main class="flex-1 p-md flex flex-col gap-lg pb-24">
             
+            <!-- ── Appearance & Theme Card ──────────────────────────────── -->
             <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-sm overflow-hidden p-6">
-                <h3 class="text-[17px] font-semibold text-on-surface mb-6">Update Credentials</h3>
+                <div class="flex items-center gap-3 mb-1">
+                    <span class="material-symbols-outlined text-primary text-[22px]" style="font-variation-settings:'FILL' 1;">palette</span>
+                    <h3 class="text-[17px] font-semibold text-on-surface dark:text-white">Appearance & Theme</h3>
+                </div>
+                <p class="text-[13px] text-secondary dark:text-slate-400 mb-5">Customize the visual theme of Garment OS for your workspace.</p>
+
+                <div class="grid grid-cols-3 gap-3" id="theme-selector-grid">
+                    <!-- System Preference -->
+                    <button type="button" onclick="setThemePreference('system')" id="theme-btn-system"
+                        class="theme-opt-btn flex flex-col items-center gap-2 p-3.5 rounded-2xl border-2 border-outline-variant dark:border-slate-800 bg-surface dark:bg-slate-900/60 active-scale transition-all">
+                        <span class="material-symbols-outlined text-[24px] text-secondary dark:text-slate-400">devices</span>
+                        <div class="text-center">
+                            <span class="text-[13px] font-bold text-on-surface dark:text-slate-200 block leading-tight">System</span>
+                            <span class="text-[10px] text-secondary dark:text-slate-400">Auto OS</span>
+                        </div>
+                    </button>
+
+                    <!-- Light Mode -->
+                    <button type="button" onclick="setThemePreference('light')" id="theme-btn-light"
+                        class="theme-opt-btn flex flex-col items-center gap-2 p-3.5 rounded-2xl border-2 border-outline-variant dark:border-slate-800 bg-surface dark:bg-slate-900/60 active-scale transition-all">
+                        <span class="material-symbols-outlined text-[24px] text-amber-500">light_mode</span>
+                        <div class="text-center">
+                            <span class="text-[13px] font-bold text-on-surface dark:text-slate-200 block leading-tight">Light</span>
+                            <span class="text-[10px] text-secondary dark:text-slate-400">Clean Crisp</span>
+                        </div>
+                    </button>
+
+                    <!-- Dark Mode -->
+                    <button type="button" onclick="setThemePreference('dark')" id="theme-btn-dark"
+                        class="theme-opt-btn flex flex-col items-center gap-2 p-3.5 rounded-2xl border-2 border-outline-variant dark:border-slate-800 bg-surface dark:bg-slate-900/60 active-scale transition-all">
+                        <span class="material-symbols-outlined text-[24px] text-blue-400">dark_mode</span>
+                        <div class="text-center">
+                            <span class="text-[13px] font-bold text-on-surface dark:text-slate-200 block leading-tight">Dark</span>
+                            <span class="text-[10px] text-secondary dark:text-slate-400">Deep Slate</span>
+                        </div>
+                    </button>
+                </div>
+            </div>
+
+            <!-- ── Update Credentials Card ───────────────────────────────── -->
+            <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-sm overflow-hidden p-6">
+                <div class="flex items-center gap-3 mb-1">
+                    <span class="material-symbols-outlined text-primary text-[22px]" style="font-variation-settings:'FILL' 1;">manage_accounts</span>
+                    <h3 class="text-[17px] font-semibold text-on-surface dark:text-white">Update Credentials</h3>
+                </div>
+                <p class="text-[13px] text-secondary dark:text-slate-400 mb-5">Manage your administrative login username and password.</p>
                 
                 <form id="settings-form" class="flex flex-col gap-5">
                     
                     <div class="flex flex-col gap-1.5">
-                        <label class="text-[13px] font-semibold text-on-surface-variant">New Username</label>
-                        <input id="new-username" type="text" class="w-full bg-white border border-outline-variant rounded-2xl px-4 py-3 text-[15px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all" placeholder="Enter new username (optional)"/>
+                        <label class="text-[13px] font-semibold text-on-surface-variant dark:text-slate-300">New Username</label>
+                        <input id="new-username" type="text" class="w-full bg-white dark:bg-slate-800 border border-outline-variant dark:border-slate-700 text-on-surface dark:text-slate-100 rounded-2xl px-4 py-3 text-[15px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-secondary dark:placeholder:text-slate-500" placeholder="Enter new username (optional)"/>
                     </div>
 
-                    <hr class="border-outline-variant/50 my-2">
+                    <hr class="border-outline-variant/50 dark:border-slate-800 my-2">
 
                     <div class="flex flex-col gap-1.5">
-                        <label class="text-[13px] font-semibold text-on-surface-variant">New Password</label>
-                        <input id="new-password" type="password" class="w-full bg-white border border-outline-variant rounded-2xl px-4 py-3 text-[15px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all" placeholder="Enter new password (optional)"/>
+                        <label class="text-[13px] font-semibold text-on-surface-variant dark:text-slate-300">New Password</label>
+                        <input id="new-password" type="password" class="w-full bg-white dark:bg-slate-800 border border-outline-variant dark:border-slate-700 text-on-surface dark:text-slate-100 rounded-2xl px-4 py-3 text-[15px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-secondary dark:placeholder:text-slate-500" placeholder="Enter new password (optional)"/>
                     </div>
 
                     <div class="flex flex-col gap-1.5">
-                        <label class="text-[13px] font-semibold text-on-surface-variant">Confirm New Password</label>
-                        <input id="confirm-password" type="password" class="w-full bg-white border border-outline-variant rounded-2xl px-4 py-3 text-[15px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all" placeholder="Confirm new password"/>
+                        <label class="text-[13px] font-semibold text-on-surface-variant dark:text-slate-300">Confirm New Password</label>
+                        <input id="confirm-password" type="password" class="w-full bg-white dark:bg-slate-800 border border-outline-variant dark:border-slate-700 text-on-surface dark:text-slate-100 rounded-2xl px-4 py-3 text-[15px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-secondary dark:placeholder:text-slate-500" placeholder="Confirm new password"/>
                         <p id="password-error" class="text-[12px] text-error hidden mt-1">Passwords do not match.</p>
                     </div>
 
-                    <button type="submit" id="save-btn" class="w-full mt-4 bg-primary text-white font-semibold text-[15px] rounded-2xl py-3.5 hover:bg-primary/90 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
+                    <button type="submit" id="save-btn" class="w-full mt-4 bg-primary text-white font-semibold text-[15px] rounded-2xl py-3.5 hover:bg-primary/90 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-sm">
                         <span class="material-symbols-outlined text-[18px]">save</span>
                         Save Changes
                     </button>
@@ -73,22 +136,22 @@
             <div id="biometric-card" class="bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-sm overflow-hidden p-6">
                 <div class="flex items-center gap-3 mb-1">
                     <span class="material-symbols-outlined text-primary text-[22px]" style="font-variation-settings:'FILL' 1;">fingerprint</span>
-                    <h3 class="text-[17px] font-semibold text-on-surface">Biometric Login</h3>
+                    <h3 class="text-[17px] font-semibold text-on-surface dark:text-white">Biometric Login</h3>
                 </div>
-                <p class="text-[13px] text-secondary mb-5">Register this device for FaceID / fingerprint / Windows Hello login. Each device must be individually approved.</p>
+                <p class="text-[13px] text-secondary dark:text-slate-400 mb-5">Register this device for FaceID / fingerprint / Windows Hello login. Each device must be individually approved.</p>
 
                 <!-- Register New Device -->
                 <div class="flex flex-col gap-3 mb-5">
-                    <label class="text-[13px] font-semibold text-on-surface-variant">Device Name</label>
+                    <label class="text-[13px] font-semibold text-on-surface-variant dark:text-slate-300">Device Name</label>
                     <input id="wa-device-name" type="text" maxlength="48"
-                        class="w-full bg-white border border-outline-variant rounded-2xl px-4 py-3 text-[15px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all"
+                        class="w-full bg-white dark:bg-slate-800 border border-outline-variant dark:border-slate-700 text-on-surface dark:text-slate-100 rounded-2xl px-4 py-3 text-[15px] outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all placeholder:text-secondary dark:placeholder:text-slate-500"
                         placeholder="e.g. iPhone 15 Pro, Work Laptop"/>
                     <button id="wa-register-btn" onclick="registerBiometric()"
-                        class="w-full flex items-center justify-center gap-2 bg-primary text-white font-semibold text-[15px] rounded-2xl py-3.5 hover:bg-primary/90 active:scale-[0.98] transition-all">
+                        class="w-full flex items-center justify-center gap-2 bg-primary text-white font-semibold text-[15px] rounded-2xl py-3.5 hover:bg-primary/90 active:scale-[0.98] transition-all shadow-sm">
                         <span class="material-symbols-outlined text-[18px]">add_circle</span>
                         <span id="wa-register-btn-text">Register This Device</span>
                     </button>
-                    <div id="wa-register-error" class=" rounded-xl bg-error-container border border-error/20 p-3 flex items-center gap-2">
+                    <div id="wa-register-error" class="hidden rounded-xl bg-error-container border border-error/20 p-3 flex items-center gap-2">
                         <span class="material-symbols-outlined text-error text-[18px] shrink-0">error</span>
                         <span id="wa-register-error-msg" class="text-[12px] text-error font-medium leading-snug"></span>
                     </div>
@@ -96,9 +159,9 @@
 
                 <!-- Registered Devices List -->
                 <div>
-                    <h4 class="text-[13px] font-semibold text-on-surface-variant mb-3">Registered Devices</h4>
+                    <h4 class="text-[13px] font-semibold text-on-surface-variant dark:text-slate-300 mb-3">Registered Devices</h4>
                     <div id="wa-devices-list" class="flex flex-col gap-2">
-                        <div class="text-[13px] text-secondary text-center py-4">Loading devices…</div>
+                        <div class="text-[13px] text-secondary dark:text-slate-400 text-center py-4">Loading devices…</div>
                     </div>
                 </div>
             </div>
@@ -111,6 +174,52 @@
 
     <script src="../js/app.js"></script>
     <script type="module" src="../js/settings/index.js?v=5.2"></script>
+
+    <script>
+    // ── Dedicated Settings Theme Selection Handler ────────────────────────
+    function updateSettingsThemeUI() {
+        const stored = localStorage.getItem('theme');
+        const activeClasses = ['border-primary', 'bg-primary/10', 'shadow-sm', 'ring-2', 'ring-primary/30'];
+        const inactiveClasses = ['border-outline-variant', 'dark:border-slate-800', 'bg-surface', 'dark:bg-slate-900/60'];
+
+        const btnSys = document.getElementById('theme-btn-system');
+        const btnLight = document.getElementById('theme-btn-light');
+        const btnDark = document.getElementById('theme-btn-dark');
+
+        if (!btnSys || !btnLight || !btnDark) return;
+
+        const setButtonState = (btn, isActive) => {
+            if (isActive) {
+                inactiveClasses.forEach(cls => btn.classList.remove(cls));
+                activeClasses.forEach(cls => btn.classList.add(cls));
+            } else {
+                activeClasses.forEach(cls => btn.classList.remove(cls));
+                inactiveClasses.forEach(cls => btn.classList.add(cls));
+            }
+        };
+
+        setButtonState(btnSys, !stored);
+        setButtonState(btnLight, stored === 'light');
+        setButtonState(btnDark, stored === 'dark');
+    }
+
+    window.setThemePreference = function(mode) {
+        if (mode === 'system') {
+            localStorage.removeItem('theme');
+        } else {
+            localStorage.setItem('theme', mode);
+        }
+        if (typeof window.initTheme === 'function') {
+            window.initTheme();
+        }
+        updateSettingsThemeUI();
+    };
+
+    document.addEventListener('DOMContentLoaded', () => {
+        updateSettingsThemeUI();
+        window.addEventListener('gos-theme-changed', updateSettingsThemeUI);
+    });
+    </script>
 
     <script type="module">
     // ── Biometric Device Management ───────────────────────────────────────
@@ -135,23 +244,23 @@
             const devices = await res.json();
             if (!res.ok) throw new Error(devices.error || 'Failed to load');
             if (!devices.length) {
-                list.innerHTML = '<div class="text-[13px] text-secondary text-center py-4">No devices registered yet.</div>';
+                list.innerHTML = '<div class="text-[13px] text-secondary dark:text-slate-400 text-center py-4">No devices registered yet.</div>';
                 return;
             }
             list.innerHTML = devices.map(d => `
-                <div class="flex items-center justify-between gap-3 bg-surface-container p-3.5 rounded-2xl border border-outline-variant/60" id="dev-row-${d.id}">
+                <div class="flex items-center justify-between gap-3 bg-surface-container dark:bg-slate-900 p-3.5 rounded-2xl border border-outline-variant/60 dark:border-slate-800" id="dev-row-${d.id}">
                     <div class="flex items-center gap-2.5 min-w-0">
                         <span class="material-symbols-outlined text-[20px] ${d.deviceAllowed ? 'text-primary' : 'text-secondary'}" style="font-variation-settings:'FILL' 1;">
                             ${d.deviceAllowed ? 'phonelink_lock' : 'phonelink_erase'}
                         </span>
                         <div class="min-w-0">
-                            <p class="text-[14px] font-semibold text-on-surface truncate">${d.deviceName}</p>
-                            <p class="text-[11px] text-secondary">${new Date(d.createdAt).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'})}</p>
+                            <p class="text-[14px] font-semibold text-on-surface dark:text-white truncate">${d.deviceName}</p>
+                            <p class="text-[11px] text-secondary dark:text-slate-400">${new Date(d.createdAt).toLocaleDateString('en-IN', {day:'numeric',month:'short',year:'numeric'})}</p>
                         </div>
                     </div>
                     <div class="flex items-center gap-1.5 shrink-0">
                         <button onclick="toggleDevice(${d.id}, ${d.deviceAllowed ? 0 : 1})"
-                            class="text-[12px] font-semibold px-3 py-1.5 rounded-xl border transition-all ${d.deviceAllowed ? 'border-outline-variant text-secondary hover:bg-surface-variant' : 'border-primary/40 text-primary bg-primary/8 hover:bg-primary/15'}">
+                            class="text-[12px] font-semibold px-3 py-1.5 rounded-xl border transition-all ${d.deviceAllowed ? 'border-outline-variant dark:border-slate-700 text-secondary dark:text-slate-300 hover:bg-surface-variant dark:hover:bg-slate-800' : 'border-primary/40 text-primary bg-primary/8 hover:bg-primary/15'}">
                             ${d.deviceAllowed ? 'Revoke' : 'Allow'}
                         </button>
                         <button onclick="deleteDevice(${d.id})"
@@ -288,4 +397,3 @@
     </script>
 </body>
 </html>
-

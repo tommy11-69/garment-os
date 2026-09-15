@@ -1,6 +1,22 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html class="light" lang="en">
 <head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Garment OS - Customers</title>
+    <meta name="description" content="Manage customers, track orders, financial transactions, outstanding balances, and collect payments in Garment OS.">
+    
+    <!-- Zero-Flicker Dark Mode Theme Resolver -->
+    <script>
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+    
     <!-- Favicon & PWA Icons -->
     <link rel="icon" type="image/png" sizes="192x192" href="../assets/icon-192.png">
     <link rel="icon" type="image/webp" href="../assets/logo-primary.webp">
@@ -8,12 +24,6 @@
     <link rel="manifest" href="../manifest.json">
     <meta name="theme-color" content="#0059b5">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta charset="utf-8"/>
-    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Garment OS - Customers</title>
-    <meta name="description" content="Manage customers, track orders, financial transactions, outstanding balances, and collect payments in Garment OS.">
     
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com" rel="preconnect"/>
@@ -28,7 +38,7 @@
     <link rel="stylesheet" href="../css/utilities.css">
     <link rel="stylesheet" href="../css/responsive.css">
 </head>
-<body class="font-body text-body antialiased">
+<body class="font-body text-body antialiased bg-background dark:bg-slate-950 text-on-surface dark:text-slate-100">
 
     <div id="topbar-container"></div>
 
@@ -36,23 +46,23 @@
         <main id="main-content-area" class="flex-1 p-md flex flex-col gap-lg">
             
             <div class="px-xs pt-sm">
-                <h2 class="text-[28px] leading-tight font-semibold tracking-tight text-on-surface mb-1">Customers</h2>
-                <p id="customers-count" class="text-body text-secondary">Loading customers...</p>
+                <h2 class="text-[28px] leading-tight font-semibold tracking-tight text-on-surface dark:text-white mb-1">Customers</h2>
+                <p id="customers-count" class="text-body text-secondary dark:text-slate-400">Loading customers...</p>
             </div>
             
             <!-- Search -->
             <div class="flex gap-2 w-full">
                 <div class="relative flex-1">
-                    <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
-                    <input id="customer-search" class="w-full bg-surface-container-lowest border border-outline-variant rounded-2xl py-3 pl-12 pr-4 font-body text-[16px] text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary/20 transition-apple shadow-sm" placeholder="Search customers..." type="text"/>
+                    <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant dark:text-slate-400 text-[20px]">search</span>
+                    <input id="customer-search" class="w-full bg-surface-container-lowest border border-outline-variant rounded-2xl py-3 pl-12 pr-4 font-body text-[16px] text-on-surface placeholder:text-on-surface-variant dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-apple shadow-sm" placeholder="Search customers..." type="text"/>
                 </div>
             </div>
 
             <!-- Status Segmented Control -->
-            <div class="flex p-1 bg-surface-container rounded-[16px] border border-outline-variant/50">
-                <button data-status-filter="Active" class="flex-1 py-2 rounded-[12px] text-[13px] font-semibold bg-surface-container-lowest text-on-surface shadow-sm transition-all" onclick="window.setCustomerStatusFilter('Active')">Active</button>
-                <button data-status-filter="Inactive" class="flex-1 py-2 rounded-[12px] text-[13px] font-semibold text-secondary transition-all" onclick="window.setCustomerStatusFilter('Inactive')">Inactive</button>
-                <button data-status-filter="All" class="flex-1 py-2 rounded-[12px] text-[13px] font-semibold text-secondary transition-all" onclick="window.setCustomerStatusFilter('All')">All</button>
+            <div class="flex p-1 bg-surface-container dark:bg-slate-900 rounded-[16px] border border-outline-variant/50 dark:border-slate-800">
+                <button data-status-filter="Active" class="flex-1 py-2 rounded-[12px] text-[13px] font-semibold bg-surface-container-lowest dark:bg-slate-800 text-on-surface dark:text-white shadow-sm transition-all" onclick="window.setCustomerStatusFilter('Active')">Active</button>
+                <button data-status-filter="Inactive" class="flex-1 py-2 rounded-[12px] text-[13px] font-semibold text-secondary dark:text-slate-400 transition-all" onclick="window.setCustomerStatusFilter('Inactive')">Inactive</button>
+                <button data-status-filter="All" class="flex-1 py-2 rounded-[12px] text-[13px] font-semibold text-secondary dark:text-slate-400 transition-all" onclick="window.setCustomerStatusFilter('All')">All</button>
             </div>
 
             <!-- Customer Type Filter Chips -->
@@ -93,10 +103,8 @@
 
             <!-- Customer Cards List -->
             <div class="flex flex-col gap-md">
-                
                 <!-- Customers will be injected here -->
                 <div id="customers-list-container" class="flex flex-col gap-md min-h-[200px]"></div>
-
             </div>
             
             <div class="h-6"></div>

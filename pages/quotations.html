@@ -1,6 +1,21 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html class="light" lang="en">
 <head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Garment OS - Quotations</title>
+    
+    <!-- Zero-Flicker Dark Mode Theme Resolver -->
+    <script>
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+    
     <!-- Favicon & PWA Icons -->
     <link rel="icon" type="image/png" sizes="192x192" href="../assets/icon-192.png">
     <link rel="icon" type="image/webp" href="../assets/logo-primary.webp">
@@ -8,11 +23,6 @@
     <link rel="manifest" href="../manifest.json">
     <meta name="theme-color" content="#0059b5">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta charset="utf-8"/>
-    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Garment OS - Quotations</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com" rel="preconnect"/>
@@ -27,7 +37,7 @@
     <link rel="stylesheet" href="../css/utilities.css">
     <link rel="stylesheet" href="../css/responsive.css">
 </head>
-<body class="font-body text-body antialiased bg-background">
+<body class="font-body text-body antialiased bg-background dark:bg-slate-950 text-on-surface dark:text-slate-100">
 
     <div id="topbar-container"></div>
 
@@ -36,17 +46,17 @@
             
             <!-- Header -->
             <div class="px-xs pt-sm">
-                <h2 class="text-[28px] leading-tight font-semibold tracking-tight text-on-surface mb-1">Quotations</h2>
-                <p class="text-[14px] text-secondary">Create and manage client sales proposals</p>
+                <h2 class="text-[28px] leading-tight font-semibold tracking-tight text-on-surface dark:text-white mb-1">Quotations</h2>
+                <p class="text-[14px] text-secondary dark:text-slate-400">Create and manage client sales proposals</p>
             </div>
             
             <!-- Search & Filter -->
             <div class="px-xs">
                 <div class="flex items-center gap-3">
                     <div class="relative flex-1">
-                        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary">search</span>
+                        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary dark:text-slate-400">search</span>
                         <input id="quotations-search-input" type="text" placeholder="Search quotations..."
-                            class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl pl-11 pr-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple placeholder:text-secondary">
+                            class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl pl-11 pr-4 py-3 text-[15px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-apple placeholder:text-secondary dark:placeholder:text-slate-500">
                     </div>
                 </div>
             </div>
@@ -54,9 +64,9 @@
             <!-- Segmented Control for Active / Completed -->
             <div class="px-xs">
                 <div class="flex p-1 bg-surface-container-lowest border border-outline-variant rounded-xl">
-                    <button id="tab-drafts" onclick="window.setQuotationFilter('Draft')" class="flex-1 py-2 text-[14px] font-semibold rounded-lg bg-surface-variant text-on-surface transition-colors">Drafts</button>
-                    <button id="tab-sent" onclick="window.setQuotationFilter('Sent')" class="flex-1 py-2 text-[14px] font-semibold rounded-lg text-secondary hover:text-on-surface transition-colors">Sent</button>
-                    <button id="tab-accepted" onclick="window.setQuotationFilter('Accepted')" class="flex-1 py-2 text-[14px] font-semibold rounded-lg text-secondary hover:text-on-surface transition-colors">Accepted</button>
+                    <button id="tab-drafts" onclick="window.setQuotationFilter('Draft')" class="flex-1 py-2 text-[14px] font-semibold rounded-lg bg-surface-variant dark:bg-slate-800 text-on-surface dark:text-white transition-colors">Drafts</button>
+                    <button id="tab-sent" onclick="window.setQuotationFilter('Sent')" class="flex-1 py-2 text-[14px] font-semibold rounded-lg text-secondary dark:text-slate-400 hover:text-on-surface dark:hover:text-white transition-colors">Sent</button>
+                    <button id="tab-accepted" onclick="window.setQuotationFilter('Accepted')" class="flex-1 py-2 text-[14px] font-semibold rounded-lg text-secondary dark:text-slate-400 hover:text-on-surface dark:hover:text-white transition-colors">Accepted</button>
                 </div>
             </div>
 

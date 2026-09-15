@@ -1,22 +1,23 @@
 <!-- Mobile Top Bar -->
-<header class="topbar-mobile fixed top-0 left-0 w-full z-40 bg-surface/80 backdrop-blur-[20px] border-b border-outline-variant/30 safe-top">
+<header class="topbar-mobile fixed top-0 left-0 w-full z-40 bg-surface/80 dark:bg-slate-900/80 backdrop-blur-[20px] border-b border-outline-variant/30 dark:border-slate-800 safe-top">
     <!-- max-w-md matching .mobile-wrapper -->
     <div class="max-w-[480px] mx-auto w-full h-[64px] flex items-center justify-between px-md relative">
         <div class="flex items-center gap-sm flex-1">
-            <h1 class="font-display text-card-title font-semibold tracking-tight text-on-surface" id="page-title">U x S Garment OS</h1>
+            <h1 class="font-display text-card-title font-semibold tracking-tight text-on-surface dark:text-slate-100" id="page-title">U x S Garment OS</h1>
         </div>
         
         <div class="flex items-center gap-sm">
-            <button aria-label="Search" class="w-[44px] h-[44px] rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-variant/50 transition-colors">
+            <button type="button" onclick="toggleTheme()" class="theme-toggle-btn w-[44px] h-[44px] rounded-full flex items-center justify-center text-on-surface-variant dark:text-slate-300 hover:bg-surface-variant/50 dark:hover:bg-slate-800 transition-colors" aria-label="Toggle theme" title="Toggle theme">
+                <span class="material-symbols-outlined text-[24px]">dark_mode</span>
+            </button>
+            <button aria-label="Search" class="w-[44px] h-[44px] rounded-full flex items-center justify-center text-on-surface-variant dark:text-slate-300 hover:bg-surface-variant/50 dark:hover:bg-slate-800 transition-colors">
                 <span class="material-symbols-outlined text-[24px]" aria-hidden="true">search</span>
             </button>
-            <button aria-label="Notifications" class="w-[44px] h-[44px] rounded-full flex items-center justify-center text-on-surface-variant hover:bg-surface-variant/50 transition-colors relative">
+            <button aria-label="Notifications" class="w-[44px] h-[44px] rounded-full flex items-center justify-center text-on-surface-variant dark:text-slate-300 hover:bg-surface-variant/50 dark:hover:bg-slate-800 transition-colors relative">
                 <span class="material-symbols-outlined text-[24px]" aria-hidden="true">notifications</span>
-                <span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full border border-surface"></span>
+                <span class="absolute top-2 right-2 w-2 h-2 bg-error rounded-full border border-surface dark:border-slate-900"></span>
             </button>
-            <!-- <button aria-label="User Profile" class="w-[36px] h-[36px] rounded-full ml-1 overflow-hidden border border-outline-variant">
-                <img alt="User avatar" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAVAVZ3hKF1m-TltZU9xsh2LIVKt3gyI6zN5GMSSJSXC1FpHoIF581lJb64xpsPF06Pb54a9jjZLz-1lVcwkSgQZK5M4BL4CA0etSrmdOLKjKCAgHNUEEYZF1H2DrJG4eQXaR7VoIzyxOMb6IyVtDXuoKynHaKBC37yymh0Tbyclca48SMPnolbN8nsUYSqrQsB1oIXT0YBGB_gGYKoFoO6kmblos_UYYCA0Bqt1dLVYwBV7LLbU2A5lPIOATGKLHL_S7xJU2OhP0CY"/>
-            </button> -->
         </div>
     </div>
 </header>
+

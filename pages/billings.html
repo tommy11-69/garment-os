@@ -1,6 +1,22 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html class="light" lang="en">
 <head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="description" content="Garment OS — Unified Billings: Quotations, Sales Bills, Invoices, Payments, Purchase Orders">
+    <title>Garment OS — Billings</title>
+    
+    <!-- Zero-Flicker Dark Mode Theme Resolver -->
+    <script>
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+    
     <!-- Favicon & PWA Icons -->
     <link rel="icon" type="image/png" sizes="192x192" href="../assets/icon-192.png">
     <link rel="icon" type="image/webp" href="../assets/logo-primary.webp">
@@ -8,12 +24,6 @@
     <link rel="manifest" href="../manifest.json">
     <meta name="theme-color" content="#0059b5">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta charset="utf-8"/>
-    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="description" content="Garment OS — Unified Billings: Quotations, Sales Bills, Invoices, Payments, Purchase Orders">
-    <title>Garment OS — Billings</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com" rel="preconnect"/>
@@ -58,7 +68,7 @@
     </style>
     <link rel="stylesheet" href="../css/responsive.css">
 </head>
-<body class="font-body text-body antialiased bg-background">
+<body class="font-body text-body antialiased bg-background dark:bg-slate-950 text-on-surface dark:text-slate-100">
 
     <div id="topbar-container"></div>
 
@@ -67,8 +77,8 @@
 
             <!-- ── Page Header ─────────────────────────────────── -->
             <div class="px-md pt-md pb-1">
-                <h1 class="text-[28px] leading-tight font-bold tracking-tight text-on-surface mb-0.5">Billings</h1>
-                <p class="text-[14px] text-secondary">Quotes, Invoices, Payments & Purchase Orders</p>
+                <h1 class="text-[28px] leading-tight font-bold tracking-tight text-on-surface dark:text-white mb-0.5">Billings</h1>
+                <p class="text-[14px] text-secondary dark:text-slate-400">Quotes, Invoices, Payments & Purchase Orders</p>
             </div>
 
             <!-- ── Stats Bar ──────────────────────────────────── -->

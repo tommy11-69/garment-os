@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en" class="light">
 <head>
     <!-- Favicon & PWA Icons -->
@@ -13,6 +13,15 @@
     <meta name="description" content="Page not found — Garment OS"/>
     <title>404 Not Found — Garment OS</title>
 
+    <!-- Zero-Flicker Dark Mode Theme Resolver -->
+    <script>
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com" rel="preconnect"/>
     <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
@@ -22,7 +31,7 @@
     <script src="../js/tailwind.config.js"></script>
 
     <style>
-        body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; background-color: #F5F5F7; }
+        body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
         .btn {
             display: inline-flex; align-items: center; gap: 8px;
             padding: 14px 28px; border-radius: 14px;
@@ -35,6 +44,8 @@
         .btn-primary:hover { background: #004FA3; }
         .btn-secondary { background: #FFFFFF; color: #1B1B1D; border: 1px solid #C1C6D6; }
         .btn-secondary:hover { background: #F0EDEF; }
+        .dark .btn-secondary { background: #0f172a; color: #f1f5f9; border-color: #334155; }
+        .dark .btn-secondary:hover { background: #1e293b; }
         @keyframes float {
             0%, 100% { transform: translateY(0); }
             50% { transform: translateY(-12px); }
@@ -43,22 +54,29 @@
     </style>
     <link rel="stylesheet" href="../css/responsive.css">
 </head>
-<body class="min-h-screen flex items-center justify-center p-6">
+<body class="min-h-screen flex items-center justify-center p-6 bg-[#F5F5F7] dark:bg-slate-950 text-on-surface dark:text-slate-100 transition-colors">
+    <!-- Top Right Theme Switcher -->
+    <div class="fixed top-5 right-5 z-50">
+        <button id="theme-toggle-404" onclick="toggleThemeLocal()" class="w-10 h-10 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all cursor-pointer" aria-label="Toggle Dark Mode">
+            <span class="material-symbols-outlined text-[20px]" id="theme-icon">dark_mode</span>
+        </button>
+    </div>
+
     <div class="max-w-[400px] w-full text-center">
 
         <!-- SVG Illustration -->
         <div class="float-anim mb-8 mx-auto w-fit">
             <svg width="200" height="160" viewBox="0 0 200 160" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <!-- Background circle -->
-                <circle cx="100" cy="90" r="70" fill="#EAE7EA"/>
+                <circle cx="100" cy="90" r="70" class="fill-[#EAE7EA] dark:fill-slate-800/80"/>
                 <!-- Document -->
-                <rect x="60" y="35" width="80" height="100" rx="10" fill="white" stroke="#C1C6D6" stroke-width="1.5"/>
+                <rect x="60" y="35" width="80" height="100" rx="10" class="fill-white dark:fill-slate-900 stroke-[#C1C6D6] dark:stroke-slate-700" stroke-width="1.5"/>
                 <!-- Lines on document -->
-                <rect x="74" y="58" width="52" height="6" rx="3" fill="#E4E2E4"/>
-                <rect x="74" y="72" width="38" height="6" rx="3" fill="#E4E2E4"/>
-                <rect x="74" y="86" width="44" height="6" rx="3" fill="#E4E2E4"/>
+                <rect x="74" y="58" width="52" height="6" rx="3" class="fill-[#E4E2E4] dark:fill-slate-700"/>
+                <rect x="74" y="72" width="38" height="6" rx="3" class="fill-[#E4E2E4] dark:fill-slate-700"/>
+                <rect x="74" y="86" width="44" height="6" rx="3" class="fill-[#E4E2E4] dark:fill-slate-700"/>
                 <!-- 404 -->
-                <text x="100" y="122" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" fill="#0059B5">404</text>
+                <text x="100" y="122" text-anchor="middle" font-family="Inter, sans-serif" font-size="22" font-weight="700" class="fill-[#0059B5] dark:fill-blue-400">404</text>
                 <!-- Search icon floating -->
                 <circle cx="148" cy="44" r="18" fill="#0059B5"/>
                 <circle cx="146" cy="42" r="7" fill="none" stroke="white" stroke-width="2.5"/>
@@ -70,8 +88,8 @@
             </svg>
         </div>
 
-        <h1 class="text-[32px] font-bold text-on-surface mb-3 tracking-tight">Page Not Found</h1>
-        <p class="text-[16px] text-secondary leading-relaxed mb-8">
+        <h1 class="text-[32px] font-bold text-on-surface dark:text-white mb-3 tracking-tight">Page Not Found</h1>
+        <p class="text-[16px] text-secondary dark:text-slate-400 leading-relaxed mb-8">
             The page you're looking for doesn't exist or has been moved. Let's get you back on track.
         </p>
 
@@ -86,7 +104,27 @@
             </button>
         </div>
 
-        <p class="text-[12px] text-secondary mt-8">Error code: 404 • Garment OS</p>
+        <p class="text-[12px] text-secondary dark:text-slate-500 mt-8">Error code: 404 • Garment OS</p>
     </div>
+
+    <script>
+        function updateIcon() {
+            const isDark = document.documentElement.classList.contains('dark');
+            const icon = document.getElementById('theme-icon');
+            if (icon) icon.textContent = isDark ? 'light_mode' : 'dark_mode';
+        }
+        function toggleThemeLocal() {
+            const isDark = document.documentElement.classList.contains('dark');
+            if (isDark) {
+                document.documentElement.classList.remove('dark');
+                localStorage.setItem('theme', 'light');
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+            }
+            updateIcon();
+        }
+        updateIcon();
+    </script>
 </body>
 </html>

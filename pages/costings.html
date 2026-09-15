@@ -1,6 +1,21 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html class="light" lang="en">
 <head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Saved Costings - Garment OS</title>
+
+    <!-- Zero-Flicker Dark Mode Theme Resolver -->
+    <script>
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+
     <!-- Favicon & PWA Icons -->
     <link rel="icon" type="image/png" sizes="192x192" href="../assets/icon-192.png">
     <link rel="icon" type="image/webp" href="../assets/logo-primary.webp">
@@ -8,11 +23,6 @@
     <link rel="manifest" href="../manifest.json">
     <meta name="theme-color" content="#0059b5">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta charset="utf-8" />
-    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Saved Costings - Garment OS</title>
 
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
     <link href="https://fonts.googleapis.com" rel="preconnect" />
@@ -36,6 +46,17 @@
                 radial-gradient(at 0% 100%, hsla(160, 100%, 93%, 1) 0, transparent 50%);
             background-attachment: fixed;
         }
+        .dark body.bg-background,
+        body.dark.bg-background,
+        body.dark {
+            background-color: #0b0f19 !important;
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(30, 58, 138, 0.25) 0, transparent 50%), 
+                radial-gradient(at 100% 0%, rgba(88, 28, 135, 0.2) 0, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(120, 53, 15, 0.15) 0, transparent 50%),
+                radial-gradient(at 0% 100%, rgba(6, 78, 59, 0.2) 0, transparent 50%) !important;
+            background-attachment: fixed;
+        }
 
         .costing-card {
             background: rgba(255, 255, 255, 0.6);
@@ -47,6 +68,11 @@
             transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
             cursor: pointer;
         }
+        .dark .costing-card {
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(51, 65, 85, 0.6);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+        }
 
         .costing-card:active {
             transform: scale(0.98);
@@ -54,6 +80,11 @@
 
         .shimmer {
             background: linear-gradient(90deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.4) 50%, rgba(255,255,255,0) 100%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite linear;
+        }
+        .dark .shimmer {
+            background: linear-gradient(90deg, rgba(30,41,59,0) 0%, rgba(51,65,85,0.5) 50%, rgba(30,41,59,0) 100%);
             background-size: 200% 100%;
             animation: shimmer 1.5s infinite linear;
         }
@@ -65,7 +96,7 @@
     <link rel="stylesheet" href="../css/responsive.css">
 </head>
 
-<body class="font-body text-body antialiased bg-background pb-32">
+<body class="font-body text-body antialiased bg-background dark:bg-slate-950 text-on-surface dark:text-slate-100 pb-32">
 
     <div id="topbar-container"></div>
 
@@ -74,8 +105,8 @@
             
             <div class="px-xs pt-sm flex justify-between items-center mb-2">
                 <div>
-                    <h2 class="text-[28px] leading-tight font-semibold tracking-tight text-on-surface mb-1">Costings</h2>
-                    <p class="text-[14px] text-secondary">Your saved calculators</p>
+                    <h2 class="text-[28px] leading-tight font-semibold tracking-tight text-on-surface dark:text-white mb-1">Costings</h2>
+                    <p class="text-[14px] text-secondary dark:text-slate-400">Your saved calculators</p>
                 </div>
                 <button onclick="window.location.href = 'calculator.html'" class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white shadow-md active-scale transition-apple">
                     <span class="material-symbols-outlined text-[24px]">add</span>
@@ -84,9 +115,9 @@
 
             <!-- Loading State -->
             <div id="loading-state" class="flex flex-col gap-4 hidden">
-                <div class="w-full h-32 rounded-[24px] bg-white/40 shimmer"></div>
-                <div class="w-full h-32 rounded-[24px] bg-white/40 shimmer"></div>
-                <div class="w-full h-32 rounded-[24px] bg-white/40 shimmer"></div>
+                <div class="w-full h-32 rounded-[24px] bg-white/40 dark:bg-slate-800/40 shimmer"></div>
+                <div class="w-full h-32 rounded-[24px] bg-white/40 dark:bg-slate-800/40 shimmer"></div>
+                <div class="w-full h-32 rounded-[24px] bg-white/40 dark:bg-slate-800/40 shimmer"></div>
             </div>
 
             <!-- Empty State -->
@@ -94,8 +125,8 @@
                 <div class="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center mb-4">
                     <span class="material-symbols-outlined text-[40px] text-primary">folder_off</span>
                 </div>
-                <h3 class="text-[18px] font-bold text-on-surface mb-2">No Costings Saved</h3>
-                <p class="text-[14px] text-secondary mb-6">You haven't saved any costing sheets yet.</p>
+                <h3 class="text-[18px] font-bold text-on-surface dark:text-white mb-2">No Costings Saved</h3>
+                <p class="text-[14px] text-secondary dark:text-slate-400 mb-6">You haven't saved any costing sheets yet.</p>
                 <button onclick="window.location.href = 'calculator.html'" class="bg-primary text-white font-semibold px-6 py-3 rounded-xl shadow-md active-scale transition-apple">
                     Create Costing
                 </button>

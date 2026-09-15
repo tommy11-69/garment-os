@@ -481,6 +481,126 @@
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
+   DARK MODE — RESPONSIVE & DESKTOP ADJUSTMENTS
+   ───────────────────────────────────────────────────────────────────────── */
+@media (min-width: 768px) {
+    .dark body {
+        background-color: #0b0f19 !important;
+    }
+
+    .dark .mobile-wrapper {
+        background-color: #0b0f19 !important;
+    }
+
+    .dark .sidebar-nav {
+        background: #0f172a !important;
+        border-right: 1px solid #1e293b !important;
+        box-shadow: 2px 0 16px rgba(0, 0, 0, 0.4) !important;
+        scrollbar-color: #334155 transparent !important;
+    }
+
+    .dark .sidebar-nav::-webkit-scrollbar-thumb {
+        background-color: #334155 !important;
+    }
+
+    .dark .sidebar-nav-link {
+        color: #94a3b8 !important;
+    }
+
+    .dark .sidebar-nav-link .material-symbols-outlined {
+        color: #94a3b8 !important;
+    }
+
+    .dark .sidebar-nav-link--active {
+        background: rgba(0, 113, 227, 0.16) !important;
+        color: #38bdf8 !important;
+    }
+
+    .dark .sidebar-nav-link--active::before {
+        background: #38bdf8 !important;
+    }
+
+    .dark .sidebar-nav-link--active .material-symbols-outlined {
+        color: #38bdf8 !important;
+    }
+
+    .dark .sidebar-nav-link--active span:last-child {
+        color: #38bdf8 !important;
+    }
+
+    .dark .bottom-sheet-content {
+        background-color: #0f172a !important;
+        box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6) !important;
+    }
+
+    .dark .more-menu-list > li {
+        border-bottom: 1px solid #1e293b !important;
+    }
+
+    .dark .more-menu-list > li:nth-child(odd) {
+        border-right: 1px solid #1e293b !important;
+    }
+}
+
+@media (hover: hover) and (pointer: fine) {
+    .dark .sidebar-nav-link:hover:not(.sidebar-nav-link--active) {
+        background: rgba(255, 255, 255, 0.06) !important;
+        color: #f8fafc !important;
+    }
+
+    .dark .sidebar-nav-link:hover .material-symbols-outlined {
+        color: #38bdf8 !important;
+    }
+
+    .dark .sidebar-nav-link:hover span:last-child {
+        color: #f8fafc !important;
+    }
+
+    .dark .card:hover {
+        border-color: #334155 !important;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2), 0 8px 24px rgba(0, 0, 0, 0.3) !important;
+    }
+
+    .dark [role="button"]:hover {
+        background: rgba(255, 255, 255, 0.04) !important;
+    }
+
+    .dark .stage-chip.inactive:hover {
+        border-color: rgba(255, 255, 255, 0.2) !important;
+        background: rgba(255, 255, 255, 0.05) !important;
+        color: #f8fafc !important;
+    }
+
+    .dark .billing-tab-btn:hover {
+        background: rgba(255, 255, 255, 0.06) !important;
+        color: #f8fafc !important;
+    }
+
+    .dark .period-pill.inactive:hover {
+        background: rgba(255, 255, 255, 0.06) !important;
+    }
+
+    .dark button[id^="tab-"]:hover,
+    .dark button[data-status-filter]:hover {
+        background: rgba(255, 255, 255, 0.06) !important;
+    }
+
+    .dark .more-menu-list > li > a:hover {
+        background: rgba(255, 255, 255, 0.04) !important;
+    }
+
+    .dark input:hover:not(:focus):not(:disabled),
+    .dark select:hover:not(:focus):not(:disabled),
+    .dark textarea:hover:not(:focus):not(:disabled) {
+        border-color: rgba(255, 255, 255, 0.3) !important;
+    }
+
+    .dark .kanban-column:hover {
+        border-color: rgba(56, 189, 248, 0.4) !important;
+    }
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
    PRINT STYLES — Basic cleanup for printing reports
 ───────────────────────────────────────────────────────────────────────── */
 @media print {

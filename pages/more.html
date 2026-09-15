@@ -1,6 +1,21 @@
 <!DOCTYPE html>
 <html class="light" lang="en">
 <head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Garment OS - More</title>
+    
+    <!-- Zero-Flicker Dark Mode Theme Resolver -->
+    <script>
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+    
     <!-- Favicon & PWA Icons -->
     <link rel="icon" type="image/png" sizes="192x192" href="../assets/icon-192.png">
     <link rel="icon" type="image/webp" href="../assets/logo-primary.webp">
@@ -8,16 +23,11 @@
     <link rel="manifest" href="../manifest.json">
     <meta name="theme-color" content="#0059b5">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta charset="utf-8"/>
-    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Garment OS - More</title>
     
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com" rel="preconnect"/>
     <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
     
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <script src="../js/tailwind.config.js"></script>
@@ -27,7 +37,7 @@
     <link rel="stylesheet" href="../css/utilities.css">
     <link rel="stylesheet" href="../css/responsive.css">
 </head>
-<body class="font-body text-body antialiased">
+<body class="font-body text-body antialiased bg-background dark:bg-slate-950 text-on-surface dark:text-slate-100">
 
     <div id="topbar-container"></div>
 
@@ -35,82 +45,82 @@
         <main id="main-content-area" class="flex-1 p-md flex flex-col gap-lg">
             
             <div class="px-xs pt-sm pb-2">
-                <h2 class="text-[28px] leading-tight font-semibold tracking-tight text-on-surface mb-1">More</h2>
+                <h2 class="text-[28px] leading-tight font-semibold tracking-tight text-on-surface dark:text-white mb-1">More</h2>
             </div>
             
             <!-- Main Menu List -->
             <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-sm overflow-hidden">
                 <ul class="more-menu-list flex flex-col divide-y divide-outline-variant/50">
                     <li>
-                        <a href="customers.html" class="flex items-center gap-md p-lg active:bg-surface-variant transition-colors group">
+                        <a href="customers.html" class="flex items-center gap-md p-lg active:bg-surface-variant dark:active:bg-slate-800 transition-colors group">
                             <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
                                 <span class="material-symbols-outlined text-[20px]">groups</span>
                             </div>
                             <div class="flex-1">
-                                <h3 class="text-[17px] font-semibold text-on-surface">Customers</h3>
-                                <p class="text-[14px] text-secondary">Manage clients, LTV, payments</p>
+                                <h3 class="text-[17px] font-semibold text-on-surface dark:text-white">Customers</h3>
+                                <p class="text-[14px] text-secondary dark:text-slate-400">Manage clients, LTV, payments</p>
                             </div>
-                            <span class="material-symbols-outlined text-outline-variant group-active:text-secondary transition-colors">chevron_right</span>
+                            <span class="material-symbols-outlined text-outline-variant dark:text-slate-600 group-active:text-secondary transition-colors">chevron_right</span>
                         </a>
                     </li>
                     <li>
-                        <a href="inventory.html" class="flex items-center gap-md p-lg active:bg-surface-variant transition-colors group">
-                            <div class="w-10 h-10 rounded-full bg-[#5E5CE6]/10 text-[#5E5CE6] flex items-center justify-center">
+                        <a href="inventory.html" class="flex items-center gap-md p-lg active:bg-surface-variant dark:active:bg-slate-800 transition-colors group">
+                            <div class="w-10 h-10 rounded-full bg-[#5E5CE6]/10 text-[#5E5CE6] dark:text-indigo-400 flex items-center justify-center">
                                 <span class="material-symbols-outlined text-[20px]">inventory_2</span>
                             </div>
                             <div class="flex-1">
-                                <h3 class="text-[17px] font-semibold text-on-surface">Inventory</h3>
-                                <p class="text-[14px] text-secondary">Fabric, yarn, accessories, alerts</p>
+                                <h3 class="text-[17px] font-semibold text-on-surface dark:text-white">Inventory</h3>
+                                <p class="text-[14px] text-secondary dark:text-slate-400">Fabric, yarn, accessories, alerts</p>
                             </div>
-                            <span class="material-symbols-outlined text-outline-variant group-active:text-secondary transition-colors">chevron_right</span>
+                            <span class="material-symbols-outlined text-outline-variant dark:text-slate-600 group-active:text-secondary transition-colors">chevron_right</span>
                         </a>
                     </li>
                     <li>
-                        <a href="vendors.html" class="flex items-center gap-md p-lg active:bg-surface-variant transition-colors group">
+                        <a href="vendors.html" class="flex items-center gap-md p-lg active:bg-surface-variant dark:active:bg-slate-800 transition-colors group">
                             <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
                                 <span class="material-symbols-outlined text-[20px]">storefront</span>
                             </div>
                             <div class="flex-1">
-                                <h3 class="text-[17px] font-semibold text-on-surface">Vendors</h3>
-                                <p class="text-[14px] text-secondary">Manage suppliers, purchases, payments</p>
+                                <h3 class="text-[17px] font-semibold text-on-surface dark:text-white">Vendors</h3>
+                                <p class="text-[14px] text-secondary dark:text-slate-400">Manage suppliers, purchases, payments</p>
                             </div>
-                            <span class="material-symbols-outlined text-outline-variant group-active:text-secondary transition-colors">chevron_right</span>
+                            <span class="material-symbols-outlined text-outline-variant dark:text-slate-600 group-active:text-secondary transition-colors">chevron_right</span>
                         </a>
                     </li>
                     <li>
-                        <a href="dispatch.html" class="flex items-center gap-md p-lg active:bg-surface-variant transition-colors group">
-                            <div class="w-10 h-10 rounded-full bg-[#008A00]/10 text-[#008A00] flex items-center justify-center">
+                        <a href="dispatch.html" class="flex items-center gap-md p-lg active:bg-surface-variant dark:active:bg-slate-800 transition-colors group">
+                            <div class="w-10 h-10 rounded-full bg-[#008A00]/10 text-[#008A00] dark:text-emerald-400 flex items-center justify-center">
                                 <span class="material-symbols-outlined text-[20px]">local_shipping</span>
                             </div>
                             <div class="flex-1">
-                                <h3 class="text-[17px] font-semibold text-on-surface">Dispatch</h3>
-                                <p class="text-[14px] text-secondary">Courier, tracking, invoices</p>
+                                <h3 class="text-[17px] font-semibold text-on-surface dark:text-white">Dispatch</h3>
+                                <p class="text-[14px] text-secondary dark:text-slate-400">Courier, tracking, invoices</p>
                             </div>
-                            <span class="material-symbols-outlined text-outline-variant group-active:text-secondary transition-colors">chevron_right</span>
+                            <span class="material-symbols-outlined text-outline-variant dark:text-slate-600 group-active:text-secondary transition-colors">chevron_right</span>
                         </a>
                     </li>
                     <li>
-                        <a href="production.html" class="flex items-center gap-md p-lg active:bg-surface-variant transition-colors group">
+                        <a href="production.html" class="flex items-center gap-md p-lg active:bg-surface-variant dark:active:bg-slate-800 transition-colors group">
                             <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
                                 <span class="material-symbols-outlined text-[20px]">precision_manufacturing</span>
                             </div>
                             <div class="flex-1">
-                                <h3 class="text-[17px] font-semibold text-on-surface">Production</h3>
-                                <p class="text-[14px] text-secondary">Batches, phases, operations, timeline</p>
+                                <h3 class="text-[17px] font-semibold text-on-surface dark:text-white">Production</h3>
+                                <p class="text-[14px] text-secondary dark:text-slate-400">Batches, phases, operations, timeline</p>
                             </div>
-                            <span class="material-symbols-outlined text-outline-variant group-active:text-secondary transition-colors">chevron_right</span>
+                            <span class="material-symbols-outlined text-outline-variant dark:text-slate-600 group-active:text-secondary transition-colors">chevron_right</span>
                         </a>
                     </li>
                     <li>
-                        <a href="reports.html" class="flex items-center gap-md p-lg active:bg-surface-variant transition-colors group">
+                        <a href="reports.html" class="flex items-center gap-md p-lg active:bg-surface-variant dark:active:bg-slate-800 transition-colors group">
                             <div class="w-10 h-10 rounded-full bg-[#FF9F0A]/10 text-[#FF9F0A] flex items-center justify-center">
                                 <span class="material-symbols-outlined text-[20px]">analytics</span>
                             </div>
                             <div class="flex-1">
-                                <h3 class="text-[17px] font-semibold text-on-surface">Reports</h3>
-                                <p class="text-[14px] text-secondary">Sales, profit, performance</p>
+                                <h3 class="text-[17px] font-semibold text-on-surface dark:text-white">Reports</h3>
+                                <p class="text-[14px] text-secondary dark:text-slate-400">Sales, profit, performance</p>
                             </div>
-                            <span class="material-symbols-outlined text-outline-variant group-active:text-secondary transition-colors">chevron_right</span>
+                            <span class="material-symbols-outlined text-outline-variant dark:text-slate-600 group-active:text-secondary transition-colors">chevron_right</span>
                         </a>
                     </li>
                 </ul>
@@ -120,25 +130,25 @@
             <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant shadow-sm overflow-hidden mt-sm">
                 <ul class="flex flex-col divide-y divide-outline-variant/50">
                     <li>
-                        <a href="settings.html" class="flex items-center gap-md p-lg active:bg-surface-variant transition-colors group">
-                            <div class="w-10 h-10 rounded-full bg-surface-variant text-on-surface-variant flex items-center justify-center">
+                        <a href="settings.html" class="flex items-center gap-md p-lg active:bg-surface-variant dark:active:bg-slate-800 transition-colors group">
+                            <div class="w-10 h-10 rounded-full bg-surface-variant dark:bg-slate-800 text-on-surface-variant dark:text-slate-300 flex items-center justify-center">
                                 <span class="material-symbols-outlined text-[20px]">settings</span>
                             </div>
                             <div class="flex-1">
-                                <h3 class="text-[17px] font-semibold text-on-surface">Settings</h3>
+                                <h3 class="text-[17px] font-semibold text-on-surface dark:text-white">Settings</h3>
                             </div>
-                            <span class="material-symbols-outlined text-outline-variant group-active:text-secondary transition-colors">chevron_right</span>
+                            <span class="material-symbols-outlined text-outline-variant dark:text-slate-600 group-active:text-secondary transition-colors">chevron_right</span>
                         </a>
                     </li>
                     <li>
-                        <a href="#" class="flex items-center gap-md p-lg active:bg-surface-variant transition-colors group">
-                            <div class="w-10 h-10 rounded-full bg-surface-variant text-on-surface-variant flex items-center justify-center">
+                        <a href="#" class="flex items-center gap-md p-lg active:bg-surface-variant dark:active:bg-slate-800 transition-colors group">
+                            <div class="w-10 h-10 rounded-full bg-surface-variant dark:bg-slate-800 text-on-surface-variant dark:text-slate-300 flex items-center justify-center">
                                 <span class="material-symbols-outlined text-[20px]">help</span>
                             </div>
                             <div class="flex-1">
-                                <h3 class="text-[17px] font-semibold text-on-surface">Help & Support</h3>
+                                <h3 class="text-[17px] font-semibold text-on-surface dark:text-white">Help & Support</h3>
                             </div>
-                            <span class="material-symbols-outlined text-outline-variant group-active:text-secondary transition-colors">chevron_right</span>
+                            <span class="material-symbols-outlined text-outline-variant dark:text-slate-600 group-active:text-secondary transition-colors">chevron_right</span>
                         </a>
                     </li>
                 </ul>

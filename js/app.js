@@ -1,13 +1,66 @@
 // Core App logic
 
 /**
- * Loads a component HTML into a target element
- * @param {string} url - The URL of the component to load
- * @param {string} targetId - The ID of the element to inject the component into
- * @param {function} callback - Optional callback to run after the component is loaded
+ * Theme Engine — Instant init, OS listener & manual override
  */
+function initTheme() {
+    const theme = localStorage.getItem('theme');
+    const isDark = theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    if (isDark) {
+        document.documentElement.classList.add('dark');
+    } else {
+        document.documentElement.classList.remove('dark');
+    }
+    updateThemeToggleUI(isDark);
+}
+
+function toggleTheme() {
+    const isDark = document.documentElement.classList.toggle('dark');
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    updateThemeToggleUI(isDark);
+    window.dispatchEvent(new CustomEvent('gos-theme-changed', { detail: { isDark } }));
+}
+
+function updateThemeToggleUI(isDark) {
+    const toggleBtns = document.querySelectorAll('.theme-toggle-btn');
+    toggleBtns.forEach(btn => {
+        const icon = btn.querySelector('.material-symbols-outlined') || btn.querySelector('.theme-icon');
+        const label = btn.querySelector('.theme-label');
+        if (icon) {
+            icon.textContent = isDark ? 'light_mode' : 'dark_mode';
+        }
+        if (label) {
+            label.textContent = isDark ? 'Light Mode' : 'Dark Mode';
+        }
+        btn.setAttribute('aria-label', isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode');
+        btn.setAttribute('title', isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode');
+    });
+}
+
+// OS theme change listener
+if (window.matchMedia) {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+        if (!localStorage.getItem('theme')) {
+            if (e.matches) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+            updateThemeToggleUI(e.matches);
+            window.dispatchEvent(new CustomEvent('gos-theme-changed', { detail: { isDark: e.matches } }));
+        }
+    });
+}
+
+window.initTheme = initTheme;
+window.toggleTheme = toggleTheme;
+window.updateThemeToggleUI = updateThemeToggleUI;
+
+// Execute instantly to ensure UI sync
+initTheme();
+
 /**
- * Loads a component HTML into a target element with resilient multi-path fallbacks
+ * Loads a component HTML into a target element
  * @param {string} url - The URL of the component to load
  * @param {string} targetId - The ID of the element to inject the component into
  * @param {function} callback - Optional callback to run after the component is loaded
@@ -42,6 +95,7 @@ async function loadComponent(url, targetId, callback) {
             el.innerHTML = html;
         }
         if (callback) callback();
+        updateThemeToggleUI(document.documentElement.classList.contains('dark'));
     }
 }
 
@@ -67,78 +121,87 @@ function updateSidebarActiveState(currentPage) {
     });
 }
 
-const STATIC_SIDEBAR_HTML = `<nav class="sidebar-nav" id="sidebar-nav" role="navigation" aria-label="Main navigation">
-    <div class="flex items-center gap-3 px-5 h-[68px] shrink-0 border-b border-outline-variant/30">
-        <div class="w-8 h-8 rounded-xl bg-primary flex items-center justify-center shrink-0 shadow-sm">
-            <span class="material-symbols-outlined text-white text-[18px]" style="font-variation-settings:'FILL' 1;">checkroom</span>
+const STATIC_SIDEBAR_HTML = `<nav class="sidebar-nav bg-white dark:bg-slate-900 border-r border-outline-variant/30 dark:border-slate-800" id="sidebar-nav" role="navigation" aria-label="Main navigation">
+    <div class="flex items-center justify-between px-5 h-[68px] shrink-0 border-b border-outline-variant/30 dark:border-slate-800">
+        <div class="flex items-center gap-3 min-w-0">
+            <div class="w-8 h-8 rounded-xl bg-primary flex items-center justify-center shrink-0 shadow-sm">
+                <span class="material-symbols-outlined text-white text-[18px]" style="font-variation-settings:'FILL' 1;">checkroom</span>
+            </div>
+            <div class="min-w-0">
+                <h1 class="text-[14px] font-bold text-on-surface dark:text-slate-100 tracking-tight leading-tight truncate">Garment OS</h1>
+                <p class="text-[10px] font-semibold text-secondary dark:text-slate-400 uppercase tracking-[0.07em]">Enterprise</p>
+            </div>
         </div>
-        <div class="min-w-0">
-            <h1 class="text-[14px] font-bold text-on-surface tracking-tight leading-tight truncate">Garment OS</h1>
-            <p class="text-[10px] font-semibold text-secondary uppercase tracking-[0.07em]">Enterprise</p>
-        </div>
+        <button type="button" onclick="toggleTheme()" class="theme-toggle-btn w-8 h-8 rounded-xl flex items-center justify-center text-secondary dark:text-slate-400 hover:bg-surface-variant/40 dark:hover:bg-slate-800 transition-colors" title="Toggle Dark/Light Mode" aria-label="Toggle theme">
+            <span class="material-symbols-outlined text-[19px]">dark_mode</span>
+        </button>
     </div>
     <div class="flex-1 overflow-y-auto py-3 flex flex-col" style="gap: 1px;">
         <div class="px-5 pb-1.5 pt-3">
-            <span class="text-[10px] font-bold text-secondary uppercase tracking-[0.08em]">Workspace</span>
+            <span class="text-[10px] font-bold text-secondary dark:text-slate-400 uppercase tracking-[0.08em]">Workspace</span>
         </div>
-        <a href="dashboard.html" data-page="dashboard" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+        <a href="dashboard.html" data-page="dashboard" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary dark:text-slate-400 transition-colors duration-150 group outline-none">
             <span class="material-symbols-outlined text-[20px] shrink-0">dashboard</span>
             <span class="text-[13px] font-semibold leading-none">Dashboard</span>
         </a>
-        <a href="calculator.html" data-page="calculator" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+        <a href="calculator.html" data-page="calculator" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary dark:text-slate-400 transition-colors duration-150 group outline-none">
             <span class="material-symbols-outlined text-[20px] shrink-0">calculate</span>
             <span class="text-[13px] font-semibold leading-none">Costing</span>
         </a>
-        <a href="orders.html" data-page="orders" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+        <a href="orders.html" data-page="orders" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary dark:text-slate-400 transition-colors duration-150 group outline-none">
             <span class="material-symbols-outlined text-[20px] shrink-0">receipt_long</span>
             <span class="text-[13px] font-semibold leading-none">Orders</span>
         </a>
-        <a href="billings.html" data-page="billings" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+        <a href="billings.html" data-page="billings" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary dark:text-slate-400 transition-colors duration-150 group outline-none">
             <span class="material-symbols-outlined text-[20px] shrink-0">receipt</span>
             <span class="text-[13px] font-semibold leading-none">Billings</span>
         </a>
-        <a href="finance.html" data-page="finance" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+        <a href="finance.html" data-page="finance" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary dark:text-slate-400 transition-colors duration-150 group outline-none">
             <span class="material-symbols-outlined text-[20px] shrink-0">payments</span>
             <span class="text-[13px] font-semibold leading-none">Finance</span>
         </a>
-        <a href="reports.html" data-page="reports" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+        <a href="reports.html" data-page="reports" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary dark:text-slate-400 transition-colors duration-150 group outline-none">
             <span class="material-symbols-outlined text-[20px] shrink-0">analytics</span>
             <span class="text-[13px] font-semibold leading-none">Reports</span>
         </a>
-        <div class="mx-4 my-2 border-t border-outline-variant/40"></div>
+        <div class="mx-4 my-2 border-t border-outline-variant/40 dark:border-slate-800"></div>
         <div class="px-5 pb-1.5 pt-1">
-            <span class="text-[10px] font-bold text-secondary uppercase tracking-[0.08em]">Management</span>
+            <span class="text-[10px] font-bold text-secondary dark:text-slate-400 uppercase tracking-[0.08em]">Management</span>
         </div>
-        <a href="customers.html" data-page="customers" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+        <a href="customers.html" data-page="customers" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary dark:text-slate-400 transition-colors duration-150 group outline-none">
             <span class="material-symbols-outlined text-[20px] shrink-0">groups</span>
             <span class="text-[13px] font-semibold leading-none">Customers</span>
         </a>
-        <a href="inventory.html" data-page="inventory" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+        <a href="inventory.html" data-page="inventory" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary dark:text-slate-400 transition-colors duration-150 group outline-none">
             <span class="material-symbols-outlined text-[20px] shrink-0">inventory_2</span>
             <span class="text-[13px] font-semibold leading-none">Inventory</span>
         </a>
-        <a href="vendors.html" data-page="vendors" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+        <a href="vendors.html" data-page="vendors" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary dark:text-slate-400 transition-colors duration-150 group outline-none">
             <span class="material-symbols-outlined text-[20px] shrink-0">storefront</span>
             <span class="text-[13px] font-semibold leading-none">Vendors</span>
         </a>
-        <a href="production.html" data-page="production" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+        <a href="production.html" data-page="production" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary dark:text-slate-400 transition-colors duration-150 group outline-none">
             <span class="material-symbols-outlined text-[20px] shrink-0">precision_manufacturing</span>
             <span class="text-[13px] font-semibold leading-none">Production</span>
         </a>
-        <a href="dispatch.html" data-page="dispatch" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+        <a href="dispatch.html" data-page="dispatch" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary dark:text-slate-400 transition-colors duration-150 group outline-none">
             <span class="material-symbols-outlined text-[20px] shrink-0">local_shipping</span>
             <span class="text-[13px] font-semibold leading-none">Dispatch</span>
         </a>
     </div>
-    <div class="shrink-0 border-t border-outline-variant/30 py-3 flex flex-col" style="gap: 1px;">
-        <a href="more.html" data-page="more" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+    <div class="shrink-0 border-t border-outline-variant/30 dark:border-slate-800 py-3 flex flex-col" style="gap: 1px;">
+        <a href="more.html" data-page="more" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary dark:text-slate-400 transition-colors duration-150 group outline-none">
             <span class="material-symbols-outlined text-[20px] shrink-0">grid_view</span>
             <span class="text-[13px] font-semibold leading-none">More</span>
         </a>
-        <a href="settings.html" data-page="settings" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+        <a href="settings.html" data-page="settings" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary dark:text-slate-400 transition-colors duration-150 group outline-none">
             <span class="material-symbols-outlined text-[20px] shrink-0">settings</span>
             <span class="text-[13px] font-semibold leading-none">Settings</span>
         </a>
+        <button type="button" onclick="toggleTheme()" class="theme-toggle-btn mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary dark:text-slate-400 hover:bg-surface-variant/40 dark:hover:bg-slate-800 transition-colors duration-150 group outline-none text-left">
+            <span class="material-symbols-outlined text-[20px] shrink-0">dark_mode</span>
+            <span class="theme-label text-[13px] font-semibold leading-none">Theme</span>
+        </button>
     </div>
 </nav>`;
 
@@ -294,31 +357,31 @@ window.openQuickAddCustomer = function (callback) {
     const container = document.createElement('div');
     container.innerHTML = `
         <div id="quickAddCustomerSheet-overlay" class="bottom-sheet-overlay" onclick="closeSheet('quickAddCustomerSheet'); setTimeout(() => document.getElementById('quickAddCustomerSheet-overlay').parentElement.remove(), 400)"></div>
-        <div id="quickAddCustomerSheet-content" class="bottom-sheet-content flex flex-col h-[75vh]">
+        <div id="quickAddCustomerSheet-content" class="bottom-sheet-content flex flex-col h-[75vh] bg-surface dark:bg-slate-900 border-outline-variant/30 dark:border-slate-800">
             <div class="sheet-handle"></div>
-            <div class="px-lg pb-md flex justify-between items-center border-b border-outline-variant/30">
-                <h2 class="text-[20px] font-bold text-on-surface">Quick Add Customer</h2>
-                <button type="button" id="quick-customer-close-x" class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-secondary active-scale transition-apple">
+            <div class="px-lg pb-md flex justify-between items-center border-b border-outline-variant/30 dark:border-slate-800">
+                <h2 class="text-[20px] font-bold text-on-surface dark:text-slate-100">Quick Add Customer</h2>
+                <button type="button" id="quick-customer-close-x" class="w-8 h-8 rounded-full bg-surface-variant dark:bg-slate-800 flex items-center justify-center text-secondary dark:text-slate-400 active-scale transition-apple">
                     <span class="material-symbols-outlined text-[20px]">close</span>
                 </button>
             </div>
-            <div class="flex-1 overflow-y-auto p-lg flex flex-col gap-lg bg-background">
+            <div class="flex-1 overflow-y-auto p-lg flex flex-col gap-lg bg-background dark:bg-slate-900/50">
                 <form id="quick-customer-form" class="flex flex-col gap-4" onsubmit="event.preventDefault();">
                     <div>
-                        <label class="text-[14px] font-semibold text-on-surface">Customer Name *</label>
-                        <input type="text" id="quick-cust-name" required class="w-full bg-surface border border-outline-variant rounded-xl px-4 py-3 text-[16px] text-on-surface focus:ring-2 focus:ring-primary/20 outline-none mt-1">
+                        <label class="text-[14px] font-semibold text-on-surface dark:text-slate-200">Customer Name *</label>
+                        <input type="text" id="quick-cust-name" required class="w-full bg-surface dark:bg-slate-800 border border-outline-variant dark:border-slate-700 rounded-xl px-4 py-3 text-[16px] text-on-surface dark:text-slate-100 focus:ring-2 focus:ring-primary/20 outline-none mt-1">
                     </div>
                     <div>
-                        <label class="text-[14px] font-semibold text-on-surface">Mobile Number *</label>
-                        <input type="tel" id="quick-cust-mobile" required class="w-full bg-surface border border-outline-variant rounded-xl px-4 py-3 text-[16px] text-on-surface focus:ring-2 focus:ring-primary/20 outline-none mt-1">
+                        <label class="text-[14px] font-semibold text-on-surface dark:text-slate-200">Mobile Number *</label>
+                        <input type="tel" id="quick-cust-mobile" required class="w-full bg-surface dark:bg-slate-800 border border-outline-variant dark:border-slate-700 rounded-xl px-4 py-3 text-[16px] text-on-surface dark:text-slate-100 focus:ring-2 focus:ring-primary/20 outline-none mt-1">
                     </div>
                     <div>
-                        <label class="text-[14px] font-semibold text-on-surface">Company Name</label>
-                        <input type="text" id="quick-cust-company" class="w-full bg-surface border border-outline-variant rounded-xl px-4 py-3 text-[16px] text-on-surface focus:ring-2 focus:ring-primary/20 outline-none mt-1">
+                        <label class="text-[14px] font-semibold text-on-surface dark:text-slate-200">Company Name</label>
+                        <input type="text" id="quick-cust-company" class="w-full bg-surface dark:bg-slate-800 border border-outline-variant dark:border-slate-700 rounded-xl px-4 py-3 text-[16px] text-on-surface dark:text-slate-100 focus:ring-2 focus:ring-primary/20 outline-none mt-1">
                     </div>
                     <div>
-                        <label class="text-[14px] font-semibold text-on-surface">Customer Type</label>
-                        <select id="quick-cust-type" class="w-full bg-surface border border-outline-variant rounded-xl px-4 py-3 text-[16px] text-on-surface focus:ring-2 focus:ring-primary/20 outline-none mt-1">
+                        <label class="text-[14px] font-semibold text-on-surface dark:text-slate-200">Customer Type</label>
+                        <select id="quick-cust-type" class="w-full bg-surface dark:bg-slate-800 border border-outline-variant dark:border-slate-700 rounded-xl px-4 py-3 text-[16px] text-on-surface dark:text-slate-100 focus:ring-2 focus:ring-primary/20 outline-none mt-1">
                             <option value="Brand">Brand</option>
                             <option value="Manufacturer">Manufacturer</option>
                             <option value="Exporter">Exporter</option>
@@ -327,8 +390,8 @@ window.openQuickAddCustomer = function (callback) {
                     </div>
                 </form>
             </div>
-            <div class="p-4 border-t border-outline-variant/30 bg-surface-container-lowest safe-bottom flex gap-3">
-                <button type="button" id="quick-customer-cancel-btn" class="flex-1 bg-surface-container-high text-on-surface font-semibold py-3.5 rounded-xl">Cancel</button>
+            <div class="p-4 border-t border-outline-variant/30 dark:border-slate-800 bg-surface-container-lowest dark:bg-slate-900 safe-bottom flex gap-3">
+                <button type="button" id="quick-customer-cancel-btn" class="flex-1 bg-surface-container-high dark:bg-slate-800 text-on-surface dark:text-slate-200 font-semibold py-3.5 rounded-xl">Cancel</button>
                 <button type="button" id="quick-customer-save-btn" class="flex-1 bg-primary text-white font-semibold py-3.5 rounded-xl shadow-sm">Save Customer</button>
             </div>
         </div>

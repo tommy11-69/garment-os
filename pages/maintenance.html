@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en" class="light">
 <head>
     <!-- Favicon & PWA Icons -->
@@ -13,6 +13,15 @@
     <meta name="description" content="Garment OS is under maintenance"/>
     <title>Under Maintenance — Garment OS</title>
 
+    <!-- Zero-Flicker Dark Mode Theme Resolver -->
+    <script>
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com" rel="preconnect"/>
     <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
@@ -22,7 +31,7 @@
     <script src="../js/tailwind.config.js"></script>
 
     <style>
-        body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; background-color: #F5F5F7; }
+        body { font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
         @keyframes rotate-slow {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
@@ -56,36 +65,43 @@
     </style>
     <link rel="stylesheet" href="../css/responsive.css">
 </head>
-<body class="min-h-screen flex items-center justify-center p-6">
+<body class="min-h-screen flex items-center justify-center p-6 bg-[#F5F5F7] dark:bg-slate-950 text-on-surface dark:text-slate-100 transition-colors">
+    <!-- Top Right Theme Switcher -->
+    <div class="fixed top-5 right-5 z-50">
+        <button id="theme-toggle-maint" onclick="toggleThemeLocal()" class="w-10 h-10 rounded-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-sm flex items-center justify-center text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all cursor-pointer" aria-label="Toggle Dark Mode">
+            <span class="material-symbols-outlined text-[20px]" id="theme-icon">dark_mode</span>
+        </button>
+    </div>
+
     <div class="max-w-[440px] w-full text-center">
 
         <!-- SVG Illustration with animated gears -->
         <div class="mb-8 mx-auto w-fit">
             <svg width="200" height="160" viewBox="0 0 200 160" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="100" cy="90" r="70" fill="#EAE7EA"/>
+                <circle cx="100" cy="90" r="70" class="fill-[#EAE7EA] dark:fill-slate-800/80"/>
                 <!-- Gear 1 (large) -->
                 <g class="gear-1">
                     <path d="M82 38 L86 44 L78 52 L72 48 L66 54 L70 62 L62 68 L56 64 L52 72 L60 76 L60 86 L52 90 L56 98 L64 96 L70 104 L64 110 L70 116 L76 112 L84 118 L82 126" stroke="#0059B5" stroke-width="3" stroke-linecap="round" fill="none"/>
-                    <circle cx="82" cy="60" r="16" fill="white" stroke="#0059B5" stroke-width="3"/>
+                    <circle cx="82" cy="60" r="16" class="fill-white dark:fill-slate-900 stroke-[#0059B5]" stroke-width="3"/>
                     <circle cx="82" cy="60" r="6" fill="#0059B5"/>
                 </g>
                 <!-- Gear 2 (small) -->
                 <g class="gear-2">
-                    <circle cx="118" cy="90" r="14" fill="white" stroke="#ABC7FF" stroke-width="3"/>
-                    <circle cx="118" cy="90" r="5" fill="#ABC7FF"/>
+                    <circle cx="118" cy="90" r="14" class="fill-white dark:fill-slate-900 stroke-[#ABC7FF] dark:stroke-blue-400" stroke-width="3"/>
+                    <circle cx="118" cy="90" r="5" class="fill-[#ABC7FF] dark:fill-blue-400"/>
                     <!-- Teeth simplified -->
-                    <rect x="115" y="73" width="6" height="8" rx="2" fill="#ABC7FF"/>
-                    <rect x="115" y="99" width="6" height="8" rx="2" fill="#ABC7FF"/>
-                    <rect x="101" y="87" width="8" height="6" rx="2" fill="#ABC7FF"/>
-                    <rect x="127" y="87" width="8" height="6" rx="2" fill="#ABC7FF"/>
+                    <rect x="115" y="73" width="6" height="8" rx="2" class="fill-[#ABC7FF] dark:fill-blue-400"/>
+                    <rect x="115" y="99" width="6" height="8" rx="2" class="fill-[#ABC7FF] dark:fill-blue-400"/>
+                    <rect x="101" y="87" width="8" height="6" rx="2" class="fill-[#ABC7FF] dark:fill-blue-400"/>
+                    <rect x="127" y="87" width="8" height="6" rx="2" class="fill-[#ABC7FF] dark:fill-blue-400"/>
                 </g>
                 <!-- Wrench -->
-                <path d="M130 45 L150 70" stroke="#5E5E63" stroke-width="4" stroke-linecap="round"/>
-                <circle cx="127" cy="43" r="8" fill="none" stroke="#5E5E63" stroke-width="3"/>
+                <path d="M130 45 L150 70" class="stroke-[#5E5E63] dark:stroke-slate-400" stroke-width="4" stroke-linecap="round"/>
+                <circle cx="127" cy="43" r="8" fill="none" class="stroke-[#5E5E63] dark:stroke-slate-400" stroke-width="3"/>
                 <!-- Decorative dots -->
-                <circle cx="40" cy="55" r="4" fill="#C1C6D6"/>
-                <circle cx="168" cy="110" r="3" fill="#C1C6D6"/>
-                <circle cx="155" cy="45" r="2.5" fill="#ABC7FF"/>
+                <circle cx="40" cy="55" r="4" class="fill-[#C1C6D6] dark:fill-slate-700"/>
+                <circle cx="168" cy="110" r="3" class="fill-[#C1C6D6] dark:fill-slate-700"/>
+                <circle cx="155" cy="45" r="2.5" class="fill-[#ABC7FF] dark:fill-blue-400"/>
             </svg>
         </div>
 
@@ -94,7 +110,7 @@
             <div class="w-6 h-6 rounded-md bg-primary flex items-center justify-center">
                 <span class="material-symbols-outlined text-white text-[14px]" style="font-variation-settings:'FILL' 1;">precision_manufacturing</span>
             </div>
-            <span class="text-[16px] font-bold text-on-surface">Garment OS</span>
+            <span class="text-[16px] font-bold text-on-surface dark:text-white">Garment OS</span>
         </div>
 
         <div class="flex items-center justify-center gap-2 mb-3">
@@ -102,49 +118,67 @@
             <span class="text-[13px] font-semibold text-[#FF9F0A] uppercase tracking-wider">Under Maintenance</span>
         </div>
 
-        <h1 class="text-[28px] font-bold text-on-surface mb-3 tracking-tight">We'll Be Right Back</h1>
-        <p class="text-[16px] text-secondary leading-relaxed mb-8">
+        <h1 class="text-[28px] font-bold text-on-surface dark:text-white mb-3 tracking-tight">We'll Be Right Back</h1>
+        <p class="text-[16px] text-secondary dark:text-slate-400 leading-relaxed mb-8">
             We're upgrading Garment OS to serve you better. The system will be back online shortly.
         </p>
 
         <!-- Progress bar -->
-        <div class="bg-white rounded-2xl border border-outline-variant p-5 mb-6 text-left">
+        <div class="bg-white dark:bg-slate-900 rounded-2xl border border-outline-variant dark:border-slate-800 p-5 mb-6 text-left">
             <div class="flex justify-between items-center mb-3">
-                <span class="text-[14px] font-semibold text-on-surface">Upgrade Progress</span>
+                <span class="text-[14px] font-semibold text-on-surface dark:text-white">Upgrade Progress</span>
                 <span class="text-[14px] font-bold text-primary">85%</span>
             </div>
-            <div class="w-full h-2 bg-surface-variant rounded-full overflow-hidden">
+            <div class="w-full h-2 bg-surface-variant dark:bg-slate-800 rounded-full overflow-hidden">
                 <div class="progress-bar-fill"></div>
             </div>
-            <p class="text-[12px] text-secondary mt-3">Database migration in progress. Almost done!</p>
+            <p class="text-[12px] text-secondary dark:text-slate-400 mt-3">Database migration in progress. Almost done!</p>
         </div>
 
         <!-- Estimated time -->
-        <div class="bg-white rounded-2xl border border-outline-variant p-5 mb-6">
+        <div class="bg-white dark:bg-slate-900 rounded-2xl border border-outline-variant dark:border-slate-800 p-5 mb-6">
             <div class="grid grid-cols-3 gap-4 text-center">
                 <div>
-                    <div class="text-[28px] font-bold text-on-surface" id="hours">00</div>
-                    <div class="text-[12px] text-secondary font-medium">Hours</div>
+                    <div class="text-[28px] font-bold text-on-surface dark:text-white" id="hours">00</div>
+                    <div class="text-[12px] text-secondary dark:text-slate-400 font-medium">Hours</div>
                 </div>
                 <div>
-                    <div class="text-[28px] font-bold text-on-surface" id="minutes">30</div>
-                    <div class="text-[12px] text-secondary font-medium">Minutes</div>
+                    <div class="text-[28px] font-bold text-on-surface dark:text-white" id="minutes">30</div>
+                    <div class="text-[12px] text-secondary dark:text-slate-400 font-medium">Minutes</div>
                 </div>
                 <div>
-                    <div class="text-[28px] font-bold text-on-surface" id="seconds">00</div>
-                    <div class="text-[12px] text-secondary font-medium">Seconds</div>
+                    <div class="text-[28px] font-bold text-on-surface dark:text-white" id="seconds">00</div>
+                    <div class="text-[12px] text-secondary dark:text-slate-400 font-medium">Seconds</div>
                 </div>
             </div>
-            <p class="text-[12px] text-secondary text-center mt-3">Estimated time remaining</p>
+            <p class="text-[12px] text-secondary dark:text-slate-400 text-center mt-3">Estimated time remaining</p>
         </div>
 
-        <p class="text-[13px] text-secondary">
+        <p class="text-[13px] text-secondary dark:text-slate-400">
             Questions? Email us at 
             <a href="mailto:support@garmentos.com" class="text-primary font-semibold hover:underline">support@garmentos.com</a>
         </p>
     </div>
 
     <script>
+        function updateIcon() {
+            const isDark = document.documentElement.classList.contains('dark');
+            const icon = document.getElementById('theme-icon');
+            if (icon) icon.textContent = isDark ? 'light_mode' : 'dark_mode';
+        }
+        function toggleThemeLocal() {
+            const isDark = document.documentElement.classList.contains('dark');
+            if (isDark) {
+                document.documentElement.classList.remove('dark');
+                localStorage.setItem('theme', 'light');
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+            }
+            updateIcon();
+        }
+        updateIcon();
+
         // Countdown timer (30 minutes demo)
         let totalSeconds = 30 * 60;
         function updateTimer() {

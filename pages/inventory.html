@@ -1,6 +1,21 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html class="light" lang="en">
 <head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Garment OS - Inventory</title>
+    
+    <!-- Zero-Flicker Dark Mode Theme Resolver -->
+    <script>
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+    
     <!-- Favicon & PWA Icons -->
     <link rel="icon" type="image/png" sizes="192x192" href="../assets/icon-192.png">
     <link rel="icon" type="image/webp" href="../assets/logo-primary.webp">
@@ -8,11 +23,6 @@
     <link rel="manifest" href="../manifest.json">
     <meta name="theme-color" content="#0059b5">
     <meta name="mobile-web-app-capable" content="yes">
-    <meta charset="utf-8"/>
-    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Garment OS - Inventory</title>
     
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com" rel="preconnect"/>
@@ -27,7 +37,7 @@
     <link rel="stylesheet" href="../css/utilities.css">
     <link rel="stylesheet" href="../css/responsive.css">
 </head>
-<body class="font-body text-body antialiased bg-background">
+<body class="font-body text-body antialiased bg-background dark:bg-slate-950 text-on-surface dark:text-slate-100">
 
     <div id="topbar-container"></div>
 
@@ -37,15 +47,15 @@
             <!-- Page Header with Quick Actions -->
             <div class="px-xs pt-sm flex justify-between items-start">
                 <div>
-                    <h2 class="text-[28px] leading-tight font-extrabold tracking-tight text-on-surface">Inventory</h2>
-                    <p id="inventory-subtext" class="text-[13px] text-secondary font-medium mt-0.5">Live Stock Valuation & Garment Raw Materials</p>
+                    <h2 class="text-[28px] leading-tight font-extrabold tracking-tight text-on-surface dark:text-white">Inventory</h2>
+                    <p id="inventory-subtext" class="text-[13px] text-secondary dark:text-slate-400 font-medium mt-0.5">Live Stock Valuation & Garment Raw Materials</p>
                 </div>
                 <div class="flex gap-2">
                     <button onclick="window.openStockInModal()" class="px-3 py-2 rounded-xl bg-primary/10 text-primary border border-primary/20 text-[12px] font-bold active-scale transition-apple flex items-center gap-1 cursor-pointer">
                         <span class="material-symbols-outlined text-[16px]">add_circle</span>
                         Stock In
                     </button>
-                    <button onclick="window.openStockOutModal()" class="px-3 py-2 rounded-xl bg-surface-container border border-outline-variant text-on-surface text-[12px] font-bold active-scale transition-apple flex items-center gap-1 cursor-pointer">
+                    <button onclick="window.openStockOutModal()" class="px-3 py-2 rounded-xl bg-surface-container dark:bg-slate-800 border border-outline-variant dark:border-slate-700 text-on-surface dark:text-slate-200 text-[12px] font-bold active-scale transition-apple flex items-center gap-1 cursor-pointer">
                         <span class="material-symbols-outlined text-[16px] text-[#FF9500]">outbox</span>
                         Issue
                     </button>
@@ -55,21 +65,21 @@
             <!-- 4-KPI Overview Dashboard Strip -->
             <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                 <div class="bg-surface-container-lowest p-3.5 rounded-2xl border border-outline-variant/60 shadow-xs flex flex-col justify-between">
-                    <span class="text-[10px] font-bold text-secondary uppercase tracking-wider flex items-center gap-1">
+                    <span class="text-[10px] font-bold text-secondary dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
                         <span class="material-symbols-outlined text-[14px] text-primary">account_balance_wallet</span>
                         Stock Valuation
                     </span>
                     <span id="kpi-valuation" class="text-[19px] font-extrabold text-primary leading-tight mt-1">₹ 0.00</span>
-                    <span class="text-[10px] text-secondary mt-0.5 font-medium">Total tied-up capital</span>
+                    <span class="text-[10px] text-secondary dark:text-slate-400 mt-0.5 font-medium">Total tied-up capital</span>
                 </div>
 
                 <div class="bg-surface-container-lowest p-3.5 rounded-2xl border border-outline-variant/60 shadow-xs flex flex-col justify-between">
-                    <span class="text-[10px] font-bold text-secondary uppercase tracking-wider flex items-center gap-1">
+                    <span class="text-[10px] font-bold text-secondary dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
                         <span class="material-symbols-outlined text-[14px] text-[#00C7BE]">category</span>
                         Active SKUs
                     </span>
-                    <span id="kpi-skus" class="text-[19px] font-extrabold text-on-surface leading-tight mt-1">0 Items</span>
-                    <span class="text-[10px] text-secondary mt-0.5 font-medium">8 Garment categories</span>
+                    <span id="kpi-skus" class="text-[19px] font-extrabold text-on-surface dark:text-white leading-tight mt-1">0 Items</span>
+                    <span class="text-[10px] text-secondary dark:text-slate-400 mt-0.5 font-medium">8 Garment categories</span>
                 </div>
 
                 <div role="button" tabindex="0" onclick="window.setInventoryStatusFilter('Low Stock')" class="bg-surface-container-lowest p-3.5 rounded-2xl border border-outline-variant/60 shadow-xs flex flex-col justify-between active-scale transition-apple cursor-pointer hover:border-[#FF9F0A]/50">
@@ -78,7 +88,7 @@
                         Low Stock Alerts
                     </span>
                     <span id="kpi-low-stock" class="text-[19px] font-extrabold text-[#FF9F0A] leading-tight mt-1">0 Items</span>
-                    <span class="text-[10px] text-secondary mt-0.5 font-medium">Below reorder point</span>
+                    <span class="text-[10px] text-secondary dark:text-slate-400 mt-0.5 font-medium">Below reorder point</span>
                 </div>
 
                 <div role="button" tabindex="0" onclick="window.setInventoryStatusFilter('Out of Stock')" class="bg-surface-container-lowest p-3.5 rounded-2xl border border-outline-variant/60 shadow-xs flex flex-col justify-between active-scale transition-apple cursor-pointer hover:border-error/50">
@@ -87,15 +97,15 @@
                         Out of Stock
                     </span>
                     <span id="kpi-out-stock" class="text-[19px] font-extrabold text-error leading-tight mt-1">0 Items</span>
-                    <span class="text-[10px] text-secondary mt-0.5 font-medium">Require immediate order</span>
+                    <span class="text-[10px] text-secondary dark:text-slate-400 mt-0.5 font-medium">Require immediate order</span>
                 </div>
             </div>
 
             <!-- Search Bar & Sort Dropdown -->
             <div class="flex gap-2 w-full">
                 <div class="relative flex-1">
-                    <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
-                    <input id="inventory-search" class="w-full bg-surface-container-lowest border border-outline-variant rounded-2xl py-3 pl-12 pr-4 font-body text-[15px] text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-2 focus:ring-primary/20 transition-apple shadow-xs" placeholder="Search item, SKU, category, bay, vendor..." type="text"/>
+                    <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant dark:text-slate-400 text-[20px]">search</span>
+                    <input id="inventory-search" class="w-full bg-surface-container-lowest border border-outline-variant rounded-2xl py-3 pl-12 pr-4 font-body text-[15px] text-on-surface placeholder:text-on-surface-variant dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-apple shadow-xs" placeholder="Search item, SKU, category, bay, vendor..." type="text"/>
                 </div>
                 <div class="relative">
                     <select id="inventory-sort-select" onchange="window.setInventorySort(this.value)" class="h-[48px] bg-surface-container-lowest border border-outline-variant rounded-2xl px-3 font-body text-[13px] font-semibold text-on-surface focus:outline-none focus:ring-2 focus:ring-primary/20 transition-apple shadow-xs appearance-none pr-8 cursor-pointer">
@@ -105,16 +115,16 @@
                         <option value="highest-stock">Highest Stock</option>
                         <option value="name">Name (A-Z)</option>
                     </select>
-                    <span class="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-secondary pointer-events-none text-[18px]">expand_more</span>
+                    <span class="material-symbols-outlined absolute right-2.5 top-1/2 -translate-y-1/2 text-secondary dark:text-slate-400 pointer-events-none text-[18px]">expand_more</span>
                 </div>
             </div>
 
             <!-- Status Segmented Control (All / In Stock / Low Stock / Out of Stock) -->
-            <div class="flex p-1 bg-surface-container rounded-[16px] border border-outline-variant/50">
-                <button data-status-filter="All" class="flex-1 py-2 rounded-[12px] text-[13px] font-semibold bg-surface-container-lowest text-on-surface shadow-xs transition-all cursor-pointer touch-manipulation" onclick="window.setInventoryStatusFilter('All')">All</button>
-                <button data-status-filter="In Stock" class="flex-1 py-2 rounded-[12px] text-[13px] font-semibold text-secondary transition-all cursor-pointer touch-manipulation" onclick="window.setInventoryStatusFilter('In Stock')">In Stock</button>
-                <button data-status-filter="Low Stock" class="flex-1 py-2 rounded-[12px] text-[13px] font-semibold text-secondary transition-all cursor-pointer touch-manipulation" onclick="window.setInventoryStatusFilter('Low Stock')">⚠️ Low Stock</button>
-                <button data-status-filter="Out of Stock" class="flex-1 py-2 rounded-[12px] text-[13px] font-semibold text-secondary transition-all cursor-pointer touch-manipulation" onclick="window.setInventoryStatusFilter('Out of Stock')">Out of Stock</button>
+            <div class="flex p-1 bg-surface-container dark:bg-slate-900 rounded-[16px] border border-outline-variant/50 dark:border-slate-800">
+                <button data-status-filter="All" class="flex-1 py-2 rounded-[12px] text-[13px] font-semibold bg-surface-container-lowest dark:bg-slate-800 text-on-surface dark:text-white shadow-xs transition-all cursor-pointer touch-manipulation" onclick="window.setInventoryStatusFilter('All')">All</button>
+                <button data-status-filter="In Stock" class="flex-1 py-2 rounded-[12px] text-[13px] font-semibold text-secondary dark:text-slate-400 transition-all cursor-pointer touch-manipulation" onclick="window.setInventoryStatusFilter('In Stock')">In Stock</button>
+                <button data-status-filter="Low Stock" class="flex-1 py-2 rounded-[12px] text-[13px] font-semibold text-secondary dark:text-slate-400 transition-all cursor-pointer touch-manipulation" onclick="window.setInventoryStatusFilter('Low Stock')">⚠️ Low Stock</button>
+                <button data-status-filter="Out of Stock" class="flex-1 py-2 rounded-[12px] text-[13px] font-semibold text-secondary dark:text-slate-400 transition-all cursor-pointer touch-manipulation" onclick="window.setInventoryStatusFilter('Out of Stock')">Out of Stock</button>
             </div>
 
             <!-- Garment Categories Horizontal Filter Chips -->

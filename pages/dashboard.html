@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html class="light" lang="en">
+<html lang="en">
 <head>
     <!-- Favicon & PWA Icons -->
     <link rel="icon" type="image/png" sizes="192x192" href="../assets/icon-192.png">
@@ -13,6 +13,14 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Garment OS — Enterprise Command Center</title>
+
+    <script>
+      if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    </script>
     
     <!-- Material Symbols -->
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
@@ -31,82 +39,91 @@
     <link rel="stylesheet" href="../css/utilities.css">
     <link rel="stylesheet" href="../css/responsive.css">
 </head>
-<body class="font-body text-body antialiased bg-background selection:bg-primary/20">
+<body class="font-body text-body antialiased bg-background dark:bg-slate-950 text-on-surface dark:text-slate-100 selection:bg-primary/20">
 
     <!-- Desktop & Tablet Sidebar Navigation -->
     <div id="sidebar-container">
-        <nav class="sidebar-nav" id="sidebar-nav" role="navigation" aria-label="Main navigation">
-            <div class="flex items-center gap-3 px-5 h-[68px] shrink-0 border-b border-outline-variant/30">
-                <div class="w-8 h-8 rounded-xl bg-primary flex items-center justify-center shrink-0 shadow-sm">
-                    <span class="material-symbols-outlined text-white text-[18px]" style="font-variation-settings:'FILL' 1;">checkroom</span>
+        <nav class="sidebar-nav bg-white dark:bg-slate-900 border-r border-outline-variant/30 dark:border-slate-800" id="sidebar-nav" role="navigation" aria-label="Main navigation">
+            <div class="flex items-center justify-between px-5 h-[68px] shrink-0 border-b border-outline-variant/30 dark:border-slate-800">
+                <div class="flex items-center gap-3 min-w-0">
+                    <div class="w-8 h-8 rounded-xl bg-primary flex items-center justify-center shrink-0 shadow-sm">
+                        <span class="material-symbols-outlined text-white text-[18px]" style="font-variation-settings:'FILL' 1;">checkroom</span>
+                    </div>
+                    <div class="min-w-0">
+                        <h1 class="text-[14px] font-bold text-on-surface dark:text-slate-100 tracking-tight leading-tight truncate">Garment OS</h1>
+                        <p class="text-[10px] font-semibold text-secondary dark:text-slate-400 uppercase tracking-[0.07em]">Enterprise</p>
+                    </div>
                 </div>
-                <div class="min-w-0">
-                    <h1 class="text-[14px] font-bold text-on-surface tracking-tight leading-tight truncate">Garment OS</h1>
-                    <p class="text-[10px] font-semibold text-secondary uppercase tracking-[0.07em]">Enterprise</p>
-                </div>
+                <button type="button" onclick="toggleTheme()" class="theme-toggle-btn w-8 h-8 rounded-xl flex items-center justify-center text-secondary dark:text-slate-400 hover:bg-surface-variant/40 dark:hover:bg-slate-800 transition-colors" title="Toggle Dark/Light Mode" aria-label="Toggle theme">
+                    <span class="material-symbols-outlined text-[19px]">dark_mode</span>
+                </button>
             </div>
             <div class="flex-1 overflow-y-auto py-3 flex flex-col" style="gap: 1px;">
                 <div class="px-5 pb-1.5 pt-3">
-                    <span class="text-[10px] font-bold text-secondary uppercase tracking-[0.08em]">Workspace</span>
+                    <span class="text-[10px] font-bold text-secondary dark:text-slate-400 uppercase tracking-[0.08em]">Workspace</span>
                 </div>
-                <a href="dashboard.html" data-page="dashboard" class="sidebar-nav-link sidebar-nav-link--active mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none" aria-current="page">
+                <a href="dashboard.html" data-page="dashboard" class="sidebar-nav-link sidebar-nav-link--active mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary dark:text-slate-400 transition-colors duration-150 group outline-none" aria-current="page">
                     <span class="material-symbols-outlined text-[20px] shrink-0" style="font-variation-settings:'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;">dashboard</span>
                     <span class="text-[13px] font-semibold leading-none">Dashboard</span>
                 </a>
-                <a href="calculator.html" data-page="calculator" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+                <a href="calculator.html" data-page="calculator" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary dark:text-slate-400 transition-colors duration-150 group outline-none">
                     <span class="material-symbols-outlined text-[20px] shrink-0">calculate</span>
                     <span class="text-[13px] font-semibold leading-none">Costing</span>
                 </a>
-                <a href="orders.html" data-page="orders" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+                <a href="orders.html" data-page="orders" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary dark:text-slate-400 transition-colors duration-150 group outline-none">
                     <span class="material-symbols-outlined text-[20px] shrink-0">receipt_long</span>
                     <span class="text-[13px] font-semibold leading-none">Orders</span>
                 </a>
-                <a href="billings.html" data-page="billings" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+                <a href="billings.html" data-page="billings" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary dark:text-slate-400 transition-colors duration-150 group outline-none">
                     <span class="material-symbols-outlined text-[20px] shrink-0">receipt</span>
                     <span class="text-[13px] font-semibold leading-none">Billings</span>
                 </a>
-                <a href="finance.html" data-page="finance" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+                <a href="finance.html" data-page="finance" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary dark:text-slate-400 transition-colors duration-150 group outline-none">
                     <span class="material-symbols-outlined text-[20px] shrink-0">payments</span>
                     <span class="text-[13px] font-semibold leading-none">Finance</span>
                 </a>
-                <a href="reports.html" data-page="reports" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+                <a href="reports.html" data-page="reports" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary dark:text-slate-400 transition-colors duration-150 group outline-none">
                     <span class="material-symbols-outlined text-[20px] shrink-0">analytics</span>
                     <span class="text-[13px] font-semibold leading-none">Reports</span>
                 </a>
-                <div class="mx-4 my-2 border-t border-outline-variant/40"></div>
+                <div class="mx-4 my-2 border-t border-outline-variant/40 dark:border-slate-800"></div>
                 <div class="px-5 pb-1.5 pt-1">
-                    <span class="text-[10px] font-bold text-secondary uppercase tracking-[0.08em]">Management</span>
+                    <span class="text-[10px] font-bold text-secondary dark:text-slate-400 uppercase tracking-[0.08em]">Management</span>
                 </div>
-                <a href="customers.html" data-page="customers" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+                <a href="customers.html" data-page="customers" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary dark:text-slate-400 transition-colors duration-150 group outline-none">
                     <span class="material-symbols-outlined text-[20px] shrink-0">groups</span>
                     <span class="text-[13px] font-semibold leading-none">Customers</span>
                 </a>
-                <a href="inventory.html" data-page="inventory" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+                <a href="inventory.html" data-page="inventory" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary dark:text-slate-400 transition-colors duration-150 group outline-none">
                     <span class="material-symbols-outlined text-[20px] shrink-0">inventory_2</span>
                     <span class="text-[13px] font-semibold leading-none">Inventory</span>
                 </a>
-                <a href="vendors.html" data-page="vendors" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+                <a href="vendors.html" data-page="vendors" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary dark:text-slate-400 transition-colors duration-150 group outline-none">
                     <span class="material-symbols-outlined text-[20px] shrink-0">storefront</span>
                     <span class="text-[13px] font-semibold leading-none">Vendors</span>
                 </a>
-                <a href="production.html" data-page="production" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+                <a href="production.html" data-page="production" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary dark:text-slate-400 transition-colors duration-150 group outline-none">
                     <span class="material-symbols-outlined text-[20px] shrink-0">precision_manufacturing</span>
                     <span class="text-[13px] font-semibold leading-none">Production</span>
                 </a>
-                <a href="dispatch.html" data-page="dispatch" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+                <a href="dispatch.html" data-page="dispatch" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary dark:text-slate-400 transition-colors duration-150 group outline-none">
                     <span class="material-symbols-outlined text-[20px] shrink-0">local_shipping</span>
                     <span class="text-[13px] font-semibold leading-none">Dispatch</span>
                 </a>
             </div>
-            <div class="shrink-0 border-t border-outline-variant/30 py-3 flex flex-col" style="gap: 1px;">
-                <a href="more.html" data-page="more" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+            <div class="shrink-0 border-t border-outline-variant/30 dark:border-slate-800 py-3 flex flex-col" style="gap: 1px;">
+                <a href="more.html" data-page="more" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary dark:text-slate-400 transition-colors duration-150 group outline-none">
                     <span class="material-symbols-outlined text-[20px] shrink-0">grid_view</span>
                     <span class="text-[13px] font-semibold leading-none">More</span>
                 </a>
-                <a href="settings.html" data-page="settings" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+                <a href="settings.html" data-page="settings" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary dark:text-slate-400 transition-colors duration-150 group outline-none">
                     <span class="material-symbols-outlined text-[20px] shrink-0">settings</span>
                     <span class="text-[13px] font-semibold leading-none">Settings</span>
                 </a>
+                <button type="button" onclick="toggleTheme()" class="theme-toggle-btn mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary dark:text-slate-400 hover:bg-surface-variant/40 dark:hover:bg-slate-800 transition-colors duration-150 group outline-none text-left">
+                    <span class="material-symbols-outlined text-[20px] shrink-0">dark_mode</span>
+                    <span class="theme-label text-[13px] font-semibold leading-none">Theme</span>
+                </button>
             </div>
         </nav>
     </div>
@@ -119,17 +136,17 @@
         <main id="main-content-area" class="flex-1 p-md flex flex-col gap-lg max-w-7xl mx-auto w-full">
             
             <!-- Command Center Header & KMS Launcher -->
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-xs pt-sm pb-xs border-b border-outline-variant/30">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-xs pt-sm pb-xs border-b border-outline-variant/30 dark:border-slate-800">
                 <div>
-                    <h2 id="dashboard-greeting" class="text-[28px] leading-tight font-extrabold tracking-tight text-on-surface mb-1">Good morning, Udhayaa</h2>
-                    <p class="text-[14px] text-secondary">Garment OS Operational Command Center &amp; Live Telemetry</p>
+                    <h2 id="dashboard-greeting" class="text-[28px] leading-tight font-extrabold tracking-tight text-on-surface dark:text-slate-100 mb-1">Good morning, Udhayaa</h2>
+                    <p class="text-[14px] text-secondary dark:text-slate-400">Garment OS Operational Command Center &amp; Live Telemetry</p>
                 </div>
                 
                 <div class="flex items-center gap-3">
-                    <button id="kms-trigger-btn" type="button" class="flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-surface-container-lowest border border-outline-variant/60 hover:bg-surface-variant/50 text-on-surface shadow-sm active-scale transition-apple cursor-pointer">
+                    <button id="kms-trigger-btn" type="button" class="flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant/60 dark:border-slate-800 hover:bg-surface-variant/50 dark:hover:bg-slate-800 text-on-surface dark:text-slate-100 shadow-sm active-scale transition-apple cursor-pointer">
                         <span class="material-symbols-outlined text-[20px] text-primary">search</span>
-                        <span class="text-[13px] font-semibold text-secondary">Quick Command Bar</span>
-                        <kbd class="px-2 py-0.5 text-[11px] font-bold font-mono text-secondary bg-surface-variant/80 rounded-lg border border-outline-variant/60 ml-2">⌘K</kbd>
+                        <span class="text-[13px] font-semibold text-secondary dark:text-slate-400">Quick Command Bar</span>
+                        <kbd class="px-2 py-0.5 text-[11px] font-bold font-mono text-secondary dark:text-slate-400 bg-surface-variant/80 dark:bg-slate-800 rounded-lg border border-outline-variant/60 dark:border-slate-700 ml-2">⌘K</kbd>
                     </button>
                 </div>
             </div>
@@ -143,15 +160,15 @@
             <!-- 3. Advanced Analytical Graph Suite (Multi-Axis & Heatmap) -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-lg">
                 <!-- Financial Run-Rate Canvas Chart -->
-                <div class="lg:col-span-2 bg-surface-container-lowest border border-outline-variant/60 rounded-3xl p-5 shadow-sm flex flex-col">
+                <div class="lg:col-span-2 bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant/60 dark:border-slate-800 rounded-3xl p-5 shadow-sm flex flex-col">
                     <div class="flex items-center justify-between mb-4">
                         <div class="flex items-center gap-2.5">
                             <div class="w-8 h-8 rounded-xl bg-[#00B386]/10 text-[#00B386] flex items-center justify-center">
                                 <span class="material-symbols-outlined text-[20px]">show_chart</span>
                             </div>
                             <div>
-                                <h3 class="font-bold text-[16px] text-on-surface">Revenue vs Expense Run-Rate</h3>
-                                <p class="text-[12px] text-secondary">Monthly cumulative billing comparison (60fps Canvas)</p>
+                                <h3 class="font-bold text-[16px] text-on-surface dark:text-slate-100">Revenue vs Expense Run-Rate</h3>
+                                <p class="text-[12px] text-secondary dark:text-slate-400">Monthly cumulative billing comparison (60fps Canvas)</p>
                             </div>
                         </div>
                         <div class="flex items-center gap-3 text-[12px] font-semibold">
@@ -165,14 +182,14 @@
                 </div>
 
                 <!-- 7-Day Floor Capacity Heatmap -->
-                <div class="bg-surface-container-lowest border border-outline-variant/60 rounded-3xl p-5 shadow-sm flex flex-col">
+                <div class="bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant/60 dark:border-slate-800 rounded-3xl p-5 shadow-sm flex flex-col">
                     <div class="flex items-center gap-2.5 mb-4">
                         <div class="w-8 h-8 rounded-xl bg-[#FF6B00]/10 text-[#FF6B00] flex items-center justify-center">
                             <span class="material-symbols-outlined text-[20px]">grid_view</span>
                         </div>
                         <div>
-                            <h3 class="font-bold text-[16px] text-on-surface">Floor Capacity Utilization</h3>
-                            <p class="text-[12px] text-secondary">7-Day shift load percentage</p>
+                            <h3 class="font-bold text-[16px] text-on-surface dark:text-slate-100">Floor Capacity Utilization</h3>
+                            <p class="text-[12px] text-secondary dark:text-slate-400">7-Day shift load percentage</p>
                         </div>
                     </div>
                     <div id="capacityHeatmapContainer" class="flex-1 flex flex-col justify-center"></div>
@@ -183,44 +200,44 @@
             <div id="dashboard-anomaly-widget"></div>
 
             <!-- 5. Quick Actions Bar -->
-            <div class="bg-surface-container-lowest rounded-3xl border border-outline-variant/60 p-md shadow-sm">
-                <h3 class="font-section-title text-[16px] font-bold text-on-surface mb-md">Quick Launch Actions</h3>
+            <div class="bg-surface-container-lowest dark:bg-slate-900 rounded-3xl border border-outline-variant/60 dark:border-slate-800 p-md shadow-sm">
+                <h3 class="font-section-title text-[16px] font-bold text-on-surface dark:text-slate-100 mb-md">Quick Launch Actions</h3>
                 <div class="flex gap-md overflow-x-auto pb-2 snap-x hide-scrollbar">
                     <button onclick="window.location.href='finance.html'" class="snap-start flex flex-col items-center justify-center min-w-[84px] gap-2 active-scale transition-apple cursor-pointer">
                         <div class="w-14 h-14 rounded-2xl bg-[#008A00]/10 text-[#008A00] flex items-center justify-center">
                             <span class="material-symbols-outlined text-[24px]">account_balance_wallet</span>
                         </div>
-                        <span class="text-caption font-semibold text-on-surface text-center">Finance<br>Hub</span>
+                        <span class="text-caption font-semibold text-on-surface dark:text-slate-200 text-center">Finance<br>Hub</span>
                     </button>
                     <button onclick="window.location.href='billings.html'" class="snap-start flex flex-col items-center justify-center min-w-[84px] gap-2 active-scale transition-apple cursor-pointer">
                         <div class="w-14 h-14 rounded-2xl bg-primary/10 text-primary flex items-center justify-center">
                             <span class="material-symbols-outlined text-[24px]">post_add</span>
                         </div>
-                        <span class="text-caption font-semibold text-on-surface text-center">New<br>Bill</span>
+                        <span class="text-caption font-semibold text-on-surface dark:text-slate-200 text-center">New<br>Bill</span>
                     </button>
                     <button onclick="window.location.href='orders.html'" class="snap-start flex flex-col items-center justify-center min-w-[84px] gap-2 active-scale transition-apple cursor-pointer">
                         <div class="w-14 h-14 rounded-2xl bg-[#0071E3]/10 text-[#0071E3] flex items-center justify-center">
                             <span class="material-symbols-outlined text-[24px]">receipt_long</span>
                         </div>
-                        <span class="text-caption font-semibold text-on-surface text-center">New<br>Order</span>
+                        <span class="text-caption font-semibold text-on-surface dark:text-slate-200 text-center">New<br>Order</span>
                     </button>
                     <button onclick="window.location.href='calculator.html'" class="snap-start flex flex-col items-center justify-center min-w-[84px] gap-2 active-scale transition-apple cursor-pointer">
                         <div class="w-14 h-14 rounded-2xl bg-[#FF6B00]/10 text-[#FF6B00] flex items-center justify-center">
                             <span class="material-symbols-outlined text-[24px]">calculate</span>
                         </div>
-                        <span class="text-caption font-semibold text-on-surface text-center">Cost<br>Calc</span>
+                        <span class="text-caption font-semibold text-on-surface dark:text-slate-200 text-center">Cost<br>Calc</span>
                     </button>
                     <button onclick="window.location.href='customers.html'" class="snap-start flex flex-col items-center justify-center min-w-[84px] gap-2 active-scale transition-apple cursor-pointer">
                         <div class="w-14 h-14 rounded-2xl bg-[#FF9F0A]/10 text-[#FF9F0A] flex items-center justify-center">
                             <span class="material-symbols-outlined text-[24px]">person_add</span>
                         </div>
-                        <span class="text-caption font-semibold text-on-surface text-center">Add<br>Client</span>
+                        <span class="text-caption font-semibold text-on-surface dark:text-slate-200 text-center">Add<br>Client</span>
                     </button>
                     <button onclick="window.location.href='inventory.html'" class="snap-start flex flex-col items-center justify-center min-w-[84px] gap-2 active-scale transition-apple cursor-pointer">
                         <div class="w-14 h-14 rounded-2xl bg-[#5E5CE6]/10 text-[#5E5CE6] flex items-center justify-center">
                             <span class="material-symbols-outlined text-[24px]">inventory_2</span>
                         </div>
-                        <span class="text-caption font-semibold text-on-surface text-center">Update<br>Stock</span>
+                        <span class="text-caption font-semibold text-on-surface dark:text-slate-200 text-center">Update<br>Stock</span>
                     </button>
                 </div>
             </div>
@@ -230,11 +247,11 @@
                 <!-- Recent Orders -->
                 <div class="flex flex-col gap-sm">
                     <div class="flex items-center justify-between px-xs">
-                        <h3 class="font-section-title text-[18px] font-bold text-on-surface">Recent Orders</h3>
-                        <button onclick="window.location.href='orders.html'" class="text-primary text-[13px] font-semibold active:opacity-70">See All</button>
+                        <h3 class="font-section-title text-[18px] font-bold text-on-surface dark:text-slate-100">Recent Orders</h3>
+                        <button onclick="window.location.href='orders.html'" class="text-primary dark:text-primary-fixed text-[13px] font-semibold active:opacity-70">See All</button>
                     </div>
                     
-                    <div id="dashboard-recent-orders" class="bg-surface-container-lowest rounded-3xl border border-outline-variant/60 shadow-sm overflow-hidden flex flex-col divide-y divide-outline-variant/50">
+                    <div id="dashboard-recent-orders" class="bg-surface-container-lowest dark:bg-slate-900 rounded-3xl border border-outline-variant/60 dark:border-slate-800 shadow-sm overflow-hidden flex flex-col divide-y divide-outline-variant/50 dark:divide-slate-800">
                         <!-- Data injected via index.js -->
                     </div>
                 </div>
@@ -242,9 +259,9 @@
                 <!-- Active Production Batches -->
                 <div class="flex flex-col gap-sm">
                     <div class="flex items-center justify-between px-xs">
-                        <h3 class="font-section-title text-[18px] font-bold text-on-surface">Active Batches</h3>
+                        <h3 class="font-section-title text-[18px] font-bold text-on-surface dark:text-slate-100">Active Batches</h3>
                     </div>
-                    <div id="dashboard-active-batches" class="bg-surface-container-lowest rounded-3xl border border-outline-variant/60 shadow-sm p-md flex flex-col gap-lg">
+                    <div id="dashboard-active-batches" class="bg-surface-container-lowest dark:bg-slate-900 rounded-3xl border border-outline-variant/60 dark:border-slate-800 shadow-sm p-md flex flex-col gap-lg">
                         <!-- Data injected via index.js -->
                     </div>
                 </div>
@@ -253,10 +270,10 @@
             <!-- Activity Log Timeline -->
             <div class="flex flex-col gap-sm">
                 <div class="flex items-center justify-between px-xs">
-                    <h3 class="font-section-title text-[18px] font-bold text-on-surface">System Activity Stream</h3>
+                    <h3 class="font-section-title text-[18px] font-bold text-on-surface dark:text-slate-100">System Activity Stream</h3>
                 </div>
-                <div class="bg-surface-container-lowest rounded-3xl border border-outline-variant/60 shadow-sm p-md pb-sm">
-                    <div id="dashboard-activity-feed" class="relative border-l-2 border-outline-variant/50 ml-3 space-y-6">
+                <div class="bg-surface-container-lowest dark:bg-slate-900 rounded-3xl border border-outline-variant/60 dark:border-slate-800 shadow-sm p-md pb-sm">
+                    <div id="dashboard-activity-feed" class="relative border-l-2 border-outline-variant/50 dark:border-slate-800 ml-3 space-y-6">
                         <!-- Data injected via index.js -->
                     </div>
                 </div>
