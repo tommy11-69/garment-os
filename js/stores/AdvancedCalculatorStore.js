@@ -9,52 +9,61 @@ class AdvancedCalculatorStore {
     getInitialState() {
         return {
             clientName: '',
-            garmentType: 'Garment',
+            garmentType: 'T-Shirt',
             currency: '₹',
-            mode: 'advanced',
+            mode: 'advanced', // Distinguishes from unified
+            
             // Size & Quantity
             sizes: [
-                { id: 's1', name: 'S', ratio: 1, qty: 100 },
-                { id: 's2', name: 'M', ratio: 2, qty: 200 },
-                { id: 's3', name: 'L', ratio: 2, qty: 200 },
-                { id: 's4', name: 'XL', ratio: 1, qty: 100 }
+                { id: 's1', name: 'S', qty: 100, bodyL: 28, chest: 20, slvL: 8, slvDia: 7, weightGms: 0 },
+                { id: 's2', name: 'M', qty: 200, bodyL: 29, chest: 21, slvL: 8.5, slvDia: 7.5, weightGms: 0 },
+                { id: 's3', name: 'L', qty: 200, bodyL: 30, chest: 22, slvL: 9, slvDia: 8, weightGms: 0 },
+                { id: 's4', name: 'XL', qty: 100, bodyL: 31, chest: 23, slvL: 9.5, slvDia: 8.5, weightGms: 0 }
             ],
             totalQty: 600,
             
-            // Multi-Fabric Engine
-            components: [
-                {
-                    id: 'c1',
-                    name: 'Body',
-                    fabricPriceKg: 500,
-                    wastage: 5,
-                    bodyL: 28, bodyLM: 6,
-                    chest: 22, chestM: 4,
-                    slvL: 9, slvLM: 4,
-                    slvDia: 8, slvDiaM: 4,
-                    gsm: 180,
-                    weightGms: 0,
-                    costPc: 0
-                }
-            ],
+            // Pattern Margins & Fabric Base
+            bodyLM: 6,
+            chestM: 4,
+            slvLM: 4,
+            slvDiaM: 4,
+            gsm: 180,
             
-            // Trims & BOM Engine
-            trims: [
-                { id: 't1', name: 'Thread', unit: 'cone', cons: 0.1, rate: 120, costPc: 12 },
-                { id: 't2', name: 'Polybag', unit: 'pc', cons: 1, rate: 3, costPc: 3 }
-            ],
+            // Fabric Cost
+            fabricPriceKg: 0,
+            wastage: 5,
             
-            // CMT & VAS
-            cmt: 45,
-            washing: 0,
-            embroidery: 0,
+            // Computed Fabric
+            totalFabricKgs: 0,
+            avgWeightGms: 0,
+            pcsPerKg: 0, // Auto-derived avg
+            fabricCostPc: 0,
+
+            // CMT (Combined vs Separate)
+            cmtMode: 'combined', // 'combined' or 'separate'
+            cmt: 0,
+            cutting: 0,
+            fusing: 0,
+            wages: 0,
+            packing: 0,
+
+            // Printing & Sublimation
             printing: 0,
-            freight: 0,
-            other: 0,
+            sublimation: 0,
+            
+            // Allowances & Overheads
+            allowances: 0,
+            overheads: 0,
+            
+            // Accessories & Pattern (Lump sums per order)
+            acc1: 0,
+            acc2: 0,
+            acc3: 0,
+            pattern: 0,
             
             // Margins
-            totalCost: 0,
             cpPc: 0,
+            totalCost: 0,
             profitPct: 30,
             spPc: 0,
             totalSales: 0,

@@ -29,10 +29,10 @@
     <link rel="icon" type="image/webp" href="../assets/logo-primary.webp">
     <meta name="theme-color" content="#0059b5">
 
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
     <link href="https://fonts.googleapis.com" rel="preconnect" />
     <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <script src="../js/tailwind.config.js"></script>
@@ -42,6 +42,61 @@
     <link rel="stylesheet" href="../css/utilities.css">
     <link rel="stylesheet" href="../css/calculator.css">
 
+    <style>
+        .calc-input {
+            width: 100%;
+            background-color: rgb(241 245 249 / 0.5);
+            border: 1px solid transparent;
+            border-radius: 0.75rem;
+            padding: 0.5rem 0.75rem;
+            font-size: 14px;
+            font-weight: 600;
+            outline: none;
+            transition: all 0.2s;
+        }
+        .dark .calc-input {
+            background-color: rgb(30 41 59);
+            color: white;
+        }
+        .calc-input:focus {
+            border-color: rgba(0, 113, 227, 0.4);
+            box-shadow: 0 0 0 2px rgba(0, 113, 227, 0.1);
+        }
+        .field-label {
+            font-size: 11px;
+            font-weight: 600;
+            color: #64748b;
+            margin-bottom: 4px;
+            display: block;
+        }
+        .section-card {
+            background: rgba(255,255,255,0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255,255,255,0.5);
+            border-radius: 24px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.04);
+            overflow: hidden;
+            margin-bottom: 1rem;
+        }
+        .dark .section-card {
+            background: rgba(15,23,42,0.6);
+            border-color: rgba(255,255,255,0.05);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+        }
+        .section-toggle {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+        }
+        .section-body {
+            padding: 0 16px 16px 16px;
+        }
+    </style>
 </head>
 <body class="font-body text-body antialiased bg-background dark:bg-slate-950 text-on-surface dark:text-slate-100 selection:bg-primary/20 print:bg-white print:text-black">
 
@@ -55,9 +110,8 @@
                 <div class="flex flex-col w-full md:w-auto">
                     <div class="flex bg-surface-variant/40 dark:bg-slate-800/60 p-1 rounded-xl w-full md:w-fit mb-2 overflow-x-auto">
                         <button onclick="window.location.href='calculator.html'" class="flex-1 md:flex-none px-5 py-2 text-[13px] font-bold rounded-lg text-secondary dark:text-slate-400 hover:text-on-surface dark:hover:text-slate-200 transition-colors whitespace-nowrap">Quick</button>
-                        <button class="flex-1 md:flex-none px-5 py-2 text-[13px] font-bold rounded-lg bg-surface dark:bg-slate-700 text-on-surface dark:text-slate-100 shadow-sm cursor-default whitespace-nowrap">Advanced</button>
+                        <button class="flex-1 md:flex-none px-5 py-2 text-[13px] font-bold rounded-lg bg-surface dark:bg-slate-700 text-on-surface dark:text-slate-100 shadow-sm cursor-default whitespace-nowrap">Advanced (Size-by-Size)</button>
                     </div>
-                    <p class="text-[14px] text-secondary dark:text-slate-400 mt-1">Multi-fabric BOM, Size Ratio & Advanced CMT</p>
                 </div>
                 <div class="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0 hide-scrollbar">
                     <button id="btn-delete" class="hidden h-10 px-4 text-[13px] btn-secondary text-error hover:bg-error/10 border-error/20 mr-auto md:mr-0 shrink-0">Delete</button>
@@ -83,17 +137,175 @@
                 </div>
             </div>
 
-            <!-- Modules Container (Rendered by JS) -->
-            <div id="adv-modules-container" class="flex flex-col gap-6">
-                <!-- Size Ratio Module -->
-                <div id="mod-sizes"></div>
-                <!-- Fabrics Module -->
-                <div id="mod-fabrics"></div>
-                <!-- Trims Module -->
-                <div id="mod-trims"></div>
-                <!-- CMT & VAS Module -->
-                <div id="mod-vas"></div>
-            </div>
+            <form id="unified-calc-form" onsubmit="event.preventDefault();" class="flex flex-col gap-lg">
+                <!-- Size & Pattern Grid -->
+                <div class="section-card">
+                    <div class="p-4 border-b border-outline-variant/20 dark:border-slate-800">
+                        <h3 class="text-[16px] font-bold text-on-surface dark:text-white flex items-center justify-between">
+                            <div class="flex items-center gap-2">
+                                <span class="material-symbols-outlined text-[18px] text-primary">architecture</span>
+                                Size-Specific Pattern Grid
+                            </div>
+                            <div class="text-[13px] font-bold text-primary bg-primary/10 px-3 py-1 rounded-lg">
+                                Total Qty: <span id="adv-total-qty">0</span>
+                            </div>
+                        </h3>
+                    </div>
+                    <div class="p-4">
+                        <div class="overflow-x-auto pb-2">
+                            <div class="min-w-[600px] flex flex-col gap-2">
+                                <div class="grid grid-cols-12 gap-2 px-2 pb-1 text-[10px] font-bold text-secondary uppercase text-center border-b border-outline-variant/20 dark:border-slate-800">
+                                    <div class="col-span-1 text-left">Size</div>
+                                    <div class="col-span-2">Qty</div>
+                                    <div class="col-span-2">Body L</div>
+                                    <div class="col-span-2">Chest</div>
+                                    <div class="col-span-2">Slv L</div>
+                                    <div class="col-span-2">Slv Dia</div>
+                                    <div class="col-span-1 text-right">Wt(gms)</div>
+                                </div>
+                                <div id="mod-sizes-grid"></div>
+                            </div>
+                        </div>
+
+                        <!-- Global Pattern Config -->
+                        <div class="mt-4 bg-surface-variant/20 dark:bg-slate-900/50 rounded-xl p-3 grid grid-cols-2 md:grid-cols-6 gap-3">
+                            <div>
+                                <label class="field-label">Body +M</label>
+                                <input type="number" id="pat-body-m" class="calc-input">
+                            </div>
+                            <div>
+                                <label class="field-label">Chest +M</label>
+                                <input type="number" id="pat-chest-m" class="calc-input">
+                            </div>
+                            <div>
+                                <label class="field-label">Slv L +M</label>
+                                <input type="number" id="pat-slv-m" class="calc-input">
+                            </div>
+                            <div>
+                                <label class="field-label">Dia +M</label>
+                                <input type="number" id="pat-dia-m" class="calc-input">
+                            </div>
+                            <div>
+                                <label class="field-label">GSM</label>
+                                <input type="number" id="pat-gsm" class="calc-input">
+                            </div>
+                            <div>
+                                <label class="field-label">Wastage %</label>
+                                <input type="number" id="pat-wastage" class="calc-input">
+                            </div>
+                        </div>
+
+                        <!-- Fabric Calculation Result -->
+                        <div class="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4 bg-primary/5 border border-primary/20 rounded-xl p-4">
+                            <div class="w-full sm:w-1/3">
+                                <label class="field-label">Fabric Price / kg</label>
+                                <div class="relative">
+                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-secondary font-semibold">₹</span>
+                                    <input type="number" id="pat-price-kg" class="calc-input pl-7">
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-6 shrink-0">
+                                <div class="text-right">
+                                    <div class="text-[10px] uppercase font-bold text-secondary">Total Fabric Kgs</div>
+                                    <div class="text-[18px] font-extrabold text-primary" id="res-total-kgs">0.00 kg</div>
+                                </div>
+                                <div class="w-px h-10 bg-outline-variant/30"></div>
+                                <div class="text-right">
+                                    <div class="text-[10px] uppercase font-bold text-secondary">Avg Fabric Cost/pc</div>
+                                    <div class="text-[18px] font-extrabold text-on-surface" id="res-fab-cost-pc">₹0.00</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CMT -->
+                <div class="section-card">
+                    <button type="button" class="section-toggle" onclick="toggleSection(this)">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-[#FF9F0A]/10 text-[#FF9F0A] flex items-center justify-center">
+                                <span class="material-symbols-outlined">content_cut</span>
+                            </div>
+                            <div class="text-left">
+                                <h3 class="text-[16px] font-semibold text-on-surface">Making / CMT</h3>
+                            </div>
+                        </div>
+                        <span class="material-symbols-outlined text-secondary expand-icon">expand_more</span>
+                    </button>
+                    <div class="section-body flex flex-col gap-4">
+                        <div class="flex bg-surface-container-high border border-outline-variant rounded-[12px] p-1 gap-1 w-full">
+                            <button type="button" onclick="setAdvancedCMTMode('combined')" class="cmt-toggle-btn active bg-primary text-white flex-1 text-[13px] font-semibold py-1.5 rounded-[8px] transition-all">Combined CMT</button>
+                            <button type="button" onclick="setAdvancedCMTMode('separate')" class="cmt-toggle-btn text-secondary bg-surface flex-1 text-[13px] font-semibold py-1.5 rounded-[8px] transition-all">Separate Fields</button>
+                        </div>
+                        <div id="cmt-combined">
+                            <div>
+                                <label class="field-label">CMT / pc</label>
+                                <input type="number" id="u-cmt" class="calc-input">
+                            </div>
+                        </div>
+                        <div id="cmt-separate" style="display:none;" class="grid grid-cols-2 gap-3">
+                            <div><label class="field-label">Cutting / pc</label><input type="number" id="u-cutting" class="calc-input"></div>
+                            <div><label class="field-label">Fusing / pc</label><input type="number" id="u-fusing" class="calc-input"></div>
+                            <div><label class="field-label">Wages / pc</label><input type="number" id="u-wages" class="calc-input"></div>
+                            <div><label class="field-label">Packing / pc</label><input type="number" id="u-packing" class="calc-input"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Printing & Sublimation -->
+                <div class="section-card">
+                    <button type="button" class="section-toggle" onclick="toggleSection(this)">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-[#AF52DE]/10 text-[#AF52DE] flex items-center justify-center">
+                                <span class="material-symbols-outlined">palette</span>
+                            </div>
+                            <div class="text-left"><h3 class="text-[16px] font-semibold text-on-surface">Printing & Sublimation</h3></div>
+                        </div>
+                        <span class="material-symbols-outlined text-secondary expand-icon">expand_more</span>
+                    </button>
+                    <div class="section-body grid grid-cols-2 gap-3" style="display:none;">
+                        <div><label class="field-label">Printing / pc</label><input type="number" id="u-printing" class="calc-input"></div>
+                        <div><label class="field-label">Sublimation / pc</label><input type="number" id="u-sublimation" class="calc-input"></div>
+                    </div>
+                </div>
+
+                <!-- Accessories & Pattern -->
+                <div class="section-card">
+                    <button type="button" class="section-toggle" onclick="toggleSection(this)">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-[#34C759]/10 text-[#34C759] flex items-center justify-center">
+                                <span class="material-symbols-outlined">style</span>
+                            </div>
+                            <div class="text-left"><h3 class="text-[16px] font-semibold text-on-surface">Accessories & Pattern</h3><p class="text-[12px] text-secondary">Lump sums per order</p></div>
+                        </div>
+                        <span class="material-symbols-outlined text-secondary expand-icon">expand_more</span>
+                    </button>
+                    <div class="section-body grid grid-cols-2 gap-3" style="display:none;">
+                        <div><label class="field-label">Acc 1 / Order</label><input type="number" id="u-acc1" class="calc-input"></div>
+                        <div><label class="field-label">Acc 2 / Order</label><input type="number" id="u-acc2" class="calc-input"></div>
+                        <div><label class="field-label">Acc 3 / Order</label><input type="number" id="u-acc3" class="calc-input"></div>
+                        <div><label class="field-label">Pattern / Order</label><input type="number" id="u-pattern" class="calc-input"></div>
+                    </div>
+                </div>
+
+                <!-- Allowances & Overheads -->
+                <div class="section-card">
+                    <button type="button" class="section-toggle" onclick="toggleSection(this)">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-[#5856D6]/10 text-[#5856D6] flex items-center justify-center">
+                                <span class="material-symbols-outlined">account_balance_wallet</span>
+                            </div>
+                            <div class="text-left"><h3 class="text-[16px] font-semibold text-on-surface">Allowances & Overheads</h3></div>
+                        </div>
+                        <span class="material-symbols-outlined text-secondary expand-icon">expand_more</span>
+                    </button>
+                    <div class="section-body grid grid-cols-2 gap-3" style="display:none;">
+                        <div><label class="field-label">Allowances / pc</label><input type="number" id="u-allowances" class="calc-input"></div>
+                        <div><label class="field-label">Overheads / pc</label><input type="number" id="u-overheads" class="calc-input"></div>
+                    </div>
+                </div>
+
+            </form>
 
         </main>
     </div>
@@ -109,7 +321,7 @@
             </div>
             <div class="flex items-center gap-2 sm:gap-3 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0 hide-scrollbar shrink-0 justify-between sm:justify-end">
                 <div class="flex flex-col items-end shrink-0">
-                    <span class="text-[10px] sm:text-[11px] font-semibold text-secondary uppercase tracking-wider">Cost/pc</span>
+                    <span class="text-[10px] sm:text-[11px] font-semibold text-secondary uppercase tracking-wider">Avg Cost/pc</span>
                     <span id="adv-cost-pc" class="text-[14px] sm:text-[16px] font-bold text-on-surface dark:text-slate-100">₹0.00</span>
                 </div>
                 <div class="w-px h-8 sm:h-10 bg-outline-variant/30 dark:bg-slate-700 shrink-0"></div>
@@ -132,8 +344,34 @@
     <div id="sheets-container" class="print:hidden"></div>
 
     <script src="../js/app.js"></script>
+    <script>
+        function toggleSection(btn) {
+            const body = btn.nextElementSibling;
+            const icon = btn.querySelector('.expand-icon');
+            if (!body) return;
+            const isOpen = !body.style.display || body.style.display === 'none';
+            body.style.display = isOpen ? 'flex' : 'none';
+            if(body.style.display === 'flex' && body.classList.contains('grid')) body.style.display = 'grid';
+            if (icon) icon.style.transform = isOpen ? 'rotate(180deg)' : 'rotate(0deg)';
+        }
+        function setAdvancedCMTMode(mode) {
+            document.querySelectorAll('.cmt-toggle-btn').forEach(b => {
+                b.classList.remove('active', 'bg-primary', 'text-white');
+                b.classList.add('text-secondary', 'bg-surface');
+            });
+            event.target.classList.add('active', 'bg-primary', 'text-white');
+            event.target.classList.remove('text-secondary', 'bg-surface');
+            
+            document.getElementById('cmt-combined').style.display = mode === 'combined' ? 'block' : 'none';
+            document.getElementById('cmt-separate').style.display = mode === 'separate' ? 'grid' : 'none';
+            
+            if (window.advancedCalculatorStore) {
+                window.advancedCalculatorStore.update({ cmtMode: mode });
+                if(window.recalcAdvanced) window.recalcAdvanced();
+            }
+        }
+    </script>
     <script type="module" src="../js/stores/AdvancedCalculatorStore.js"></script>
     <script type="module" src="../js/advanced-calculator/index.js"></script>
-    <script src="../js/utils/sheet.js"></script>
 </body>
 </html>

@@ -1,494 +1,343 @@
-import { advancedCalculatorStore as store } from '../stores/AdvancedCalculatorStore.js';
+import { api } from '../services/api.js?v=5.2';
+import { advancedCalculatorStore as store } from '../stores/AdvancedCalculatorStore.js?v=5.2';
 
-/**
- * Helper to update a specific array item
- */
-function updateArrayItem(arrayKey, index, updates) {
-    const arr = [...store.state[arrayKey]];
-    arr[index] = { ...arr[index], ...updates };
-    store.update({ [arrayKey]: arr });
-}
+const $ = (id) => document.getElementById(id);
+const num = (id) => parseFloat($(id)?.value) || 0;
 
-// ── Rendering Modules ──────────────────────────────────────────────
-
-function renderSizes() {
-    const { sizes, totalQty } = store.state;
-    let html = `
-    <div class="bg-surface dark:bg-slate-900 border border-outline-variant/30 dark:border-slate-800 rounded-3xl p-5 shadow-sm print:shadow-none print:border-none print:p-0 print:mb-4">
-        <div class="flex items-center justify-between mb-4">
-            <h2 class="text-[16px] font-bold text-on-surface dark:text-slate-100 flex items-center gap-2">
-                <span class="material-symbols-outlined text-primary text-[20px] print:hidden">straighten</span> Size Ratio
-            </h2>
-            <div class="bg-primary/10 text-primary px-3 py-1 rounded-xl text-[12px] font-bold print:bg-transparent print:p-0">
-                Total: ${totalQty} pcs
-            </div>
-        </div>
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 print:grid-cols-4">
-            ${sizes.map((s, i) => `
-                <div class="bg-surface-variant/30 dark:bg-slate-800 rounded-2xl p-3 flex flex-col gap-1 border border-outline-variant/10 dark:border-slate-700 print:border-slate-300 print:bg-transparent">
-                    <div class="flex justify-between items-center">
-                        <span class="text-[13px] font-bold">${s.name}</span>
-                        <input type="number" class="size-ratio-input w-12 h-6 text-[12px] bg-white dark:bg-slate-900 border-none rounded text-center outline-none p-0 print:bg-transparent print:p-0" data-idx="${i}" value="${s.ratio}" placeholder="Ratio">
-                    </div>
-                    <div class="text-[11px] text-secondary text-right mt-1">${s.qty} pcs</div>
-                </div>
-            `).join('')}
-        </div>
-        <div class="mt-4 flex items-center justify-between bg-surface-container-low dark:bg-slate-900/50 p-3 rounded-2xl border border-outline-variant/30 dark:border-slate-800 print:hidden">
-             <span class="text-[13px] font-semibold text-secondary">Target Order Quantity</span>
-             <input type="number" id="adv-target-qty" value="${totalQty}" class="w-24 h-8 text-[14px] font-bold text-right bg-white dark:bg-slate-800 border-none rounded-xl outline-none focus:ring-2 focus:ring-primary/20">
-        </div>
-    </div>
-    `;
-    document.getElementById('mod-sizes').innerHTML = html;
-    
-    // Attach listeners
-    document.querySelectorAll('.size-ratio-input').forEach(el => {
-        el.addEventListener('input', (e) => {
-            const idx = parseInt(e.target.dataset.idx);
-            updateArrayItem('sizes', idx, { ratio: parseFloat(e.target.value) || 0 });
-            recalcSizes();
-        });
-    });
-    
-    document.getElementById('adv-target-qty').addEventListener('input', (e) => {
-        store.update({ totalQty: parseInt(e.target.value) || 0 });
-        recalcSizes();
-    });
-}
-
-function recalcSizes() {
-    const { sizes, totalQty } = store.state;
-    const totalRatio = sizes.reduce((sum, s) => sum + s.ratio, 0);
-    const newSizes = sizes.map(s => ({
-        ...s,
-        qty: totalRatio > 0 ? Math.round((s.ratio / totalRatio) * totalQty) : 0
-    }));
-    store.update({ sizes: newSizes });
-    recalcAll();
-}
-
-function renderFabrics() {
-    const { components } = store.state;
-    let html = `
-    <div class="bg-surface dark:bg-slate-900 border border-outline-variant/30 dark:border-slate-800 rounded-3xl p-5 shadow-sm print:shadow-none print:border-none print:p-0 print:mb-4">
-        <div class="flex items-center justify-between mb-4">
-            <h2 class="text-[16px] font-bold text-on-surface dark:text-slate-100 flex items-center gap-2">
-                <span class="material-symbols-outlined text-[#0071E3] text-[20px] print:hidden">layers</span> Multi-Fabric BOM
-            </h2>
-            <button id="btn-add-fabric" class="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20 transition-colors print:hidden">
-                <span class="material-symbols-outlined text-[20px]">add</span>
-            </button>
-        </div>
-        <div class="flex flex-col gap-4">
-            ${components.map((c, i) => `
-                <div class="bg-surface-variant/20 dark:bg-slate-800/50 rounded-2xl p-4 border border-outline-variant/30 dark:border-slate-700 relative group print:bg-transparent print:border-slate-300 print:p-2">
-                    ${components.length > 1 ? `
-                    <button class="btn-remove-fabric absolute top-3 right-3 w-6 h-6 rounded-full bg-error/10 text-error flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity print:hidden" data-idx="${i}">
-                        <span class="material-symbols-outlined text-[14px]">close</span>
-                    </button>` : ''}
-                    
-                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-3 pr-8 print:pr-0 print:grid-cols-4">
-                        <div>
-                            <label class="text-[10px] uppercase font-bold text-secondary tracking-wider block mb-1">Component Name</label>
-                            <input type="text" class="fabric-inp w-full bg-white dark:bg-slate-800 border-none rounded-xl text-[13px] p-2 outline-none print:bg-transparent print:p-0" data-field="name" data-idx="${i}" value="${c.name}">
-                        </div>
-                        <div>
-                            <label class="text-[10px] uppercase font-bold text-secondary tracking-wider block mb-1">Price / kg (₹)</label>
-                            <input type="number" class="fabric-inp w-full bg-white dark:bg-slate-800 border-none rounded-xl text-[13px] p-2 outline-none print:bg-transparent print:p-0" data-field="fabricPriceKg" data-idx="${i}" value="${c.fabricPriceKg}">
-                        </div>
-                        <div>
-                            <label class="text-[10px] uppercase font-bold text-secondary tracking-wider block mb-1">Fabric GSM</label>
-                            <input type="number" class="fabric-inp w-full bg-white dark:bg-slate-800 border-none rounded-xl text-[13px] p-2 outline-none print:bg-transparent print:p-0" data-field="gsm" data-idx="${i}" value="${c.gsm}">
-                        </div>
-                        <div>
-                            <label class="text-[10px] uppercase font-bold text-secondary tracking-wider block mb-1">Wastage %</label>
-                            <input type="number" class="fabric-inp w-full bg-white dark:bg-slate-800 border-none rounded-xl text-[13px] p-2 outline-none print:bg-transparent print:p-0" data-field="wastage" data-idx="${i}" value="${c.wastage}">
-                        </div>
-                    </div>
-                    
-                    <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 mb-3 bg-white dark:bg-slate-900 rounded-xl p-2 border border-outline-variant/10 dark:border-slate-700 print:bg-transparent print:border-none print:p-0 print:grid-cols-8">
-                        <div class="col-span-2 sm:col-span-4 lg:col-span-8 print:col-span-8 text-[11px] font-bold text-secondary mb-1">Base Pattern Dimensions (inches)</div>
-                        <div><input type="number" class="fabric-inp w-full border-none rounded bg-surface-variant/30 dark:bg-slate-800 text-[12px] p-1.5 text-center print:bg-transparent print:p-0" placeholder="Body L" data-field="bodyL" data-idx="${i}" value="${c.bodyL || ''}"></div>
-                        <div><input type="number" class="fabric-inp w-full border-none rounded bg-surface-variant/30 dark:bg-slate-800 text-[12px] p-1.5 text-center print:bg-transparent print:p-0" placeholder="Body +M" data-field="bodyLM" data-idx="${i}" value="${c.bodyLM || ''}"></div>
-                        <div><input type="number" class="fabric-inp w-full border-none rounded bg-surface-variant/30 dark:bg-slate-800 text-[12px] p-1.5 text-center print:bg-transparent print:p-0" placeholder="Chest W" data-field="chest" data-idx="${i}" value="${c.chest || ''}"></div>
-                        <div><input type="number" class="fabric-inp w-full border-none rounded bg-surface-variant/30 dark:bg-slate-800 text-[12px] p-1.5 text-center print:bg-transparent print:p-0" placeholder="Chest +M" data-field="chestM" data-idx="${i}" value="${c.chestM || ''}"></div>
-                        <div><input type="number" class="fabric-inp w-full border-none rounded bg-surface-variant/30 dark:bg-slate-800 text-[12px] p-1.5 text-center print:bg-transparent print:p-0" placeholder="Slv L" data-field="slvL" data-idx="${i}" value="${c.slvL || ''}"></div>
-                        <div><input type="number" class="fabric-inp w-full border-none rounded bg-surface-variant/30 dark:bg-slate-800 text-[12px] p-1.5 text-center print:bg-transparent print:p-0" placeholder="Slv +M" data-field="slvLM" data-idx="${i}" value="${c.slvLM || ''}"></div>
-                        <div><input type="number" class="fabric-inp w-full border-none rounded bg-surface-variant/30 dark:bg-slate-800 text-[12px] p-1.5 text-center print:bg-transparent print:p-0" placeholder="Slv Dia" data-field="slvDia" data-idx="${i}" value="${c.slvDia || ''}"></div>
-                        <div><input type="number" class="fabric-inp w-full border-none rounded bg-surface-variant/30 dark:bg-slate-800 text-[12px] p-1.5 text-center print:bg-transparent print:p-0" placeholder="Dia +M" data-field="slvDiaM" data-idx="${i}" value="${c.slvDiaM || ''}"></div>
-                    </div>
-                    
-                    <div class="flex items-center justify-between mt-2 pt-2 border-t border-outline-variant/20 dark:border-slate-700">
-                        <div class="text-[12px] text-secondary">Est. Wt: <span id="fab-wt-${i}" class="font-bold text-on-surface dark:text-slate-200">${c.weightGms?.toFixed(1) || 0} gms</span></div>
-                        <div id="fab-cost-${i}" class="text-[14px] font-bold text-[#0071E3]">₹${c.costPc?.toFixed(2) || '0.00'} / pc</div>
-                    </div>
-                </div>
-            `).join('')}
-        </div>
-    </div>
-    `;
-    document.getElementById('mod-fabrics').innerHTML = html;
-    
-    document.getElementById('btn-add-fabric').addEventListener('click', () => {
-        const components = [...store.state.components, {
-            id: 'c' + Date.now(), name: 'New Component', fabricPriceKg: 0, wastage: 5,
-            bodyL: 0, bodyLM: 0, chest: 0, chestM: 0, slvL: 0, slvLM: 0, slvDia: 0, slvDiaM: 0,
-            gsm: 0, weightGms: 0, costPc: 0
-        }];
-        store.update({ components });
-        renderFabrics();
-        recalcAll();
-    });
-    
-    document.querySelectorAll('.btn-remove-fabric').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const idx = parseInt(e.currentTarget.dataset.idx);
-            const components = store.state.components.filter((_, i) => i !== idx);
-            store.update({ components });
-            renderFabrics();
-            recalcAll();
-        });
-    });
-
-    document.querySelectorAll('.fabric-inp').forEach(inp => {
-        inp.addEventListener('input', (e) => {
-            const idx = parseInt(e.target.dataset.idx);
-            const field = e.target.dataset.field;
-            let val = e.target.value;
-            if (field !== 'name') val = parseFloat(val) || 0;
-            updateArrayItem('components', idx, { [field]: val });
-            recalcAll();
-        });
-    });
-}
-
-function renderTrims() {
-    const { trims } = store.state;
-    let html = `
-    <div class="bg-surface dark:bg-slate-900 border border-outline-variant/30 dark:border-slate-800 rounded-3xl p-5 shadow-sm print:shadow-none print:border-none print:p-0 print:mb-4">
-        <div class="flex items-center justify-between mb-4">
-            <h2 class="text-[16px] font-bold text-on-surface dark:text-slate-100 flex items-center gap-2">
-                <span class="material-symbols-outlined text-[#FF3B30] text-[20px] print:hidden">category</span> Trims & BOM
-            </h2>
-            <button id="btn-add-trim" class="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center hover:bg-primary/20 transition-colors print:hidden">
-                <span class="material-symbols-outlined text-[20px]">add</span>
-            </button>
-        </div>
-        <div class="flex flex-col gap-2 overflow-x-auto pb-2 hide-scrollbar">
-            <div class="min-w-[400px] print:min-w-0 flex flex-col gap-2">
-                <!-- Header -->
-                <div class="grid grid-cols-12 gap-2 px-2 pb-1 border-b border-outline-variant/20 dark:border-slate-800">
-                    <div class="col-span-4 text-[10px] font-bold text-secondary uppercase">Item Name</div>
-                    <div class="col-span-3 text-[10px] font-bold text-secondary uppercase text-center">Cons / pc</div>
-                    <div class="col-span-3 text-[10px] font-bold text-secondary uppercase text-right">Rate (₹)</div>
-                    <div class="col-span-2 text-[10px] font-bold text-secondary uppercase text-right">Cost</div>
-                </div>
-                ${trims.map((t, i) => `
-                    <div class="grid grid-cols-12 gap-2 items-center bg-surface-variant/20 dark:bg-slate-800/40 p-2 rounded-xl group relative print:bg-transparent print:border-b print:border-slate-200 print:rounded-none">
-                        <button class="btn-remove-trim absolute -left-2 -top-2 w-5 h-5 rounded-full bg-error text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10 print:hidden" data-idx="${i}">
-                            <span class="material-symbols-outlined text-[12px]">close</span>
-                        </button>
-                        <div class="col-span-4">
-                            <input type="text" class="trim-inp w-full bg-white dark:bg-slate-900 border-none rounded-lg text-[12px] p-1.5 outline-none print:bg-transparent print:p-0" data-field="name" data-idx="${i}" value="${t.name}">
-                        </div>
-                        <div class="col-span-3">
-                            <input type="number" class="trim-inp w-full bg-white dark:bg-slate-900 border-none rounded-lg text-[12px] p-1.5 text-center outline-none print:bg-transparent print:p-0" data-field="cons" data-idx="${i}" value="${t.cons}" placeholder="e.g. 1.2">
-                        </div>
-                        <div class="col-span-3">
-                            <input type="number" class="trim-inp w-full bg-white dark:bg-slate-900 border-none rounded-lg text-[12px] p-1.5 text-right outline-none print:bg-transparent print:p-0" data-field="rate" data-idx="${i}" value="${t.rate}">
-                        </div>
-                        <div class="col-span-2 text-right pr-1">
-                            <span id="trim-cost-${i}" class="text-[13px] font-bold text-on-surface dark:text-slate-200">₹${t.costPc?.toFixed(2) || '0.00'}</span>
-                        </div>
-                    </div>
-                `).join('')}
-            </div>
-        </div>
-    </div>
-    `;
-    document.getElementById('mod-trims').innerHTML = html;
-    
-    document.getElementById('btn-add-trim').addEventListener('click', () => {
-        const trims = [...store.state.trims, {
-            id: 't' + Date.now(), name: 'New Item', unit: 'pc', cons: 1, rate: 0, costPc: 0
-        }];
-        store.update({ trims });
-        renderTrims();
-        recalcAll();
-    });
-    
-    document.querySelectorAll('.btn-remove-trim').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-            const idx = parseInt(e.currentTarget.dataset.idx);
-            const trims = store.state.trims.filter((_, i) => i !== idx);
-            store.update({ trims });
-            renderTrims();
-            recalcAll();
-        });
-    });
-
-    document.querySelectorAll('.trim-inp').forEach(inp => {
-        inp.addEventListener('input', (e) => {
-            const idx = parseInt(e.target.dataset.idx);
-            const field = e.target.dataset.field;
-            let val = e.target.value;
-            if (field !== 'name') val = parseFloat(val) || 0;
-            updateArrayItem('trims', idx, { [field]: val });
-            recalcAll();
-        });
-    });
-}
-
-function renderVAS() {
-    const s = store.state;
-    let html = `
-    <div class="bg-surface dark:bg-slate-900 border border-outline-variant/30 dark:border-slate-800 rounded-3xl p-5 shadow-sm print:shadow-none print:border-none print:p-0 print:mb-4">
-        <h2 class="text-[16px] font-bold text-on-surface dark:text-slate-100 flex items-center gap-2 mb-4">
-            <span class="material-symbols-outlined text-[#AF52DE] text-[20px] print:hidden">precision_manufacturing</span> CMT & Value Adds
-        </h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 print:grid-cols-3">
-            <div>
-                <label class="text-[11px] font-semibold text-secondary block mb-1">CMT Total / pc</label>
-                <div class="relative">
-                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-[13px]">₹</span>
-                    <input type="number" id="adv-cmt" value="${s.cmt}" class="w-full bg-surface-variant/30 dark:bg-slate-800 border-none rounded-xl pl-7 py-2.5 text-[14px] font-semibold outline-none focus:ring-2 focus:ring-primary/20 print:bg-transparent print:pl-5 print:py-1">
-                </div>
-            </div>
-            <div>
-                <label class="text-[11px] font-semibold text-secondary block mb-1">Washing / pc</label>
-                <div class="relative">
-                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-[13px]">₹</span>
-                    <input type="number" id="adv-washing" value="${s.washing}" class="w-full bg-surface-variant/30 dark:bg-slate-800 border-none rounded-xl pl-7 py-2.5 text-[14px] font-semibold outline-none focus:ring-2 focus:ring-primary/20 print:bg-transparent print:pl-5 print:py-1">
-                </div>
-            </div>
-            <div>
-                <label class="text-[11px] font-semibold text-secondary block mb-1">Embroidery / pc</label>
-                <div class="relative">
-                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-[13px]">₹</span>
-                    <input type="number" id="adv-emb" value="${s.embroidery}" class="w-full bg-surface-variant/30 dark:bg-slate-800 border-none rounded-xl pl-7 py-2.5 text-[14px] font-semibold outline-none focus:ring-2 focus:ring-primary/20 print:bg-transparent print:pl-5 print:py-1">
-                </div>
-            </div>
-            <div>
-                <label class="text-[11px] font-semibold text-secondary block mb-1">Printing / pc</label>
-                <div class="relative">
-                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-[13px]">₹</span>
-                    <input type="number" id="adv-printing" value="${s.printing}" class="w-full bg-surface-variant/30 dark:bg-slate-800 border-none rounded-xl pl-7 py-2.5 text-[14px] font-semibold outline-none focus:ring-2 focus:ring-primary/20 print:bg-transparent print:pl-5 print:py-1">
-                </div>
-            </div>
-            <div>
-                <label class="text-[11px] font-semibold text-secondary block mb-1">Freight/Logistics / pc</label>
-                <div class="relative">
-                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-[13px]">₹</span>
-                    <input type="number" id="adv-freight" value="${s.freight}" class="w-full bg-surface-variant/30 dark:bg-slate-800 border-none rounded-xl pl-7 py-2.5 text-[14px] font-semibold outline-none focus:ring-2 focus:ring-primary/20 print:bg-transparent print:pl-5 print:py-1">
-                </div>
-            </div>
-            <div>
-                <label class="text-[11px] font-semibold text-secondary block mb-1">Other / pc</label>
-                <div class="relative">
-                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-[13px]">₹</span>
-                    <input type="number" id="adv-other" value="${s.other}" class="w-full bg-surface-variant/30 dark:bg-slate-800 border-none rounded-xl pl-7 py-2.5 text-[14px] font-semibold outline-none focus:ring-2 focus:ring-primary/20 print:bg-transparent print:pl-5 print:py-1">
-                </div>
-            </div>
-        </div>
-    </div>
-    `;
-    document.getElementById('mod-vas').innerHTML = html;
-    
-    const bind = (id, field) => {
-        document.getElementById(id).addEventListener('input', (e) => {
-            store.update({ [field]: parseFloat(e.target.value) || 0 });
-            recalcAll();
-        });
-    };
-    
-    bind('adv-cmt', 'cmt');
-    bind('adv-washing', 'washing');
-    bind('adv-emb', 'embroidery');
-    bind('adv-printing', 'printing');
-    bind('adv-freight', 'freight');
-    bind('adv-other', 'other');
-}
-
-// ── Master Calculation ──────────────────────────────────────────────
-
-function recalcAll() {
-    const s = store.state;
-    
-    // 1. Calculate Multi-Fabric Cost
-    const updatedComponents = s.components.map(c => {
-        let weightGms = 0;
-        let costPc = 0;
-        
-        if (c.gsm > 0) {
-            const bodyGms = (c.bodyL + c.bodyLM) * (c.chest + c.chestM) * 2 * c.gsm / 10000;
-            const slvGms = (c.slvL + c.slvLM) * (c.slvDia + c.slvDiaM) * 2 * c.gsm / 10000;
-            weightGms = bodyGms + slvGms;
-        }
-        
-        if (weightGms > 0 && c.fabricPriceKg > 0) {
-            const kgPerPc = weightGms / 1000;
-            const baseCost = kgPerPc * c.fabricPriceKg;
-            costPc = baseCost * (1 + c.wastage / 100);
-        }
-        return { ...c, weightGms, costPc };
-    });
-    
-    // 2. Calculate Trims Cost
-    const updatedTrims = s.trims.map(t => {
-        const costPc = t.cons * t.rate;
-        return { ...t, costPc };
-    });
-    
-    // 3. Aggregate Total Cost Price (CP)
-    const totalFabricPc = updatedComponents.reduce((sum, c) => sum + c.costPc, 0);
-    const totalTrimsPc = updatedTrims.reduce((sum, t) => sum + t.costPc, 0);
-    const totalVASPc = s.cmt + s.washing + s.embroidery + s.printing + s.freight + s.other;
-    
-    const cpPc = totalFabricPc + totalTrimsPc + totalVASPc;
-    const totalCost = cpPc * s.totalQty;
-    
-    // 4. Selling Price (SP)
-    const spPc = cpPc / (1 - (s.profitPct / 100));
-    const totalSales = spPc * s.totalQty;
-    const profitDone = totalSales - totalCost;
-    
-    // Apply updates quietly without infinite loops
-    store.state = {
-        ...s,
-        components: updatedComponents,
-        trims: updatedTrims,
-        cpPc, totalCost, spPc, totalSales, profitDone
-    };
-    
-    updateUIOutputs();
-}
-
-function updateUIOutputs() {
-    const s = store.state;
-    
-    // Re-render only if strictly needed, but to avoid focus loss, we will just 
-    // update the specific result spans in the DOM directly.
-    s.components.forEach((c, i) => {
-        const wtEl = document.getElementById(`fab-wt-${i}`);
-        const costEl = document.getElementById(`fab-cost-${i}`);
-        if (wtEl) wtEl.textContent = `${c.weightGms.toFixed(1)} gms`;
-        if (costEl) costEl.textContent = `₹${c.costPc.toFixed(2)} / pc`;
-    });
-    
-    s.trims.forEach((t, i) => {
-        const costEl = document.getElementById(`trim-cost-${i}`);
-        if (costEl) costEl.textContent = `₹${t.costPc.toFixed(2)}`;
-    });
-    
-    document.getElementById('adv-total-cost').textContent = `₹${s.totalCost.toLocaleString(undefined, {minimumFractionDigits:2, maximumFractionDigits:2})}`;
-    document.getElementById('adv-cost-pc').textContent = `₹${s.cpPc.toFixed(2)}`;
-    document.getElementById('adv-sp-pc').textContent = `₹${s.spPc.toFixed(2)}`;
-}
-
-// ── Initialization & Subscriptions ─────────────────────────────────
-
+// ══════════════════════════════════════════════════════
+//  INITIALIZATION & RENDER
+// ══════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', async () => {
-    // 1. Check for ID in URL to load existing costing
-    const urlParams = new URLSearchParams(window.location.search);
-    const existingId = urlParams.get('id');
-    let loadedId = null;
-
-    if (existingId) {
-        try {
-            const { api } = await import('/js/services/api.js');
-            const costing = await api.getCostingById(existingId);
-            if (costing && costing.uData) {
-                store.state = { ...costing.uData };
-                loadedId = existingId;
-                
-                // Show delete button
-                const btnDelete = document.getElementById('btn-delete');
-                if (btnDelete) {
-                    btnDelete.classList.remove('hidden');
-                    btnDelete.addEventListener('click', async () => {
-                        if (confirm('Are you sure you want to delete this advanced costing?')) {
-                            try {
-                                await api.deleteCosting(loadedId);
-                                window.showToast?.('Costing deleted successfully', 'success');
-                                setTimeout(() => window.location.href = 'costings.html', 800);
-                            } catch (e) {
-                                console.error(e);
-                                window.showToast?.('Failed to delete', 'error');
-                            }
-                        }
-                    });
-                }
-            }
-        } catch (e) {
-            console.error("Failed to load costing", e);
+    try {
+        if(typeof window.initTheme==='function') window.initTheme();
+        if(typeof window.initNav==='function') {
+            await window.initNav();
+            setTimeout(() => {
+                const chips = document.querySelectorAll('#nav-chips button');
+                chips.forEach(c => c.classList.remove('active'));
+                const calcBtn = Array.from(chips).find(c => c.textContent.trim() === 'Calculator');
+                if (calcBtn) calcBtn.classList.add('active');
+            }, 100);
         }
+        
+        // Check URL for ID (Edit mode)
+        const params = new URLSearchParams(window.location.search);
+        const id = params.get('id');
+        if (id) {
+            await loadCosting(id);
+            if(params.get('action')==='print') {
+                setTimeout(() => window.print(), 500);
+            }
+        } else {
+            renderSizeGrid();
+            bindInputs();
+            recalcAdvanced();
+        }
+        
+        $('btn-save-draft')?.addEventListener('click', () => saveCosting('draft'));
+        $('btn-create-quote')?.addEventListener('click', () => saveCosting('quote'));
+        
+    } catch(e) {
+        console.error('Init Error:', e);
     }
-
-    // 2. Initial Render
-    renderSizes();
-    renderFabrics();
-    renderTrims();
-    renderVAS();
-    recalcAll();
-    
-    // Set global inputs from store if loaded
-    document.getElementById('adv-client').value = store.state.clientName || '';
-    document.getElementById('adv-garment-type').value = store.state.garmentType || 'Garment';
-    document.getElementById('adv-profit-pct').value = store.state.profitPct || 30;
-    
-    document.getElementById('adv-profit-pct').addEventListener('input', (e) => {
-        store.update({ profitPct: parseFloat(e.target.value) || 0 });
-        recalcAll();
-        // Skip re-rendering everything if just updating profit
-        const s = store.state;
-        document.getElementById('adv-sp-pc').textContent = `₹${s.spPc.toFixed(2)}`;
-    });
-    
-    document.getElementById('adv-client').addEventListener('input', (e) => store.state.clientName = e.target.value);
-    document.getElementById('adv-garment-type').addEventListener('input', (e) => store.state.garmentType = e.target.value);
-    
-    document.getElementById('btn-save-draft').addEventListener('click', () => saveAdvancedCosting(loadedId));
-    document.getElementById('btn-create-quote').addEventListener('click', () => saveAdvancedCosting(loadedId, 'Quote'));
 });
 
-async function saveAdvancedCosting(existingId = null, saveStatus = 'Draft') {
-    window.startSubtleLoading?.();
-    const btn = document.getElementById('btn-save-draft');
-    btn.disabled = true;
-    btn.textContent = 'Saving...';
-    
+// ══════════════════════════════════════════════════════
+//  GRID RENDERER
+// ══════════════════════════════════════════════════════
+function renderSizeGrid() {
     const s = store.state;
-    const payload = {
-        id: existingId || 'adv_' + Date.now().toString(),
-        styleRef: s.garmentType,
-        clientId: s.clientName,
-        clientName: s.clientName,
-        garmentType: s.garmentType,
-        currency: s.currency,
-        mode: 'advanced', // critical for the backend & viewer sheet
-        totalUnitCost: s.cpPc,
-        retailPrice: s.spPc,
-        status: saveStatus,
-        uData: s, // Store massive JSON state entirely
-    };
+    const grid = $('mod-sizes-grid');
+    if (!grid) return;
     
-    try {
-        const { api } = await import('/js/services/api.js');
-        if (existingId) {
-            await api.updateCosting(existingId, payload);
-            window.showToast?.(`Advanced Costing Updated (${saveStatus})`, 'success');
-        } else {
-            await api.saveCosting(payload);
-            window.showToast?.(`Advanced Costing Saved (${saveStatus})`, 'success');
+    grid.innerHTML = s.sizes.map((sz, idx) => `
+        <div class="grid grid-cols-12 gap-2 px-2 py-1 items-center bg-surface-variant/20 dark:bg-slate-800/50 rounded-lg mb-1">
+            <div class="col-span-1 text-[12px] font-bold text-on-surface">${sz.name}</div>
+            <div class="col-span-2">
+                <input type="number" class="calc-input !py-1 !px-2 text-center" value="${sz.qty}" oninput="updateSize(${idx}, 'qty', this.value)">
+            </div>
+            <div class="col-span-2">
+                <input type="number" class="calc-input !py-1 !px-2 text-center" value="${sz.bodyL}" oninput="updateSize(${idx}, 'bodyL', this.value)">
+            </div>
+            <div class="col-span-2">
+                <input type="number" class="calc-input !py-1 !px-2 text-center" value="${sz.chest}" oninput="updateSize(${idx}, 'chest', this.value)">
+            </div>
+            <div class="col-span-2">
+                <input type="number" class="calc-input !py-1 !px-2 text-center" value="${sz.slvL}" oninput="updateSize(${idx}, 'slvL', this.value)">
+            </div>
+            <div class="col-span-2">
+                <input type="number" class="calc-input !py-1 !px-2 text-center" value="${sz.slvDia}" oninput="updateSize(${idx}, 'slvDia', this.value)">
+            </div>
+            <div class="col-span-1 text-right text-[12px] font-bold text-primary tabular-nums">
+                ${sz.weightGms > 0 ? sz.weightGms.toFixed(0) : '0'}
+            </div>
+        </div>
+    `).join('');
+}
+
+window.updateSize = function(idx, field, val) {
+    const s = store.state;
+    const sizes = [...s.sizes];
+    sizes[idx] = { ...sizes[idx], [field]: parseFloat(val) || 0 };
+    store.update({ sizes });
+    window.recalcAdvanced();
+};
+
+// ══════════════════════════════════════════════════════
+//  CORE ENGINE
+// ══════════════════════════════════════════════════════
+function bindInputs() {
+    const s = store.state;
+    // Set UI values from store
+    const set = (id, val) => { if($(id)) $(id).value = val || ''; };
+    set('adv-client', s.clientName);
+    set('adv-garment-type', s.garmentType);
+    set('pat-body-m', s.bodyLM);
+    set('pat-chest-m', s.chestM);
+    set('pat-slv-m', s.slvLM);
+    set('pat-dia-m', s.slvDiaM);
+    set('pat-gsm', s.gsm);
+    set('pat-wastage', s.wastage);
+    set('pat-price-kg', s.fabricPriceKg);
+    set('u-cmt', s.cmt);
+    set('u-cutting', s.cutting);
+    set('u-fusing', s.fusing);
+    set('u-wages', s.wages);
+    set('u-packing', s.packing);
+    set('u-printing', s.printing);
+    set('u-sublimation', s.sublimation);
+    set('u-allowances', s.allowances);
+    set('u-overheads', s.overheads);
+    set('u-acc1', s.acc1);
+    set('u-acc2', s.acc2);
+    set('u-acc3', s.acc3);
+    set('u-pattern', s.pattern);
+    set('adv-profit-pct', s.profitPct);
+    
+    // CMT Mode UI
+    if (s.cmtMode === 'separate') {
+        const btn = document.querySelector('button[onclick="setAdvancedCMTMode(\'separate\')"]');
+        if (btn) btn.click();
+    } else {
+        const btn = document.querySelector('button[onclick="setAdvancedCMTMode(\'combined\')"]');
+        if (btn) btn.click();
+    }
+    
+    // Attach events
+    const ids = ['adv-client', 'adv-garment-type', 'pat-body-m', 'pat-chest-m', 'pat-slv-m', 'pat-dia-m', 'pat-gsm', 'pat-wastage', 'pat-price-kg',
+                 'u-cmt', 'u-cutting', 'u-fusing', 'u-wages', 'u-packing', 'u-printing', 'u-sublimation', 'u-allowances', 'u-overheads',
+                 'u-acc1', 'u-acc2', 'u-acc3', 'u-pattern', 'adv-profit-pct'];
+    
+    ids.forEach(id => {
+        $(id)?.addEventListener('input', () => window.recalcAdvanced());
+    });
+}
+
+window.recalcAdvanced = function() {
+    const s = store.state;
+    
+    // 1. Read Globals
+    const bodyLM = num('pat-body-m');
+    const chestM = num('pat-chest-m');
+    const slvLM = num('pat-slv-m');
+    const slvDiaM = num('pat-dia-m');
+    const gsm = num('pat-gsm');
+    const wastage = num('pat-wastage');
+    const priceKg = num('pat-price-kg');
+    
+    // 2. Calculate weight for each size
+    let totalQty = 0;
+    let totalKgs = 0;
+    const newSizes = s.sizes.map(sz => {
+        let weightGms = 0;
+        if (gsm > 0 && (sz.bodyL > 0 || sz.chest > 0)) {
+            const bodyGms = (sz.bodyL + bodyLM) * (sz.chest + chestM) * 2 * gsm / 10000;
+            const slvGms = (sz.slvL + slvLM) * (sz.slvDia + slvDiaM) * 2 * gsm / 10000;
+            weightGms = bodyGms + slvGms;
         }
-        setTimeout(() => window.location.href = 'costings.html', 800);
-    } catch (e) {
-        console.error(e);
-        window.showToast?.('Failed to save costing', 'error');
-        btn.disabled = false;
-        btn.textContent = 'Save Draft';
+        totalQty += sz.qty;
+        totalKgs += (weightGms * sz.qty) / 1000;
+        return { ...sz, weightGms };
+    });
+    
+    // Apply wastage to total Kgs
+    const totalFabricKgs = totalKgs * (1 + wastage/100);
+    const avgWeightGms = totalQty > 0 ? (totalKgs * 1000) / totalQty : 0;
+    const pcsPerKg = avgWeightGms > 0 ? 1000 / avgWeightGms : 0;
+    const totalFabricCost = totalFabricKgs * priceKg;
+    const fabricCostPc = totalQty > 0 ? totalFabricCost / totalQty : 0;
+    
+    // 3. Read other cost factors
+    const mode = s.cmtMode;
+    const cmt = num('u-cmt');
+    const cutting = num('u-cutting');
+    const fusing = num('u-fusing');
+    const wages = num('u-wages');
+    const packing = num('u-packing');
+    const printing = num('u-printing');
+    const sublimation = num('u-sublimation');
+    const allowances = num('u-allowances');
+    const overheads = num('u-overheads');
+    const acc1 = num('u-acc1');
+    const acc2 = num('u-acc2');
+    const acc3 = num('u-acc3');
+    const pattern = num('u-pattern');
+    const profitPct = num('adv-profit-pct');
+    const clientName = $('adv-client')?.value || '';
+    const garmentType = $('adv-garment-type')?.value || 'Garment';
+    
+    // Costing
+    const cmtTotalPc = mode === 'combined' ? cmt : (cutting + fusing + wages + packing);
+    const printingTotalPc = printing + sublimation;
+    const allowancesTotalPc = allowances + overheads;
+    const lumpSumTotal = acc1 + acc2 + acc3 + pattern;
+    const lumpSumPc = totalQty > 0 ? lumpSumTotal / totalQty : 0;
+    
+    const cpPc = fabricCostPc + cmtTotalPc + printingTotalPc + allowancesTotalPc + lumpSumPc;
+    const totalCost = cpPc * totalQty;
+    
+    const spPc = cpPc * (1 + profitPct/100);
+    const totalSales = spPc * totalQty;
+    const profitDone = totalSales - totalCost;
+    
+    store.update({
+        clientName, garmentType,
+        sizes: newSizes, totalQty,
+        bodyLM, chestM, slvLM, slvDiaM, gsm, wastage, fabricPriceKg: priceKg,
+        totalFabricKgs, avgWeightGms, pcsPerKg, fabricCostPc,
+        cmt, cutting, fusing, wages, packing,
+        printing, sublimation, allowances, overheads,
+        acc1, acc2, acc3, pattern, profitPct,
+        cpPc, totalCost, spPc, totalSales, profitDone
+    });
+    
+    updateUI();
+};
+
+function updateUI() {
+    const s = store.state;
+    renderSizeGrid(); // re-render grid to update weights
+    
+    if ($('adv-total-qty')) $('adv-total-qty').textContent = s.totalQty;
+    if ($('res-total-kgs')) $('res-total-kgs').textContent = s.totalFabricKgs.toFixed(2) + ' kg';
+    if ($('res-fab-cost-pc')) $('res-fab-cost-pc').textContent = s.currency + s.fabricCostPc.toFixed(2);
+    
+    if ($('adv-total-cost')) $('adv-total-cost').textContent = s.currency + (s.totalCost > 0 ? s.totalCost.toFixed(2) : '0.00');
+    if ($('adv-cost-pc')) $('adv-cost-pc').textContent = s.currency + (s.cpPc > 0 ? s.cpPc.toFixed(2) : '0.00');
+    if ($('adv-sp-pc')) $('adv-sp-pc').textContent = s.currency + (s.spPc > 0 ? s.spPc.toFixed(2) : '0.00');
+}
+
+// ══════════════════════════════════════════════════════
+//  SAVE / LOAD
+// ══════════════════════════════════════════════════════
+async function saveCosting(status) {
+    const s = store.state;
+    if (!s.clientName) {
+        if(window.showToast) window.showToast('Client Name is required', 'error');
+        return;
+    }
+    if (s.totalQty <= 0) {
+        if(window.showToast) window.showToast('Total Quantity must be greater than 0', 'error');
+        return;
+    }
+
+    const btnDraft = $('btn-save-draft');
+    const btnQuote = $('btn-create-quote');
+    const oTextDraft = btnDraft ? btnDraft.textContent : '';
+    const oTextQuote = btnQuote ? btnQuote.textContent : '';
+
+    if (btnDraft) btnDraft.textContent = 'Saving...';
+    if (btnQuote) btnQuote.textContent = 'Saving...';
+
+    try {
+        // Build Materials array for Costing List view (matching old calculator)
+        const materials = [
+            { name: 'Fabric Cost/pc',  unit: 'per pc', cost: s.fabricCostPc  || 0 },
+            { name: 'Fabric Price/kg', unit: 'per kg', cost: s.fabricPriceKg || 0 },
+            { name: 'Avg Pcs per kg',  unit: 'count',  cost: s.pcsPerKg      || 0 },
+            { name: 'Wastage',         unit: '%',       cost: s.wastage       || 0 },
+            { name: 'CMT (combined)',  unit: 'per pc',  cost: s.cmtMode === 'combined' ? (s.cmt    || 0) : 0 },
+            { name: 'Cutting',         unit: 'per pc',  cost: s.cmtMode === 'separate' ? (s.cutting|| 0) : 0 },
+            { name: 'Fusing',          unit: 'per pc',  cost: s.cmtMode === 'separate' ? (s.fusing || 0) : 0 },
+            { name: 'Wages',           unit: 'per pc',  cost: s.cmtMode === 'separate' ? (s.wages  || 0) : 0 },
+            { name: 'Packing',         unit: 'per pc',  cost: s.cmtMode === 'separate' ? (s.packing|| 0) : 0 },
+            { name: 'Printing',        unit: 'per pc',  cost: s.printing     || 0 },
+            { name: 'Sublimation',     unit: 'per pc',  cost: s.sublimation  || 0 },
+            { name: 'Allowances',      unit: 'per pc',  cost: s.allowances   || 0 },
+            { name: 'Overheads',       unit: 'per pc',  cost: s.overheads    || 0 },
+            { name: 'Accessory 1',     unit: 'lump',    cost: s.acc1         || 0 },
+            { name: 'Accessory 2',     unit: 'lump',    cost: s.acc2         || 0 },
+            { name: 'Accessory 3',     unit: 'lump',    cost: s.acc3         || 0 },
+            { name: 'Pattern',         unit: 'lump',    cost: s.pattern      || 0 },
+        ].filter(m => m.cost > 0);
+
+        const params = new URLSearchParams(window.location.search);
+        const editId = params.get('id');
+
+        const payload = {
+            id: editId || 'adv_' + Date.now(),
+            date: new Date().toISOString(),
+            styleRef: s.garmentType,
+            clientId: s.clientName,
+            clientName: s.clientName,
+            garmentType: s.garmentType,
+            currency: s.currency,
+            mode: 'advanced', // size-by-size
+            qty: s.totalQty,
+            totalUnitCost: s.cpPc,
+            retailPrice: s.spPc,
+            totalCost: s.totalCost,
+            profitPct: s.profitPct,
+            totalSales: s.totalSales,
+            profitDone: s.profitDone,
+            status: status,
+            materials: materials,
+            // Full store state for exact restore
+            uData: { ...s }
+        };
+
+        if (editId) {
+            await api.put(`/costings/${editId}`, payload);
+            if(window.showToast) window.showToast('Costing updated successfully!', 'success');
+        } else {
+            await api.post('/costings', payload);
+            if(window.showToast) window.showToast('Costing saved successfully!', 'success');
+            setTimeout(() => {
+                window.location.href = `costings.html`;
+            }, 1000);
+        }
+    } catch (error) {
+        console.error('Save failed:', error);
+        if(window.showToast) window.showToast('Failed to save. Check console.', 'error');
     } finally {
-        window.finishSubtleLoading?.();
+        if (btnDraft) btnDraft.textContent = oTextDraft;
+        if (btnQuote) btnQuote.textContent = oTextQuote;
+    }
+}
+
+async function loadCosting(id) {
+    try {
+        const item = await api.get(`/costings/${id}`);
+        if (!item || !item.uData) throw new Error('Costing not found or invalid format');
+        
+        store.update(item.uData);
+        
+        const delBtn = $('btn-delete');
+        if (delBtn) {
+            delBtn.classList.remove('hidden');
+            delBtn.onclick = async () => {
+                if (confirm('Delete this costing?')) {
+                    await api.delete(`/costings/${id}`);
+                    window.location.href = 'costings.html';
+                }
+            };
+        }
+        
+        bindInputs();
+        window.recalcAdvanced();
+        
+    } catch (e) {
+        console.error('Load error:', e);
+        if(window.showToast) window.showToast('Error loading costing', 'error');
     }
 }
