@@ -46,16 +46,23 @@ export const StageSchemas = {
         getDefaults() {
             return {
                 markerLengthMeters: 0,
-                layCount: 0,
-                plyCount: 0,
+                layCount:           0,
+                plyCount:           0,
                 cutQuantitiesBySize: {}, // { 'S': 250, 'M': 500, 'L': 500, 'XL': 250 }
-                bundles: [], // [{ bundleNo: 1, size: 'M', range: '001-050', qty: 50 }]
-                fabricIssuedKg: 0,
-                actualCutPieces: 0,
-                scrapFabricKg: 0,
-                scrapPercentage: 0,
-                cuttingSupervisor: '',
-                status: 'In Progress' // In Progress | Completed
+                bundles:            [], // [{ bundleNo: 1, size: 'M', range: '001-050', qty: 50 }]
+                fabricIssuedKg:     0,
+                actualCutPieces:    0,
+                scrapFabricKg:      0,
+                scrapPercentage:    0,
+                cuttingSupervisor:  '',
+                status:             'In Progress', // In Progress | Completed
+                // Post-Cutting PVA Panel Washing (optional step)
+                pvaWashEnabled:      false,   // toggled on per-order if PVA wash required
+                pvaPanelsDispatched: 0,        // number of panels sent for PVA wash
+                pvaVendorName:       '',       // 'In-House' or external wash vendor
+                pvaExpectedReturn:   '',       // expected return date (ISO date string)
+                pvaStatus:          'Pending', // Pending | Sent | Received | Completed
+                pvaNotes:           ''         // any wash instructions / notes
             };
         }
     },
@@ -131,6 +138,68 @@ export const StageSchemas = {
                 dispatchDate: new Date().toISOString().split('T')[0],
                 deliveredDate: '',
                 status: 'Ready' // Ready | In Transit | Delivered
+            };
+        }
+    },
+
+    // ── Full Vertical Integration schemas (Yarn-to-Garment) ───────────────
+
+    winding: {
+        getDefaults() {
+            return {
+                machineId:      '',    // Winding machine identifier (e.g. 'WM-01')
+                machineType:    '',    // Auto-cone / Precision / etc.
+                yarnCount:      '',    // Yarn count, e.g. '30/1 Combed Cotton'
+                yarnKgLoaded:   0,     // Total yarn kg loaded onto machine
+                coneCount:      0,     // Number of cones wound
+                tensionSetting: '',    // Tension value, e.g. '12 cN'
+                breakageCount:  0,     // Yarn breakage incidents logged
+                supervisorName: '',
+                shiftDate:      '',
+                notes:          '',
+                status:         'In Progress' // In Progress | Completed
+            };
+        }
+    },
+
+    knitting: {
+        getDefaults() {
+            return {
+                machineId:          '',    // Circular knitting machine ID (e.g. 'CKM-03')
+                machineGauge:       28,    // Machine gauge (e.g. 24G, 28G, 36G)
+                machineOperator:    '',
+                productionRateKgHr: 0,     // Actual kg output per hour
+                fabricKgProduced:   0,     // Total grey fabric kg knitted
+                rollsProduced:      0,     // Number of greige rolls produced
+                targetGsm:          180,   // GSM target from order spec
+                actualGsm:          0,     // Actual measured GSM
+                targetDia:          34,    // Dia target from order spec (inches)
+                actualDia:          0,     // Actual measured dia (inches)
+                defectivePanels:    0,     // Panels rejected during inspection
+                shiftDate:          '',
+                notes:              '',
+                status:             'In Progress' // In Progress | QC | Released
+            };
+        }
+    },
+
+    dyeing: {
+        getDefaults() {
+            return {
+                dyeingLotNumber:    '',    // Internal dyeing lot reference
+                dyeingVendor:       '',    // 'In-House' or external processor name
+                fabricKgDyed:       0,     // Total grey fabric kg sent for dyeing
+                colorReference:     '',    // Pantone / buyer shade reference
+                labDipReference:    '',    // Internal lab dip code
+                shadeApproved:      false, // Buyer shade approval flag
+                compactingDone:     false, // Compacting process completed flag
+                compactedGsm:       0,     // Post-compact GSM
+                compactedDia:       0,     // Post-compact dia (inches)
+                shrinkageResult:    '',    // e.g. '3.5% warp / 2.8% weft'
+                colorfastnessGrade: '',    // e.g. '4/5 Washing | 4 Rubbing'
+                readyForCutting:    false, // Final release gate (requires shade + compacting)
+                notes:              '',
+                status:             'In Progress' // In Progress | Compacting | QC | Released
             };
         }
     }

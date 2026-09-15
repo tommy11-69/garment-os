@@ -8,14 +8,17 @@
  */
 
 export const STAGE_KEYS = {
-    OVERVIEW: 'overview',
+    OVERVIEW:    'overview',
     PROCUREMENT: 'procurement',
-    FABRIC: 'fabric',
-    CUTTING: 'cutting',
-    PRINT_WASH: 'print_wash',
-    STITCHING: 'stitching',
-    PACKING: 'packing',
-    DISPATCH: 'dispatch'
+    WINDING:     'winding',
+    KNITTING:    'knitting',
+    DYEING:      'dyeing',
+    FABRIC:      'fabric',
+    CUTTING:     'cutting',
+    PRINT_WASH:  'print_wash',
+    STITCHING:   'stitching',
+    PACKING:     'packing',
+    DISPATCH:    'dispatch'
 };
 
 export const STAGE_DEFINITIONS = {
@@ -113,6 +116,47 @@ export const STAGE_DEFINITIONS = {
         borderColor: 'border-[#30B0C7]/30',
         weight: 100,
         description: 'Delivery Challan (DC), Gate Pass, vehicle / LR tracking, and customer handoff'
+    },
+
+    // ── Full Vertical Integration stages (Yarn-to-Garment) ───────────────────
+
+    winding: {
+        id: 'winding',
+        key: 'winding',
+        label: 'Yarn Winding',
+        shortLabel: 'Winding',
+        icon: 'rotate_right',
+        color: 'text-[#FF6B35]',
+        bgColor: 'bg-[#FF6B35]/10',
+        borderColor: 'border-[#FF6B35]/30',
+        weight: 15,
+        description: 'Yarn cone winding, tension setup, breakage logging, and machine allocation'
+    },
+
+    knitting: {
+        id: 'knitting',
+        key: 'knitting',
+        label: 'Knitting',
+        shortLabel: 'Knitting',
+        icon: 'grid_on',
+        color: 'text-[#0EA5E9]',
+        bgColor: 'bg-[#0EA5E9]/10',
+        borderColor: 'border-[#0EA5E9]/30',
+        weight: 28,
+        description: 'Circular knitting machine allocation, fabric kg output, actual GSM & Dia QC'
+    },
+
+    dyeing: {
+        id: 'dyeing',
+        key: 'dyeing',
+        label: 'Dyeing & Compacting',
+        shortLabel: 'Dyeing',
+        icon: 'water_drop',
+        color: 'text-[#8B5CF6]',
+        bgColor: 'bg-[#8B5CF6]/10',
+        borderColor: 'border-[#8B5CF6]/30',
+        weight: 42,
+        description: 'Dyeing lot, shade approval, compacting process, shrinkage test & colorfastness grading'
     }
 };
 
@@ -164,6 +208,19 @@ export const WORKFLOW_ROUTES = {
     direct_fulfillment: [
         'procurement',
         'dispatch'
+    ],
+
+    // Full Vertical Integration — Yarn-to-Garment (factory knits its own fabric)
+    full_vertical: [
+        'procurement',   // Yarn & trims procurement
+        'winding',       // Yarn winding onto cones / bobbins
+        'knitting',      // Circular knitting to produce grey fabric
+        'dyeing',        // Dyeing + compacting (shade approval & shrinkage test)
+        'cutting',       // Fabric cutting (same as all standard routes)
+        'stitching',     // Sewing assembly
+        'print_wash',    // Print / embroidery / wash if any
+        'packing',       // Finishing, ironing & packing
+        'dispatch'       // Gate pass & dispatch
     ]
 };
 
@@ -182,12 +239,18 @@ export function normalizeStageKey(rawStage) {
     if (!rawStage) return 'fabric';
     const s = String(rawStage).toLowerCase().trim();
 
-    if (s.includes('procure') || s.includes('sourc') || s.includes('yarn')) return 'procurement';
-    if (s.includes('fabric') || s.includes('knit') || s.includes('dye')) return 'fabric';
-    if (s.includes('cut')) return 'cutting';
-    if (s.includes('print') || s.includes('embroid') || s.includes('wash')) return 'print_wash';
-    if (s.includes('stitch') || s.includes('sew')) return 'stitching';
-    if (s.includes('iron') || s.includes('pack') || s.includes('finish')) return 'packing';
+    // Full-vertical specific stages — checked BEFORE generic 'fabric'/'knit' fallbacks
+    if (s === 'winding' || s.includes('winding') || s.includes('cone') || s.includes('bobbin'))            return 'winding';
+    if (s === 'knitting' || s.includes('knitting') || s.includes('circular knit'))                          return 'knitting';
+    if (s === 'dyeing' || s.includes('dyeing') || s.includes('compacting') || s.includes('colour') || s.includes('color dye')) return 'dyeing';
+
+    // Standard stage mappings
+    if (s.includes('procure') || s.includes('sourc'))                         return 'procurement';
+    if (s.includes('fabric') || s.includes('inward') || s.includes('grey'))   return 'fabric';
+    if (s.includes('cut'))                                                     return 'cutting';
+    if (s.includes('print') || s.includes('embroid') || s.includes('wash'))   return 'print_wash';
+    if (s.includes('stitch') || s.includes('sew'))                            return 'stitching';
+    if (s.includes('iron') || s.includes('pack') || s.includes('finish'))     return 'packing';
     if (s.includes('dispatch') || s.includes('deliver') || s.includes('ship')) return 'dispatch';
 
     return 'fabric';
@@ -282,4 +345,57 @@ export function calculateOrderRollup(order) {
         totalOrderQty,
         productsSummary
     };
+}
+
+/**
+ * Merge per-product lineItems[] back into a flat stageData object for
+ * backward compatibility with production workspace code that reads
+ * order.stageData.fabric, order.stageData.cutting, etc.
+ *
+ * Numeric fields are summed; string/object fields are taken from the first
+ * product that has them (primary product wins).
+ *
+ * @param {Array} lineItems  The lineItems[] array from the new order schema
+ * @returns {Object}         Flat stageData compatible with legacy workspaces
+ */
+export function mergeLineItemsToFlatStageData(lineItems) {
+    if (!Array.isArray(lineItems) || lineItems.length === 0) return {};
+
+    const merged = {};
+
+    lineItems.forEach(item => {
+        if (!item || !item.stageData) return;
+
+        Object.entries(item.stageData).forEach(([stageKey, stageVal]) => {
+            if (!stageVal || typeof stageVal !== 'object') return;
+
+            if (!merged[stageKey]) {
+                // First product: deep-clone the stage block
+                merged[stageKey] = { ...stageVal };
+
+                // Preserve nested sizes as merged accumulator
+                if (stageVal.sizes && typeof stageVal.sizes === 'object') {
+                    merged[stageKey].sizes = { ...stageVal.sizes };
+                }
+            } else {
+                // Subsequent products: merge numeric fields (sum), sizes grid (sum), ignore duplicates for strings
+                Object.entries(stageVal).forEach(([k, v]) => {
+                    if (k === 'sizes' && typeof v === 'object') {
+                        // Merge size grids
+                        if (!merged[stageKey].sizes) merged[stageKey].sizes = {};
+                        Object.entries(v).forEach(([sz, qty]) => {
+                            merged[stageKey].sizes[sz] = (merged[stageKey].sizes[sz] || 0) + (Number(qty) || 0);
+                        });
+                    } else if (typeof v === 'number' && typeof merged[stageKey][k] === 'number') {
+                        merged[stageKey][k] += v;
+                    } else if (merged[stageKey][k] === undefined || merged[stageKey][k] === null) {
+                        merged[stageKey][k] = v;
+                    }
+                    // String fields from first product win — no override
+                });
+            }
+        });
+    });
+
+    return merged;
 }

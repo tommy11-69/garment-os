@@ -1,8 +1,10 @@
 /**
  * Garment OS — Production Single Page Application Router & Hero Hub
  * 
- * Orchestrates 8 dedicated operational workspaces:
- * 0. Overview | 1. Procurement | 2. Fabric | 3. Cutting | 4. Print/Wash | 5. Stitching | 6. Packing | 7. Dispatch
+ * Orchestrates 11 dedicated operational workspaces:
+ * 0. Overview | 1. Procurement | 2. Winding* | 3. Knitting* | 4. Dyeing*
+ * 5. Fabric | 6. Cutting | 7. Print/Wash | 8. Stitching | 9. Packing | 10. Dispatch
+ * (* Full Vertical Integration workflow only)
  */
 
 import { api } from '../services/api.js?v=5.5';
@@ -15,14 +17,17 @@ import {
 } from './domain/workflowEngine.js?v=5.5';
 import { hydrateStageData } from './domain/stageSchemas.js?v=5.5';
 
-import { OverviewWorkspace } from './stages/OverviewWorkspace.js?v=5.5';
-import { ProcurementWorkspace } from './stages/ProcurementWorkspace.js?v=5.5';
-import { FabricWorkspace } from './stages/FabricWorkspace.js?v=5.5';
-import { CuttingWorkspace } from './stages/CuttingWorkspace.js?v=5.5';
-import { PrintWashWorkspace } from './stages/PrintWashWorkspace.js?v=5.5';
-import { StitchingWorkspace } from './stages/StitchingWorkspace.js?v=5.5';
-import { PackingWorkspace } from './stages/PackingWorkspace.js?v=5.5';
-import { DispatchWorkspace } from './stages/DispatchWorkspace.js?v=5.5';
+import { OverviewWorkspace }      from './stages/OverviewWorkspace.js?v=5.5';
+import { ProcurementWorkspace }   from './stages/ProcurementWorkspace.js?v=5.5';
+import { WindingWorkspace }       from './stages/WindingWorkspace.js?v=6.0';
+import { KnittingWorkspace }      from './stages/KnittingWorkspace.js?v=6.0';
+import { DyeingWorkspace }        from './stages/DyeingWorkspace.js?v=6.0';
+import { FabricWorkspace }        from './stages/FabricWorkspace.js?v=5.5';
+import { CuttingWorkspace }       from './stages/CuttingWorkspace.js?v=5.5';
+import { PrintWashWorkspace }     from './stages/PrintWashWorkspace.js?v=5.5';
+import { StitchingWorkspace }     from './stages/StitchingWorkspace.js?v=5.5';
+import { PackingWorkspace }       from './stages/PackingWorkspace.js?v=5.5';
+import { DispatchWorkspace }      from './stages/DispatchWorkspace.js?v=5.5';
 
 class ProductionApp {
     constructor() {
@@ -34,14 +39,17 @@ class ProductionApp {
         this.isLoading = false;
 
         this.workspaces = {
-            overview: OverviewWorkspace,
-            procurement: ProcurementWorkspace,
-            fabric: FabricWorkspace,
-            cutting: CuttingWorkspace,
-            print_wash: PrintWashWorkspace,
-            stitching: StitchingWorkspace,
-            packing: PackingWorkspace,
-            dispatch: DispatchWorkspace
+            overview:     OverviewWorkspace,
+            procurement:  ProcurementWorkspace,
+            winding:      WindingWorkspace,
+            knitting:     KnittingWorkspace,
+            dyeing:       DyeingWorkspace,
+            fabric:       FabricWorkspace,
+            cutting:      CuttingWorkspace,
+            print_wash:   PrintWashWorkspace,
+            stitching:    StitchingWorkspace,
+            packing:      PackingWorkspace,
+            dispatch:     DispatchWorkspace
         };
     }
 
@@ -244,22 +252,38 @@ class ProductionApp {
         const container = document.getElementById('stage-nav-bar');
         if (!container) return;
 
-        const stages = [
+        // Always show Overview first
+        const overviewDef = STAGE_DEFINITIONS.overview || { label: 'Overview', icon: 'dashboard', key: 'overview' };
+
+        // Determine which workflow stages to show:
+        // If an active order/product is loaded, show only that product's workflow stages.
+        // Otherwise fall back to the standard default route for the nav skeleton.
+        let workflowStageKeys = [];
+        if (this.activeOrder) {
+            const activeProd  = this.getActiveProduct();
+            workflowStageKeys = getProductWorkflowStages(activeProd, this.activeOrder.workflowType);
+        } else {
+            // No order selected — show standard CMT skeleton
+            workflowStageKeys = ['procurement', 'fabric', 'cutting', 'print_wash', 'stitching', 'packing', 'dispatch'];
+        }
+
+        // Build nav items: Overview + each stage in the active workflow route
+        const navItems = [
             { key: 'overview', label: 'Overview', icon: 'dashboard' },
-            { key: 'procurement', label: '1. Sourcing', icon: 'shopping_cart' },
-            { key: 'fabric', label: '2. Fabric', icon: 'texture' },
-            { key: 'cutting', label: '3. Cutting', icon: 'content_cut' },
-            { key: 'print_wash', label: '4. Print / Wash', icon: 'palette' },
-            { key: 'stitching', label: '5. Stitching', icon: 'precision_manufacturing' },
-            { key: 'packing', label: '6. Packing', icon: 'inventory_2' },
-            { key: 'dispatch', label: '7. Dispatch', icon: 'local_shipping' }
+            ...workflowStageKeys.map((key, i) => {
+                const def = STAGE_DEFINITIONS[key] || { label: key, icon: 'circle' };
+                // Derive the icon from material-symbols name stored in def
+                const icon = def.icon || 'radio_button_unchecked';
+                return { key, label: `${i + 1}. ${def.shortLabel || def.label}`, icon };
+            })
         ];
 
-        container.innerHTML = stages.map(s => {
+        container.innerHTML = navItems.map(s => {
             const isActive = s.key === this.activeStage;
+            const def      = STAGE_DEFINITIONS[s.key] || {};
             return `
-                <button type="button" 
-                    onclick="window.productionRouter.switchStage('${s.key}')" 
+                <button type="button"
+                    onclick="window.productionRouter.switchStage('${s.key}')"
                     class="stage-nav-pill ${isActive ? 'active' : 'inactive'} active-scale">
                     <span class="material-symbols-outlined text-[18px]">${s.icon}</span>
                     <span>${s.label}</span>
