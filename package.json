@@ -6,6 +6,7 @@
   "scripts": {
     "dev:worker": "wrangler dev -c wrangler.dev.jsonc --persist-to ../.wrangler_state_garment",
     "audit:live": "node dev/scripts/audit_live_api.js",
+    "build:css": "tailwindcss -i ./css/input.css -o ./css/output.min.css --minify",
     "test:smoke": "node dev/scripts/smoke-test.js",
     "deploy": "wrangler deploy"
   },

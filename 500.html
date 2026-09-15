@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>500 — Server Error | Garment OS</title>
+    
+    <!-- Zero-Flicker Dark Mode Theme Resolver -->
+    <script>
+      (function() {
+        if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      })();
+    </script>
+    
+    <!-- Favicon & PWA Icons -->
+    <link rel="icon" type="image/png" sizes="192x192" href="assets/icon-192.png?v=2">
+    <link rel="icon" type="image/webp" href="assets/favicon-dark.webp?v=2">
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png?v=2">
+    <link rel="manifest" href="manifest.json?v=2">
+    <meta name="theme-color" content="#0059b5">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com" rel="preconnect"/>
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+    
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              brand: '#0059b5',
+            }
+          }
+        }
+      }
+    </script>
+</head>
+<body class="bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-100 font-sans min-h-screen flex items-center justify-center p-4 antialiased transition-colors duration-200">
+    <div class="max-w-md w-full bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200/80 dark:border-slate-700/80 p-8 text-center relative overflow-hidden backdrop-blur-md">
+        <!-- Background Decorative Accent -->
+        <div class="absolute -top-16 -right-16 w-36 h-36 bg-rose-500/10 dark:bg-rose-500/20 rounded-full blur-2xl pointer-events-none"></div>
+        <div class="absolute -bottom-16 -left-16 w-36 h-36 bg-amber-500/10 dark:bg-amber-500/20 rounded-full blur-2xl pointer-events-none"></div>
+
+        <!-- Warning Icon Container -->
+        <div class="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-amber-50 dark:bg-amber-950/60 text-amber-600 dark:text-amber-400 mb-6 shadow-inner border border-amber-200/60 dark:border-amber-900/50">
+            <span class="material-symbols-outlined text-4xl">dns</span>
+        </div>
+
+        <!-- Error Code Pill -->
+        <div class="inline-block px-3 py-1 rounded-full text-xs font-semibold bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 mb-3 uppercase tracking-wider border border-rose-200/50 dark:border-rose-900/50">
+            Error 500 — Connection Interrupted
+        </div>
+
+        <h1 class="text-2xl font-extrabold text-slate-900 dark:text-white mb-2 tracking-tight">
+            Server or Database Unavailable
+        </h1>
+
+        <p class="text-slate-600 dark:text-slate-400 text-sm mb-6 leading-relaxed">
+            Garment OS encountered an unexpected response while communicating with the database or server. Your data remains completely safe and backed up.
+        </p>
+
+        <!-- Status Card -->
+        <div class="bg-slate-50 dark:bg-slate-900/60 rounded-xl p-4 border border-slate-200/60 dark:border-slate-700/60 text-left mb-6 text-xs space-y-2">
+            <div class="flex items-center justify-between text-slate-600 dark:text-slate-400">
+                <span class="font-medium">Backend Health Check:</span>
+                <span id="healthStatus" class="font-semibold text-amber-600 dark:text-amber-400">Re-evaluating...</span>
+            </div>
+            <div class="flex items-center justify-between text-slate-600 dark:text-slate-400">
+                <span class="font-medium">Database Cluster:</span>
+                <span class="font-mono text-slate-500 dark:text-slate-400">MariaDB Primary</span>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="space-y-3">
+            <button id="retryBtn" onclick="retryConnection()" class="flex items-center justify-center gap-2 w-full py-3 px-4 bg-brand hover:bg-blue-700 text-white font-medium rounded-xl shadow-md hover:shadow-lg transition-all duration-200 transform active:scale-[0.98]">
+                <span id="retryIcon" class="material-symbols-outlined text-xl">refresh</span>
+                <span id="retryText">Retry Connection</span>
+            </button>
+
+            <a href="pages/dashboard.html" class="flex items-center justify-center gap-2 py-2.5 px-3 bg-slate-100 hover:bg-slate-200 dark:bg-slate-700 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-medium rounded-xl text-sm transition-colors">
+                <span class="material-symbols-outlined text-lg">home</span>
+                Back to Dashboard
+            </a>
+        </div>
+
+        <!-- Footer -->
+        <div class="mt-8 pt-6 border-t border-slate-100 dark:border-slate-700/60 flex items-center justify-between text-xs text-slate-400 dark:text-slate-500">
+            <span>Garment OS v1.0</span>
+            <span class="inline-flex items-center gap-1.5">
+                <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                Automatic Failover Active
+            </span>
+        </div>
+    </div>
+
+    <script>
+      function retryConnection() {
+        const btn = document.getElementById('retryBtn');
+        const icon = document.getElementById('retryIcon');
+        const text = document.getElementById('retryText');
+        const status = document.getElementById('healthStatus');
+
+        icon.classList.add('animate-spin');
+        text.textContent = 'Testing connection...';
+        btn.disabled = true;
+
+        fetch('api/health')
+          .then(res => res.json())
+          .then(data => {
+            if (data.status === 'healthy') {
+              status.textContent = 'Operational';
+              status.className = 'font-semibold text-emerald-600 dark:text-emerald-400';
+              text.textContent = 'Connection Restored! Redirecting...';
+              setTimeout(() => window.location.href = 'pages/dashboard.html', 1000);
+            } else {
+              throw new Error('Unhealthy');
+            }
+          })
+          .catch(() => {
+            setTimeout(() => {
+              icon.classList.remove('animate-spin');
+              text.textContent = 'Retry Connection';
+              status.textContent = 'Offline (Retrying in background)';
+              status.className = 'font-semibold text-rose-600 dark:text-rose-400';
+              btn.disabled = false;
+            }, 800);
+          });
+      }
+    </script>
+</body>
+</html>

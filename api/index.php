@@ -951,8 +951,6 @@ function generateBillingSerial($pdo, $transactionType) {
          ON DUPLICATE KEY UPDATE `last_seq` = `last_seq` + 1"
     )->execute([$typeKey]);
 
-    $row = $pdo->prepare("SELECT `last_seq` FROM `billing_counters` WHERE `type_key` = ?")->execute([$typeKey]);
-    $row = $pdo->prepare("SELECT `last_seq` FROM `billing_counters` WHERE `type_key` = ?")->execute([$typeKey]);
     // Re-fetch cleanly
     $stmt = $pdo->prepare("SELECT `last_seq` FROM `billing_counters` WHERE `type_key` = ?");
     $stmt->execute([$typeKey]);
@@ -1077,7 +1075,6 @@ if ($segments[0] === 'billings') {
 
     // PUT /api/billings/:id  (update master + optional items replace)
     if ($method === 'PUT' && $billingId && !$action) {
-        $existing = $pdo->prepare("SELECT `id` FROM `billing_master` WHERE `id` = ?")->execute([$billingId]);
         $existing = $pdo->prepare("SELECT `id` FROM `billing_master` WHERE `id` = ?");
         $existing->execute([$billingId]);
         if (!$existing->fetch()) jsonResponse(['error' => 'Billing document not found'], 404);
@@ -1246,8 +1243,14 @@ if ($method === 'GET') {
         $countStmt->execute($params);
         $total = (int)$countStmt->fetch()['total'];
 
-        $dataStmt = $pdo->prepare("SELECT * FROM `{$table}` {$whereClause} ORDER BY createdAt DESC LIMIT {$limit} OFFSET {$offset}");
-        $dataStmt->execute($params);
+        $dataStmt = $pdo->prepare("SELECT * FROM `{$table}` {$whereClause} ORDER BY createdAt DESC LIMIT ? OFFSET ?");
+        $paramIdx = 1;
+        foreach ($params as $p) {
+            $dataStmt->bindValue($paramIdx++, $p, PDO::PARAM_STR);
+        }
+        $dataStmt->bindValue($paramIdx++, $limit, PDO::PARAM_INT);
+        $dataStmt->bindValue($paramIdx++, $offset, PDO::PARAM_INT);
+        $dataStmt->execute();
         $rows = $dataStmt->fetchAll();
 
         jsonResponse([
