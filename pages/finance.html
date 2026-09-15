@@ -2,7 +2,7 @@
 <html class="light" lang="en">
 <head>
     <meta charset="utf-8"/>
-    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport"/>
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Garment OS - Finance</title>
@@ -108,15 +108,15 @@
 
     <div id="topbar-container"></div>
 
-    <div class="mobile-wrapper">
-        <main id="main-content-area" class="flex-1 p-md flex flex-col gap-lg pb-32">
+    <div class="mobile-wrapper overflow-x-hidden">
+        <main id="main-content-area" class="flex-1 p-md flex flex-col gap-lg pb-32 max-w-full overflow-x-hidden">
             
             <!-- Header -->
-            <div class="px-xs pt-sm flex flex-col gap-3">
-                <div class="flex items-center justify-between gap-2">
+            <div class="px-xs pt-sm flex flex-col gap-3 max-w-full">
+                <div class="flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
                     <h2 class="text-[28px] leading-tight font-semibold tracking-tight text-on-surface">Finance</h2>
                     <!-- Period selector -->
-                    <div id="cash-flow-period-selector" class="flex items-center gap-0.5 p-1 bg-surface-container-lowest border border-outline-variant rounded-xl shrink-0">
+                    <div id="cash-flow-period-selector" class="flex items-center gap-0.5 p-1 bg-surface-container-lowest border border-outline-variant rounded-xl shrink-0 max-w-full overflow-x-auto no-scrollbar">
                         <button class="period-pill active text-[11px] font-bold px-2.5 py-1.5 rounded-lg" data-period="7d" onclick="window.finSetPeriod('7d')">7D</button>
                         <button class="period-pill inactive text-[11px] font-bold px-2.5 py-1.5 rounded-lg" data-period="1m" onclick="window.finSetPeriod('1m')">1M</button>
                         <button class="period-pill inactive text-[11px] font-bold px-2.5 py-1.5 rounded-lg" data-period="3m" onclick="window.finSetPeriod('3m')">3M</button>

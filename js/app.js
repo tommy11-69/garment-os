@@ -132,9 +132,15 @@ const STATIC_SIDEBAR_HTML = `<nav class="sidebar-nav bg-white dark:bg-slate-900 
                 <p class="text-[10px] font-semibold text-secondary dark:text-slate-400 uppercase tracking-[0.07em]">Enterprise</p>
             </div>
         </div>
-        <button type="button" onclick="toggleTheme()" class="theme-toggle-btn w-8 h-8 rounded-xl flex items-center justify-center text-secondary dark:text-slate-400 hover:bg-surface-variant/40 dark:hover:bg-slate-800 transition-colors" title="Toggle Dark/Light Mode" aria-label="Toggle theme">
-            <span class="material-symbols-outlined text-[19px]">dark_mode</span>
-        </button>
+        <div class="flex items-center gap-1.5 shrink-0">
+            <button type="button" onclick="window.openNotificationCenter?.()" aria-label="Notifications" title="Notifications" class="w-8 h-8 rounded-xl flex items-center justify-center text-secondary dark:text-slate-400 hover:bg-surface-variant/40 dark:hover:bg-slate-800 transition-colors relative">
+                <span class="material-symbols-outlined text-[19px]">notifications</span>
+                <span class="notif-badge hidden absolute -top-0.5 -right-0.5 bg-error text-white text-[9px] font-extrabold w-4 h-4 rounded-full flex items-center justify-center shadow-xs">0</span>
+            </button>
+            <button type="button" onclick="toggleTheme()" class="theme-toggle-btn w-8 h-8 rounded-xl flex items-center justify-center text-secondary dark:text-slate-400 hover:bg-surface-variant/40 dark:hover:bg-slate-800 transition-colors" title="Toggle Dark/Light Mode" aria-label="Toggle theme">
+                <span class="material-symbols-outlined text-[19px]">dark_mode</span>
+            </button>
+        </div>
     </div>
     <div class="flex-1 overflow-y-auto py-3 flex flex-col" style="gap: 1px;">
         <div class="px-5 pb-1.5 pt-3">
@@ -312,8 +318,7 @@ function initApp() {
         if (window.updateTopbarBadge) window.updateTopbarBadge();
     });
 
-    // Dynamically load notification system & OS splash loading screen
-    import('./components/splashScreen.js?v=5.2').catch(err => console.warn('Splash screen init warning:', err));
+    // Dynamically load notification system
     import('./components/notificationCenter.js?v=5.2').then(m => {
         window.openNotificationCenter = m.openNotificationCenter;
         window.closeNotificationCenter = m.closeNotificationCenter;
