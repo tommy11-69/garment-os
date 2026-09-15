@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.showToast?.('Password changed successfully. Please log in again.', 'success');
                 setTimeout(() => {
                     localStorage.removeItem('gos_token');
-                    window.location.replace('../auth/login.html');
+                    window.location.replace('../auth/login');
                 }, 1500);
             } else {
                 window.showToast?.('Settings saved successfully.', 'success');

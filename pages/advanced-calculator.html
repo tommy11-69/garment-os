@@ -1,12 +1,14 @@
 <!DOCTYPE html>
 <html class="light" lang="en">
+
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Advanced BOM Costing - Garment OS</title>
+    <title>Advanced BOM Cost Calculator - Garment OS</title>
 
+    <!-- Zero-Flicker Dark Mode Theme Resolver & Global Handler -->
     <script>
       (function() {
         if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -25,14 +27,18 @@
       })();
     </script>
 
+    <!-- Favicon & PWA Icons -->
     <link rel="icon" type="image/png" sizes="192x192" href="../assets/icon-192.png">
     <link rel="icon" type="image/webp" href="../assets/logo-primary.webp">
+    <link rel="apple-touch-icon" sizes="180x180" href="../assets/apple-touch-icon.png">
+    <link rel="manifest" href="../manifest.json">
     <meta name="theme-color" content="#0059b5">
+    <meta name="mobile-web-app-capable" content="yes">
 
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet" />
     <link href="https://fonts.googleapis.com" rel="preconnect" />
     <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet" />
 
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <script src="../js/tailwind.config.js"></script>
@@ -43,335 +49,685 @@
     <link rel="stylesheet" href="../css/calculator.css">
 
     <style>
-        .calc-input {
-            width: 100%;
-            background-color: rgb(241 245 249 / 0.5);
-            border: 1px solid transparent;
-            border-radius: 0.75rem;
-            padding: 0.5rem 0.75rem;
-            font-size: 14px;
-            font-weight: 600;
-            outline: none;
-            transition: all 0.2s;
+        /* Tab active state */
+        .calc-tab-btn.active {
+            background: var(--color-on-surface, #1C1B1F);
+            color: var(--color-surface, #FFFBFE);
         }
-        .dark .calc-input {
-            background-color: rgb(30 41 59);
+        .dark .calc-tab-btn.active {
+            background: #38bdf8;
+            color: #0f172a;
+        }
+
+        /* Currency toggle */
+        .currency-btn.active {
+            background: var(--color-primary, #0071E3);
             color: white;
         }
-        .calc-input:focus {
+
+        /* Profit bar animation */
+        .profit-bar-fill {
+            transition: width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .profit-positive {
+            color: #008A00;
+        }
+        .dark .profit-positive {
+            color: #34C759;
+        }
+        .profit-negative {
+            color: #FF3B30;
+        }
+
+        .size-card {
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .size-card:focus-within {
             border-color: rgba(0, 113, 227, 0.4);
-            box-shadow: 0 0 0 2px rgba(0, 113, 227, 0.1);
+            box-shadow: 0 4px 16px rgba(0, 113, 227, 0.08);
         }
-        .field-label {
-            font-size: 11px;
-            font-weight: 600;
-            color: #64748b;
-            margin-bottom: 4px;
-            display: block;
+
+        /* Hide spinners */
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
         }
-        .section-card {
-            background: rgba(255,255,255,0.6);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255,255,255,0.5);
-            border-radius: 24px;
-            box-shadow: 0 8px 30px rgba(0,0,0,0.04);
-            overflow: hidden;
-            margin-bottom: 1rem;
-        }
-        .dark .section-card {
-            background: rgba(15,23,42,0.6);
-            border-color: rgba(255,255,255,0.05);
-            box-shadow: 0 8px 30px rgba(0,0,0,0.3);
-        }
-        .section-toggle {
-            width: 100%;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 16px;
-            background: transparent;
-            border: none;
-            cursor: pointer;
-        }
-        .section-body {
-            padding: 0 16px 16px 16px;
+        input[type=number] {
+            -moz-appearance: textfield;
         }
     </style>
+    <link rel="stylesheet" href="../css/responsive.css">
 </head>
-<body class="font-body text-body antialiased bg-background dark:bg-slate-950 text-on-surface dark:text-slate-100 selection:bg-primary/20 print:bg-white print:text-black">
 
-    <div id="sidebar-container" class="print:hidden"></div>
-    <div id="topbar-container" class="print:hidden"></div>
-    
-    <div class="main-wrapper">
-        <main class="page-container pb-32 print:pb-0 print:p-0 print:m-0 print:max-w-full">
-            <!-- Header -->
-            <div class="flex flex-col md:flex-row items-start md:items-center justify-between mb-4 mt-2 gap-4 print:hidden">
-                <div class="flex flex-col w-full md:w-auto">
-                    <div class="flex bg-surface-variant/40 dark:bg-slate-800/60 p-1 rounded-xl w-full md:w-fit mb-2 overflow-x-auto">
-                        <button onclick="window.location.href='calculator.html'" class="flex-1 md:flex-none px-5 py-2 text-[13px] font-bold rounded-lg text-secondary dark:text-slate-400 hover:text-on-surface dark:hover:text-slate-200 transition-colors whitespace-nowrap">Quick</button>
-                        <button class="flex-1 md:flex-none px-5 py-2 text-[13px] font-bold rounded-lg bg-surface dark:bg-slate-700 text-on-surface dark:text-slate-100 shadow-sm cursor-default whitespace-nowrap">Advanced (Size-by-Size)</button>
+<body class="font-body text-body antialiased bg-background dark:bg-slate-950 text-on-surface dark:text-slate-100" style="padding-bottom: 310px;">
+
+    <div id="topbar-container"></div>
+
+    <div class="mobile-wrapper">
+        <main id="main-content-area" class="flex-1 p-md flex flex-col gap-lg">
+
+            <!-- ── Top Bar Header with Navigation Tabs ── -->
+            <div class="px-xs pt-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div class="flex flex-col">
+                    <div class="inline-flex bg-surface-variant/40 dark:bg-slate-800/60 p-1 rounded-xl w-fit mb-1">
+                        <button type="button" onclick="window.location.href='calculator.html'" class="px-4 sm:px-5 py-1.5 sm:py-2 text-[13px] font-bold rounded-lg text-secondary dark:text-slate-400 hover:text-on-surface dark:hover:text-slate-200 transition-colors">
+                            Quick
+                        </button>
+                        <button type="button" class="px-4 sm:px-5 py-1.5 sm:py-2 text-[13px] font-bold rounded-lg bg-surface dark:bg-slate-700 text-on-surface dark:text-slate-100 shadow-sm cursor-default">
+                            Advanced (Size-by-Size)
+                        </button>
                     </div>
+                    <p class="text-[13px] text-secondary dark:text-slate-400">Multi-size pattern &amp; full costing engine</p>
                 </div>
-                <div class="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-1 md:pb-0 hide-scrollbar">
-                    <button id="btn-delete" class="hidden h-10 px-4 text-[13px] btn-secondary text-error hover:bg-error/10 border-error/20 mr-auto md:mr-0 shrink-0">Delete</button>
-                    <button id="btn-print" onclick="window.print()" class="w-10 h-10 shrink-0 rounded-xl bg-surface-variant/30 text-secondary hover:bg-surface-variant/50 transition-colors flex items-center justify-center">
-                        <span class="material-symbols-outlined text-[20px]">print</span>
+                
+                <div class="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+                    <!-- Currency Toggle -->
+                    <div class="inline-flex bg-surface-variant/40 dark:bg-slate-800/60 p-0.5 rounded-lg">
+                        <button type="button" onclick="setCurrency('₹')" class="currency-btn active px-2.5 py-1 text-[12px] font-bold rounded-md transition-all">₹</button>
+                        <button type="button" onclick="setCurrency('$')" class="currency-btn px-2.5 py-1 text-[12px] font-bold rounded-md transition-all">$</button>
+                        <button type="button" onclick="setCurrency('€')" class="currency-btn px-2.5 py-1 text-[12px] font-bold rounded-md transition-all">€</button>
+                    </div>
+                    
+                    <!-- Saved Costings Button -->
+                    <button type="button" onclick="window.location.href = 'costings.html'" 
+                        class="flex items-center gap-1.5 bg-white/60 dark:bg-slate-800/80 backdrop-blur-xl border border-white/50 dark:border-slate-700 shadow-sm rounded-xl px-3 py-2 active-scale transition-apple">
+                        <span class="material-symbols-outlined text-[18px] text-primary dark:text-blue-400">folder_open</span>
+                        <span class="text-[13px] font-bold text-on-surface dark:text-slate-200">Saved</span>
                     </button>
-                    <button id="btn-save-draft" class="btn-secondary h-10 px-4 text-[13px] shrink-0">Save Draft</button>
-                    <button id="btn-create-quote" class="btn-primary h-10 px-4 text-[13px] bg-primary text-white rounded-xl font-semibold shadow-sm hover:opacity-90 active:scale-95 transition-all shrink-0">Create Quote</button>
                 </div>
             </div>
 
-            <!-- Global Inputs -->
-            <div class="bg-surface dark:bg-slate-900 rounded-3xl p-5 mb-6 shadow-sm border border-outline-variant/30 dark:border-slate-800 print:shadow-none print:border-none print:p-0 print:mb-4">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="text-[12px] font-semibold text-on-surface dark:text-slate-300 ml-1 mb-1 block">Client / Buyer</label>
-                        <input type="text" id="adv-client" placeholder="e.g. Acme Corp" class="w-full bg-surface-variant/30 dark:bg-slate-800 border-none rounded-2xl px-4 py-3 text-[15px] font-semibold outline-none focus:ring-2 focus:ring-primary/20 print:bg-transparent print:p-0 print:text-[18px]">
+            <!-- ════════════════════════════════════════ -->
+            <!-- MAIN ADVANCED CALCULATOR FORM            -->
+            <!-- ════════════════════════════════════════ -->
+            <form id="advanced-calc-form" onsubmit="event.preventDefault();" class="flex flex-col gap-lg">
+                
+                <!-- ── 1. Order & Garment Info ── -->
+                <div class="bg-white/60 dark:bg-slate-900/80 backdrop-blur-xl border border-white/50 dark:border-slate-800 rounded-[28px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.3)] p-md flex flex-col gap-4">
+                    <h3 class="text-[15px] font-bold text-on-surface dark:text-white flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[18px] text-secondary dark:text-slate-400">info</span>
+                        Client &amp; Garment Style
+                    </h3>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="field-label">Client / Buyer Name</label>
+                            <input id="adv-client" type="text" placeholder="e.g. Acme Apparel / Chennai Silks" class="calc-input w-full">
+                        </div>
+                        <div>
+                            <label class="field-label">Style / Garment Name</label>
+                            <input id="adv-garment-name" type="text" placeholder="e.g. Classic Crew Tee / Zip Hoodie" value="Classic Crew Neck T-Shirt" class="calc-input w-full">
+                        </div>
                     </div>
+
+                    <!-- Garment Type Chips -->
                     <div>
-                        <label class="text-[12px] font-semibold text-on-surface dark:text-slate-300 ml-1 mb-1 block">Garment Type</label>
-                        <input type="text" id="adv-garment-type" placeholder="e.g. Zip Hoodie" value="Garment" class="w-full bg-surface-variant/30 dark:bg-slate-800 border-none rounded-2xl px-4 py-3 text-[15px] font-semibold outline-none focus:ring-2 focus:ring-primary/20 print:bg-transparent print:p-0 print:text-[18px]">
+                        <label class="field-label">Garment Category</label>
+                        <div class="flex gap-2 flex-wrap mt-1" id="adv-garment-chips">
+                            <button type="button" class="garment-chip active" data-type="T-Shirt" onclick="selectGarmentType(this)">👕 T-Shirt</button>
+                            <button type="button" class="garment-chip" data-type="Polo" onclick="selectGarmentType(this)">🎽 Polo</button>
+                            <button type="button" class="garment-chip" data-type="Hoodie" onclick="selectGarmentType(this)">🧥 Hoodie</button>
+                            <button type="button" class="garment-chip" data-type="Jacket" onclick="selectGarmentType(this)">🧣 Jacket</button>
+                            <button type="button" class="garment-chip" data-type="Shorts" onclick="selectGarmentType(this)">🩳 Shorts</button>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <form id="unified-calc-form" onsubmit="event.preventDefault();" class="flex flex-col gap-lg">
-                <!-- Size & Pattern Grid -->
-                <div class="section-card">
-                    <div class="p-4 border-b border-outline-variant/20 dark:border-slate-800">
-                        <h3 class="text-[16px] font-bold text-on-surface dark:text-white flex items-center justify-between">
+                <!-- ── 2. Size-Specific Pattern Grid (NO DUPLICATES) ── -->
+                <div class="bg-white/60 dark:bg-slate-900/80 backdrop-blur-xl border border-white/50 dark:border-slate-800 rounded-[28px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.3)] p-md flex flex-col gap-4">
+                    <div class="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+                        <div>
                             <div class="flex items-center gap-2">
-                                <span class="material-symbols-outlined text-[18px] text-primary">architecture</span>
-                                Size-Specific Pattern Grid
-                            </div>
-                            <div class="text-[13px] font-bold text-primary bg-primary/10 px-3 py-1 rounded-lg">
-                                Total Qty: <span id="adv-total-qty">0</span>
-                            </div>
-                        </h3>
-                    </div>
-                    <div class="p-4">
-                        <div class="overflow-x-auto pb-2">
-                            <div class="min-w-[600px] flex flex-col gap-2">
-                                <div class="grid grid-cols-12 gap-2 px-2 pb-1 text-[10px] font-bold text-secondary uppercase text-center border-b border-outline-variant/20 dark:border-slate-800">
-                                    <div class="col-span-1 text-left">Size</div>
-                                    <div class="col-span-2">Qty</div>
-                                    <div class="col-span-2">Body L</div>
-                                    <div class="col-span-2">Chest</div>
-                                    <div class="col-span-2">Slv L</div>
-                                    <div class="col-span-2">Slv Dia</div>
-                                    <div class="col-span-1 text-right">Wt(gms)</div>
+                                <h3 class="text-[16px] font-bold text-on-surface dark:text-white flex items-center gap-1.5">
+                                    <span class="material-symbols-outlined text-[20px] text-primary">straighten</span>
+                                    Size-Specific Pattern Measurements
+                                </h3>
+                                <!-- Unit Toggle Switcher -->
+                                <div class="inline-flex bg-surface-container-high dark:bg-slate-800 p-0.5 rounded-lg border border-outline-variant/30 ml-1">
+                                    <button type="button" onclick="setMeasurementUnit('cm')" class="unit-toggle-btn active px-2 py-0.5 text-[11px] font-bold rounded-md transition-all">cm</button>
+                                    <button type="button" onclick="setMeasurementUnit('in')" class="unit-toggle-btn px-2 py-0.5 text-[11px] font-bold rounded-md transition-all">inches</button>
                                 </div>
-                                <div id="mod-sizes-grid"></div>
+                            </div>
+                            <p class="text-[12px] text-secondary dark:text-slate-400" id="unit-subtitle">Dimensions in cm. Fabric weight is calculated per size individually.</p>
+                        </div>
+                        
+                        <!-- Order Total Badge -->
+                        <div class="flex items-center gap-2 self-start sm:self-auto">
+                            <span class="text-[12px] font-bold px-3 py-1 rounded-full bg-primary/10 text-primary border border-primary/20">
+                                Total: <span id="grid-total-qty">0</span> pcs
+                            </span>
+                            <button type="button" onclick="addNewSizeRow()" class="flex items-center gap-1 text-[12px] font-bold px-2.5 py-1 rounded-full bg-surface-container-high hover:bg-surface-variant text-on-surface active-scale transition-apple">
+                                <span class="material-symbols-outlined text-[15px]">add</span>
+                                Add Size
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Size Grid Container (Responsive Desktop Table + Mobile Cards) -->
+                    <div id="sizes-grid-container" class="flex flex-col gap-3">
+                        <!-- Populated dynamically by JS -->
+                    </div>
+
+                    <!-- Collapsible Seam & Hem Allowances Setting (NOT duplicate entry) -->
+                    <div class="border-t border-outline-variant/30 pt-3">
+                        <button type="button" onclick="toggleAllowancesDrawer()" class="flex items-center justify-between w-full text-left text-[12px] font-semibold text-secondary hover:text-on-surface transition-colors py-1">
+                            <span class="flex items-center gap-1.5">
+                                <span class="material-symbols-outlined text-[16px] text-secondary">tune</span>
+                                Pattern Seam &amp; Hem Margins (Default cm allowances added to each piece)
+                            </span>
+                            <span id="allowances-drawer-icon" class="material-symbols-outlined text-[16px] transition-transform">expand_more</span>
+                        </button>
+                        <div id="allowances-drawer" class="hidden grid-cols-2 sm:grid-cols-4 gap-3 pt-3 mt-2 bg-surface-container-lowest/50 dark:bg-slate-800/40 p-3 rounded-2xl border border-outline-variant/20">
+                            <div>
+                                <label class="field-label text-[11px]">Body Length Margin</label>
+                                <div class="relative flex items-center">
+                                    <span class="absolute left-2.5 text-[12px] font-bold text-secondary">+</span>
+                                    <input id="pat-margin-body" type="number" value="6" class="calc-input !h-9 text-center pl-6 text-[13px]" oninput="onGlobalParamChange()">
+                                    <span class="absolute right-2.5 text-[11px] text-secondary font-medium">cm</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="field-label text-[11px]">Chest Margin</label>
+                                <div class="relative flex items-center">
+                                    <span class="absolute left-2.5 text-[12px] font-bold text-secondary">+</span>
+                                    <input id="pat-margin-chest" type="number" value="4" class="calc-input !h-9 text-center pl-6 text-[13px]" oninput="onGlobalParamChange()">
+                                    <span class="absolute right-2.5 text-[11px] text-secondary font-medium">cm</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="field-label text-[11px]">Sleeve Length Margin</label>
+                                <div class="relative flex items-center">
+                                    <span class="absolute left-2.5 text-[12px] font-bold text-secondary">+</span>
+                                    <input id="pat-margin-slv" type="number" value="4" class="calc-input !h-9 text-center pl-6 text-[13px]" oninput="onGlobalParamChange()">
+                                    <span class="absolute right-2.5 text-[11px] text-secondary font-medium">cm</span>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="field-label text-[11px]">Sleeve Dia Margin</label>
+                                <div class="relative flex items-center">
+                                    <span class="absolute left-2.5 text-[12px] font-bold text-secondary">+</span>
+                                    <input id="pat-margin-dia" type="number" value="4" class="calc-input !h-9 text-center pl-6 text-[13px]" oninput="onGlobalParamChange()">
+                                    <span class="absolute right-2.5 text-[11px] text-secondary font-medium">cm</span>
+                                </div>
                             </div>
                         </div>
+                    </div>
+                </div>
 
-                        <!-- Global Pattern Config -->
-                        <div class="mt-4 bg-surface-variant/20 dark:bg-slate-900/50 rounded-xl p-3 grid grid-cols-2 md:grid-cols-6 gap-3">
+                <!-- ── 3. Fabric Specification & Summary Rollup ── -->
+                <div class="bg-white/60 dark:bg-slate-900/80 backdrop-blur-xl border border-white/50 dark:border-slate-800 rounded-[28px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.3)] p-md flex flex-col gap-4">
+                    <button type="button" class="section-toggle w-full flex justify-between items-center" onclick="toggleSection(this)">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center">
+                                <span class="material-symbols-outlined text-[20px]">layers</span>
+                            </div>
+                            <div class="text-left">
+                                <h3 class="text-[16px] font-semibold text-on-surface dark:text-white">Fabric Specification</h3>
+                                <p class="text-[12px] text-secondary dark:text-slate-400">GSM, rate/kg, wastage and aggregated order fabric consumption</p>
+                            </div>
+                        </div>
+                        <span class="material-symbols-outlined text-secondary expand-icon" style="transform:rotate(180deg)">expand_more</span>
+                    </button>
+                    
+                    <div class="section-body border-t border-outline-variant/30 pt-3 flex flex-col gap-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                             <div>
-                                <label class="field-label">Body +M</label>
-                                <input type="number" id="pat-body-m" class="calc-input">
+                                <label class="field-label">Fabric GSM (g/m²)</label>
+                                <input id="adv-gsm" type="number" min="0" placeholder="180" class="calc-input w-full" oninput="onGlobalParamChange()">
                             </div>
                             <div>
-                                <label class="field-label">Chest +M</label>
-                                <input type="number" id="pat-chest-m" class="calc-input">
-                            </div>
-                            <div>
-                                <label class="field-label">Slv L +M</label>
-                                <input type="number" id="pat-slv-m" class="calc-input">
-                            </div>
-                            <div>
-                                <label class="field-label">Dia +M</label>
-                                <input type="number" id="pat-dia-m" class="calc-input">
-                            </div>
-                            <div>
-                                <label class="field-label">GSM</label>
-                                <input type="number" id="pat-gsm" class="calc-input">
+                                <label class="field-label">Fabric Price / kg</label>
+                                <div class="relative">
+                                    <span class="curr-sym absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">₹</span>
+                                    <input id="adv-fabric-price-kg" type="number" min="0" placeholder="420" class="calc-input w-full pl-8" oninput="onGlobalParamChange()">
+                                </div>
                             </div>
                             <div>
                                 <label class="field-label">Wastage %</label>
-                                <input type="number" id="pat-wastage" class="calc-input">
+                                <div class="relative">
+                                    <input id="adv-wastage" type="number" min="0" placeholder="5" value="5" class="calc-input w-full pr-8" oninput="onGlobalParamChange()">
+                                    <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">%</span>
+                                </div>
                             </div>
                         </div>
 
-                        <!-- Fabric Calculation Result -->
-                        <div class="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4 bg-primary/5 border border-primary/20 rounded-xl p-4">
-                            <div class="w-full sm:w-1/3">
-                                <label class="field-label">Fabric Price / kg</label>
-                                <div class="relative">
-                                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-secondary font-semibold">₹</span>
-                                    <input type="number" id="pat-price-kg" class="calc-input pl-7">
-                                </div>
+                        <!-- Derived Fabric Rollups (Highlighted Cards) -->
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
+                            <div class="bg-surface-container-lowest dark:bg-slate-800/80 rounded-2xl p-3 border border-outline-variant/20 flex flex-col justify-between">
+                                <span class="text-[10px] uppercase font-bold text-secondary tracking-wider">Total Fabric</span>
+                                <div class="text-[17px] font-extrabold text-primary" id="res-total-fabric-kg">0.00 kg</div>
                             </div>
-                            <div class="flex items-center gap-6 shrink-0">
-                                <div class="text-right">
-                                    <div class="text-[10px] uppercase font-bold text-secondary">Total Fabric Kgs</div>
-                                    <div class="text-[18px] font-extrabold text-primary" id="res-total-kgs">0.00 kg</div>
-                                </div>
-                                <div class="w-px h-10 bg-outline-variant/30"></div>
-                                <div class="text-right">
-                                    <div class="text-[10px] uppercase font-bold text-secondary">Avg Fabric Cost/pc</div>
-                                    <div class="text-[18px] font-extrabold text-on-surface" id="res-fab-cost-pc">₹0.00</div>
-                                </div>
+                            <div class="bg-surface-container-lowest dark:bg-slate-800/80 rounded-2xl p-3 border border-outline-variant/20 flex flex-col justify-between">
+                                <span class="text-[10px] uppercase font-bold text-secondary tracking-wider">Avg Wt / pc</span>
+                                <div class="text-[17px] font-extrabold text-on-surface dark:text-slate-100" id="res-avg-wt-gms">0.0 gms</div>
+                            </div>
+                            <div class="bg-surface-container-lowest dark:bg-slate-800/80 rounded-2xl p-3 border border-outline-variant/20 flex flex-col justify-between">
+                                <span class="text-[10px] uppercase font-bold text-secondary tracking-wider">Avg Fabric Cost</span>
+                                <div class="text-[17px] font-extrabold text-on-surface dark:text-slate-100" id="res-fabric-cost-pc">₹0.00 /pc</div>
+                            </div>
+                            <div class="bg-surface-container-lowest dark:bg-slate-800/80 rounded-2xl p-3 border border-outline-variant/20 flex flex-col justify-between">
+                                <span class="text-[10px] uppercase font-bold text-secondary tracking-wider">Total Fabric Cost</span>
+                                <div class="text-[17px] font-extrabold text-on-surface dark:text-slate-100" id="res-fabric-cost-total">₹0.00</div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- CMT -->
-                <div class="section-card">
-                    <button type="button" class="section-toggle" onclick="toggleSection(this)">
+                <!-- ── 4. Making / CMT ── -->
+                <div class="bg-white/60 dark:bg-slate-900/80 backdrop-blur-xl border border-white/50 dark:border-slate-800 rounded-[28px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.3)] overflow-hidden">
+                    <button type="button" class="section-toggle w-full flex justify-between items-center p-md" onclick="toggleSection(this)">
                         <div class="flex items-center gap-3">
                             <div class="w-10 h-10 rounded-full bg-[#FF9F0A]/10 text-[#FF9F0A] flex items-center justify-center">
-                                <span class="material-symbols-outlined">content_cut</span>
+                                <span class="material-symbols-outlined text-[20px]">content_cut</span>
                             </div>
                             <div class="text-left">
-                                <h3 class="text-[16px] font-semibold text-on-surface">Making / CMT</h3>
+                                <h3 class="text-[16px] font-semibold text-on-surface dark:text-white">Making / CMT</h3>
+                                <p class="text-[12px] text-secondary dark:text-slate-400">Cutting, Making, Trims &amp; Packing</p>
                             </div>
                         </div>
-                        <span class="material-symbols-outlined text-secondary expand-icon">expand_more</span>
+                        <span class="material-symbols-outlined text-secondary expand-icon" style="transform:rotate(180deg)">expand_more</span>
                     </button>
-                    <div class="section-body flex flex-col gap-4">
-                        <div class="flex bg-surface-container-high border border-outline-variant rounded-[12px] p-1 gap-1 w-full">
-                            <button type="button" onclick="setAdvancedCMTMode('combined')" class="cmt-toggle-btn active bg-primary text-white flex-1 text-[13px] font-semibold py-1.5 rounded-[8px] transition-all">Combined CMT</button>
-                            <button type="button" onclick="setAdvancedCMTMode('separate')" class="cmt-toggle-btn text-secondary bg-surface flex-1 text-[13px] font-semibold py-1.5 rounded-[8px] transition-all">Separate Fields</button>
+                    
+                    <div class="section-body p-md pt-0 border-t border-outline-variant/30 flex flex-col gap-4 mt-2">
+                        <!-- Mode Toggle -->
+                        <div class="flex bg-surface-container-high dark:bg-slate-800 border border-outline-variant rounded-[12px] p-1 gap-1 w-full mb-1">
+                            <button type="button" onclick="setCMTMode('combined')" class="cmt-toggle-btn active bg-primary text-white flex-1 text-[13px] font-semibold py-1.5 rounded-[8px] transition-all duration-200">
+                                Combined CMT
+                            </button>
+                            <button type="button" onclick="setCMTMode('separate')" class="cmt-toggle-btn text-secondary bg-surface dark:bg-slate-700 flex-1 text-[13px] font-semibold py-1.5 rounded-[8px] transition-all duration-200">
+                                Separate Fields
+                            </button>
                         </div>
+                        
+                        <!-- COMBINED -->
                         <div id="cmt-combined">
-                            <div>
-                                <label class="field-label">CMT / pc</label>
-                                <input type="number" id="u-cmt" class="calc-input">
+                            <div class="grid grid-cols-2 gap-3 items-end">
+                                <div>
+                                    <label class="field-label">CMT / pc</label>
+                                    <div class="relative">
+                                        <span class="curr-sym absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">₹</span>
+                                        <input id="u-cmt" type="number" min="0" placeholder="25" class="calc-input w-full pl-8" oninput="syncField('u-cmt', 'u-cmt-total', 'pc')">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="field-label">Total CMT</label>
+                                    <div class="relative">
+                                        <span class="curr-sym absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">₹</span>
+                                        <input id="u-cmt-total" type="number" min="0" placeholder="0" class="calc-input w-full pl-8" oninput="syncField('u-cmt', 'u-cmt-total', 'total')">
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <div id="cmt-separate" style="display:none;" class="grid grid-cols-2 gap-3">
-                            <div><label class="field-label">Cutting / pc</label><input type="number" id="u-cutting" class="calc-input"></div>
-                            <div><label class="field-label">Fusing / pc</label><input type="number" id="u-fusing" class="calc-input"></div>
-                            <div><label class="field-label">Wages / pc</label><input type="number" id="u-wages" class="calc-input"></div>
-                            <div><label class="field-label">Packing / pc</label><input type="number" id="u-packing" class="calc-input"></div>
+
+                        <!-- SEPARATE -->
+                        <div id="cmt-separate" style="display:none;" class="flex flex-col gap-3">
+                            <div class="grid grid-cols-2 gap-3 items-end">
+                                <div>
+                                    <label class="field-label">Cutting / pc</label>
+                                    <div class="relative">
+                                        <span class="curr-sym absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">₹</span>
+                                        <input id="u-cutting" type="number" min="0" placeholder="5" class="calc-input w-full pl-8" oninput="syncField('u-cutting', 'u-cutting-total', 'pc')">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="field-label">Total Cutting</label>
+                                    <div class="relative">
+                                        <span class="curr-sym absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">₹</span>
+                                        <input id="u-cutting-total" type="number" min="0" placeholder="0" class="calc-input w-full pl-8" oninput="syncField('u-cutting', 'u-cutting-total', 'total')">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3 items-end">
+                                <div>
+                                    <label class="field-label">Fusing / pc</label>
+                                    <div class="relative">
+                                        <span class="curr-sym absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">₹</span>
+                                        <input id="u-fusing" type="number" min="0" placeholder="2" class="calc-input w-full pl-8" oninput="syncField('u-fusing', 'u-fusing-total', 'pc')">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="field-label">Total Fusing</label>
+                                    <div class="relative">
+                                        <span class="curr-sym absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">₹</span>
+                                        <input id="u-fusing-total" type="number" min="0" placeholder="0" class="calc-input w-full pl-8" oninput="syncField('u-fusing', 'u-fusing-total', 'total')">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3 items-end">
+                                <div>
+                                    <label class="field-label">Wages / pc</label>
+                                    <div class="relative">
+                                        <span class="curr-sym absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">₹</span>
+                                        <input id="u-wages" type="number" min="0" placeholder="12" class="calc-input w-full pl-8" oninput="syncField('u-wages', 'u-wages-total', 'pc')">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="field-label">Total Wages</label>
+                                    <div class="relative">
+                                        <span class="curr-sym absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">₹</span>
+                                        <input id="u-wages-total" type="number" min="0" placeholder="0" class="calc-input w-full pl-8" oninput="syncField('u-wages', 'u-wages-total', 'total')">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3 items-end">
+                                <div>
+                                    <label class="field-label">Packing / pc</label>
+                                    <div class="relative">
+                                        <span class="curr-sym absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">₹</span>
+                                        <input id="u-packing" type="number" min="0" placeholder="3" class="calc-input w-full pl-8" oninput="syncField('u-packing', 'u-packing-total', 'pc')">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="field-label">Total Packing</label>
+                                    <div class="relative">
+                                        <span class="curr-sym absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">₹</span>
+                                        <input id="u-packing-total" type="number" min="0" placeholder="0" class="calc-input w-full pl-8" oninput="syncField('u-packing', 'u-packing-total', 'total')">
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Printing & Sublimation -->
-                <div class="section-card">
-                    <button type="button" class="section-toggle" onclick="toggleSection(this)">
+                <!-- ── 5. Printing & Sublimation ── -->
+                <div class="bg-white/60 dark:bg-slate-900/80 backdrop-blur-xl border border-white/50 dark:border-slate-800 rounded-[28px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.3)] overflow-hidden">
+                    <button type="button" class="section-toggle w-full flex justify-between items-center p-md" onclick="toggleSection(this)">
                         <div class="flex items-center gap-3">
                             <div class="w-10 h-10 rounded-full bg-[#AF52DE]/10 text-[#AF52DE] flex items-center justify-center">
-                                <span class="material-symbols-outlined">palette</span>
+                                <span class="material-symbols-outlined text-[20px]">palette</span>
                             </div>
-                            <div class="text-left"><h3 class="text-[16px] font-semibold text-on-surface">Printing & Sublimation</h3></div>
+                            <div class="text-left">
+                                <h3 class="text-[16px] font-semibold text-on-surface dark:text-white">Printing &amp; Sublimation</h3>
+                                <p class="text-[12px] text-secondary dark:text-slate-400">Screen printing, DTF, embroidery, sublimation</p>
+                            </div>
                         </div>
-                        <span class="material-symbols-outlined text-secondary expand-icon">expand_more</span>
+                        <span class="material-symbols-outlined text-secondary expand-icon" style="transform:rotate(0deg)">expand_more</span>
                     </button>
-                    <div class="section-body grid grid-cols-2 gap-3" style="display:none;">
-                        <div><label class="field-label">Printing / pc</label><input type="number" id="u-printing" class="calc-input"></div>
-                        <div><label class="field-label">Sublimation / pc</label><input type="number" id="u-sublimation" class="calc-input"></div>
+                    <div class="section-body p-md pt-0 border-t border-outline-variant/30 flex flex-col gap-3 mt-2" style="display:none;">
+                        <div class="grid grid-cols-2 gap-3 items-end">
+                            <div>
+                                <label class="field-label">Printing / pc</label>
+                                <div class="relative">
+                                    <span class="curr-sym absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">₹</span>
+                                    <input id="u-printing" type="number" min="0" placeholder="0" class="calc-input w-full pl-8" oninput="syncField('u-printing', 'u-printing-total', 'pc')">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="field-label">Total Printing</label>
+                                <div class="relative">
+                                    <span class="curr-sym absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">₹</span>
+                                    <input id="u-printing-total" type="number" min="0" placeholder="0" class="calc-input w-full pl-8" oninput="syncField('u-printing', 'u-printing-total', 'total')">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3 items-end">
+                            <div>
+                                <label class="field-label">Sublimation / pc</label>
+                                <div class="relative">
+                                    <span class="curr-sym absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">₹</span>
+                                    <input id="u-sublimation" type="number" min="0" placeholder="0" class="calc-input w-full pl-8" oninput="syncField('u-sublimation', 'u-sublimation-total', 'pc')">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="field-label">Total Sublimation</label>
+                                <div class="relative">
+                                    <span class="curr-sym absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">₹</span>
+                                    <input id="u-sublimation-total" type="number" min="0" placeholder="0" class="calc-input w-full pl-8" oninput="syncField('u-sublimation', 'u-sublimation-total', 'total')">
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Accessories & Pattern -->
-                <div class="section-card">
-                    <button type="button" class="section-toggle" onclick="toggleSection(this)">
+                <!-- ── 6. Accessories & Pattern Lump Sums ── -->
+                <div class="bg-white/60 dark:bg-slate-900/80 backdrop-blur-xl border border-white/50 dark:border-slate-800 rounded-[28px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.3)] overflow-hidden">
+                    <button type="button" class="section-toggle w-full flex justify-between items-center p-md" onclick="toggleSection(this)">
                         <div class="flex items-center gap-3">
                             <div class="w-10 h-10 rounded-full bg-[#34C759]/10 text-[#34C759] flex items-center justify-center">
-                                <span class="material-symbols-outlined">style</span>
+                                <span class="material-symbols-outlined text-[20px]">style</span>
                             </div>
-                            <div class="text-left"><h3 class="text-[16px] font-semibold text-on-surface">Accessories & Pattern</h3><p class="text-[12px] text-secondary">Lump sums per order</p></div>
+                            <div class="text-left">
+                                <h3 class="text-[16px] font-semibold text-on-surface dark:text-white">Accessories &amp; Pattern</h3>
+                                <p class="text-[12px] text-secondary dark:text-slate-400">Labels, tags, buttons, polybags, master patterns</p>
+                            </div>
                         </div>
-                        <span class="material-symbols-outlined text-secondary expand-icon">expand_more</span>
+                        <span class="material-symbols-outlined text-secondary expand-icon" style="transform:rotate(0deg)">expand_more</span>
                     </button>
-                    <div class="section-body grid grid-cols-2 gap-3" style="display:none;">
-                        <div><label class="field-label">Acc 1 / Order</label><input type="number" id="u-acc1" class="calc-input"></div>
-                        <div><label class="field-label">Acc 2 / Order</label><input type="number" id="u-acc2" class="calc-input"></div>
-                        <div><label class="field-label">Acc 3 / Order</label><input type="number" id="u-acc3" class="calc-input"></div>
-                        <div><label class="field-label">Pattern / Order</label><input type="number" id="u-pattern" class="calc-input"></div>
+                    <div class="section-body p-md pt-0 border-t border-outline-variant/30 flex flex-col gap-3 mt-2" style="display:none;">
+                        <div class="grid grid-cols-2 gap-3 items-end">
+                            <div>
+                                <label class="field-label">Acc 1 / Order (Lump)</label>
+                                <div class="relative">
+                                    <span class="curr-sym absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">₹</span>
+                                    <input id="u-acc1" type="number" min="0" placeholder="0" class="calc-input w-full pl-8" oninput="syncField('u-acc1-pc', 'u-acc1', 'total')">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="field-label">Per pc</label>
+                                <div class="relative">
+                                    <span class="curr-sym absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">₹</span>
+                                    <input id="u-acc1-pc" type="number" min="0" placeholder="0" class="calc-input w-full pl-8" oninput="syncField('u-acc1-pc', 'u-acc1', 'pc')">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3 items-end">
+                            <div>
+                                <label class="field-label">Acc 2 / Order (Lump)</label>
+                                <div class="relative">
+                                    <span class="curr-sym absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">₹</span>
+                                    <input id="u-acc2" type="number" min="0" placeholder="0" class="calc-input w-full pl-8" oninput="syncField('u-acc2-pc', 'u-acc2', 'total')">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="field-label">Per pc</label>
+                                <div class="relative">
+                                    <span class="curr-sym absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">₹</span>
+                                    <input id="u-acc2-pc" type="number" min="0" placeholder="0" class="calc-input w-full pl-8" oninput="syncField('u-acc2-pc', 'u-acc2', 'pc')">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3 items-end">
+                            <div>
+                                <label class="field-label">Acc 3 / Order (Lump)</label>
+                                <div class="relative">
+                                    <span class="curr-sym absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">₹</span>
+                                    <input id="u-acc3" type="number" min="0" placeholder="0" class="calc-input w-full pl-8" oninput="syncField('u-acc3-pc', 'u-acc3', 'total')">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="field-label">Per pc</label>
+                                <div class="relative">
+                                    <span class="curr-sym absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">₹</span>
+                                    <input id="u-acc3-pc" type="number" min="0" placeholder="0" class="calc-input w-full pl-8" oninput="syncField('u-acc3-pc', 'u-acc3', 'pc')">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3 items-end">
+                            <div>
+                                <label class="field-label">Pattern Master Fee / Order</label>
+                                <div class="relative">
+                                    <span class="curr-sym absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">₹</span>
+                                    <input id="u-pattern" type="number" min="0" placeholder="0" class="calc-input w-full pl-8" oninput="recalcAdvanced()">
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Allowances & Overheads -->
-                <div class="section-card">
-                    <button type="button" class="section-toggle" onclick="toggleSection(this)">
+                <!-- ── 7. Allowances & Overheads ── -->
+                <div class="bg-white/60 dark:bg-slate-900/80 backdrop-blur-xl border border-white/50 dark:border-slate-800 rounded-[28px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.3)] overflow-hidden">
+                    <button type="button" class="section-toggle w-full flex justify-between items-center p-md" onclick="toggleSection(this)">
                         <div class="flex items-center gap-3">
                             <div class="w-10 h-10 rounded-full bg-[#5856D6]/10 text-[#5856D6] flex items-center justify-center">
-                                <span class="material-symbols-outlined">account_balance_wallet</span>
+                                <span class="material-symbols-outlined text-[20px]">account_balance_wallet</span>
                             </div>
-                            <div class="text-left"><h3 class="text-[16px] font-semibold text-on-surface">Allowances & Overheads</h3></div>
+                            <div class="text-left">
+                                <h3 class="text-[16px] font-semibold text-on-surface dark:text-white">Allowances &amp; Overheads</h3>
+                                <p class="text-[12px] text-secondary dark:text-slate-400">Buffer contingencies, factory rent, utilities</p>
+                            </div>
                         </div>
-                        <span class="material-symbols-outlined text-secondary expand-icon">expand_more</span>
+                        <span class="material-symbols-outlined text-secondary expand-icon" style="transform:rotate(0deg)">expand_more</span>
                     </button>
-                    <div class="section-body grid grid-cols-2 gap-3" style="display:none;">
-                        <div><label class="field-label">Allowances / pc</label><input type="number" id="u-allowances" class="calc-input"></div>
-                        <div><label class="field-label">Overheads / pc</label><input type="number" id="u-overheads" class="calc-input"></div>
+                    <div class="section-body p-md pt-0 border-t border-outline-variant/30 flex flex-col gap-3 mt-2" style="display:none;">
+                        <div class="grid grid-cols-2 gap-3 items-end">
+                            <div>
+                                <label class="field-label">Allowances / pc</label>
+                                <div class="relative">
+                                    <span class="curr-sym absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">₹</span>
+                                    <input id="u-allowances" type="number" min="0" placeholder="0" class="calc-input w-full pl-8" oninput="syncField('u-allowances', 'u-allowances-total', 'pc')">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="field-label">Total Allowances</label>
+                                <div class="relative">
+                                    <span class="curr-sym absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">₹</span>
+                                    <input id="u-allowances-total" type="number" min="0" placeholder="0" class="calc-input w-full pl-8" oninput="syncField('u-allowances', 'u-allowances-total', 'total')">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3 items-end">
+                            <div>
+                                <label class="field-label">Overheads / pc</label>
+                                <div class="relative">
+                                    <span class="curr-sym absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">₹</span>
+                                    <input id="u-overheads" type="number" min="0" placeholder="0" class="calc-input w-full pl-8" oninput="syncField('u-overheads', 'u-overheads-total', 'pc')">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="field-label">Total Overheads</label>
+                                <div class="relative">
+                                    <span class="curr-sym absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">₹</span>
+                                    <input id="u-overheads-total" type="number" min="0" placeholder="0" class="calc-input w-full pl-8" oninput="syncField('u-overheads', 'u-overheads-total', 'total')">
+                                </div>
+                            </div>
+                        </div>
                     </div>
+                </div>
+
+                <!-- ── 8. Selling Price, Margin & Profit Bar (3-Way Reactive Engine) ── -->
+                <div class="bg-white/60 dark:bg-slate-900/80 backdrop-blur-xl border border-white/50 dark:border-slate-800 rounded-[28px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.3)] p-md flex flex-col gap-4">
+                    <h3 class="text-[15px] font-bold text-on-surface dark:text-white flex items-center gap-2">
+                        <span class="material-symbols-outlined text-[18px] text-[#34C759]">sell</span>
+                        Selling Price &amp; Profit Margin
+                    </h3>
+                    <div class="grid grid-cols-3 gap-3">
+                        <div class="col-span-1">
+                            <label class="field-label">SP / pc</label>
+                            <div class="relative">
+                                <span class="curr-sym absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">₹</span>
+                                <input id="u-sp-pc" type="number" min="0" step="0.01" placeholder="220" class="calc-input w-full pl-8" oninput="onUSPChange('sp-pc')">
+                            </div>
+                        </div>
+                        <div class="col-span-1">
+                            <label class="field-label">Total SP</label>
+                            <div class="relative">
+                                <span class="curr-sym absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">₹</span>
+                                <input id="u-sp-total" type="number" min="0" step="0.01" placeholder="0" class="calc-input w-full pl-8" oninput="onUSPChange('sp-total')">
+                            </div>
+                        </div>
+                        <div class="col-span-1">
+                            <label class="field-label">Profit %</label>
+                            <div class="relative">
+                                <input id="u-profit-pct" type="number" min="0" step="0.5" placeholder="30" value="30" class="calc-input w-full pr-8" oninput="onUSPChange('pct')">
+                                <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">%</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="flex justify-between text-[12px] text-secondary dark:text-slate-400 font-medium mb-1.5">
+                            <span>Target Margin Gauge</span>
+                            <span id="u-margin-label" class="font-bold text-secondary dark:text-slate-300">—</span>
+                        </div>
+                        <div class="w-full bg-surface-container dark:bg-slate-800 h-2.5 rounded-full overflow-hidden">
+                            <div id="u-profit-bar" class="profit-bar-fill h-full rounded-full bg-primary" style="width:30%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ── 9. Visual Cost Breakdown ── -->
+                <div id="u-breakdown" class="bg-white/60 dark:bg-slate-900/80 backdrop-blur-xl border border-white/50 dark:border-slate-800 rounded-[28px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.3)] p-md hidden flex-col gap-4">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-[15px] font-bold text-on-surface dark:text-white flex items-center gap-2">
+                            <span class="material-symbols-outlined text-[18px] text-secondary">donut_small</span>
+                            Cost Breakdown
+                        </h3>
+                        <span id="u-breakdown-total" class="text-[13px] font-bold text-on-surface dark:text-slate-200"></span>
+                    </div>
+                    <div id="u-breakdown-bar" class="w-full h-5 rounded-full overflow-hidden flex"></div>
+                    <div id="u-breakdown-legend" class="flex flex-col gap-2.5"></div>
                 </div>
 
             </form>
 
+            <!-- Actions Row -->
+            <div class="flex gap-2 pt-2 pb-12 w-full">
+                <button type="button" onclick="resetCalculator()" title="Reset All"
+                    class="w-12 h-12 rounded-xl bg-white/60 dark:bg-slate-800/80 backdrop-blur-xl border border-white/50 dark:border-slate-700 shadow-sm flex items-center justify-center text-secondary hover:text-error active-scale transition-apple shrink-0">
+                    <span class="material-symbols-outlined text-[20px]">restart_alt</span>
+                </button>
+                <button type="button" id="btn-save-draft" onclick="saveCosting('draft')"
+                    class="flex-1 bg-white/60 dark:bg-slate-800/80 backdrop-blur-xl border border-white/50 dark:border-slate-700 shadow-sm text-on-surface dark:text-slate-200 font-semibold py-3 rounded-xl active-scale transition-apple text-[15px]">
+                    Save Costing
+                </button>
+                <button type="button" onclick="openQuotePreview()"
+                    class="flex-1 bg-primary text-on-primary font-semibold py-3 rounded-xl active-scale transition-apple shadow-md shadow-primary/20 text-[15px] flex items-center justify-center gap-1.5">
+                    <span class="material-symbols-outlined text-[18px]">receipt</span>
+                    Quote
+                </button>
+            </div>
+
         </main>
     </div>
 
-    <!-- Fixed Bottom Result Bar -->
-    <div class="fixed bottom-0 left-0 lg:left-[260px] right-0 bg-surface/90 dark:bg-slate-900/90 backdrop-blur-xl border-t border-outline-variant/30 dark:border-slate-800 p-3 sm:p-4 pb-safe-4 z-40 print:hidden">
-        <div class="max-w-[1200px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
-            <div class="flex items-center justify-between w-full sm:w-auto">
-                <div class="flex flex-col">
-                    <span class="text-[11px] font-semibold text-secondary uppercase tracking-wider">Total Est. Cost</span>
-                    <span id="adv-total-cost" class="text-[18px] sm:text-[20px] font-extrabold text-on-surface dark:text-slate-100">₹0.00</span>
+    <!-- ════════════════════════════════════════ -->
+    <!-- FLOATING DYNAMIC ISLAND RESULT CARD     -->
+    <!-- ════════════════════════════════════════ -->
+    <div class="floating-results px-md pb-2">
+        <div class="dynamic-island overflow-hidden dark:bg-slate-900/90 dark:border-slate-700">
+            <!-- Primary metrics -->
+            <div class="flex divide-x divide-outline-variant/40 dark:divide-slate-800">
+                <div class="flex-1 px-3 py-3 text-center">
+                    <p class="text-[10px] font-semibold text-secondary dark:text-slate-400 uppercase tracking-wider mb-0.5">CP / pc</p>
+                    <p id="result-cp" class="text-[19px] font-bold text-on-surface dark:text-slate-100 transition-all duration-300">₹0.00</p>
+                </div>
+                <div class="flex-1 px-3 py-3 text-center">
+                    <p class="text-[10px] font-semibold text-secondary dark:text-slate-400 uppercase tracking-wider mb-0.5">SP / pc</p>
+                    <p id="result-sp" class="text-[19px] font-bold text-primary dark:text-blue-400 transition-all duration-300">₹0.00</p>
+                </div>
+                <div class="flex-1 px-3 py-3 text-center">
+                    <p class="text-[10px] font-semibold text-secondary dark:text-slate-400 uppercase tracking-wider mb-0.5">Profit %</p>
+                    <p id="result-profit-pct" class="text-[19px] font-bold transition-all duration-300 text-secondary dark:text-slate-300">30%</p>
                 </div>
             </div>
-            <div class="flex items-center gap-2 sm:gap-3 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0 hide-scrollbar shrink-0 justify-between sm:justify-end">
-                <div class="flex flex-col items-end shrink-0">
-                    <span class="text-[10px] sm:text-[11px] font-semibold text-secondary uppercase tracking-wider">Avg Cost/pc</span>
-                    <span id="adv-cost-pc" class="text-[14px] sm:text-[16px] font-bold text-on-surface dark:text-slate-100">₹0.00</span>
-                </div>
-                <div class="w-px h-8 sm:h-10 bg-outline-variant/30 dark:bg-slate-700 shrink-0"></div>
-                <div class="flex flex-col items-end shrink-0">
-                    <span class="text-[10px] sm:text-[11px] font-semibold text-secondary uppercase tracking-wider">Margin</span>
-                    <div class="flex items-center justify-end">
-                        <input type="number" id="adv-profit-pct" class="w-12 sm:w-16 h-6 sm:h-8 text-right bg-surface-variant/50 dark:bg-slate-800 border-none rounded-lg text-[13px] sm:text-[14px] font-bold outline-none px-1" value="30"><span class="ml-1 text-[13px]">%</span>
+
+            <!-- Secondary metrics (order totals) -->
+            <div id="result-summary-row" class="flex border-t border-outline-variant/20 dark:border-slate-800">
+                <div class="flex w-full divide-x divide-outline-variant/20 dark:divide-slate-800">
+                    <div class="flex-1 px-2 py-2 text-center">
+                        <p class="text-[9px] font-semibold text-secondary dark:text-slate-400 uppercase tracking-wider mb-0.5">Total Cost</p>
+                        <p id="result-total-cost" class="text-[12px] font-bold text-on-surface dark:text-slate-200">₹0.00</p>
                     </div>
-                </div>
-                <div class="w-px h-8 sm:h-10 bg-outline-variant/30 dark:bg-slate-700 shrink-0"></div>
-                <div class="flex flex-col items-end shrink-0">
-                    <span class="text-[10px] sm:text-[11px] font-semibold text-secondary uppercase tracking-wider">SP/pc</span>
-                    <span id="adv-sp-pc" class="text-[16px] sm:text-[18px] font-extrabold text-[#00B386]">₹0.00</span>
+                    <div class="flex-1 px-2 py-2 text-center">
+                        <p class="text-[9px] font-semibold text-secondary dark:text-slate-400 uppercase tracking-wider mb-0.5">Revenue</p>
+                        <p id="result-total-sales" class="text-[12px] font-bold text-on-surface dark:text-slate-200">₹0.00</p>
+                    </div>
+                    <div class="flex-1 px-2 py-2 text-center">
+                        <p class="text-[9px] font-semibold text-secondary dark:text-slate-400 uppercase tracking-wider mb-0.5">Profit</p>
+                        <p id="result-profit-done" class="text-[12px] font-bold text-[#34C759]">₹0.00</p>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <div id="bottom-nav-container" class="print:hidden"></div>
-    <div id="sheets-container" class="print:hidden"></div>
+    <!-- Navigation & Bottom Sheets Containers -->
+    <div id="bottom-nav-container"></div>
+    <div id="sheets-container"></div>
 
     <script src="../js/app.js"></script>
-    <script>
-        function toggleSection(btn) {
-            const body = btn.nextElementSibling;
-            const icon = btn.querySelector('.expand-icon');
-            if (!body) return;
-            const isOpen = !body.style.display || body.style.display === 'none';
-            body.style.display = isOpen ? 'flex' : 'none';
-            if(body.style.display === 'flex' && body.classList.contains('grid')) body.style.display = 'grid';
-            if (icon) icon.style.transform = isOpen ? 'rotate(180deg)' : 'rotate(0deg)';
-        }
-        function setAdvancedCMTMode(mode) {
-            document.querySelectorAll('.cmt-toggle-btn').forEach(b => {
-                b.classList.remove('active', 'bg-primary', 'text-white');
-                b.classList.add('text-secondary', 'bg-surface');
-            });
-            event.target.classList.add('active', 'bg-primary', 'text-white');
-            event.target.classList.remove('text-secondary', 'bg-surface');
-            
-            document.getElementById('cmt-combined').style.display = mode === 'combined' ? 'block' : 'none';
-            document.getElementById('cmt-separate').style.display = mode === 'separate' ? 'grid' : 'none';
-            
-            if (window.advancedCalculatorStore) {
-                window.advancedCalculatorStore.update({ cmtMode: mode });
-                if(window.recalcAdvanced) window.recalcAdvanced();
-            }
-        }
-    </script>
-    <script type="module" src="../js/stores/AdvancedCalculatorStore.js"></script>
+    <script src="../js/utils/sheet.js"></script>
     <script type="module" src="../js/advanced-calculator/index.js"></script>
 </body>
 </html>

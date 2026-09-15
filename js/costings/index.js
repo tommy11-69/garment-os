@@ -103,8 +103,11 @@ window.navigateToCalculator = function(c, autoPrint = false) {
     // Close sheet if open
     window.closeSheet?.('costingDetailSheet');
     
+    const isAdv = c.mode === 'advanced' || uState.mode === 'advanced';
+    const targetPage = isAdv ? 'advanced-calculator.html' : 'calculator.html';
+
     setTimeout(() => {
-        const dest = autoPrint ? 'calculator.html?action=print' : 'calculator.html';
+        const dest = autoPrint ? `${targetPage}?id=${c.id}&action=print` : `${targetPage}?id=${c.id}`;
         window.location.href = dest;
     }, 200);
 };

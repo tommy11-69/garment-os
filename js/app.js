@@ -244,10 +244,14 @@ window.finishSubtleLoading = function() {
 function initApp() {
     // ── Authentication Guard ──
     const token = localStorage.getItem('gos_token');
-    const isLoginPage = window.location.pathname.includes('/auth/login.html');
+    const isLoginPage = window.location.pathname.includes('/auth/login');
     
-    if (!token && !isLoginPage) {
-        window.location.replace('../auth/login.html');
+    if (isLoginPage) {
+        return;
+    }
+
+    if (!token) {
+        window.location.replace('../auth/login');
         return;
     }
 
