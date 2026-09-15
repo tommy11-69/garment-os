@@ -249,26 +249,29 @@ export const renderers = {
     dashboardOrderCard(order) {
         const rollup = calculateOrderRollup(order);
         const stageDef = rollup.activeStageDef;
+        const targetUrl = window.location.pathname.includes('/pages/')
+            ? `production.html?orderId=${order.id}&stage=${rollup.activeStageKey}`
+            : `pages/production.html?orderId=${order.id}&stage=${rollup.activeStageKey}`;
         return `
-            <div role="button" tabindex="0" onclick="window.location.href='pages/production.html?orderId=${order.id}&stage=${rollup.activeStageKey}'" 
-                class="p-3.5 flex items-center justify-between active-bg transition-colors cursor-pointer rounded-2xl hover:bg-surface-container/60 border border-outline-variant/40 mb-2">
+            <div role="button" tabindex="0" onclick="window.location.href='${targetUrl}'" 
+                class="p-3.5 flex items-center justify-between active-bg transition-colors cursor-pointer rounded-2xl hover:bg-surface-container/60 dark:hover:bg-slate-800/60 border border-outline-variant/40 dark:border-slate-800 mb-2">
                 <div class="flex items-center gap-3 min-w-0 pr-2">
                     <div class="w-10 h-10 rounded-xl ${stageDef.bgColor} ${stageDef.color} flex items-center justify-center shrink-0">
                         <span class="material-symbols-outlined text-[20px]">${stageDef.icon}</span>
                     </div>
                     <div class="min-w-0">
                         <div class="flex items-center gap-2">
-                            <span class="text-[12px] font-mono font-bold text-primary">${order.id}</span>
-                            <span class="text-[13px] font-bold text-on-surface truncate">${order.customerName || order.customerId}</span>
+                            <span class="text-[12px] font-mono font-bold text-primary dark:text-primary-fixed">${order.id}</span>
+                            <span class="text-[13px] font-bold text-on-surface dark:text-slate-100 truncate">${order.customerName || order.customerId}</span>
                         </div>
-                        <p class="text-[12px] text-secondary truncate mt-0.5">${order.product || 'Garments'} • ${(order.qty || 0).toLocaleString()} pcs</p>
+                        <p class="text-[12px] text-secondary dark:text-slate-400 truncate mt-0.5">${order.product || 'Garments'} • ${(order.qty || 0).toLocaleString()} pcs</p>
                     </div>
                 </div>
                 <div class="flex flex-col items-end shrink-0">
                     <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold ${stageDef.color} ${stageDef.bgColor}">
                         ${stageDef.shortLabel} (${rollup.overallPercentage}%)
                     </span>
-                    <span class="text-[11px] text-primary font-bold mt-1 flex items-center gap-0.5">
+                    <span class="text-[11px] text-primary dark:text-primary-fixed font-bold mt-1 flex items-center gap-0.5">
                         Floor <span class="material-symbols-outlined text-[13px]">arrow_forward</span>
                     </span>
                 </div>
@@ -278,20 +281,23 @@ export const renderers = {
 
     dashboardBatchCard(batch) {
         const stageKey = batch.stageKey || 'cutting';
+        const targetUrl = window.location.pathname.includes('/pages/')
+            ? `production.html?stage=${stageKey}`
+            : `pages/production.html?stage=${stageKey}`;
         return `
-            <div onclick="window.location.href='pages/production.html?stage=${stageKey}'" 
-                class="p-3.5 rounded-2xl bg-surface-container-lowest border border-outline-variant/60 shadow-xs cursor-pointer active-scale transition-apple hover:border-primary">
+            <div onclick="window.location.href='${targetUrl}'" 
+                class="p-3.5 rounded-2xl bg-surface-container-low/60 dark:bg-slate-800/60 border border-outline-variant/40 dark:border-slate-700/60 shadow-xs cursor-pointer active-scale transition-apple hover:border-primary">
                 <div class="flex justify-between items-end mb-2">
                     <div>
-                        <span class="text-[14px] font-bold text-on-surface block">Batch #${batch.id}</span>
-                        <span class="text-[12px] text-secondary">${batch.description || 'Production Batch'}</span>
+                        <span class="text-[14px] font-bold text-on-surface dark:text-slate-100 block">Batch #${batch.id}</span>
+                        <span class="text-[12px] text-secondary dark:text-slate-400">${batch.description || 'Production Batch'}</span>
                     </div>
-                    <span class="text-[12px] font-extrabold text-primary">${batch.phase || 'Floor'} ${batch.progress || 0}%</span>
+                    <span class="text-[12px] font-extrabold text-primary dark:text-primary-fixed">${batch.phase || 'Floor'} ${batch.progress || 0}%</span>
                 </div>
-                <div class="relative w-full h-2 bg-surface-container rounded-full overflow-hidden mb-1">
+                <div class="relative w-full h-2 bg-surface-container dark:bg-slate-800 rounded-full overflow-hidden mb-1">
                     <div class="absolute top-0 left-0 h-full ${batch.progressColor || 'bg-primary'} rounded-full transition-apple" style="width: ${batch.progress || 0}%;"></div>
                 </div>
-                <span class="text-[11px] font-bold text-primary flex items-center gap-1 mt-1.5">
+                <span class="text-[11px] font-bold text-primary dark:text-primary-fixed flex items-center gap-1 mt-1.5">
                     <span>Open Department Workspace</span>
                     <span class="material-symbols-outlined text-[13px]">arrow_forward</span>
                 </span>
