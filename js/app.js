@@ -203,16 +203,12 @@ function initApp() {
         document.body.insertBefore(sidebarContainer, document.body.firstChild);
     }
     
-    // Immediately populate static sidebar HTML synchronously to prevent any blank gap or disappearance
+    // Populate static sidebar HTML synchronously if not already present
     if (!sidebarContainer.innerHTML || sidebarContainer.innerHTML.trim() === '') {
         sidebarContainer.innerHTML = STATIC_SIDEBAR_HTML;
     }
+    // Instantly set active tab state synchronously
     updateSidebarActiveState(currentPage);
-
-    // Fetch dynamic component asynchronously with fallback candidate paths
-    loadComponent('../components/sidebar-nav.html', 'sidebar-container', () => {
-        updateSidebarActiveState(currentPage);
-    });
 
     // ── Load Mobile Bottom Navigation ──
     loadComponent('../components/bottom-nav.html', 'bottom-nav-container', () => {

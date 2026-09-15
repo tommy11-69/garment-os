@@ -82,6 +82,84 @@
 </head>
 <body class="font-body text-body antialiased bg-background">
 
+    <!-- Desktop & Tablet Sidebar Navigation -->
+    <div id="sidebar-container">
+        <nav class="sidebar-nav" id="sidebar-nav" role="navigation" aria-label="Main navigation">
+            <div class="flex items-center gap-3 px-5 h-[68px] shrink-0 border-b border-outline-variant/30">
+                <div class="w-8 h-8 rounded-xl bg-primary flex items-center justify-center shrink-0 shadow-sm">
+                    <span class="material-symbols-outlined text-white text-[18px]" style="font-variation-settings:'FILL' 1;">checkroom</span>
+                </div>
+                <div class="min-w-0">
+                    <h1 class="text-[14px] font-bold text-on-surface tracking-tight leading-tight truncate">Garment OS</h1>
+                    <p class="text-[10px] font-semibold text-secondary uppercase tracking-[0.07em]">Enterprise</p>
+                </div>
+            </div>
+            <div class="flex-1 overflow-y-auto py-3 flex flex-col" style="gap: 1px;">
+                <div class="px-5 pb-1.5 pt-3">
+                    <span class="text-[10px] font-bold text-secondary uppercase tracking-[0.08em]">Workspace</span>
+                </div>
+                <a href="dashboard.html" data-page="dashboard" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+                    <span class="material-symbols-outlined text-[20px] shrink-0">dashboard</span>
+                    <span class="text-[13px] font-semibold leading-none">Dashboard</span>
+                </a>
+                <a href="calculator.html" data-page="calculator" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+                    <span class="material-symbols-outlined text-[20px] shrink-0">calculate</span>
+                    <span class="text-[13px] font-semibold leading-none">Costing</span>
+                </a>
+                <a href="orders.html" data-page="orders" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+                    <span class="material-symbols-outlined text-[20px] shrink-0">receipt_long</span>
+                    <span class="text-[13px] font-semibold leading-none">Orders</span>
+                </a>
+                <a href="billings.html" data-page="billings" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+                    <span class="material-symbols-outlined text-[20px] shrink-0">receipt</span>
+                    <span class="text-[13px] font-semibold leading-none">Billings</span>
+                </a>
+                <a href="finance.html" data-page="finance" class="sidebar-nav-link sidebar-nav-link--active mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none" aria-current="page">
+                    <span class="material-symbols-outlined text-[20px] shrink-0" style="font-variation-settings:'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;">payments</span>
+                    <span class="text-[13px] font-semibold leading-none">Finance</span>
+                </a>
+                <a href="reports.html" data-page="reports" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+                    <span class="material-symbols-outlined text-[20px] shrink-0">analytics</span>
+                    <span class="text-[13px] font-semibold leading-none">Reports</span>
+                </a>
+                <div class="mx-4 my-2 border-t border-outline-variant/40"></div>
+                <div class="px-5 pb-1.5 pt-1">
+                    <span class="text-[10px] font-bold text-secondary uppercase tracking-[0.08em]">Management</span>
+                </div>
+                <a href="customers.html" data-page="customers" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+                    <span class="material-symbols-outlined text-[20px] shrink-0">groups</span>
+                    <span class="text-[13px] font-semibold leading-none">Customers</span>
+                </a>
+                <a href="inventory.html" data-page="inventory" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+                    <span class="material-symbols-outlined text-[20px] shrink-0">inventory_2</span>
+                    <span class="text-[13px] font-semibold leading-none">Inventory</span>
+                </a>
+                <a href="vendors.html" data-page="vendors" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+                    <span class="material-symbols-outlined text-[20px] shrink-0">storefront</span>
+                    <span class="text-[13px] font-semibold leading-none">Vendors</span>
+                </a>
+                <a href="production.html" data-page="production" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+                    <span class="material-symbols-outlined text-[20px] shrink-0">precision_manufacturing</span>
+                    <span class="text-[13px] font-semibold leading-none">Production</span>
+                </a>
+                <a href="dispatch.html" data-page="dispatch" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+                    <span class="material-symbols-outlined text-[20px] shrink-0">local_shipping</span>
+                    <span class="text-[13px] font-semibold leading-none">Dispatch</span>
+                </a>
+            </div>
+            <div class="shrink-0 border-t border-outline-variant/30 py-3 flex flex-col" style="gap: 1px;">
+                <a href="more.html" data-page="more" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+                    <span class="material-symbols-outlined text-[20px] shrink-0">grid_view</span>
+                    <span class="text-[13px] font-semibold leading-none">More</span>
+                </a>
+                <a href="settings.html" data-page="settings" class="sidebar-nav-link mx-2 flex items-center gap-3 px-3 py-2.5 rounded-xl text-secondary transition-colors duration-150 group outline-none">
+                    <span class="material-symbols-outlined text-[20px] shrink-0">settings</span>
+                    <span class="text-[13px] font-semibold leading-none">Settings</span>
+                </a>
+            </div>
+        </nav>
+    </div>
+
     <div id="topbar-container"></div>
 
     <div class="mobile-wrapper">
