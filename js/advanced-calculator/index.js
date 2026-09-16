@@ -730,9 +730,9 @@ window.saveCosting = async function(status = 'saved') {
         };
 
         if (editId) {
-            await api.put(`/costings/${editId}`, payload);
+            await api.updateCosting(editId, payload);
         } else {
-            await api.post('/costings', payload);
+            await api.saveCosting(payload);
         }
 
         window.showToast?.(`Costing successfully ${editId ? 'updated' : 'saved'}!`, 'success');
