@@ -1,23 +1,31 @@
 /**
- * create.js — Multi-Product Split Workflow Order Booking Wizard (v6.0)
+ * create.js — Workflow-First Order Booking Wizard (v7.0)
  *
  * Architecture:
- *  - 4 wizard steps: Buyer & PO | Products & Line Items | Pricing | Review & Launch
- *  - Each product line item owns its own: Fabric spec, Workflow route, Decoration, Unit price
- *  - Saved order includes lineItems[] (new per-product schema) AND flat stageData (legacy compat)
+ *  Step 1: Buyer & PO Profile
+ *  Step 2: Workflow Type Selection → Product Lines (fields driven by workflow)
+ *  Step 3: Pricing — CP (cost price) + SP (selling price) → live margin
+ *  Step 4: Review & Launch
+ *
+ * Workflow types:
+ *  default                   — Standard Knits CMT
+ *  print_before_stitch       — Print-First / Sublimation
+ *  wash_before_stitch        — Enzyme / Garment Wash
+ *  stitch_before_embroidery  — Finished Garment Embellishment
+ *  direct_fulfillment        — Direct Sourcing / Trading (no fabric, no decoration, free-form sizes)
+ *  full_vertical             — Full Vertical Integration (Yarn-to-Garment)
  */
 
-import { orderStore }       from '../stores/OrderStore.js?v=5.2';
-import { customerStore }    from '../stores/CustomerStore.js?v=5.2';
-import { api }              from '../services/api.js?v=5.2';
+import { orderStore }    from '../stores/OrderStore.js?v=5.2';
+import { customerStore } from '../stores/CustomerStore.js?v=5.2';
+import { api }           from '../services/api.js?v=5.2';
 import {
     STAGE_DEFINITIONS,
     WORKFLOW_ROUTES,
-    normalizeStageKey,
     mergeLineItemsToFlatStageData
 } from '../production/domain/workflowEngine.js?v=6.0';
 
-// ─── Fabric Sub-types ────────────────────────────────────────────────────────
+// ─── Fabric Sub-types ─────────────────────────────────────────────────────────
 const FABRIC_SUBTYPES = {
     Cotton: [
         'Single Jersey (100% Combed Cotton)',
@@ -49,109 +57,138 @@ const FABRIC_SUBTYPES = {
     ]
 };
 
-// ─── Workflow Presets (for UI card rendering) ─────────────────────────────────
+// ─── Workflow Presets (for picker card UI) ────────────────────────────────────
 const WORKFLOW_PRESETS = [
     {
-        key:      'default',
-        label:    'Standard Knits CMT',
-        icon:     'precision_manufacturing',
-        pipeline: 'Sourcing → Fabric → Cutting → Stitching → Print/Wash → Packing → Dispatch'
+        key:     'default',
+        label:   'Standard Knits CMT',
+        icon:    'precision_manufacturing',
+        color:   '#007AFF',
+        pipeline:'Sourcing → Fabric → Cutting → Stitching → Print/Wash → Packing → Dispatch',
+        desc:    'Standard cut, make & trim garment manufacturing'
     },
     {
-        key:      'print_before_stitch',
-        label:    'Print-First / Sublimation',
-        icon:     'palette',
-        pipeline: 'Sourcing → Fabric → Cutting → Print → Stitching → Packing → Dispatch'
+        key:     'print_before_stitch',
+        label:   'Print-First / Sublimation',
+        icon:    'palette',
+        color:   '#AF52DE',
+        pipeline:'Sourcing → Fabric → Cutting → Print → Stitching → Packing → Dispatch',
+        desc:    'Panels screen-printed or sublimated before sewing'
     },
     {
-        key:      'wash_before_stitch',
-        label:    'Garment Enzyme Wash',
-        icon:     'water_drop',
-        pipeline: 'Cutting → Stitching → Industrial Wash → Print/Pack → Dispatch'
+        key:     'wash_before_stitch',
+        label:   'Enzyme / Garment Wash',
+        icon:    'water_drop',
+        color:   '#30B0C7',
+        pipeline:'Cutting → Stitching → Industrial Wash → Pack → Dispatch',
+        desc:    'Garments washed after stitching for enzyme or vintage treatment'
     },
     {
-        key:      'stitch_before_embroidery',
-        label:    'Finished Garment Embellishment',
-        icon:     'auto_fix_high',
-        pipeline: 'Cutting → Sewing Assembly → Embroidery on Assembled → Packing'
+        key:     'stitch_before_embroidery',
+        label:   'Finished Garment Embellishment',
+        icon:    'auto_fix_high',
+        color:   '#FF9500',
+        pipeline:'Cutting → Stitching → Embroidery on Assembled → Packing',
+        desc:    'Embroidery or heat-transfer applied on fully assembled garments'
     },
     {
-        key:      'direct_fulfillment',
-        label:    'Direct Sourcing / Trading',
-        icon:     'local_shipping',
-        pipeline: 'Procurement → Quality Audit → Dispatch (no floor cutting/sewing)'
+        key:     'direct_fulfillment',
+        label:   'Direct Sourcing / Trading',
+        icon:    'local_shipping',
+        color:   '#34C759',
+        pipeline:'Procurement → Quality Audit → Dispatch',
+        desc:    'Ready-made goods procurement — no in-house cutting or sewing'
     },
     {
-        key:      'full_vertical',
-        label:    'Full Vertical Integration',
-        icon:     'factory',
-        pipeline: 'Yarn Procurement → Winding → Knitting → Dyeing & Compacting → Cutting → Stitching → Pack → Dispatch'
+        key:     'full_vertical',
+        label:   'Full Vertical Integration',
+        icon:    'factory',
+        color:   '#5856D6',
+        pipeline:'Yarn → Winding → Knitting → Dyeing → Cutting → Stitching → Pack → Dispatch',
+        desc:    'Yarn-to-garment manufacturing with in-house knitting & dyeing'
     }
 ];
 
-// ─── 4 Wizard Steps ──────────────────────────────────────────────────────────
+// ─── Wizard Steps ─────────────────────────────────────────────────────────────
 const WIZARD_STEPS = [
     { id: 'co-step-1', title: 'Buyer & PO Profile' },
-    { id: 'co-step-2', title: 'Products & Split Workflows' },
-    { id: 'co-step-3', title: 'Commercial Pricing' },
+    { id: 'co-step-2', title: 'Workflow & Products' },
+    { id: 'co-step-3', title: 'Pricing' },
     { id: 'co-step-4', title: 'Review & Launch' }
 ];
 
 // ─── Default product factory ──────────────────────────────────────────────────
 function makeDefaultProduct(n = 1) {
     return {
-        id:                  `prod-${Date.now()}-${n}`,
-        name:                '',
-        category:            'Adults',
-        qty:                 0,
-        sizes:               { XS: 0, S: 0, M: 0, L: 0, XL: 0, XXL: 0, XXXL: 0, XXXXL: 0 },
+        id:                   `prod-${Date.now()}-${n}`,
+        name:                 '',
+        category:             'Adults',
+        qty:                  0,
+        sizes:                { XS: 0, S: 0, M: 0, L: 0, XL: 0, XXL: 0, XXXL: 0, XXXXL: 0 },
+        freeSizes:            [{ label: 'S', qty: 0 }, { label: 'M', qty: 0 }, { label: 'L', qty: 0 }],
         fabric: {
-            type:       '',
-            subtype:    '',
-            gsm:        '',
-            dia:        '',
-            ratePerKg:  ''
+            type:    '',
+            subtype: '',
+            gsm:     '',
+            dia:     '',
+            yarnCount: '',
+            yarnBlend: ''
         },
-        workflowType:         'default',
         decorationType:       '',
         decorationPlacement:  '',
         decorationColors:     '',
-        unitPrice:            ''
+        sourceSupplier:       '',
+        sourceRef:            '',
+        sourceColor:          '',
+        sourceNotes:          '',
+        cp:                   '',  // cost price per pc
+        unitPrice:            ''   // selling price per pc (SP)
     };
 }
 
-// ─── Wizard State ────────────────────────────────────────────────────────────
+// ─── Wizard State ─────────────────────────────────────────────────────────────
 let coState = {
-    currentIdx: 0,
-    priority:   'Normal',
-    costings:   [],
-    products:   [ makeDefaultProduct(1) ]
+    currentIdx:        0,
+    priority:          'Normal',
+    orderWorkflowType: '',
+    costings:          [],
+    products:          [makeDefaultProduct(1)]
 };
 
-// Initial default product gets a bell-curve preset on first render
-let _initialPresetApplied = false;
-
-// ─── DOM Helpers ─────────────────────────────────────────────────────────────
+// ─── DOM Helpers ──────────────────────────────────────────────────────────────
 const qs  = id  => document.getElementById(id);
 const val = id  => (qs(id) ? qs(id).value.trim() : '');
 const num = id  => parseFloat(qs(id)?.value) || 0;
 
+// ─── Helper: is workflow that needs fabric? ───────────────────────────────────
+function workflowNeedsFabric(wf) {
+    return wf !== 'direct_fulfillment';
+}
+function workflowNeedsDecoration(wf) {
+    return wf !== 'direct_fulfillment';
+}
+function workflowLocksPrint(wf) {
+    return wf === 'print_before_stitch';
+}
+function workflowLocksEmbroidery(wf) {
+    return wf === 'stitch_before_embroidery';
+}
+function workflowIsDirectFulfillment(wf) {
+    return wf === 'direct_fulfillment';
+}
+function workflowIsFullVertical(wf) {
+    return wf === 'full_vertical';
+}
+
 // ─── DOMContentLoaded Initialization ─────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
-    // 1. Default delivery date (+21 days)
+    // Default delivery date (+21 days)
     const defDelivery = new Date();
     defDelivery.setDate(defDelivery.getDate() + 21);
     const delInput = qs('co-delivery');
     if (delInput) delInput.value = defDelivery.toISOString().split('T')[0];
 
-    // 2. Apply bell-curve ratio to first default product so size cells are pre-filled
-    applyRatioPresetInternal(0, 'bell');
-    _initialPresetApplied = true;
-
-    // 3. Render initial products list
-    renderProducts();
-
-    // 4. Load customers
+    // Load customers
     try {
         await customerStore.loadInitial();
         populateCustomers();
@@ -160,7 +197,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.error('Failed to load customers:', e);
     }
 
-    // 5. Load quotations for auto-fill
+    // Load quotations for auto-fill
     try {
         coState.costings = await api.getCostings().catch(() => []);
         populateQuotations();
@@ -168,15 +205,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.error('Failed to load costings:', e);
     }
 
-    // 6. Bind advance payment listener (other listeners are inline in rendered HTML)
+    // Bind advance payment listener
     qs('co-advance-payment')?.addEventListener('input', calculateFinancials);
 
-    // 7. Initial financials + step render
+    // Initial renders
     calculateFinancials();
     renderStep();
 });
 
-// ─── Customers Dropdown ──────────────────────────────────────────────────────
+// ─── Customers Dropdown ───────────────────────────────────────────────────────
 function populateCustomers() {
     const sel = qs('co-customer');
     if (!sel) return;
@@ -214,12 +251,12 @@ function prefillCustomerAddress(customerId) {
     if (!customerId) return;
     const cust = (customerStore.state.entities || []).find(c => c.id === customerId);
     if (cust?.shippingAddress) {
-        const addrField = qs('co-shipping-address');
+        const addrField = qs('co-order-notes');
         if (addrField && !addrField.value) addrField.value = cust.shippingAddress;
     }
 }
 
-// ─── Quotations Autofill ─────────────────────────────────────────────────────
+// ─── Quotations Autofill ──────────────────────────────────────────────────────
 function populateQuotations() {
     const sel = qs('co-quote-select');
     if (!sel) return;
@@ -240,9 +277,9 @@ window.coApplyQuotation = function(costingId) {
     const prod = coState.products[0];
     if (!prod) return;
 
-    if (quote.styleRef)    prod.name = quote.styleRef;
-    if (quote.fabricGsm)   prod.fabric.gsm = Number(quote.fabricGsm);
-    if (quote.fabricType)  prod.fabric.type = quote.fabricType;
+    if (quote.styleRef)   prod.name = quote.styleRef;
+    if (quote.fabricGsm)  prod.fabric.gsm = Number(quote.fabricGsm);
+    if (quote.fabricType) prod.fabric.type = quote.fabricType;
     if (quote.retailPrice || quote.totalCost) {
         prod.unitPrice = Number(quote.retailPrice || quote.totalCost) || prod.unitPrice;
     }
@@ -252,7 +289,7 @@ window.coApplyQuotation = function(costingId) {
     showToast(`Pre-filled specs from "${quote.styleRef}"`, 'success');
 };
 
-// ─── Priority Toggle ─────────────────────────────────────────────────────────
+// ─── Priority Toggle ──────────────────────────────────────────────────────────
 window.coSetPriority = function(prio) {
     coState.priority = prio;
     const active   = 'py-3 rounded-xl border-2 border-primary bg-primary text-white font-bold text-[13px] transition-all active-scale shadow-xs';
@@ -262,62 +299,90 @@ window.coSetPriority = function(prio) {
     qs('prio-urgent-btn') && (qs('prio-urgent-btn').className = prio === 'Urgent' ? active : inactive);
 };
 
-// ─── Automated BOM Estimator per product ─────────────────────────────────────
-function computeProductBOM(prod) {
-    const qty            = prod.qty || 0;
-    const isFleece       = prod.fabric.type === 'Fleece';
-    const avgConsumption = isFleece ? 0.65 : 0.24;       // kg per pc
-    const netKg          = qty * avgConsumption;
-    const grossKg        = Math.round(netKg * 1.05 * 10) / 10;   // +5% buffer
-    const rolls          = Math.ceil(grossKg / 20);               // 20 kg rolls
-    const fabricCost     = Math.round(grossKg * (Number(prod.fabric.ratePerKg) || 0));
+// ─── Workflow Type Picker ─────────────────────────────────────────────────────
+window.coSelectOrderWorkflow = function(wfKey) {
+    coState.orderWorkflowType = wfKey;
 
-    return { avgConsumption, netKg: Math.round(netKg * 10) / 10, grossKg, rolls, fabricCost };
+    // Auto-set decoration for locked workflows on all products
+    coState.products.forEach(prod => {
+        if (workflowLocksPrint(wfKey)) {
+            prod.decorationType = 'Screen';
+        } else if (workflowLocksEmbroidery(wfKey)) {
+            prod.decorationType = 'Embroidery';
+        }
+    });
+
+    renderWorkflowPicker();
+    renderProducts();
+    calculateFinancials();
+};
+
+function renderWorkflowPicker() {
+    const container = qs('co-workflow-picker');
+    if (!container) return;
+
+    const selected = coState.orderWorkflowType;
+
+    container.innerHTML = `
+        <div class="bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant shadow-sm">
+            <div class="flex items-center gap-2 mb-1">
+                <span class="material-symbols-outlined text-[22px] text-primary">route</span>
+                <h2 class="text-[18px] font-extrabold text-on-surface">Select Production Workflow</h2>
+            </div>
+            <p class="text-[13px] text-secondary mb-4">Choose how this order will be produced. This controls which fields appear for your products.</p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                ${WORKFLOW_PRESETS.map(wf => {
+                    const isSelected = selected === wf.key;
+                    return `
+                    <button type="button"
+                        onclick="window.coSelectOrderWorkflow('${wf.key}')"
+                        class="text-left p-4 rounded-2xl border-2 transition-all active-scale ${isSelected
+                            ? 'border-primary bg-primary/5 shadow-sm'
+                            : 'border-outline-variant bg-surface hover:border-primary/40 hover:bg-surface-container'
+                        }">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="flex-1 min-w-0">
+                                <div class="flex items-center gap-2 mb-1">
+                                    <div class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0" style="background: ${wf.color}20;">
+                                        <span class="material-symbols-outlined text-[16px]" style="color:${wf.color}">${wf.icon}</span>
+                                    </div>
+                                    <h5 class="text-[13px] font-extrabold ${isSelected ? 'text-primary' : 'text-on-surface'} leading-snug">${wf.label}</h5>
+                                </div>
+                                <p class="text-[11px] text-secondary mb-1.5">${wf.desc}</p>
+                                <p class="text-[10px] font-mono text-secondary/70 leading-snug">${wf.pipeline}</p>
+                            </div>
+                            <div class="shrink-0 mt-1">
+                                ${isSelected
+                                    ? `<span class="material-symbols-outlined text-primary text-[22px]">check_circle</span>`
+                                    : `<span class="w-5 h-5 rounded-full border-2 border-outline-variant block mt-0.5"></span>`
+                                }
+                            </div>
+                        </div>
+                    </button>`;
+                }).join('')}
+            </div>
+        </div>
+    `;
 }
 
-// ─── Product card: per-product fabric type switch ────────────────────────────
+// ─── Product card: fabric type switch ────────────────────────────────────────
 window.coSwitchProductFabricType = function(idx, type) {
     const prod = coState.products[idx];
     if (!prod) return;
-
     prod.fabric.type    = type;
     prod.fabric.subtype = (FABRIC_SUBTYPES[type] || [])[0] || '';
     prod.fabric.gsm     = type === 'Fleece' ? 280 : type === 'Polyester' ? 160 : 180;
-
     renderProducts();
-    calculateFinancials();
 };
 
-// ─── Product card: fabric field updates ─────────────────────────────────────
+// ─── Product card: fabric field update ───────────────────────────────────────
 window.coUpdateProductFabricField = function(idx, field, value) {
     const prod = coState.products[idx];
     if (!prod) return;
-    prod.fabric[field] = (field === 'subtype') ? value : (parseFloat(value) || 0);
-    // Update BOM display without re-rendering whole list
-    updateProductBOMDisplay(idx);
-    calculateFinancials();
+    prod.fabric[field] = (field === 'subtype') ? value : (parseFloat(value) || value || '');
 };
 
-function updateProductBOMDisplay(idx) {
-    const prod = coState.products[idx];
-    if (!prod) return;
-    const bom = computeProductBOM(prod);
-    const set = (id, val) => { const el = qs(id); if (el) el.textContent = val; };
-    set(`bom-consumption-${idx}`, `${bom.avgConsumption} kg`);
-    set(`bom-gross-${idx}`,       `${bom.grossKg} kg`);
-    set(`bom-rolls-${idx}`,       `${bom.rolls}`);
-    set(`bom-cost-${idx}`,        `₹${bom.fabricCost.toLocaleString('en-IN')}`);
-}
-
-// ─── Product card: workflow selection ────────────────────────────────────────
-window.coSelectProductWorkflow = function(idx, wfKey) {
-    const prod = coState.products[idx];
-    if (!prod) return;
-    prod.workflowType = wfKey;
-    renderProducts();
-};
-
-// ─── Product card: decoration type selection ─────────────────────────────────
+// ─── Product card: decoration ─────────────────────────────────────────────────
 window.coSelectProductDecType = function(idx, type) {
     const prod = coState.products[idx];
     if (!prod) return;
@@ -332,10 +397,21 @@ window.coUpdateProductField = function(idx, field, value) {
     prod[field] = value;
 };
 
-// ─── Product list management ─────────────────────────────────────────────────
+// ─── Product card: source field update ────────────────────────────────────────
+window.coUpdateProductSourceField = function(idx, field, value) {
+    const prod = coState.products[idx];
+    if (!prod) return;
+    prod[field] = value;
+};
+
+// ─── Product list management ──────────────────────────────────────────────────
 window.coAddProduct = function() {
     const newIdx = coState.products.length + 1;
     const p = makeDefaultProduct(newIdx);
+    // Auto-lock decoration for certain workflows
+    const wf = coState.orderWorkflowType;
+    if (workflowLocksPrint(wf)) p.decorationType = 'Screen';
+    if (workflowLocksEmbroidery(wf)) p.decorationType = 'Embroidery';
     coState.products.push(p);
     renderProducts();
     calculateFinancials();
@@ -351,7 +427,7 @@ window.coRemoveProduct = function(idx) {
     calculateFinancials();
 };
 
-// ─── Product sizing ───────────────────────────────────────────────────────────
+// ─── Standard Sizing ──────────────────────────────────────────────────────────
 window.coSetProductCategory = function(idx, category) {
     const prod = coState.products[idx];
     if (!prod) return;
@@ -391,12 +467,7 @@ window.coUpdateProductTargetQty = function(idx, targetVal) {
         });
     }
 
-    const totalQty = coState.products.reduce((s, p) => s + (p.qty || 0), 0);
-    const totalPcsEl = qs('co-header-total-pcs');
-    if (totalPcsEl) totalPcsEl.textContent = `${totalQty.toLocaleString()} pcs total`;
-
     updateProductSumBadge(idx);
-    updateProductBOMDisplay(idx);
     calculateFinancials();
 };
 
@@ -404,12 +475,76 @@ window.coUpdateProductSizeCell = function(idx, sizeKey, cellVal) {
     const prod = coState.products[idx];
     if (!prod) return;
     prod.sizes[sizeKey] = parseInt(cellVal) || 0;
+    prod.qty = Object.values(prod.sizes).reduce((s, v) => s + (v || 0), 0);
+    const tqInput = qs(`target-qty-${idx}`);
+    if (tqInput) tqInput.value = prod.qty || '';
     updateProductSumBadge(idx);
-    updateProductBOMDisplay(idx);
     calculateFinancials();
 };
 
-// Internal ratio preset logic (not exposed to window)
+// ─── Free-form Sizes (Direct Fulfillment) ─────────────────────────────────────
+window.coAddFreeSizeRow = function(idx) {
+    const prod = coState.products[idx];
+    if (!prod) return;
+    prod.freeSizes.push({ label: '', qty: 0 });
+    renderProductFreeSize(idx);
+    calculateFinancials();
+};
+
+window.coRemoveFreeSizeRow = function(idx, rowIdx) {
+    const prod = coState.products[idx];
+    if (!prod || prod.freeSizes.length <= 1) return;
+    prod.freeSizes.splice(rowIdx, 1);
+    renderProductFreeSize(idx);
+    syncFreeSizeTotal(idx);
+    calculateFinancials();
+};
+
+window.coUpdateFreeSizeLabel = function(idx, rowIdx, label) {
+    const prod = coState.products[idx];
+    if (!prod || !prod.freeSizes[rowIdx]) return;
+    prod.freeSizes[rowIdx].label = label;
+};
+
+window.coUpdateFreeSizeQty = function(idx, rowIdx, qtyVal) {
+    const prod = coState.products[idx];
+    if (!prod || !prod.freeSizes[rowIdx]) return;
+    prod.freeSizes[rowIdx].qty = parseInt(qtyVal) || 0;
+    syncFreeSizeTotal(idx);
+    calculateFinancials();
+};
+
+function syncFreeSizeTotal(idx) {
+    const prod = coState.products[idx];
+    if (!prod) return;
+    prod.qty = prod.freeSizes.reduce((s, r) => s + (r.qty || 0), 0);
+    const badge = qs(`p-sum-badge-${idx}`);
+    if (badge) badge.textContent = `${prod.qty} pcs total`;
+    calculateFinancials();
+}
+
+function renderProductFreeSize(idx) {
+    const prod = coState.products[idx];
+    const container = qs(`free-size-rows-${idx}`);
+    if (!prod || !container) return;
+    container.innerHTML = prod.freeSizes.map((row, rowIdx) => `
+        <div class="flex items-center gap-2" id="free-row-${idx}-${rowIdx}">
+            <input type="text" value="${row.label || ''}" placeholder="Size label (e.g. M, 40, L)"
+                oninput="window.coUpdateFreeSizeLabel(${idx}, ${rowIdx}, this.value)"
+                class="flex-1 bg-surface border border-outline-variant rounded-xl px-3 py-2 text-[13px] font-semibold text-on-surface outline-none focus:ring-2 focus:ring-primary/20">
+            <input type="number" min="0" value="${row.qty || ''}" placeholder="Qty"
+                oninput="window.coUpdateFreeSizeQty(${idx}, ${rowIdx}, this.value)"
+                class="w-24 text-center bg-surface border border-outline-variant rounded-xl px-3 py-2 text-[14px] font-extrabold text-primary outline-none focus:ring-2 focus:ring-primary/20">
+            ${prod.freeSizes.length > 1 ? `
+            <button type="button" onclick="window.coRemoveFreeSizeRow(${idx}, ${rowIdx})"
+                class="text-error hover:bg-error/10 p-2 rounded-lg active-scale transition-apple shrink-0" title="Remove size">
+                <span class="material-symbols-outlined text-[17px]">close</span>
+            </button>` : '<div class="w-9"></div>'}
+        </div>
+    `).join('');
+}
+
+// ─── Ratio Presets ────────────────────────────────────────────────────────────
 function applyRatioPresetInternal(idx, presetType) {
     const prod = coState.products[idx];
     if (!prod) return;
@@ -460,7 +595,7 @@ window.coApplyRatioPreset = function(idx, presetType) {
 function updateProductSumBadge(idx) {
     const prod = coState.products[idx];
     if (!prod) return;
-    const isGeneral = prod.category === 'General';
+    const isGeneral  = prod.category === 'General';
     const currentSum = Object.values(prod.sizes).reduce((s, v) => s + (v || 0), 0);
     const isMatch    = isGeneral ? (prod.qty > 0) : (currentSum === prod.qty);
     const badge      = qs(`p-sum-badge-${idx}`);
@@ -474,8 +609,16 @@ function updateProductSumBadge(idx) {
     }
 }
 
-// ─── Product Card Renderer ───────────────────────────────────────────────────
+// ─── Product Card Renderer ────────────────────────────────────────────────────
 function renderProductCard(prod, idx) {
+    const wf         = coState.orderWorkflowType;
+    const isDirect   = workflowIsDirectFulfillment(wf);
+    const isFullVert = workflowIsFullVertical(wf);
+    const needsFab   = workflowNeedsFabric(wf);
+    const needsDec   = workflowNeedsDecoration(wf);
+    const lockPrint  = workflowLocksPrint(wf);
+    const lockEmb    = workflowLocksEmbroidery(wf);
+
     const isGeneral = prod.category === 'General';
     const isAdults  = prod.category === 'Adults';
     const sizeKeys  = isAdults
@@ -483,109 +626,307 @@ function renderProductCard(prod, idx) {
         : ['24', '26', '28', '30', '32', '34', '36', '38'];
 
     const currentSum = Object.values(prod.sizes).reduce((s, v) => s + (v || 0), 0);
-    const isMatch    = isGeneral ? (prod.qty > 0) : (currentSum === prod.qty);
-    const bom        = computeProductBOM(prod);
+    const totalForBadge = isDirect
+        ? prod.freeSizes.reduce((s, r) => s + (r.qty || 0), 0)
+        : (isGeneral ? prod.qty : currentSum);
+    const isMatch = isDirect ? true : (isGeneral ? prod.qty > 0 : currentSum === prod.qty);
 
-    // Size inputs
-    const sizeInputsHtml = isGeneral ? `
-        <div class="col-span-full bg-surface-container/50 border border-outline-variant/60 rounded-xl p-3.5 flex items-center justify-between">
-            <div class="flex items-center gap-2.5">
-                <div class="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                    <span class="material-symbols-outlined text-[20px]">layers</span>
-                </div>
-                <div>
-                    <p class="text-[13px] font-bold text-on-surface">General / Free Size Quantity</p>
-                    <p class="text-[11px] text-secondary">Single batch volume without size distribution matrix.</p>
-                </div>
+    // ── Section A: Sizing ──────────────────────────────────────────────────────
+    let sizingHtml = '';
+
+    if (isDirect) {
+        // Free-form size rows
+        const rowsHtml = prod.freeSizes.map((row, rowIdx) => `
+            <div class="flex items-center gap-2" id="free-row-${idx}-${rowIdx}">
+                <input type="text" value="${row.label || ''}" placeholder="Size label (e.g. M, 40, Free Size)"
+                    oninput="window.coUpdateFreeSizeLabel(${idx}, ${rowIdx}, this.value)"
+                    class="flex-1 bg-surface border border-outline-variant rounded-xl px-3 py-2 text-[13px] font-semibold text-on-surface outline-none focus:ring-2 focus:ring-primary/20">
+                <input type="number" min="0" value="${row.qty || ''}" placeholder="Qty"
+                    oninput="window.coUpdateFreeSizeQty(${idx}, ${rowIdx}, this.value)"
+                    class="w-24 text-center bg-surface border border-outline-variant rounded-xl px-3 py-2 text-[14px] font-extrabold text-primary outline-none focus:ring-2 focus:ring-primary/20">
+                ${prod.freeSizes.length > 1 ? `
+                <button type="button" onclick="window.coRemoveFreeSizeRow(${idx}, ${rowIdx})"
+                    class="text-error hover:bg-error/10 p-2 rounded-lg active-scale transition-apple shrink-0" title="Remove">
+                    <span class="material-symbols-outlined text-[17px]">close</span>
+                </button>` : '<div class="w-9"></div>'}
             </div>
-            <div class="text-right">
-                <span class="text-[10px] font-bold text-secondary uppercase block">Batch Total</span>
-                <span id="general-qty-display-${idx}" class="text-[15px] font-extrabold text-primary">${prod.qty || 0} pcs</span>
+        `).join('');
+
+        sizingHtml = `
+        <div class="px-5 py-4 flex flex-col gap-3 border-b border-outline-variant/40" style="border-left: 3px solid #34C759; padding-left: 1.5rem;">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[17px] text-[#34C759]">straighten</span>
+                    <h4 class="text-[12px] font-extrabold text-[#34C759] uppercase tracking-widest">Sizes & Quantity</h4>
+                </div>
+                <span id="p-sum-badge-${idx}" class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-primary/10 text-primary border border-primary/20">
+                    ${totalForBadge} pcs total
+                </span>
             </div>
-        </div>
-    ` : sizeKeys.map(sz => `
-        <div class="flex flex-col items-center gap-1 bg-surface-container/60 rounded-xl p-2 border border-outline-variant/40">
-            <span class="text-[10px] font-bold text-secondary uppercase">${sz}</span>
-            <input type="number" min="0" placeholder="0" value="${prod.sizes[sz] || ''}"
-                id="size-input-${idx}-${sz}"
-                oninput="window.coUpdateProductSizeCell(${idx}, '${sz}', this.value)"
-                class="w-full text-center font-bold text-[14px] bg-transparent border-0 p-0 focus:ring-0 outline-none text-on-surface">
-        </div>
-    `).join('');
+            <p class="text-[11px] text-secondary -mt-1">Enter each size and its quantity. Add as many size rows as needed.</p>
+            <div class="flex flex-col gap-2" id="free-size-rows-${idx}">
+                ${rowsHtml}
+            </div>
+            <button type="button" onclick="window.coAddFreeSizeRow(${idx})"
+                class="flex items-center gap-1.5 text-primary font-bold text-[12px] py-2 px-3 rounded-xl border border-primary/30 bg-primary/5 hover:bg-primary/10 active-scale transition-all w-max">
+                <span class="material-symbols-outlined text-[16px]">add</span>
+                Add Size Row
+            </button>
+        </div>`;
 
-    // Fabric type buttons
-    const fabricTypeBtns = ['Cotton', 'Polyester', 'Blended', 'Fleece'].map(ft => {
-        const isActive = prod.fabric.type === ft;
-        const label    = ft === 'Blended' ? 'Poly Blend' : ft === 'Fleece' ? 'Fleece/FT' : ft;
-        return `<button type="button" onclick="window.coSwitchProductFabricType(${idx}, '${ft}')"
-            class="${isActive ? 'border-primary bg-primary text-white shadow-sm' : 'border-outline-variant bg-surface text-secondary'} 
-            py-2 rounded-xl border-2 font-bold text-[12px] transition-all active-scale">
-            ${label}
-        </button>`;
-    }).join('');
-
-    // Fabric subtype options
-    const subtypeOptions = (FABRIC_SUBTYPES[prod.fabric.type] || []).map(s =>
-        `<option value="${s}" ${prod.fabric.subtype === s ? 'selected' : ''}>${s}</option>`
-    ).join('');
-
-    // Workflow preset cards (compact 2-col grid)
-    const workflowCards = WORKFLOW_PRESETS.map(wf => {
-        const isSelected = prod.workflowType === wf.key;
-        return `
-        <div class="${isSelected
-                ? 'border-primary bg-primary/5 shadow-sm'
-                : 'border-outline-variant bg-surface-container-lowest hover:border-primary/40'}
-            workflow-item-card cursor-pointer rounded-xl p-3 border-2 transition-all"
-            onclick="window.coSelectProductWorkflow(${idx}, '${wf.key}')">
-            <div class="flex items-start justify-between gap-2">
-                <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-1.5 mb-0.5">
-                        <span class="material-symbols-outlined text-[14px] ${isSelected ? 'text-primary' : 'text-secondary'}">${wf.icon}</span>
-                        <h5 class="text-[12px] font-extrabold ${isSelected ? 'text-primary' : 'text-on-surface'} leading-snug">${wf.label}</h5>
+    } else {
+        // Standard size grid
+        const sizeInputsHtml = isGeneral ? `
+            <div class="col-span-full bg-surface-container/50 border border-outline-variant/60 rounded-xl p-3.5 flex items-center justify-between">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-[20px]">layers</span>
                     </div>
-                    <p class="text-[10px] text-secondary leading-snug">${wf.pipeline}</p>
+                    <div>
+                        <p class="text-[13px] font-bold text-on-surface">General / Free Size Quantity</p>
+                        <p class="text-[11px] text-secondary">Single batch without size distribution.</p>
+                    </div>
                 </div>
-                ${isSelected
-                    ? `<span class="material-symbols-outlined text-primary text-[18px] shrink-0 mt-0.5">check_circle</span>`
-                    : `<span class="w-4 h-4 rounded-full border-2 border-outline-variant shrink-0 mt-1"></span>`
-                }
+                <div class="text-right">
+                    <span class="text-[10px] font-bold text-secondary uppercase block">Batch Total</span>
+                    <span id="general-qty-display-${idx}" class="text-[15px] font-extrabold text-primary">${prod.qty || 0} pcs</span>
+                </div>
+            </div>
+        ` : sizeKeys.map(sz => `
+            <div class="flex flex-col items-center gap-1 bg-surface-container/60 rounded-xl p-2 border border-outline-variant/40">
+                <span class="text-[10px] font-bold text-secondary uppercase">${sz}</span>
+                <input type="number" min="0" placeholder="0" value="${prod.sizes[sz] || ''}"
+                    id="size-input-${idx}-${sz}"
+                    oninput="window.coUpdateProductSizeCell(${idx}, '${sz}', this.value)"
+                    class="w-full text-center font-bold text-[14px] bg-transparent border-0 p-0 focus:ring-0 outline-none text-on-surface">
+            </div>
+        `).join('');
+
+        sizingHtml = `
+        <div class="px-5 py-4 flex flex-col gap-3 border-b border-outline-variant/40 card-section-sizing pl-6">
+            <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-[17px] text-[#FF9500]">straighten</span>
+                <h4 class="text-[12px] font-extrabold text-[#FF9500] uppercase tracking-widest">Sizing & Quantity</h4>
+            </div>
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div class="flex items-center gap-3 flex-wrap">
+                    <div class="flex rounded-xl border border-outline-variant overflow-hidden text-[12px] font-bold">
+                        <button type="button" onclick="window.coSetProductCategory(${idx}, 'Adults')"
+                            class="${isAdults ? 'bg-primary text-white' : 'bg-surface text-secondary hover:bg-surface-variant'} px-3 py-1.5 transition-all">
+                            Adults
+                        </button>
+                        <button type="button" onclick="window.coSetProductCategory(${idx}, 'Kids')"
+                            class="${prod.category === 'Kids' ? 'bg-primary text-white' : 'bg-surface text-secondary hover:bg-surface-variant'} px-3 py-1.5 transition-all border-l border-outline-variant">
+                            Kids
+                        </button>
+                        <button type="button" onclick="window.coSetProductCategory(${idx}, 'General')"
+                            class="${isGeneral ? 'bg-primary text-white' : 'bg-surface text-secondary hover:bg-surface-variant'} px-3 py-1.5 transition-all border-l border-outline-variant">
+                            General
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <label class="text-[10px] font-bold text-secondary uppercase whitespace-nowrap">Target Qty</label>
+                        <input type="number" min="1" value="${prod.qty || ''}" placeholder="0"
+                            id="target-qty-${idx}"
+                            oninput="window.coUpdateProductTargetQty(${idx}, this.value)"
+                            class="w-24 bg-surface border border-outline-variant rounded-xl px-3 py-1.5 text-[15px] font-extrabold text-primary outline-none focus:ring-2 focus:ring-primary/20 text-center">
+                    </div>
+                </div>
+                ${!isGeneral ? `
+                <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+                    <span class="text-[10px] font-bold text-secondary uppercase mr-1 whitespace-nowrap">Presets:</span>
+                    <button type="button" onclick="window.coApplyRatioPreset(${idx}, 'even')"  class="ratio-btn px-2.5 py-1 rounded-lg border border-outline-variant text-[11px] font-bold text-secondary bg-surface whitespace-nowrap">Even Split</button>
+                    <button type="button" onclick="window.coApplyRatioPreset(${idx}, 'bell')"  class="ratio-btn px-2.5 py-1 rounded-lg border border-outline-variant text-[11px] font-bold text-secondary bg-surface whitespace-nowrap">Bell Curve</button>
+                    <button type="button" onclick="window.coApplyRatioPreset(${idx}, 'clear')" class="ratio-btn px-2.5 py-1 rounded-lg border border-outline-variant text-[11px] font-bold text-error   bg-surface whitespace-nowrap">Clear</button>
+                </div>` : ''}
+            </div>
+            <div class="${isGeneral ? 'grid grid-cols-1' : 'grid grid-cols-4 sm:grid-cols-8 gap-2'}">
+                ${sizeInputsHtml}
+            </div>
+            ${!isGeneral ? `
+            <div id="p-sum-badge-${idx}" class="self-start px-2.5 py-1 rounded-full text-[11px] font-bold ${isMatch ? 'bg-[#008A00]/10 text-[#008A00] border border-[#008A00]/20' : 'bg-error/10 text-error border border-error/20'}">
+                ${currentSum} / ${prod.qty} pcs
+            </div>` : ''}
+        </div>`;
+    }
+
+    // ── Section B: Fabric & Material (optional, hidden for direct) ─────────────
+    let fabricHtml = '';
+    if (needsFab) {
+        const fabricTypeBtns = ['Cotton', 'Polyester', 'Blended', 'Fleece'].map(ft => {
+            const isActive = prod.fabric.type === ft;
+            const label    = ft === 'Blended' ? 'Poly Blend' : ft === 'Fleece' ? 'Fleece/FT' : ft;
+            return `<button type="button" onclick="window.coSwitchProductFabricType(${idx}, '${ft}')"
+                class="${isActive ? 'border-primary bg-primary text-white shadow-sm' : 'border-outline-variant bg-surface text-secondary'}
+                py-2 rounded-xl border-2 font-bold text-[12px] transition-all active-scale">
+                ${label}
+            </button>`;
+        }).join('');
+
+        const subtypeOptions = (FABRIC_SUBTYPES[prod.fabric.type] || []).map(s =>
+            `<option value="${s}" ${prod.fabric.subtype === s ? 'selected' : ''}>${s}</option>`
+        ).join('');
+
+        const yarnFieldsHtml = isFullVert ? `
+            <div class="grid grid-cols-2 gap-3 pt-2 border-t border-outline-variant/30">
+                <div class="flex flex-col gap-1">
+                    <label class="text-[10px] font-bold text-secondary uppercase tracking-wider">Yarn Count (Ne)</label>
+                    <input type="text" value="${prod.fabric.yarnCount || ''}" placeholder="e.g. 30s, 40s"
+                        oninput="window.coUpdateProductFabricField(${idx}, 'yarnCount', this.value)"
+                        class="w-full bg-surface border border-outline-variant rounded-xl px-3 py-2 text-[13px] text-on-surface outline-none focus:ring-2 focus:ring-primary/20">
+                </div>
+                <div class="flex flex-col gap-1">
+                    <label class="text-[10px] font-bold text-secondary uppercase tracking-wider">Yarn Blend %</label>
+                    <input type="text" value="${prod.fabric.yarnBlend || ''}" placeholder="e.g. 60/40 CVC"
+                        oninput="window.coUpdateProductFabricField(${idx}, 'yarnBlend', this.value)"
+                        class="w-full bg-surface border border-outline-variant rounded-xl px-3 py-2 text-[13px] text-on-surface outline-none focus:ring-2 focus:ring-primary/20">
+                </div>
+            </div>` : '';
+
+        fabricHtml = `
+        <div class="px-5 py-4 flex flex-col gap-3 border-b border-outline-variant/40 card-section-fabric pl-6 bg-surface/30">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[17px] text-[#007AFF]">texture</span>
+                    <h4 class="text-[12px] font-extrabold text-[#007AFF] uppercase tracking-widest">Fabric & Material</h4>
+                </div>
+                <span class="text-[10px] font-bold text-secondary bg-surface-container px-2 py-0.5 rounded-full border border-outline-variant/60">Optional</span>
+            </div>
+            <div class="grid grid-cols-4 gap-2">${fabricTypeBtns}</div>
+            ${prod.fabric.type ? `
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div class="flex flex-col gap-1">
+                    <label class="text-[10px] font-bold text-secondary uppercase tracking-wider">Knit Construction</label>
+                    <select onchange="window.coUpdateProductFabricField(${idx}, 'subtype', this.value)"
+                        class="w-full bg-surface border border-outline-variant rounded-xl px-3 py-2 text-[13px] font-semibold text-on-surface outline-none focus:ring-2 focus:ring-primary/20">
+                        ${subtypeOptions || '<option>Select type first</option>'}
+                    </select>
+                </div>
+                <div class="flex flex-col gap-1">
+                    <label class="text-[10px] font-bold text-secondary uppercase tracking-wider">GSM (Weight)</label>
+                    <input type="number" value="${prod.fabric.gsm || ''}" placeholder="e.g. 180"
+                        oninput="window.coUpdateProductFabricField(${idx}, 'gsm', this.value)"
+                        class="w-full bg-surface border border-outline-variant rounded-xl px-3 py-2 text-[14px] font-bold text-on-surface outline-none focus:ring-2 focus:ring-primary/20">
+                </div>
+                <div class="flex flex-col gap-1">
+                    <label class="text-[10px] font-bold text-secondary uppercase tracking-wider">Knitting Dia (inches)</label>
+                    <input type="number" value="${prod.fabric.dia || ''}" placeholder="e.g. 34"
+                        oninput="window.coUpdateProductFabricField(${idx}, 'dia', this.value)"
+                        class="w-full bg-surface border border-outline-variant rounded-xl px-3 py-2 text-[14px] text-on-surface outline-none focus:ring-2 focus:ring-primary/20">
+                </div>
+            </div>
+            ${yarnFieldsHtml}` : `
+            <p class="text-[12px] text-secondary italic">Select a fabric type above to enter specifications.</p>`}
+        </div>`;
+    }
+
+    // ── Section C: Decoration / Embellishment ──────────────────────────────────
+    let decorationHtml = '';
+    if (needsDec) {
+        const decTypes = [
+            { key: 'Screen',     label: 'Screen Print' },
+            { key: 'DTF',        label: 'DTF / Heat Transfer' },
+            { key: 'Sublimation',label: 'Sublimation' },
+            { key: 'Embroidery', label: 'Embroidery' },
+            { key: 'None',       label: 'Plain / Solid' }
+        ];
+
+        let decBtns = '';
+        if (lockPrint) {
+            decBtns = decTypes.filter(d => d.key !== 'None' && d.key !== 'Embroidery').map(({ key, label }) => {
+                const isActive = prod.decorationType === key;
+                return `<button type="button" onclick="window.coSelectProductDecType(${idx}, '${key}')"
+                    class="${isActive ? 'border-primary bg-primary text-white shadow-sm' : 'border-outline-variant bg-surface text-secondary'}
+                    py-2 rounded-xl border-2 font-bold text-[11px] transition-all active-scale">${label}</button>`;
+            }).join('');
+        } else if (lockEmb) {
+            decBtns = `<button type="button" class="border-primary bg-primary text-white py-2 rounded-xl border-2 font-bold text-[11px] col-span-2">Embroidery (Required)</button>`;
+        } else {
+            decBtns = decTypes.map(({ key, label }) => {
+                const isActive = prod.decorationType === key;
+                return `<button type="button" onclick="window.coSelectProductDecType(${idx}, '${key}')"
+                    class="${isActive ? 'border-primary bg-primary text-white shadow-sm' : 'border-outline-variant bg-surface text-secondary'}
+                    py-2 rounded-xl border-2 font-bold text-[11px] transition-all active-scale">${label}</button>`;
+            }).join('');
+        }
+
+        const decDetailsHtml = (prod.decorationType && prod.decorationType !== 'None') ? `
+            <div class="grid grid-cols-2 gap-3 mt-2">
+                <div class="flex flex-col gap-1">
+                    <label class="text-[10px] font-bold text-secondary uppercase tracking-wider">Placement</label>
+                    <input type="text" value="${prod.decorationPlacement || ''}" placeholder="e.g. Center Chest 10×10"
+                        oninput="window.coUpdateProductField(${idx}, 'decorationPlacement', this.value)"
+                        class="w-full bg-surface border border-outline-variant rounded-xl px-3 py-2 text-[13px] text-on-surface outline-none focus:ring-2 focus:ring-primary/20">
+                </div>
+                <div class="flex flex-col gap-1">
+                    <label class="text-[10px] font-bold text-secondary uppercase tracking-wider">${prod.decorationType === 'Embroidery' ? 'Stitch Count' : 'Colors'}</label>
+                    <input type="text" value="${prod.decorationColors || ''}" placeholder="${prod.decorationType === 'Embroidery' ? 'e.g. 15,000 stitches' : 'e.g. 3 Colors Plastisol'}"
+                        oninput="window.coUpdateProductField(${idx}, 'decorationColors', this.value)"
+                        class="w-full bg-surface border border-outline-variant rounded-xl px-3 py-2 text-[13px] text-on-surface outline-none focus:ring-2 focus:ring-primary/20">
+                </div>
+            </div>
+        ` : (!prod.decorationType ? '<p class="text-[11px] text-secondary italic mt-2">Select decoration type above.</p>' : '<p class="text-[11px] text-secondary italic mt-2">Plain / solid — no decoration.</p>');
+
+        const lockNote = lockPrint
+            ? `<span class="text-[10px] font-bold bg-[#AF52DE]/10 text-[#AF52DE] px-2 py-0.5 rounded-full border border-[#AF52DE]/20">Print workflow — select print type</span>`
+            : lockEmb
+                ? `<span class="text-[10px] font-bold bg-[#FF9500]/10 text-[#FF9500] px-2 py-0.5 rounded-full border border-[#FF9500]/20">Embellishment workflow — embroidery required</span>`
+                : `<span class="text-[10px] font-bold text-secondary bg-surface-container px-2 py-0.5 rounded-full border border-outline-variant/60">Optional</span>`;
+
+        decorationHtml = `
+        <div class="px-5 py-4 flex flex-col gap-3 card-section-workflow pl-6">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[17px] text-[#5856D6]">auto_fix_high</span>
+                    <h4 class="text-[12px] font-extrabold text-[#5856D6] uppercase tracking-widest">Decoration / Embellishment</h4>
+                </div>
+                ${lockNote}
+            </div>
+            <div class="grid grid-cols-${lockEmb ? '1' : lockPrint ? '3' : '5'} gap-2">
+                ${decBtns}
+            </div>
+            ${decDetailsHtml}
+        </div>`;
+    }
+
+    // ── Section D: Sourcing Spec (Direct Fulfillment only) ─────────────────────
+    let sourcingHtml = '';
+    if (isDirect) {
+        sourcingHtml = `
+        <div class="px-5 py-4 flex flex-col gap-3" style="border-left: 3px solid #34C759; padding-left: 1.5rem;">
+            <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-[17px] text-[#34C759]">storefront</span>
+                <h4 class="text-[12px] font-extrabold text-[#34C759] uppercase tracking-widest">Sourcing Details</h4>
+                <span class="text-[10px] font-bold text-secondary bg-surface-container px-2 py-0.5 rounded-full border border-outline-variant/60 ml-auto">Optional</span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div class="flex flex-col gap-1">
+                    <label class="text-[10px] font-bold text-secondary uppercase tracking-wider">Supplier / Source Name</label>
+                    <input type="text" value="${prod.sourceSupplier || ''}" placeholder="e.g. Tiruppur Exports Pvt Ltd"
+                        oninput="window.coUpdateProductSourceField(${idx}, 'sourceSupplier', this.value)"
+                        class="w-full bg-surface border border-outline-variant rounded-xl px-3 py-2 text-[13px] text-on-surface outline-none focus:ring-2 focus:ring-primary/20">
+                </div>
+                <div class="flex flex-col gap-1">
+                    <label class="text-[10px] font-bold text-secondary uppercase tracking-wider">Product Ref # / Catalog Code</label>
+                    <input type="text" value="${prod.sourceRef || ''}" placeholder="e.g. CAT-2026-001"
+                        oninput="window.coUpdateProductSourceField(${idx}, 'sourceRef', this.value)"
+                        class="w-full bg-surface border border-outline-variant rounded-xl px-3 py-2 text-[13px] text-on-surface outline-none focus:ring-2 focus:ring-primary/20">
+                </div>
+                <div class="flex flex-col gap-1">
+                    <label class="text-[10px] font-bold text-secondary uppercase tracking-wider">Color / Finish</label>
+                    <input type="text" value="${prod.sourceColor || ''}" placeholder="e.g. Navy Blue, S.No 420"
+                        oninput="window.coUpdateProductSourceField(${idx}, 'sourceColor', this.value)"
+                        class="w-full bg-surface border border-outline-variant rounded-xl px-3 py-2 text-[13px] text-on-surface outline-none focus:ring-2 focus:ring-primary/20">
+                </div>
+                <div class="flex flex-col gap-1">
+                    <label class="text-[10px] font-bold text-secondary uppercase tracking-wider">Notes</label>
+                    <input type="text" value="${prod.sourceNotes || ''}" placeholder="e.g. Pre-packed, hangtag required"
+                        oninput="window.coUpdateProductSourceField(${idx}, 'sourceNotes', this.value)"
+                        class="w-full bg-surface border border-outline-variant rounded-xl px-3 py-2 text-[13px] text-on-surface outline-none focus:ring-2 focus:ring-primary/20">
+                </div>
             </div>
         </div>`;
-    }).join('');
-
-    // Decoration type buttons
-    const decTypes = [
-        { key: 'Screen', label: 'Screen Print' },
-        { key: 'DTF', label: 'DTF Heat Transfer' },
-        { key: 'Embroidery', label: 'Embroidery' },
-        { key: 'None', label: 'Plain / Solid' }
-    ];
-    const decBtns = decTypes.map(({ key, label }) => {
-        const isActive = prod.decorationType === key;
-        return `<button type="button" onclick="window.coSelectProductDecType(${idx}, '${key}')"
-            class="${isActive ? 'border-primary bg-primary text-white shadow-sm' : 'border-outline-variant bg-surface text-secondary'}
-            py-2 rounded-xl border-2 font-bold text-[11px] transition-all active-scale">
-            ${label}
-        </button>`;
-    }).join('');
-
-    const decDetailsHtml = prod.decorationType !== 'None' ? `
-        <div class="grid grid-cols-2 gap-3 mt-2">
-            <div class="flex flex-col gap-1">
-                <label class="text-[10px] font-bold text-secondary uppercase tracking-wider">Placement</label>
-                <input type="text" value="${prod.decorationPlacement || 'Center Chest'}" placeholder="e.g. Center Chest 10×10"
-                    oninput="window.coUpdateProductField(${idx}, 'decorationPlacement', this.value)"
-                    class="w-full bg-surface border border-outline-variant rounded-xl px-3 py-2 text-[13px] text-on-surface outline-none focus:ring-2 focus:ring-primary/20">
-            </div>
-            <div class="flex flex-col gap-1">
-                <label class="text-[10px] font-bold text-secondary uppercase tracking-wider">Colors / Stitches</label>
-                <input type="text" value="${prod.decorationColors || '2 Colors'}" placeholder="e.g. 3 Colors Plastisol"
-                    oninput="window.coUpdateProductField(${idx}, 'decorationColors', this.value)"
-                    class="w-full bg-surface border border-outline-variant rounded-xl px-3 py-2 text-[13px] text-on-surface outline-none focus:ring-2 focus:ring-primary/20">
-            </div>
-        </div>
-    ` : `<p class="text-[11px] text-secondary italic mt-2">No decoration — plain solid garment.</p>`;
+    }
 
     return `
     <div class="bg-surface-container-lowest border-2 border-outline-variant rounded-2xl shadow-sm overflow-hidden transition-all" id="product-card-${idx}">
@@ -599,9 +940,10 @@ function renderProductCard(prod, idx) {
                     class="flex-1 bg-transparent border-0 p-0 text-[15px] font-bold text-on-surface outline-none focus:ring-0 placeholder:text-secondary/50 min-w-0">
             </div>
             <div class="flex items-center gap-2 shrink-0 ml-3">
+                ${!isDirect ? `
                 <span id="p-sum-badge-${idx}" class="px-2.5 py-1 rounded-full text-[11px] font-bold ${isMatch ? 'bg-[#008A00]/10 text-[#008A00] border border-[#008A00]/20' : 'bg-error/10 text-error border border-error/20'}">
                     ${isGeneral ? `${prod.qty || 0} pcs (General)` : `${currentSum} / ${prod.qty} pcs`}
-                </span>
+                </span>` : ''}
                 ${coState.products.length > 1 ? `
                     <button type="button" onclick="window.coRemoveProduct(${idx})"
                         class="text-error hover:bg-error/10 p-1.5 rounded-lg active-scale transition-apple" title="Remove Product">
@@ -611,240 +953,155 @@ function renderProductCard(prod, idx) {
             </div>
         </div>
 
-        <!-- ── Section A: Sizing ─────────────────────────────────────────── -->
-        <div class="px-5 py-4 flex flex-col gap-3 border-b border-outline-variant/40 card-section-sizing pl-6">
-            <div class="flex items-center gap-2">
-                <span class="material-symbols-outlined text-[17px] text-[#FF9500]">straighten</span>
-                <h4 class="text-[12px] font-extrabold text-[#FF9500] uppercase tracking-widest">Sizing &amp; Quantity</h4>
-            </div>
-
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                <div class="flex items-center gap-3 flex-wrap">
-                    <!-- Category toggle -->
-                    <div class="flex rounded-xl border border-outline-variant overflow-hidden text-[12px] font-bold">
-                        <button type="button" onclick="window.coSetProductCategory(${idx}, 'Adults')"
-                            class="${isAdults ? 'bg-primary text-white' : 'bg-surface text-secondary hover:bg-surface-variant'} px-3 py-1.5 transition-all">
-                            Adults
-                        </button>
-                        <button type="button" onclick="window.coSetProductCategory(${idx}, 'Kids')"
-                            class="${prod.category === 'Kids' ? 'bg-primary text-white' : 'bg-surface text-secondary hover:bg-surface-variant'} px-3 py-1.5 transition-all border-l border-outline-variant">
-                            Kids
-                        </button>
-                        <button type="button" onclick="window.coSetProductCategory(${idx}, 'General')"
-                            class="${isGeneral ? 'bg-primary text-white' : 'bg-surface text-secondary hover:bg-surface-variant'} px-3 py-1.5 transition-all border-l border-outline-variant">
-                            General (No Sizes)
-                        </button>
-                    </div>
-                    <!-- Target qty -->
-                    <div class="flex items-center gap-2">
-                        <label class="text-[10px] font-bold text-secondary uppercase whitespace-nowrap">Target Qty</label>
-                        <input type="number" min="1" value="${prod.qty || ''}" placeholder="0"
-                            id="target-qty-${idx}"
-                            oninput="window.coUpdateProductTargetQty(${idx}, this.value)"
-                            class="w-24 bg-surface border border-outline-variant rounded-xl px-3 py-1.5 text-[15px] font-extrabold text-primary outline-none focus:ring-2 focus:ring-primary/20 text-center">
-                    </div>
-                </div>
-                ${!isGeneral ? `
-                <!-- Ratio presets -->
-                <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-                    <span class="text-[10px] font-bold text-secondary uppercase mr-1 whitespace-nowrap">Presets:</span>
-                    <button type="button" onclick="window.coApplyRatioPreset(${idx}, 'even')"  class="ratio-btn px-2.5 py-1 rounded-lg border border-outline-variant text-[11px] font-bold text-secondary bg-surface whitespace-nowrap">Even Split</button>
-                    <button type="button" onclick="window.coApplyRatioPreset(${idx}, 'bell')"  class="ratio-btn px-2.5 py-1 rounded-lg border border-outline-variant text-[11px] font-bold text-secondary bg-surface whitespace-nowrap">Bell Curve</button>
-                    <button type="button" onclick="window.coApplyRatioPreset(${idx}, 'clear')" class="ratio-btn px-2.5 py-1 rounded-lg border border-outline-variant text-[11px] font-bold text-error   bg-surface whitespace-nowrap">Clear</button>
-                </div>
-                ` : ''}
-            </div>
-
-            <!-- Size grid -->
-            <div class="${isGeneral ? 'grid grid-cols-1' : 'grid grid-cols-4 sm:grid-cols-8 gap-2'}">
-                ${sizeInputsHtml}
-            </div>
-        </div>
-
-        <!-- ── Section B: Fabric & Material ─────────────────────────────── -->
-        <div class="px-5 py-4 flex flex-col gap-3 border-b border-outline-variant/40 card-section-fabric pl-6 bg-surface/30">
-            <div class="flex items-center gap-2">
-                <span class="material-symbols-outlined text-[17px] text-[#007AFF]">texture</span>
-                <h4 class="text-[12px] font-extrabold text-[#007AFF] uppercase tracking-widest">Fabric &amp; Material</h4>
-            </div>
-
-            <!-- Fiber type -->
-            <div class="grid grid-cols-4 gap-2">
-                ${fabricTypeBtns}
-            </div>
-
-            <!-- Subtype + GSM + Dia -->
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div class="flex flex-col gap-1">
-                    <label class="text-[10px] font-bold text-secondary uppercase tracking-wider">Knit Construction</label>
-                    <select onchange="window.coUpdateProductFabricField(${idx}, 'subtype', this.value)"
-                        class="w-full bg-surface border border-outline-variant rounded-xl px-3 py-2 text-[13px] font-semibold text-on-surface outline-none focus:ring-2 focus:ring-primary/20">
-                        ${subtypeOptions}
-                    </select>
-                </div>
-                <div class="flex flex-col gap-1">
-                    <label class="text-[10px] font-bold text-secondary uppercase tracking-wider">GSM (Weight) *</label>
-                    <input type="number" value="${prod.fabric.gsm || 180}" placeholder="e.g. 180"
-                        oninput="window.coUpdateProductFabricField(${idx}, 'gsm', this.value)"
-                        class="w-full bg-surface border border-outline-variant rounded-xl px-3 py-2 text-[14px] font-bold text-on-surface outline-none focus:ring-2 focus:ring-primary/20">
-                </div>
-                <div class="flex flex-col gap-1">
-                    <label class="text-[10px] font-bold text-secondary uppercase tracking-wider">Knitting Dia (inches)</label>
-                    <input type="number" value="${prod.fabric.dia || 34}" placeholder="e.g. 34"
-                        oninput="window.coUpdateProductFabricField(${idx}, 'dia', this.value)"
-                        class="w-full bg-surface border border-outline-variant rounded-xl px-3 py-2 text-[14px] text-on-surface outline-none focus:ring-2 focus:ring-primary/20">
-                </div>
-            </div>
-
-            <!-- Rate + Auto BOM mini-card -->
-            <div class="flex flex-col sm:flex-row gap-3 items-stretch">
-                <div class="flex flex-col gap-1 sm:w-44 shrink-0">
-                    <label class="text-[10px] font-bold text-secondary uppercase tracking-wider">Fabric Rate (₹/kg)</label>
-                    <div class="relative">
-                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-secondary font-bold text-[13px]">₹</span>
-                        <input type="number" value="${prod.fabric.ratePerKg || 380}" placeholder="380"
-                            oninput="window.coUpdateProductFabricField(${idx}, 'ratePerKg', this.value)"
-                            class="w-full bg-surface border border-outline-variant rounded-xl pl-8 pr-3 py-2 text-[14px] font-bold text-on-surface outline-none focus:ring-2 focus:ring-primary/20">
-                    </div>
-                </div>
-                <!-- BOM output -->
-                <div class="flex-1 bg-gradient-to-r from-primary/5 to-blue-50 border border-primary/20 rounded-xl p-3">
-                    <div class="flex items-center gap-1.5 mb-2">
-                        <span class="material-symbols-outlined text-[14px] text-primary">calculate</span>
-                        <span class="text-[10px] font-extrabold text-primary uppercase tracking-wider">Auto BOM Estimate (+5% Cutting Buffer)</span>
-                    </div>
-                    <div class="grid grid-cols-4 gap-2 text-center">
-                        <div>
-                            <span class="text-[9px] font-bold text-secondary uppercase block">Per Pc</span>
-                            <strong id="bom-consumption-${idx}" class="text-[13px] text-on-surface">${bom.avgConsumption} kg</strong>
-                        </div>
-                        <div>
-                            <span class="text-[9px] font-bold text-secondary uppercase block">Gross +5%</span>
-                            <strong id="bom-gross-${idx}" class="text-[13px] text-primary">${bom.grossKg} kg</strong>
-                        </div>
-                        <div>
-                            <span class="text-[9px] font-bold text-secondary uppercase block">Est. 20kg Rolls</span>
-                            <strong id="bom-rolls-${idx}" class="text-[13px] text-on-surface">${bom.rolls}</strong>
-                        </div>
-                        <div>
-                            <span class="text-[9px] font-bold text-secondary uppercase block">Fabric Cost</span>
-                            <strong id="bom-cost-${idx}" class="text-[12px] text-[#008A00]">₹${bom.fabricCost.toLocaleString('en-IN')}</strong>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- ── Section C: Production Workflow ──────────────────────────── -->
-        <div class="px-5 py-4 flex flex-col gap-3 card-section-workflow pl-6">
-            <div class="flex items-center gap-2">
-                <span class="material-symbols-outlined text-[17px] text-[#5856D6]">route</span>
-                <h4 class="text-[12px] font-extrabold text-[#5856D6] uppercase tracking-widest">Production Workflow</h4>
-            </div>
-
-            <!-- Workflow preset grid -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                ${workflowCards}
-            </div>
-
-            <!-- Decoration -->
-            <div class="pt-3 border-t border-outline-variant/40">
-                <h5 class="text-[10px] font-bold text-secondary uppercase tracking-wider mb-2">Decoration / Embellishment</h5>
-                <div class="grid grid-cols-4 gap-2">
-                    ${decBtns}
-                </div>
-                ${decDetailsHtml}
-            </div>
-        </div>
+        ${sizingHtml}
+        ${fabricHtml}
+        ${decorationHtml}
+        ${sourcingHtml}
     </div>`;
 }
 
 function renderProducts() {
     const container = qs('co-products-container');
     if (!container) return;
+
+    const wf = coState.orderWorkflowType;
+    if (!wf) {
+        container.innerHTML = `
+            <div class="text-center py-8 text-secondary">
+                <span class="material-symbols-outlined text-[40px] block mb-2 opacity-40">route</span>
+                <p class="text-[14px] font-semibold">Select a workflow type above to add products</p>
+            </div>`;
+        return;
+    }
+
     container.innerHTML = coState.products.map((p, i) => renderProductCard(p, i)).join('');
 
-    const totalQty = coState.products.reduce((s, p) => s + (p.qty || 0), 0);
+    const totalQty = coState.orderWorkflowType === 'direct_fulfillment'
+        ? coState.products.reduce((s, p) => s + p.freeSizes.reduce((ss, r) => ss + (r.qty || 0), 0), 0)
+        : coState.products.reduce((s, p) => s + (p.qty || 0), 0);
+
     const el = qs('co-header-total-pcs');
     if (el) el.textContent = `${totalQty.toLocaleString()} pcs total`;
 }
 
-// ─── Step 3: Per-product Pricing Table ───────────────────────────────────────
+// ─── Step 3: Pricing Table ────────────────────────────────────────────────────
 function renderPricingTable() {
     const container = qs('co-pricing-table');
     if (!container) return;
+    const wf = coState.orderWorkflowType;
 
     container.innerHTML = coState.products.map((prod, idx) => {
-        const lineTotal = (prod.qty || 0) * (prod.unitPrice || 0);
-        const bom       = computeProductBOM(prod);
+        const isDirect = workflowIsDirectFulfillment(wf);
+        const qty      = isDirect
+            ? prod.freeSizes.reduce((s, r) => s + (r.qty || 0), 0)
+            : (prod.qty || 0);
+        const cp       = Number(prod.cp) || 0;
+        const sp       = Number(prod.unitPrice) || 0;
+        const margin   = sp > 0 ? Math.round(((sp - cp) / sp) * 100) : 0;
+        const marginCls = margin >= 26 ? 'text-[#008A00]' : margin >= 18 ? 'text-[#FF9500]' : margin >= 0 ? 'text-error' : 'text-error';
+        const lineRev  = qty * sp;
+        const lineProfit = qty * (sp - cp);
+
+        // Subtitle details
+        let subtitleParts = [`${qty.toLocaleString()} pcs`];
+        if (!isDirect && prod.fabric.type) subtitleParts.push(`${prod.fabric.type}${prod.fabric.gsm ? ' ' + prod.fabric.gsm + ' GSM' : ''}`);
+        if (prod.decorationType && prod.decorationType !== 'None') subtitleParts.push(prod.decorationType);
+        if (isDirect && prod.sourceSupplier) subtitleParts.push(prod.sourceSupplier);
+
         return `
-        <div class="bg-surface-container-lowest border border-outline-variant rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center gap-4">
-            <div class="flex items-center gap-3 flex-1 min-w-0">
-                <span class="w-7 h-7 rounded-full bg-primary/10 text-primary text-[12px] font-extrabold flex items-center justify-center shrink-0">${idx + 1}</span>
-                <div class="min-w-0">
-                    <p class="text-[14px] font-bold text-on-surface truncate">${prod.name || `Product #${idx + 1}`}</p>
-                    <div class="flex items-center gap-2 flex-wrap mt-0.5">
-                        <span class="text-[11px] text-secondary">${(prod.qty || 0).toLocaleString()} pcs</span>
-                        <span class="text-outline-variant">·</span>
-                        <span class="text-[11px] text-secondary">${prod.fabric.type} ${prod.fabric.gsm} GSM</span>
-                        <span class="text-outline-variant">·</span>
-                        <span class="text-[11px] font-bold text-[#5856D6]">${prod.workflowType.replace(/_/g, ' ')}</span>
-                        <span class="text-outline-variant">·</span>
-                        <span class="text-[11px] text-secondary">Fabric Cost: ₹${bom.fabricCost.toLocaleString('en-IN')}</span>
+        <div class="bg-surface-container-lowest border border-outline-variant rounded-2xl p-5 flex flex-col gap-4">
+            <div class="flex items-start gap-3">
+                <span class="w-7 h-7 rounded-full bg-primary/10 text-primary text-[12px] font-extrabold flex items-center justify-center shrink-0 mt-0.5">${idx + 1}</span>
+                <div class="flex-1 min-w-0">
+                    <p class="text-[15px] font-bold text-on-surface truncate">${prod.name || `Product #${idx + 1}`}</p>
+                    <p class="text-[12px] text-secondary mt-0.5">${subtitleParts.join(' · ')}</p>
+                </div>
+                <div class="shrink-0 text-right">
+                    <span class="text-[10px] font-bold text-secondary uppercase block">Margin</span>
+                    <span class="text-[18px] font-extrabold ${marginCls}" id="pricing-margin-${idx}">${sp > 0 ? margin + '%' : '—'}</span>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="flex flex-col gap-1">
+                    <label class="text-[11px] font-bold text-secondary uppercase tracking-wider">CP — Cost Price (₹/pc)</label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-secondary font-bold text-[13px]">₹</span>
+                        <input type="number" value="${prod.cp || ''}" step="0.5" placeholder="Your cost..."
+                            oninput="window.coUpdateProductField(${idx}, 'cp', parseFloat(this.value)||0); window.calculateFinancials();"
+                            class="w-full bg-surface border border-outline-variant rounded-xl pl-8 pr-3 py-2.5 text-[16px] font-extrabold text-on-surface outline-none focus:ring-2 focus:ring-primary/20">
+                    </div>
+                </div>
+                <div class="flex flex-col gap-1">
+                    <label class="text-[11px] font-bold text-secondary uppercase tracking-wider">SP — Selling Price (₹/pc)</label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-secondary font-bold text-[13px]">₹</span>
+                        <input type="number" value="${prod.unitPrice || ''}" step="0.5" placeholder="Your quote to buyer..."
+                            oninput="window.coUpdateProductField(${idx}, 'unitPrice', parseFloat(this.value)||0); window.calculateFinancials();"
+                            class="w-full bg-surface border border-outline-variant rounded-xl pl-8 pr-3 py-2.5 text-[16px] font-extrabold text-primary outline-none focus:ring-2 focus:ring-primary/20">
                     </div>
                 </div>
             </div>
-            <div class="flex items-center gap-4 shrink-0">
-                <div class="flex flex-col gap-0.5">
-                    <label class="text-[10px] font-bold text-secondary uppercase">Unit Price (₹/pc) *</label>
-                    <div class="relative">
-                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-secondary font-bold text-[12px]">₹</span>
-                        <input type="number" value="${prod.unitPrice || ''}" step="0.5" placeholder="e.g. 240"
-                            oninput="window.coUpdateProductField(${idx}, 'unitPrice', parseFloat(this.value) || 0); calculateFinancials();"
-                            class="w-32 bg-surface border border-outline-variant rounded-xl pl-7 pr-3 py-2.5 text-[16px] font-extrabold text-on-surface outline-none focus:ring-2 focus:ring-primary/20">
-                    </div>
+            <div class="grid grid-cols-3 gap-2 pt-3 border-t border-outline-variant/30 text-center">
+                <div>
+                    <span class="text-[10px] font-bold text-secondary uppercase block">Line Revenue</span>
+                    <strong id="line-rev-${idx}" class="text-[14px] text-primary">₹${Math.round(lineRev).toLocaleString('en-IN')}</strong>
                 </div>
-                <div class="flex flex-col gap-0.5 text-right min-w-[80px]">
-                    <span class="text-[10px] font-bold text-secondary uppercase">Line Total</span>
-                    <span id="line-total-${idx}" class="text-[16px] font-extrabold text-primary">₹${Math.round(lineTotal).toLocaleString('en-IN')}</span>
+                <div>
+                    <span class="text-[10px] font-bold text-secondary uppercase block">Line Cost</span>
+                    <strong id="line-cost-${idx}" class="text-[14px] text-secondary">₹${Math.round(qty * cp).toLocaleString('en-IN')}</strong>
+                </div>
+                <div>
+                    <span class="text-[10px] font-bold text-secondary uppercase block">Line Profit</span>
+                    <strong id="line-profit-${idx}" class="text-[14px] ${lineProfit >= 0 ? 'text-[#008A00]' : 'text-error'}">₹${Math.round(lineProfit).toLocaleString('en-IN')}</strong>
                 </div>
             </div>
         </div>`;
     }).join('');
 }
 
-// ─── Commercial Financials ────────────────────────────────────────────────────
+// ─── Financials Calculator ─────────────────────────────────────────────────────
 function calculateFinancials() {
-    let grandRevenue   = 0;
-    let totalFabricCost = 0;
-    let totalQty        = 0;
+    const wf = coState.orderWorkflowType;
+    const isDirect = workflowIsDirectFulfillment(wf);
+
+    let grandRevenue  = 0;
+    let totalCost     = 0;
+    let totalQty      = 0;
 
     coState.products.forEach((prod, idx) => {
-        const qty       = prod.qty || 0;
-        const unitPrice = Number(prod.unitPrice) || 0;
-        const lineTotal = qty * unitPrice;
-        grandRevenue   += lineTotal;
-        totalQty       += qty;
+        const qty   = isDirect
+            ? prod.freeSizes.reduce((s, r) => s + (r.qty || 0), 0)
+            : (prod.qty || 0);
+        const sp    = Number(prod.unitPrice) || 0;
+        const cp    = Number(prod.cp) || 0;
+        const lineRev    = qty * sp;
+        const lineCost   = qty * cp;
+        const lineProfit = qty * (sp - cp);
+        const margin = sp > 0 ? Math.round(((sp - cp) / sp) * 100) : 0;
 
-        const bom = computeProductBOM(prod);
-        totalFabricCost += bom.fabricCost;
+        grandRevenue += lineRev;
+        totalCost    += lineCost;
+        totalQty     += qty;
 
-        // Update line total in pricing table (if visible)
-        const ltEl = qs(`line-total-${idx}`);
-        if (ltEl) ltEl.textContent = `₹${Math.round(lineTotal).toLocaleString('en-IN')}`;
+        // Update pricing table row displays (if rendered)
+        const set = (id, text) => { const el = qs(id); if (el) el.textContent = text; };
+        set(`line-rev-${idx}`,    `₹${Math.round(lineRev).toLocaleString('en-IN')}`);
+        set(`line-cost-${idx}`,   `₹${Math.round(lineCost).toLocaleString('en-IN')}`);
+        set(`line-profit-${idx}`, `₹${Math.round(lineProfit).toLocaleString('en-IN')}`);
+        const marginEl = qs(`pricing-margin-${idx}`);
+        if (marginEl) {
+            marginEl.textContent = sp > 0 ? `${margin}%` : '—';
+            marginEl.className = `text-[18px] font-extrabold ${margin >= 26 ? 'text-[#008A00]' : margin >= 18 ? 'text-[#FF9500]' : 'text-error'}`;
+        }
     });
 
-    const trimsCost    = totalQty * 18;   // ₹18 per pc
-    const cmtCost      = totalQty * 45;   // ₹45 per pc CMT
-    const estimatedCost = Math.round(totalFabricCost + trimsCost + cmtCost);
-    const grossProfit   = grandRevenue - estimatedCost;
-    const marginPct     = grandRevenue > 0 ? Math.round((grossProfit / grandRevenue) * 100) : 0;
+    const grossProfit = grandRevenue - totalCost;
+    const marginPct   = grandRevenue > 0 ? Math.round((grossProfit / grandRevenue) * 100) : 0;
 
-    // Step 3 pricing displays
     const set = (id, text) => { const el = qs(id); if (el) el.textContent = text; };
     set('pricing-total-qty',   `${totalQty.toLocaleString()} pcs`);
     set('co-calc-grand-total', `₹${Math.round(grandRevenue).toLocaleString('en-IN')}`);
-    set('calc-cost-display',   `₹${Math.round(estimatedCost).toLocaleString('en-IN')}`);
+    set('calc-cost-display',   `₹${Math.round(totalCost).toLocaleString('en-IN')}`);
 
     const profitEl = qs('calc-profit-display');
     if (profitEl) {
@@ -852,20 +1109,16 @@ function calculateFinancials() {
         profitEl.className   = `text-[18px] font-extrabold ${grossProfit >= 0 ? 'text-[#008A00]' : 'text-error'}`;
     }
 
-    // Margin gauge
+    // Margin health gauge
     let badgeCls = 'bg-[#008A00]/10 text-[#008A00] border-[#008A00]/20';
     let barBg    = 'bg-[#008A00]';
-    if (marginPct < 18) {
-        badgeCls = 'bg-error/10 text-error border-error/20';
-        barBg    = 'bg-error';
-    } else if (marginPct < 26) {
-        badgeCls = 'bg-[#FF9500]/10 text-[#FF9500] border-[#FF9500]/20';
-        barBg    = 'bg-[#FF9500]';
-    }
+    if (marginPct < 18) { badgeCls = 'bg-error/10 text-error border-error/20'; barBg = 'bg-error'; }
+    else if (marginPct < 26) { badgeCls = 'bg-[#FF9500]/10 text-[#FF9500] border-[#FF9500]/20'; barBg = 'bg-[#FF9500]'; }
+
     const marginBadge = qs('co-margin-badge');
     if (marginBadge) {
         marginBadge.className   = `px-2.5 py-0.5 rounded-full text-[12px] font-extrabold border ${badgeCls}`;
-        marginBadge.textContent = `${marginPct}% Gross Margin`;
+        marginBadge.textContent = grandRevenue > 0 ? `${marginPct}% Gross Margin` : '— Margin';
     }
     const marginBar = qs('co-margin-progress-bar');
     if (marginBar) {
@@ -874,24 +1127,20 @@ function calculateFinancials() {
     }
 
     // Bottom KPI bar
-    set('bar-total-qty',  totalQty.toLocaleString());
-    set('bar-total-val',  `₹${Math.round(grandRevenue).toLocaleString('en-IN')}`);
-
-    const totalBOMkg = coState.products.reduce((s, p) => s + computeProductBOM(p).grossKg, 0);
-    set('bar-fabric-kg', `${Math.round(totalBOMkg * 10) / 10} kg`);
+    set('bar-total-qty', totalQty.toLocaleString());
+    set('bar-total-val', `₹${Math.round(grandRevenue).toLocaleString('en-IN')}`);
 
     const barMarginEl = qs('bar-margin-pct');
     if (barMarginEl) {
-        barMarginEl.textContent = `${marginPct}%`;
+        barMarginEl.textContent = grandRevenue > 0 ? `${marginPct}%` : '—';
         barMarginEl.className   = `text-[15px] font-extrabold ${
             marginPct >= 26 ? 'text-[#008A00]' : marginPct >= 18 ? 'text-[#FF9500]' : 'text-error'
         }`;
     }
 }
-// Expose for inline oninput on pricing table
 window.calculateFinancials = calculateFinancials;
 
-// ─── Step 4: Per-product Workflow Pipeline Visualizer ────────────────────────
+// ─── Step 4: Per-product Workflow Pipeline Visualizer ─────────────────────────
 function buildWorkflowSummary() {
     const container = qs('co-workflow-summary');
     if (!container) return;
@@ -900,11 +1149,11 @@ function buildWorkflowSummary() {
         <div class="bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant shadow-sm">
             <div class="flex items-center gap-2 mb-3">
                 <span class="material-symbols-outlined text-[20px] text-[#5856D6]">account_tree</span>
-                <h3 class="text-[14px] font-bold text-on-surface uppercase tracking-wider">Per-Product Production Pipelines</h3>
+                <h3 class="text-[14px] font-bold text-on-surface uppercase tracking-wider">Production Pipeline</h3>
             </div>
             <div class="flex flex-col gap-4">
                 ${coState.products.map((prod, idx) => {
-                    const stages = WORKFLOW_ROUTES[prod.workflowType] || WORKFLOW_ROUTES.default;
+                    const stages = WORKFLOW_ROUTES[coState.orderWorkflowType] || WORKFLOW_ROUTES.default;
                     const stagePills = stages.map((stageKey, i) => {
                         const def    = STAGE_DEFINITIONS[stageKey];
                         const isLast = i === stages.length - 1;
@@ -919,14 +1168,19 @@ function buildWorkflowSummary() {
                         </div>`;
                     }).join('');
 
+                    const isDirect = workflowIsDirectFulfillment(coState.orderWorkflowType);
+                    const qty = isDirect
+                        ? prod.freeSizes.reduce((s, r) => s + (r.qty || 0), 0)
+                        : (prod.qty || 0);
+
                     return `
                     <div class="bg-surface-container/40 rounded-xl p-3 border border-outline-variant/50">
                         <div class="flex items-center gap-2 mb-2.5">
                             <span class="w-5 h-5 rounded-full bg-primary text-white text-[10px] font-extrabold flex items-center justify-center shrink-0">${idx + 1}</span>
                             <span class="text-[13px] font-bold text-on-surface">${prod.name || `Product #${idx+1}`}</span>
-                            <span class="text-[11px] text-secondary">${(prod.qty||0).toLocaleString()} pcs</span>
+                            <span class="text-[11px] text-secondary">${qty.toLocaleString()} pcs</span>
                             <span class="ml-auto px-2 py-0.5 rounded-full bg-[#5856D6]/10 text-[#5856D6] text-[10px] font-bold border border-[#5856D6]/20">
-                                ${prod.workflowType.replace(/_/g, ' ')}
+                                ${WORKFLOW_PRESETS.find(w => w.key === coState.orderWorkflowType)?.label || coState.orderWorkflowType}
                             </span>
                         </div>
                         <div class="flex items-start gap-1 overflow-x-auto no-scrollbar pb-0.5">
@@ -938,59 +1192,69 @@ function buildWorkflowSummary() {
         </div>`;
 }
 
-// ─── Step 4: Executive Summary ────────────────────────────────────────────────
+// ─── Step 4: Executive Summary ─────────────────────────────────────────────────
 function buildExecutiveSummary() {
     const container = qs('co-executive-summary');
     if (!container) return;
 
-    const customerSel   = qs('co-customer');
-    const customerName  = customerSel?.options[customerSel.selectedIndex]?.text || 'Direct Buyer';
-    const totalQty      = coState.products.reduce((s, p) => s + (p.qty || 0), 0);
-    let   grandRevenue  = 0;
-    let   totalFabricCost = 0;
+    const wf        = coState.orderWorkflowType;
+    const isDirect  = workflowIsDirectFulfillment(wf);
+    const customerSel  = qs('co-customer');
+    const customerName = customerSel?.options[customerSel.selectedIndex]?.text?.split(' (')[0] || 'Direct Buyer';
+
+    let totalQty = 0;
+    let grandRevenue = 0;
+    let totalCost = 0;
+
     coState.products.forEach(p => {
-        grandRevenue    += (p.qty || 0) * (Number(p.unitPrice) || 0);
-        totalFabricCost += computeProductBOM(p).fabricCost;
+        const qty  = isDirect ? p.freeSizes.reduce((s, r) => s + (r.qty || 0), 0) : (p.qty || 0);
+        const sp   = Number(p.unitPrice) || 0;
+        const cp   = Number(p.cp) || 0;
+        totalQty      += qty;
+        grandRevenue  += qty * sp;
+        totalCost     += qty * cp;
     });
-    const estimatedCost = Math.round(totalFabricCost + totalQty * 18 + totalQty * 45);
-    const profit        = grandRevenue - estimatedCost;
-    const marginPct     = grandRevenue > 0 ? Math.round((profit / grandRevenue) * 100) : 0;
+
+    const profit    = grandRevenue - totalCost;
+    const marginPct = grandRevenue > 0 ? Math.round((profit / grandRevenue) * 100) : 0;
 
     container.innerHTML = `
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pb-3 border-b border-outline-variant/40">
             <div>
-                <span class="text-secondary text-[11px] font-bold uppercase block">Buyer &amp; Reference</span>
+                <span class="text-secondary text-[11px] font-bold uppercase block">Buyer & Reference</span>
                 <p class="font-bold text-on-surface text-[15px]">${customerName}</p>
                 <p class="text-secondary text-[12px]">PO #: ${val('co-customer-po') || 'Internal Release'}</p>
             </div>
             <div>
-                <span class="text-secondary text-[11px] font-bold uppercase block">Delivery Target &amp; Priority</span>
+                <span class="text-secondary text-[11px] font-bold uppercase block">Delivery & Priority</span>
                 <p class="font-bold text-on-surface">${val('co-delivery')} · <span class="text-primary font-extrabold uppercase">${coState.priority}</span></p>
-                <p class="text-secondary text-[12px]">${coState.products.length} product line${coState.products.length > 1 ? 's' : ''} · ${coState.products.length} workflow${coState.products.length > 1 ? 's' : ''}</p>
+                <p class="text-secondary text-[12px]">${coState.products.length} product line${coState.products.length > 1 ? 's' : ''} · ${WORKFLOW_PRESETS.find(w => w.key === wf)?.label || wf}</p>
             </div>
         </div>
 
         <div class="py-2 border-b border-outline-variant/40">
             <span class="text-secondary text-[11px] font-bold uppercase block mb-1">Product Lines</span>
-            ${coState.products.map(p => `
+            ${coState.products.map(p => {
+                const qty = isDirect ? p.freeSizes.reduce((s, r) => s + (r.qty || 0), 0) : (p.qty || 0);
+                return `
                 <div class="flex justify-between items-center py-1 text-[13px]">
-                    <span class="font-semibold text-on-surface">${p.name} (${p.category})</span>
+                    <span class="font-semibold text-on-surface">${p.name || 'Unnamed'}</span>
                     <div class="flex items-center gap-3">
-                        <span class="text-secondary text-[11px]">${p.fabric.type} ${p.fabric.gsm}gsm · ${p.workflowType.replace(/_/g,' ')}</span>
-                        <strong class="text-primary">${(p.qty||0).toLocaleString()} pcs @ ₹${p.unitPrice||0}/pc</strong>
+                        <span class="text-secondary text-[11px]">${qty.toLocaleString()} pcs</span>
+                        <strong class="text-primary">CP ₹${p.cp || 0} / SP ₹${p.unitPrice || 0}</strong>
                     </div>
-                </div>
-            `).join('')}
+                </div>`;
+            }).join('')}
         </div>
 
         <div class="grid grid-cols-3 gap-2 py-3 text-center bg-surface-container/40 rounded-xl p-2.5">
             <div>
-                <span class="text-secondary text-[10px] font-bold uppercase block">Quoted Revenue</span>
-                <strong class="text-[16px] text-on-surface">₹${Math.round(grandRevenue).toLocaleString('en-IN')}</strong>
+                <span class="text-secondary text-[10px] font-bold uppercase block">Total Revenue</span>
+                <strong class="text-[16px] text-primary">₹${Math.round(grandRevenue).toLocaleString('en-IN')}</strong>
             </div>
             <div>
-                <span class="text-secondary text-[10px] font-bold uppercase block">Direct Cost</span>
-                <strong class="text-[16px] text-secondary">₹${Math.round(estimatedCost).toLocaleString('en-IN')}</strong>
+                <span class="text-secondary text-[10px] font-bold uppercase block">Total Cost</span>
+                <strong class="text-[16px] text-secondary">₹${Math.round(totalCost).toLocaleString('en-IN')}</strong>
             </div>
             <div>
                 <span class="text-secondary text-[10px] font-bold uppercase block">Gross Profit</span>
@@ -999,7 +1263,7 @@ function buildExecutiveSummary() {
         </div>`;
 }
 
-// ─── Wizard Navigation ────────────────────────────────────────────────────────
+// ─── Wizard Navigation ─────────────────────────────────────────────────────────
 window.coJumpToStep = function(targetIdx) {
     if (targetIdx > coState.currentIdx && !validateCurrentStep()) return;
     coState.currentIdx = targetIdx;
@@ -1029,7 +1293,7 @@ function renderStep() {
     const total = WIZARD_STEPS.length;
     const step  = WIZARD_STEPS[idx];
 
-    // Show only active step div
+    // Show only active step
     WIZARD_STEPS.forEach((s, i) => {
         const el = qs(s.id);
         if (el) el.classList.toggle('hidden', i !== idx);
@@ -1055,65 +1319,84 @@ function renderStep() {
             pill.className = 'stepper-pill completed px-3 py-1.5 rounded-xl text-[12px] font-bold flex items-center gap-1.5 border';
             if (numSpan) { numSpan.className = 'w-4 h-4 rounded-full bg-[#008A00] text-white text-[10px] font-black flex items-center justify-center'; numSpan.textContent = '✓'; }
         } else {
-            pill.className = 'stepper-pill upcoming px-3 py-1.5 rounded-xl text-[12px] font-bold flex items-center gap-1.5 border';
+            pill.className = 'stepper-pill upcoming px-3 py-1.5 rounded-xl text-[12px] font-bold flex items-center gap-1.5 border border-transparent';
             if (numSpan) { numSpan.className = 'w-4 h-4 rounded-full bg-surface-variant text-secondary text-[10px] font-black flex items-center justify-center'; numSpan.textContent = `${i + 1}`; }
         }
     });
 
-    // Back / Next / Save button visibility
+    // Nav buttons
     qs('co-btn-back')?.classList.toggle('hidden', idx === 0);
     const isLast = idx === total - 1;
     qs('co-btn-next')?.classList.toggle('hidden', isLast);
     qs('co-header-save-btn')?.classList.toggle('hidden', !isLast);
 
     // Step-specific renders
+    if (idx === 1) {
+        renderWorkflowPicker();
+        renderProducts();
+    }
     if (idx === 2) renderPricingTable();
     if (idx === 3) { buildWorkflowSummary(); buildExecutiveSummary(); }
 }
 
-// ─── Validation ───────────────────────────────────────────────────────────────
+// ─── Validation ────────────────────────────────────────────────────────────────
 function validateCurrentStep() {
     const idx = coState.currentIdx;
+    const wf  = coState.orderWorkflowType;
+    const isDirect = workflowIsDirectFulfillment(wf);
 
-    // Step 1: Buyer & PO
+    // Step 1
     if (idx === 0) {
         if (!val('co-customer')) { showToast('Please select a customer / buyer', 'error'); return false; }
         if (!val('co-delivery')) { showToast('Please select a target delivery deadline', 'error'); return false; }
     }
 
-    // Step 2: Products & Line Items
+    // Step 2
     if (idx === 1) {
-        const totalQty = coState.products.reduce((s, p) => s + (p.qty || 0), 0);
-        if (totalQty <= 0) { showToast('Order total quantity must be greater than zero', 'error'); return false; }
+        if (!coState.orderWorkflowType) { showToast('Please select a production workflow type', 'error'); return false; }
 
         for (let i = 0; i < coState.products.length; i++) {
             const p = coState.products[i];
             if (!p.name.trim()) { showToast(`Please enter a name for Product #${i + 1}`, 'error'); return false; }
-            if (p.category === 'General') {
-                if (!p.qty || p.qty <= 0) {
-                    showToast(`Please enter a valid quantity for Product #${i + 1} — "${p.name}"`, 'error');
-                    return false;
-                }
+
+            if (isDirect) {
+                const totalFS = p.freeSizes.reduce((s, r) => s + (r.qty || 0), 0);
+                if (totalFS <= 0) { showToast(`Please enter size quantities for "${p.name || 'Product #' + (i+1)}"`, 'error'); return false; }
             } else {
-                const sizeSum = Object.values(p.sizes).reduce((s, v) => s + (v || 0), 0);
-                if (sizeSum !== p.qty) {
-                    showToast(`Size breakdown sum (${sizeSum}) for "${p.name}" must equal target qty (${p.qty} pcs)`, 'error');
-                    return false;
+                if (p.category === 'General') {
+                    if (!p.qty || p.qty <= 0) {
+                        showToast(`Please enter a valid quantity for Product #${i + 1} — "${p.name}"`, 'error');
+                        return false;
+                    }
+                } else {
+                    const sizeSum = Object.values(p.sizes).reduce((s, v) => s + (v || 0), 0);
+                    if (sizeSum <= 0) {
+                        showToast(`Please enter size breakdown for "${p.name || 'Product #' + (i+1)}"`, 'error');
+                        return false;
+                    }
+                    if (sizeSum !== p.qty && p.qty > 0) {
+                        showToast(`Size breakdown sum (${sizeSum}) for "${p.name}" must equal target qty (${p.qty} pcs)`, 'error');
+                        return false;
+                    }
+                    // Sync qty from sizes if target was 0
+                    if (p.qty === 0) p.qty = sizeSum;
                 }
-            }
-            if (!p.fabric.gsm || p.fabric.gsm <= 0) {
-                showToast(`Please enter fabric GSM for Product #${i + 1} — "${p.name}"`, 'error');
-                return false;
             }
         }
+
+        // Sync total
+        const totalQty = isDirect
+            ? coState.products.reduce((s, p) => s + p.freeSizes.reduce((ss, r) => ss + (r.qty || 0), 0), 0)
+            : coState.products.reduce((s, p) => s + (p.qty || 0), 0);
+        if (totalQty <= 0) { showToast('Order total quantity must be greater than zero', 'error'); return false; }
     }
 
-    // Step 3: Pricing
+    // Step 3
     if (idx === 2) {
         for (let i = 0; i < coState.products.length; i++) {
             const p = coState.products[i];
-            if (!p.unitPrice || p.unitPrice <= 0) {
-                showToast(`Please enter a unit price for Product #${i + 1} — "${p.name}"`, 'error');
+            if (!p.unitPrice || Number(p.unitPrice) <= 0) {
+                showToast(`Please enter a selling price (SP) for Product #${i + 1} — "${p.name}"`, 'error');
                 return false;
             }
         }
@@ -1122,115 +1405,123 @@ function validateCurrentStep() {
     return true;
 }
 
-// ─── Order Save Engine ────────────────────────────────────────────────────────
+// ─── Save Order ────────────────────────────────────────────────────────────────
 window.coSaveOrder = async function(launchOption = 'orders_tower') {
     if (!validateCurrentStep()) return;
 
-    const totalQty    = coState.products.reduce((s, p) => s + (p.qty || 0), 0);
-    let   grandRevenue  = 0;
-    let   totalFabricCost = 0;
+    const wf = coState.orderWorkflowType;
+    const isDirect = workflowIsDirectFulfillment(wf);
 
-    // Build per-product lineItems[]
+    let grandRevenue = 0;
+    let totalCost    = 0;
+    let totalQty     = 0;
+
     const lineItems = coState.products.map(prod => {
-        const bom    = computeProductBOM(prod);
-        const stages = WORKFLOW_ROUTES[prod.workflowType] || WORKFLOW_ROUTES.default;
+        const qty    = isDirect ? prod.freeSizes.reduce((s, r) => s + (r.qty || 0), 0) : (prod.qty || 0);
+        const sp     = Number(prod.unitPrice) || 0;
+        const cp     = Number(prod.cp) || 0;
+        const stages = WORKFLOW_ROUTES[wf] || WORKFLOW_ROUTES.default;
 
-        grandRevenue    += (prod.qty || 0) * (Number(prod.unitPrice) || 0);
-        totalFabricCost += bom.fabricCost;
+        grandRevenue += qty * sp;
+        totalCost    += qty * cp;
+        totalQty     += qty;
+
+        // Build sizes object from freeSizes for direct, or standard sizes
+        const sizesMap = isDirect
+            ? prod.freeSizes.reduce((acc, r) => { if (r.label) acc[r.label] = r.qty || 0; return acc; }, {})
+            : { ...prod.sizes };
 
         return {
             productId:      prod.id,
             productName:    prod.name.trim(),
-            workflowType:   prod.workflowType,
+            workflowType:   wf,
             workflowStages: stages,
             stageData: {
-                procurement: {
-                    status: 'Allotted'
-                },
-                fabric: {
-                    type:      prod.fabric.type,
-                    subType:   prod.fabric.subtype,
-                    gsm:       Number(prod.fabric.gsm) || 0,
-                    dia:       Number(prod.fabric.dia)  || 0,
-                    totalKg:   bom.grossKg,
-                    ratePerKg: Number(prod.fabric.ratePerKg) || 0,
-                    totalCost: bom.fabricCost,
-                    pcsPerKg:  bom.grossKg > 0 ? Math.round((prod.qty / bom.grossKg) * 100) / 100 : 0
-                },
-                cutting: {
-                    totalQty: prod.qty,
-                    sizes:    { ...prod.sizes }
-                },
+                procurement: { status: 'Allotted' },
+                ...(!isDirect && prod.fabric.type ? {
+                    fabric: {
+                        type:      prod.fabric.type,
+                        subType:   prod.fabric.subtype,
+                        gsm:       Number(prod.fabric.gsm) || 0,
+                        dia:       Number(prod.fabric.dia)  || 0,
+                        ...(workflowIsFullVertical(wf) ? {
+                            yarnCount: prod.fabric.yarnCount || '',
+                            yarnBlend: prod.fabric.yarnBlend || ''
+                        } : {})
+                    }
+                } : {}),
+                cutting: { totalQty: qty, sizes: sizesMap },
                 print_wash: {
-                    type:      prod.decorationType,
+                    type:      prod.decorationType  || '',
                     placement: prod.decorationPlacement || '',
                     colors:    prod.decorationColors    || ''
                 },
                 stitching: { notes: 'Standard sewing line assembly' },
-                packing:   { notes: val('co-packaging-notes') || 'Standard export polybag packaging. 50 pcs/ctn' },
-                dispatch:  { shippingAddress: val('co-shipping-address'), dispatchDate: val('co-delivery') }
+                packing:   { notes: val('co-order-notes') || 'Standard export polybag packaging.' },
+                dispatch:  { dispatchDate: val('co-delivery') }
             }
         };
     });
 
-    const estimatedCost   = Math.round(totalFabricCost + totalQty * 18 + totalQty * 45);
-    const advancePayment  = num('co-advance-payment');
-    const isFullyPaid     = advancePayment >= grandRevenue && grandRevenue > 0;
-    const isPartial       = advancePayment > 0 && !isFullyPaid;
-    const pmtStatus       = isFullyPaid ? 'Paid' : isPartial ? 'Partially Paid' : 'Unpaid';
-
-    // Backward-compat flat stageData (merged from all line items)
     const flatStageData = mergeLineItemsToFlatStageData(lineItems);
+    const stages        = WORKFLOW_ROUTES[wf] || WORKFLOW_ROUTES.default;
+    const initialStage  = stages[0] || 'procurement';
+    const initialDef    = STAGE_DEFINITIONS[initialStage] || { label: 'Procurement' };
 
-    // Enriched products array
     const productsData = coState.products.map(prod => {
-        const stages = WORKFLOW_ROUTES[prod.workflowType] || WORKFLOW_ROUTES.default;
-        const initialStageKey = stages[0] || 'procurement';
-        const initialDef = STAGE_DEFINITIONS[initialStageKey] || { label: 'Procurement' };
+        const qty = isDirect ? prod.freeSizes.reduce((s, r) => s + (r.qty || 0), 0) : (prod.qty || 0);
+        const sizesMap = isDirect
+            ? prod.freeSizes.reduce((acc, r) => { if (r.label) acc[r.label] = r.qty || 0; return acc; }, {})
+            : { ...prod.sizes };
         return {
             id:                  prod.id,
             name:                prod.name.trim(),
-            category:            prod.category,
-            qty:                 prod.qty,
+            category:            isDirect ? 'General' : prod.category,
+            qty,
+            cp:                  Number(prod.cp) || 0,
             unitPrice:           Number(prod.unitPrice) || 0,
             status:              initialDef.label,
-            workflowType:        prod.workflowType,
-            sizes:               { ...prod.sizes },
+            workflowType:        wf,
+            sizes:               sizesMap,
             fabric:              { ...prod.fabric },
-            decorationType:      prod.decorationType,
+            decorationType:      prod.decorationType      || '',
             decorationPlacement: prod.decorationPlacement || '',
-            decorationColors:    prod.decorationColors    || ''
+            decorationColors:    prod.decorationColors    || '',
+            sourceSupplier:      prod.sourceSupplier      || '',
+            sourceRef:           prod.sourceRef           || '',
+            sourceColor:         prod.sourceColor         || '',
+            sourceNotes:         prod.sourceNotes         || ''
         };
     });
 
-    const primaryProd = coState.products[0];
-    const primaryStages = WORKFLOW_ROUTES[primaryProd?.workflowType] || WORKFLOW_ROUTES.default;
-    const initialStageKey = primaryStages[0] || 'procurement';
-    const initialDef = STAGE_DEFINITIONS[initialStageKey] || { label: 'Procurement' };
+    const advancePayment = num('co-advance-payment');
+    const isFullyPaid    = advancePayment >= grandRevenue && grandRevenue > 0;
+    const isPartial      = advancePayment > 0 && !isFullyPaid;
+    const pmtStatus      = isFullyPaid ? 'Paid' : isPartial ? 'Partially Paid' : 'Unpaid';
 
     const orderData = {
-        customerId:          val('co-customer'),
-        customerName:        qs('co-customer')?.options[qs('co-customer').selectedIndex]?.text?.split(' (')[0] || '',
-        customerPO:          val('co-customer-po') || '',
-        product:             coState.products.map(p => p.name).join(', '),
-        qty:                 totalQty,
-        value:               grandRevenue,
-        incurredCost:        estimatedCost,
-        deliveryDate:        val('co-delivery'),
-        priority:            coState.priority,
-        workflowType:        primaryProd?.workflowType || 'default',
-        status:              initialDef.label,
-        progressPercentage:  0,
-        progressLabel:       `${initialDef.label} Phase`,
-        paymentStatus:       pmtStatus,
-        paymentReceived:     advancePayment,
-        paymentTerms:        val('co-payment-terms'),
-        notes:               val('co-packaging-notes'),
-        shippingAddress:     val('co-shipping-address'),
-        fabric:              coState.products.map(p => `${p.fabric.type} ${p.fabric.gsm}gsm`).join(' / '),
-        stageData:           flatStageData,   // ← backward compat for production workspaces
-        lineItems:           lineItems,        // ← new per-product schema
-        products:            productsData,
+        customerId:         val('co-customer'),
+        customerName:       qs('co-customer')?.options[qs('co-customer').selectedIndex]?.text?.split(' (')[0] || '',
+        customerPO:         val('co-customer-po') || '',
+        product:            coState.products.map(p => p.name).filter(Boolean).join(', '),
+        qty:                totalQty,
+        value:              grandRevenue,
+        incurredCost:       totalCost,
+        deliveryDate:       val('co-delivery'),
+        priority:           coState.priority,
+        orderWorkflowType:  wf,
+        workflowType:       wf,
+        status:             initialDef.label,
+        progressPercentage: 0,
+        progressLabel:      `${initialDef.label} Phase`,
+        paymentStatus:      pmtStatus,
+        paymentReceived:    advancePayment,
+        paymentTerms:       val('co-payment-terms'),
+        notes:              val('co-order-notes'),
+        fabric:             coState.products.map(p => p.fabric.type ? `${p.fabric.type}${p.fabric.gsm ? ' ' + p.fabric.gsm + 'gsm' : ''}` : '').filter(Boolean).join(' / '),
+        stageData:          flatStageData,
+        lineItems,
+        products:           productsData,
         timeline: [{
             status: 'Order Released to Factory',
             date:   new Date().toISOString(),
@@ -1249,7 +1540,7 @@ window.coSaveOrder = async function(launchOption = 'orders_tower') {
 
         setTimeout(() => {
             if (launchOption === 'launch_floor' && orderId) {
-                window.location.href = `production.html?orderId=${orderId}&stage=fabric`;
+                window.location.href = `production.html?orderId=${orderId}&stage=${initialStage}`;
             } else if (launchOption === 'print_traveler' && orderId) {
                 window.location.href = `orders.html?orderId=${orderId}&print=traveler`;
             } else {
@@ -1264,7 +1555,7 @@ window.coSaveOrder = async function(launchOption = 'orders_tower') {
     }
 };
 
-// ─── Toast Notifications ──────────────────────────────────────────────────────
+// ─── Toast Notifications ───────────────────────────────────────────────────────
 function showToast(message, type = 'info') {
     const container = qs('toast-container');
     if (!container) return;

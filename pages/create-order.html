@@ -85,7 +85,7 @@
             <div>
                 <div class="flex items-center gap-2">
                     <h1 class="text-[17px] font-extrabold text-on-surface dark:text-white leading-tight">Create Apparel Order</h1>
-                    <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-primary/10 dark:bg-primary/20 text-primary dark:text-blue-400 uppercase tracking-wider hidden sm:inline">Split Workflow</span>
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-primary/10 dark:bg-primary/20 text-primary dark:text-blue-400 uppercase tracking-wider hidden sm:inline">Workflow Wizard</span>
                 </div>
                 <p class="text-[12px] text-secondary dark:text-slate-400 leading-none mt-0.5" id="co-step-label">Step 1 of 4 — Buyer &amp; PO Profile</p>
             </div>
@@ -122,7 +122,7 @@
             <span class="text-outline-variant dark:text-slate-600 text-[14px]">›</span>
             <button class="stepper-pill upcoming px-3 py-1.5 rounded-xl text-[12px] font-bold flex items-center gap-1.5 border border-transparent" onclick="window.coJumpToStep(1)" id="pill-step-1">
                 <span class="w-4 h-4 rounded-full bg-surface-variant dark:bg-slate-800 text-secondary dark:text-slate-400 text-[10px] font-black flex items-center justify-center">2</span>
-                <span>Products &amp; Workflows</span>
+                <span>Workflow &amp; Products</span>
             </button>
             <span class="text-outline-variant dark:text-slate-600 text-[14px]">›</span>
             <button class="stepper-pill upcoming px-3 py-1.5 rounded-xl text-[12px] font-bold flex items-center gap-1.5 border border-transparent" onclick="window.coJumpToStep(2)" id="pill-step-2">
@@ -216,15 +216,14 @@
             <!-- STEP 2: PRODUCTS & LINE ITEMS (Sizing + Fabric + Workflow per item)-->
             <!-- ================================================================= -->
             <div id="co-step-2" class="wizard-step hidden flex flex-col gap-5">
-                <div class="bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant shadow-sm flex justify-between items-center">
-                    <div>
-                        <div class="flex items-center gap-2 mb-1">
-                            <span class="material-symbols-outlined text-[24px] text-primary">view_quilt</span>
-                            <h2 class="text-[20px] font-extrabold text-on-surface">2. Products &amp; Split Workflows</h2>
-                        </div>
-                        <p class="text-[13px] text-secondary">Each product line has its own sizing, fabric spec, and independent production workflow.</p>
-                    </div>
-                    <span id="co-header-total-pcs" class="px-3 py-1 rounded-full text-[13px] font-extrabold bg-primary/10 text-primary shrink-0 ml-3">
+
+                <!-- Workflow Type Picker — rendered by JS -->
+                <div id="co-workflow-picker"></div>
+
+                <!-- Products header (shown after workflow selected) -->
+                <div class="flex justify-between items-center">
+                    <h2 class="text-[16px] font-extrabold text-on-surface">Product Lines</h2>
+                    <span id="co-header-total-pcs" class="px-3 py-1 rounded-full text-[13px] font-extrabold bg-primary/10 text-primary shrink-0">
                         0 pcs total
                     </span>
                 </div>
@@ -233,6 +232,7 @@
                 <div id="co-products-container" class="flex flex-col gap-5"></div>
 
                 <button type="button" onclick="window.coAddProduct()"
+                    id="co-add-product-btn"
                     class="w-full py-4 border-2 border-dashed border-primary/30 hover:border-primary text-primary font-bold text-[14px] rounded-2xl flex items-center justify-center gap-2 active-scale transition-all bg-primary/5 shadow-xs">
                     <span class="material-symbols-outlined text-[20px]">add_circle</span>
                     <span>Add Another Product Line</span>
@@ -268,11 +268,11 @@
                             <strong id="co-calc-grand-total" class="text-[18px] text-primary">₹0</strong>
                         </div>
                         <div class="bg-surface-container rounded-xl p-3 text-center">
-                            <span class="text-[10px] font-bold text-secondary uppercase block">Est. Floor Cost</span>
+                            <span class="text-[10px] font-bold text-secondary uppercase block">Total CP Cost</span>
                             <strong id="calc-cost-display" class="text-[18px] text-secondary">₹0</strong>
                         </div>
                         <div class="bg-[#008A00]/5 border border-[#008A00]/20 rounded-xl p-3 text-center">
-                            <span class="text-[10px] font-bold text-secondary uppercase block">Est. Gross Profit</span>
+                            <span class="text-[10px] font-bold text-secondary uppercase block">Gross Profit (SP−CP)</span>
                             <strong id="calc-profit-display" class="text-[18px] text-[#008A00]">₹0</strong>
                         </div>
                     </div>
@@ -325,28 +325,10 @@
             <div id="co-step-4" class="wizard-step hidden flex flex-col gap-5">
                 <div class="bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant shadow-sm">
                     <div class="flex items-center gap-2 mb-1">
-                        <span class="material-symbols-outlined text-[24px] text-primary">local_shipping</span>
-                        <h2 class="text-[20px] font-extrabold text-on-surface">4. Consignee Logistics &amp; Review</h2>
+                        <span class="material-symbols-outlined text-[24px] text-primary">rocket_launch</span>
+                        <h2 class="text-[20px] font-extrabold text-on-surface">4. Review &amp; Launch</h2>
                     </div>
-                    <p class="text-[13px] text-secondary">Finalize shipping destination, review per-product workflow pipelines, and launch into the factory.</p>
-                </div>
-
-                <!-- Consignee Logistics -->
-                <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant shadow-sm flex flex-col gap-4">
-                    <h3 class="text-[14px] font-bold text-on-surface uppercase tracking-wider">Shipping &amp; Packaging Directives</h3>
-
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div class="flex flex-col gap-1.5">
-                            <label class="text-[12px] font-bold text-secondary uppercase tracking-wider">Consignee Shipping Address</label>
-                            <textarea id="co-shipping-address" rows="2" placeholder="Destination hub, street, city, pin code"
-                                class="w-full bg-surface border border-outline-variant rounded-xl px-4 py-2.5 text-[14px] text-on-surface outline-none focus:ring-2 focus:ring-primary/20 resize-none"></textarea>
-                        </div>
-                        <div class="flex flex-col gap-1.5">
-                            <label class="text-[12px] font-bold text-secondary uppercase tracking-wider">Packaging &amp; Label Instructions</label>
-                            <textarea id="co-packaging-notes" rows="2" placeholder="e.g. Individual polybags, 50 pcs per export master carton"
-                                class="w-full bg-surface border border-outline-variant rounded-xl px-4 py-2.5 text-[14px] text-on-surface outline-none focus:ring-2 focus:ring-primary/20 resize-none">Standard export polybag packaging. 50 pcs per 7-ply export carton.</textarea>
-                        </div>
-                    </div>
+                    <p class="text-[13px] text-secondary">Review per-product workflow pipelines, add notes, and launch the order into the factory.</p>
                 </div>
 
                 <!-- Per-Product Workflow Pipeline Visualizer — rendered by JS -->
@@ -359,6 +341,13 @@
                         <span class="text-[11px] font-mono font-bold text-primary">PRE-RELEASE AUDIT</span>
                     </div>
                     <div id="co-executive-summary" class="flex flex-col gap-2 text-[13px]"></div>
+                </div>
+
+                <!-- Optional Notes -->
+                <div class="bg-surface-container-lowest rounded-2xl p-5 border border-outline-variant shadow-sm flex flex-col gap-2">
+                    <label class="text-[12px] font-bold text-secondary uppercase tracking-wider">Order Notes / Packaging Instructions <span class="font-normal normal-case">(optional)</span></label>
+                    <textarea id="co-order-notes" rows="2" placeholder="e.g. Individual polybags, 50 pcs per export master carton, special labels..."
+                        class="w-full bg-surface border border-outline-variant rounded-xl px-4 py-2.5 text-[14px] text-on-surface outline-none focus:ring-2 focus:ring-primary/20 resize-none"></textarea>
                 </div>
 
                 <!-- Launch Options -->
@@ -400,11 +389,7 @@
                     <strong id="bar-total-val" class="text-[15px] text-primary dark:text-blue-400">₹0</strong>
                 </div>
                 <div class="border-l border-outline-variant/60 dark:border-slate-800 pl-3 hidden sm:block">
-                    <span class="text-secondary dark:text-slate-400 block text-[10px] font-bold uppercase">Total Fabric</span>
-                    <strong id="bar-fabric-kg" class="text-[15px] text-on-surface dark:text-slate-100">0 kg</strong>
-                </div>
-                <div class="border-l border-outline-variant/60 dark:border-slate-800 pl-3 hidden sm:block">
-                    <span class="text-secondary dark:text-slate-400 block text-[10px] font-bold uppercase">Margin</span>
+                    <span class="text-secondary dark:text-slate-400 block text-[10px] font-bold uppercase">Gross Margin</span>
                     <strong id="bar-margin-pct" class="text-[15px] text-[#008A00] dark:text-emerald-400">—</strong>
                 </div>
             </div>
@@ -428,6 +413,6 @@
 
     <script src="../js/utils/sheet.js"></script>
     <script src="../js/app.js"></script>
-    <script type="module" src="../js/orders/create.js?v=6.0"></script>
+    <script type="module" src="../js/orders/create.js?v=7.0"></script>
 </body>
 </html>
