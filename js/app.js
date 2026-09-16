@@ -101,9 +101,18 @@ async function loadComponent(url, targetId, callback) {
 
 // Helper to set active link state on sidebar navigation links
 function updateSidebarActiveState(currentPage) {
+    let activeKey = currentPage;
+    if (currentPage === 'calculator' || currentPage === 'pattern-calculator') {
+        activeKey = 'advanced-calculator';
+    } else if (currentPage === 'create-order') {
+        activeKey = 'orders';
+    } else if (currentPage === 'quotations') {
+        activeKey = 'billings';
+    }
+
     const sidebarLinks = document.querySelectorAll('.sidebar-nav-link[data-page]');
     sidebarLinks.forEach(link => {
-        if (link.dataset.page === currentPage) {
+        if (link.dataset.page === activeKey) {
             link.classList.add('sidebar-nav-link--active');
             link.setAttribute('aria-current', 'page');
             const icon = link.querySelector('.material-symbols-outlined');
@@ -345,7 +354,7 @@ function initApp() {
 
 // Ensure DevTools are available (this is imported statically via a script tag later, wait, app.js is not a module by default).
 // Actually, let's just dynamically import it since app.js is a classic script.
-document.addEventListener('DOMContentLoaded', () => {
+function runInitialization() {
     initApp();
     import('./utils/devtools.js').then(module => {
         module.initDevTools();
@@ -366,7 +375,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     });
-});
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', runInitialization);
+} else {
+    runInitialization();
+}
 
 window.openQuickAddCustomer = function (callback) {
     const existing = document.getElementById('quickAddCustomerSheet-overlay');
