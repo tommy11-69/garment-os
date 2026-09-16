@@ -6,6 +6,68 @@ class FinanceRepository extends BaseRepository {
         super('transactions');
     }
 
+    _hydrate(t) {
+        if (!t) return null;
+        const amount = parseFloat(t.amount);
+        const cleanAmount = isNaN(amount) ? 0 : amount;
+
+        let subEntries = [];
+        if (t.subEntries) {
+            try {
+                subEntries = typeof t.subEntries === 'string' ? JSON.parse(t.subEntries) : (Array.isArray(t.subEntries) ? t.subEntries : []);
+            } catch { subEntries = []; }
+        }
+        if (!Array.isArray(subEntries)) subEntries = [];
+        subEntries = subEntries.map(se => ({
+            ...se,
+            amount: isNaN(parseFloat(se.amount)) ? 0 : parseFloat(parseFloat(se.amount).toFixed(2))
+        }));
+
+        let attachments = [];
+        if (t.attachments) {
+            try {
+                attachments = typeof t.attachments === 'string' ? JSON.parse(t.attachments) : (Array.isArray(t.attachments) ? t.attachments : []);
+            } catch { attachments = []; }
+        }
+        if (!Array.isArray(attachments)) attachments = [];
+
+        return {
+            ...t,
+            amount: parseFloat(cleanAmount.toFixed(2)),
+            subEntries,
+            attachments,
+            isNegative: t.isNegative === 1 || t.isNegative === true,
+            type: t.type || 'Expense',
+            status: t.status || 'Completed',
+            date: t.date || '',
+            category: t.category || 'Other',
+            paymentMethod: t.paymentMethod || 'UPI',
+            referenceNo: t.referenceNo || '',
+            notes: t.notes || '',
+            refId: t.refId || '',
+            title: t.title || 'Untitled Transaction'
+        };
+    }
+
+    async getAll(options = {}) {
+        const items = await super.getAll(options);
+        if (Array.isArray(items)) {
+            return items.map(t => this._hydrate(t));
+        }
+        if (items && Array.isArray(items.data)) {
+            return {
+                ...items,
+                data: items.data.map(t => this._hydrate(t))
+            };
+        }
+        return items;
+    }
+
+    async getById(id) {
+        const item = await super.getById(id);
+        return this._hydrate(item);
+    }
+
     async searchTransactions(query, filters = {}, sort = 'newest') {
         await db._delay();
         let collection = await this.getAll();
@@ -18,7 +80,7 @@ class FinanceRepository extends BaseRepository {
                 (t.category && t.category.toLowerCase().includes(q)) ||
                 (t.referenceNo && t.referenceNo.toLowerCase().includes(q)) ||
                 (t.notes && t.notes.toLowerCase().includes(q)) ||
-                (t.amount && t.amount.toString().includes(q)) ||
+                (t.amount !== undefined && t.amount !== null && t.amount.toString().includes(q)) ||
                 (t.paymentMethod && t.paymentMethod.toLowerCase().includes(q))
             );
         }
@@ -91,8 +153,8 @@ class FinanceRepository extends BaseRepository {
         collection.sort((a, b) => {
             if (sort === 'newest') return new Date(b.date) - new Date(a.date);
             if (sort === 'oldest') return new Date(a.date) - new Date(b.date);
-            if (sort === 'highest') return b.amount - a.amount;
-            if (sort === 'lowest') return a.amount - b.amount;
+            if (sort === 'highest') return (parseFloat(b.amount) || 0) - (parseFloat(a.amount) || 0);
+            if (sort === 'lowest') return (parseFloat(a.amount) || 0) - (parseFloat(b.amount) || 0);
             if (sort === 'income_first') {
                 if (a.type === 'Income' && b.type !== 'Income') return -1;
                 if (b.type === 'Income' && a.type !== 'Income') return 1;

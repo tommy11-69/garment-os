@@ -113,6 +113,29 @@ function hydrateRow($table, $row) {
             $row[$numField] = strpos((string)$row[$numField], '.') !== false ? (float)$row[$numField] : (int)$row[$numField];
         }
     }
+
+    // Transactions-specific hydration safeguards
+    if ($table === 'transactions') {
+        if (isset($row['amount'])) {
+            $row['amount'] = is_numeric($row['amount']) ? (float)$row['amount'] : 0.00;
+        } else {
+            $row['amount'] = 0.00;
+        }
+        if (isset($row['subEntries']) && is_array($row['subEntries'])) {
+            foreach ($row['subEntries'] as &$entry) {
+                if (is_array($entry)) {
+                    $entry['amount'] = isset($entry['amount']) && is_numeric($entry['amount']) ? (float)$entry['amount'] : 0.00;
+                }
+            }
+            unset($entry);
+        } else {
+            $row['subEntries'] = [];
+        }
+        if (!isset($row['attachments']) || !is_array($row['attachments'])) {
+            $row['attachments'] = [];
+        }
+    }
+
     return $row;
 }
 
@@ -126,6 +149,33 @@ function dehydrateData($table, $data) {
     foreach (['isActive', 'showFabric', 'showColour', 'showTax', 'isNegative'] as $boolField) {
         if (isset($data[$boolField])) {
             $data[$boolField] = $data[$boolField] ? 1 : 0;
+        }
+    }
+    if ($table === 'transactions') {
+        if (isset($data['amount'])) {
+            $data['amount'] = is_numeric($data['amount']) ? round((float)$data['amount'], 2) : 0.00;
+        }
+        if (isset($data['subEntries'])) {
+            if (is_string($data['subEntries'])) {
+                $decoded = json_decode($data['subEntries'], true);
+                if (is_array($decoded)) {
+                    foreach ($decoded as &$se) {
+                        if (is_array($se) && isset($se['amount'])) {
+                            $se['amount'] = is_numeric($se['amount']) ? round((float)$se['amount'], 2) : 0.00;
+                        }
+                    }
+                    unset($se);
+                    $data['subEntries'] = json_encode($decoded);
+                }
+            } elseif (is_array($data['subEntries'])) {
+                foreach ($data['subEntries'] as &$se) {
+                    if (is_array($se) && isset($se['amount'])) {
+                        $se['amount'] = is_numeric($se['amount']) ? round((float)$se['amount'], 2) : 0.00;
+                    }
+                }
+                unset($se);
+                $data['subEntries'] = json_encode($data['subEntries']);
+            }
         }
     }
     return $data;
@@ -155,7 +205,7 @@ $rawInput = file_get_contents('php://input');
 $body = json_decode($rawInput, true) ?: [];
 
 // Auto-migrate schema fixes (only runs once or when marker is missing)
-$migrationMarker = __DIR__ . '/.migrated_v55';
+$migrationMarker = __DIR__ . '/.migrated_v56';
 if (!file_exists($migrationMarker)) {
     try {
         $colInfo = $pdo->query("SHOW COLUMNS FROM `sessions` LIKE 'expiresAt'")->fetch();
@@ -287,12 +337,49 @@ if (!file_exists($migrationMarker)) {
             `updatedAt` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         )");
 
-        // ── Transactions Attachments Column Migration ─────────────────────
+        // ── Transactions Table & Columns Migration ──────────────────────
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `transactions` (
+            `_rowid` INT AUTO_INCREMENT PRIMARY KEY,
+            `id` VARCHAR(191) UNIQUE NOT NULL,
+            `type` VARCHAR(50) DEFAULT 'Expense',
+            `amount` DECIMAL(12,2) DEFAULT 0.00,
+            `date` VARCHAR(50) DEFAULT '',
+            `category` VARCHAR(100) DEFAULT '',
+            `status` VARCHAR(50) DEFAULT 'Completed',
+            `paymentMethod` VARCHAR(100) DEFAULT '',
+            `referenceNo` VARCHAR(100) DEFAULT '',
+            `notes` LONGTEXT DEFAULT '',
+            `createdBy` VARCHAR(100) DEFAULT 'Admin',
+            `description` LONGTEXT DEFAULT '',
+            `refId` VARCHAR(191) DEFAULT '',
+            `title` VARCHAR(255) DEFAULT '',
+            `amountColor` VARCHAR(50) DEFAULT '',
+            `isNegative` INT DEFAULT 0,
+            `icon` VARCHAR(50) DEFAULT '',
+            `iconBg` VARCHAR(50) DEFAULT '',
+            `iconColor` VARCHAR(50) DEFAULT '',
+            `linkedBatchId` VARCHAR(191) DEFAULT '',
+            `linkedOrderId` VARCHAR(191) DEFAULT '',
+            `subEntries` LONGTEXT DEFAULT '[]',
+            `attachments` LONGTEXT DEFAULT '[]',
+            `createdAt` DATETIME DEFAULT CURRENT_TIMESTAMP,
+            `updatedAt` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )");
+
         $txCols = $pdo->query("SHOW COLUMNS FROM `transactions`")->fetchAll();
         $existingTxCols = array_column($txCols, 'Field');
         if (!in_array('attachments', $existingTxCols, true)) {
             $pdo->exec("ALTER TABLE `transactions` ADD COLUMN `attachments` LONGTEXT DEFAULT '[]'");
         }
+        if (!in_array('subEntries', $existingTxCols, true)) {
+            $pdo->exec("ALTER TABLE `transactions` ADD COLUMN `subEntries` LONGTEXT DEFAULT '[]'");
+        }
+        if (!in_array('refId', $existingTxCols, true)) {
+            $pdo->exec("ALTER TABLE `transactions` ADD COLUMN `refId` VARCHAR(191) DEFAULT ''");
+        }
+        try {
+            $pdo->exec("ALTER TABLE `transactions` MODIFY COLUMN `amount` DECIMAL(12,2) NOT NULL DEFAULT 0.00");
+        } catch (Exception $e) {}
 
         // ── Billing Tables Auto-Migration ────────────────────────────────────
         $pdo->exec("CREATE TABLE IF NOT EXISTS `billing_counters` (

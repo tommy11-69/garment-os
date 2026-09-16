@@ -552,6 +552,22 @@ function getActivePeriodBounds() {
     return { period, startDateStr, endDateStr, label };
 }
 
+function getTxnTotal(t) {
+    if (!t) return 0;
+    const base = parseFloat(t.amount);
+    let total = isNaN(base) ? 0 : base;
+    if (t.subEntries) {
+        let entries = [];
+        try {
+            entries = typeof t.subEntries === 'string' ? JSON.parse(t.subEntries) : (Array.isArray(t.subEntries) ? t.subEntries : []);
+        } catch { entries = []; }
+        if (Array.isArray(entries)) {
+            total += entries.reduce((s, se) => s + (parseFloat(se.amount) || 0), 0);
+        }
+    }
+    return total;
+}
+
 function renderBalanceSheet(metrics) {
     const formatMoney = (amount) => '₹' + parseFloat(amount || 0).toLocaleString(undefined, {minimumFractionDigits: 2});
     const bounds = getActivePeriodBounds();
@@ -566,7 +582,10 @@ function renderBalanceSheet(metrics) {
         if (bounds.endDateStr && d > bounds.endDateStr) return false;
         return true;
     });
-    const cash = cashTxns.reduce((s, t) => t.type === 'Income' ? s + parseFloat(t.amount || 0) : s - parseFloat(t.amount || 0), 0);
+    const cash = cashTxns.reduce((s, t) => {
+        const amt = getTxnTotal(t);
+        return t.type === 'Income' ? s + amt : s - amt;
+    }, 0);
 
     // 2. Accounts Receivable as of endDateStr (Pending Income)
     const arTxns = allTxns.filter(t => {
@@ -575,14 +594,14 @@ function renderBalanceSheet(metrics) {
         if (bounds.endDateStr && d > bounds.endDateStr) return false;
         return true;
     });
-    const ar = arTxns.reduce((s, t) => s + parseFloat(t.amount || 0), 0);
+    const ar = arTxns.reduce((s, t) => s + getTxnTotal(t), 0);
 
     // 3. Inventory value: live from InventoryRepository (quantity × costPrice per item)
     const inventoryItems = window.financeInventory || [];
     const inventoryValue = inventoryItems.reduce((s, i) => {
         const cost = Number(i.costPrice != null ? i.costPrice : (i.unitCost || 0));
         const val = i.totalValue != null ? Number(i.totalValue) : ((Number(i.quantity) || 0) * cost);
-        return s + val;
+        return s + (isNaN(val) ? 0 : val);
     }, 0);
 
     // Auto-sync inventory from InventoryRepository if not yet loaded in memory
@@ -605,7 +624,7 @@ function renderBalanceSheet(metrics) {
         if (bounds.endDateStr && d > bounds.endDateStr) return false;
         return true;
     });
-    const ap = apTxns.reduce((s, t) => s + parseFloat(t.amount || 0), 0);
+    const ap = apTxns.reduce((s, t) => s + getTxnTotal(t), 0);
 
     const totalAssets = cash + ar + inventoryValue;
     const totalLiabilities = ap;
@@ -743,87 +762,138 @@ async function resolvePartyId(type, refInputValue) {
 }
 
 async function handleAddTransaction() {
-    const type = document.getElementById('trans-type').value;
-    const date = document.getElementById('trans-date').value;
-    const title = document.getElementById('trans-title').value;
-    const amount = parseFloat(document.getElementById('trans-amount').value);
-    let category = document.getElementById('trans-category').value;
+    const type = document.getElementById('trans-type')?.value || 'Expense';
+    const date = document.getElementById('trans-date')?.value || new Date().toISOString().split('T')[0];
+    const title = document.getElementById('trans-title')?.value?.trim() || '';
+    const rawAmount = document.getElementById('trans-amount')?.value;
+    const amount = parseFloat(rawAmount);
+    
+    let category = document.getElementById('trans-category')?.value || 'Other';
     if (category === 'Other') {
         const customCat = document.getElementById('trans-other-category')?.value.trim();
         if (customCat) category = customCat;
     }
-    const paymentMethod = document.getElementById('trans-method').value;
-    const referenceNo = document.getElementById('trans-ref').value;
-    const status = document.getElementById('trans-status').value;
-    const notes = document.getElementById('trans-notes').value;
+    const paymentMethod = document.getElementById('trans-method')?.value || 'UPI';
+    const referenceNo = document.getElementById('trans-ref')?.value?.trim() || '';
+    const status = document.getElementById('trans-status')?.value || 'Completed';
+    const notes = document.getElementById('trans-notes')?.value?.trim() || '';
     let refId = document.getElementById('trans-refId')?.value || '';
     
-    if(!title || !amount) return;
+    // Allow zero amounts ($0.00 balances or zeroed items) while rejecting invalid/negative inputs
+    if (!title || isNaN(amount) || amount < 0) {
+        window.showToast?.('Please enter a valid title and non-negative amount', 'error');
+        return;
+    }
 
     window.showToast?.('Saving transaction...', 'info');
     
     try {
         refId = await resolvePartyId(type, refId);
-        const attachments = getPendingAttachments('trans-');
+        const attachments = getPendingAttachments('trans-') || [];
 
         await api.createTransaction({
-            type, date, title, amount, category, paymentMethod, referenceNo, status, notes, createdBy: 'Admin', refId, attachments
+            type,
+            date,
+            title,
+            amount: parseFloat(amount.toFixed(2)),
+            category,
+            paymentMethod,
+            referenceNo,
+            status,
+            notes,
+            createdBy: 'Admin',
+            refId,
+            attachments,
+            subEntries: []
         });
         window.closeSheet('addTransactionSheet');
         window.showToast?.('Transaction added successfully!', 'success');
         
         // Reset form manually
-        document.getElementById('trans-title').value = '';
-        document.getElementById('trans-amount').value = '';
-        document.getElementById('trans-ref').value = '';
-        document.getElementById('trans-notes').value = '';
+        const titleEl = document.getElementById('trans-title');
+        if (titleEl) titleEl.value = '';
+        const amtEl = document.getElementById('trans-amount');
+        if (amtEl) amtEl.value = '';
+        const refEl = document.getElementById('trans-ref');
+        if (refEl) refEl.value = '';
+        const notesEl = document.getElementById('trans-notes');
+        if (notesEl) notesEl.value = '';
         const otherInput = document.getElementById('trans-other-category');
         if (otherInput) otherInput.value = '';
         document.getElementById('trans-other-category-container')?.classList.add('hidden');
         setPendingAttachments('trans-', []);
         
-        financeStore.loadTransactions();
+        await financeStore.loadTransactions();
     } catch (e) {
-        window.showToast?.('Failed to add transaction', 'error');
+        window.showToast?.('Failed to add transaction: ' + (e.message || ''), 'error');
     }
 }
 
 async function handleEditTransaction() {
-    const id = document.getElementById('edit-trans-id').value;
-    const type = document.getElementById('edit-trans-type').value;
-    const date = document.getElementById('edit-trans-date').value;
-    const title = document.getElementById('edit-trans-title').value;
-    const amount = parseFloat(document.getElementById('edit-trans-amount').value);
-    let category = document.getElementById('edit-trans-category').value;
+    const id = document.getElementById('edit-trans-id')?.value;
+    if (!id) return;
+
+    const type = document.getElementById('edit-trans-type')?.value || 'Expense';
+    const date = document.getElementById('edit-trans-date')?.value || new Date().toISOString().split('T')[0];
+    const title = document.getElementById('edit-trans-title')?.value?.trim() || '';
+    const rawAmount = document.getElementById('edit-trans-amount')?.value;
+    const amount = parseFloat(rawAmount);
+
+    let category = document.getElementById('edit-trans-category')?.value || 'Other';
     if (category === 'Other') {
         const customCat = document.getElementById('edit-trans-other-category')?.value.trim();
         if (customCat) category = customCat;
     }
-    const paymentMethod = document.getElementById('edit-trans-method').value;
-    const referenceNo = document.getElementById('edit-trans-ref').value;
-    const status = document.getElementById('edit-trans-status').value;
-    const notes = document.getElementById('edit-trans-notes').value;
+    const paymentMethod = document.getElementById('edit-trans-method')?.value || 'UPI';
+    const referenceNo = document.getElementById('edit-trans-ref')?.value?.trim() || '';
+    const status = document.getElementById('edit-trans-status')?.value || 'Completed';
+    const notes = document.getElementById('edit-trans-notes')?.value?.trim() || '';
     let refId = document.getElementById('edit-trans-refId')?.value || '';
+
+    // Allow zero amounts ($0.00 balances or zeroed items) while rejecting invalid/negative inputs
+    if (!title || isNaN(amount) || amount < 0) {
+        window.showToast?.('Please enter a valid title and non-negative amount', 'error');
+        return;
+    }
 
     window.showToast?.('Updating transaction...', 'info');
     
     try {
         refId = await resolvePartyId(type, refId);
-        const attachments = getPendingAttachments('edit-trans-');
+        const newAttachments = getPendingAttachments('edit-trans-');
+        
+        // Preserve active entity properties (subEntries, attachments, linkedBatchId, createdBy)
+        const activeEntity = financeStore.getState().activeEntity || {};
+        const mergedAttachments = (newAttachments && newAttachments.length > 0) ? newAttachments : (activeEntity.attachments || []);
+        const preservedSubEntries = Array.isArray(activeEntity.subEntries) ? activeEntity.subEntries : [];
 
         await api.updateTransaction(id, {
-            type, date, title, amount, category, paymentMethod, referenceNo, status, notes, refId, attachments
+            type,
+            date,
+            title,
+            amount: parseFloat(amount.toFixed(2)),
+            category,
+            paymentMethod,
+            referenceNo,
+            status,
+            notes,
+            refId,
+            attachments: mergedAttachments,
+            subEntries: preservedSubEntries,
+            linkedBatchId: activeEntity.linkedBatchId || '',
+            linkedOrderId: activeEntity.linkedOrderId || '',
+            createdBy: activeEntity.createdBy || 'Admin'
         });
         window.closeSheet('editTransactionSheet');
         window.showToast?.('Transaction updated', 'success');
         setPendingAttachments('edit-trans-', []);
         
-        financeStore.loadTransactions(); // refresh list
+        await financeStore.loadTransactions(); // refresh list
         setTimeout(() => {
             window.openTransactionDetails(id);
         }, 200);
     } catch (e) {
-        window.showToast?.('Failed to update', 'error');
+        window.showToast?.('Failed to update: ' + (e.message || ''), 'error');
     }
 }
 
@@ -861,7 +931,7 @@ window.openBsDetail = async function(type) {
     if (type === 'cash') {
         if (bounds.startDateStr) {
             const priorTxns = allTxns.filter(t => t.status === 'Completed' && (t.date || '').split('T')[0] < bounds.startDateStr);
-            openingBalance = priorTxns.reduce((s, t) => t.type === 'Income' ? s + parseFloat(t.amount || 0) : s - parseFloat(t.amount || 0), 0);
+            openingBalance = priorTxns.reduce((s, t) => t.type === 'Income' ? s + getTxnTotal(t) : s - getTxnTotal(t), 0);
         }
         items = allTxns.filter(t => {
             if (t.status !== 'Completed') return false;
@@ -944,7 +1014,7 @@ window.exportBsDetailPDF = function() {
         const opBal = runningData?.openingBalance || 0;
         let bal = opBal;
         const rows = sorted.map(t => {
-            const amt = parseFloat(t.amount || 0);
+            const amt = getTxnTotal(t);
             const isInc = t.type === 'Income';
             const debit = isInc ? 0 : amt;
             const credit = isInc ? amt : 0;
@@ -970,14 +1040,14 @@ window.exportBsDetailPDF = function() {
             if (!grouped[key]) grouped[key] = [];
             grouped[key].push(t);
         });
-        const total = items.reduce((s, t) => s + parseFloat(t.amount || 0), 0);
+        const total = items.reduce((s, t) => s + getTxnTotal(t), 0);
         tableHTML = `<table><thead><tr><th>${isRec ? 'Customer' : 'Vendor'} / Description</th><th>Date</th><th class="num">Age</th><th class="num">Amount</th></tr></thead><tbody>
         ${Object.entries(grouped).map(([name, txns]) => {
-            const sub = txns.reduce((s, t) => s + parseFloat(t.amount || 0), 0);
+            const sub = txns.reduce((s, t) => s + getTxnTotal(t), 0);
             return `<tr class="sub"><td><strong>${name}</strong></td><td></td><td></td><td class="num ${isRec ? 'credit' : 'debit'}"><strong>${fmt(sub)}</strong></td></tr>
             ${txns.map(t => {
                 const days = daysSince(t.date);
-                return `<tr><td style="padding-left:20px">${t.title}${days > 30 ? ' ⚠️' : ''}</td><td>${t.date}</td><td class="num">${days}d</td><td class="num ${isRec ? 'credit' : 'debit'}">${fmt(parseFloat(t.amount || 0))}</td></tr>`;
+                return `<tr><td style="padding-left:20px">${t.title}${days > 30 ? ' ⚠️' : ''}</td><td>${t.date}</td><td class="num">${days}d</td><td class="num ${isRec ? 'credit' : 'debit'}">${fmt(getTxnTotal(t))}</td></tr>`;
             }).join('')}`;
         }).join('')}</tbody>
         <tfoot><tr class="total"><td colspan="3">Total ${isRec ? 'Receivable' : 'Payable'}</td><td class="num ${isRec ? 'credit' : 'debit'}">${fmt(total)}</td></tr></tfoot></table>`;
@@ -1123,13 +1193,14 @@ window.toggleAddAmountForm = function(id) {
 };
 
 window.addExpenseSubEntry = async function(id) {
-    const amount = parseFloat(document.getElementById('sub-amount')?.value);
+    const rawAmount = document.getElementById('sub-amount')?.value;
+    const amount = parseFloat(rawAmount);
     const date = document.getElementById('sub-date')?.value;
     const note = document.getElementById('sub-note')?.value?.trim() || '';
     const paymentMethod = document.getElementById('sub-method')?.value || 'Cash';
 
-    if (!amount || amount <= 0) {
-        window.showToast?.('Please enter a valid amount', 'error');
+    if (isNaN(amount) || amount <= 0) {
+        window.showToast?.('Please enter a valid amount greater than 0', 'error');
         return;
     }
     if (!date) {
@@ -1148,20 +1219,25 @@ window.addExpenseSubEntry = async function(id) {
         } catch { existing = []; }
     }
 
-    const newEntry = { amount, date, note, paymentMethod };
+    const newEntry = {
+        amount: parseFloat(amount.toFixed(2)),
+        date,
+        note,
+        paymentMethod
+    };
     const updated = [...existing, newEntry];
 
     const btn = document.querySelector('#add-amount-form button[onclick*="addExpenseSubEntry"]');
     if (btn) btn.textContent = 'Saving...';
     
     try {
-        await api.updateTransaction(id, { subEntries: JSON.stringify(updated) });
+        await api.updateTransaction(id, { subEntries: updated });
         window.showToast?.('Payment added successfully!', 'success');
         await financeStore.loadTransactions();
         // Re-open details sheet to reflect the new entry
         setTimeout(() => window.openTransactionDetails(id), 200);
     } catch (e) {
-        window.showToast?.('Failed to add payment', 'error');
+        window.showToast?.('Failed to add payment: ' + (e.message || ''), 'error');
         if (btn) btn.innerHTML = '<span class="material-symbols-outlined text-[16px] align-middle mr-1">add</span> Save Payment';
     }
 };
@@ -1173,16 +1249,7 @@ window.openCategoryBreakdown = function(category) {
     // Compute total expenses across the period for the % calculation
     const totalExpenses = allTxns
         .filter(t => t.type === 'Expense')
-        .reduce((s, t) => {
-            let sub = 0;
-            if (t.subEntries) {
-                try {
-                    const entries = typeof t.subEntries === 'string' ? JSON.parse(t.subEntries) : (Array.isArray(t.subEntries) ? t.subEntries : []);
-                    sub = entries.reduce((ss, se) => ss + parseFloat(se.amount || 0), 0);
-                } catch { sub = 0; }
-            }
-            return s + parseFloat(t.amount) + sub;
-        }, 0);
+        .reduce((s, t) => s + getTxnTotal(t), 0);
 
     const container = document.getElementById('sheets-container');
     const existing = document.getElementById('categoryBreakdownSheet-content');

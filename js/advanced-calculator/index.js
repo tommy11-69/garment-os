@@ -74,10 +74,10 @@ window.setMeasurementUnit = function(newUnit) {
         slvDia: sz.slvDia > 0 ? parseFloat((sz.slvDia * factor).toFixed(1)) : 0,
     }));
 
-    const newBodyLM = s.bodyLM > 0 ? parseFloat((s.bodyLM * factor).toFixed(1)) : (isToInches ? 2.5 : 6);
-    const newChestM = s.chestM > 0 ? parseFloat((s.chestM * factor).toFixed(1)) : (isToInches ? 1.5 : 4);
-    const newSlvLM = s.slvLM > 0 ? parseFloat((s.slvLM * factor).toFixed(1)) : (isToInches ? 1.5 : 4);
-    const newSlvDiaM = s.slvDiaM > 0 ? parseFloat((s.slvDiaM * factor).toFixed(1)) : (isToInches ? 1.5 : 4);
+    const newBodyLM = s.bodyLM > 0 ? parseFloat((s.bodyLM * factor).toFixed(1)) : 0;
+    const newChestM = s.chestM > 0 ? parseFloat((s.chestM * factor).toFixed(1)) : 0;
+    const newSlvLM = s.slvLM > 0 ? parseFloat((s.slvLM * factor).toFixed(1)) : 0;
+    const newSlvDiaM = s.slvDiaM > 0 ? parseFloat((s.slvDiaM * factor).toFixed(1)) : 0;
 
     store.update({
         unit: newUnit,
@@ -101,10 +101,10 @@ window.setMeasurementUnit = function(newUnit) {
     const marginChestEl = $('pat-margin-chest');
     const marginSlvEl = $('pat-margin-slv');
     const marginDiaEl = $('pat-margin-dia');
-    if (marginBodyEl) marginBodyEl.value = newBodyLM;
-    if (marginChestEl) marginChestEl.value = newChestM;
-    if (marginSlvEl) marginSlvEl.value = newSlvLM;
-    if (marginDiaEl) marginDiaEl.value = newSlvDiaM;
+    if (marginBodyEl) marginBodyEl.value = newBodyLM > 0 ? newBodyLM : '';
+    if (marginChestEl) marginChestEl.value = newChestM > 0 ? newChestM : '';
+    if (marginSlvEl) marginSlvEl.value = newSlvLM > 0 ? newSlvLM : '';
+    if (marginDiaEl) marginDiaEl.value = newSlvDiaM > 0 ? newSlvDiaM : '';
 
     renderSizeGrid();
     recalcAdvanced();
@@ -139,27 +139,27 @@ function renderSizeGrid() {
             <!-- Desktop / Tablet Row (sm:grid) -->
             <div class="hidden sm:grid grid-cols-12 gap-2 px-3 py-2 items-center bg-surface-container-lowest/70 dark:bg-slate-800/40 hover:bg-surface-container-lowest dark:hover:bg-slate-800/70 rounded-2xl border border-outline-variant/20 dark:border-slate-800/80 transition-colors" data-size-id="${sz.id}">
                 <div class="col-span-2">
-                    <input type="text" class="calc-input !h-9 text-[13px] font-bold" value="${sz.name}" 
+                    <input type="text" class="calc-input !h-9 text-[13px] font-bold" value="${sz.name || ''}" 
                            oninput="onSizePropChange(${idx}, 'name', this.value)" placeholder="Size">
                 </div>
                 <div class="col-span-2">
-                    <input type="number" min="0" class="calc-input !h-9 text-[13px] font-bold text-center" value="${sz.qty}" 
+                    <input type="number" min="0" class="calc-input !h-9 text-[13px] font-bold text-center" value="${sz.qty > 0 ? sz.qty : ''}" 
                            oninput="onSizePropChange(${idx}, 'qty', this.value)" placeholder="0">
                 </div>
                 <div class="col-span-2">
-                    <input type="number" min="0" step="0.1" class="calc-input !h-9 text-[13px] text-center" value="${sz.bodyL}" 
+                    <input type="number" min="0" step="0.1" class="calc-input !h-9 text-[13px] text-center" value="${sz.bodyL > 0 ? sz.bodyL : ''}" 
                            oninput="onSizePropChange(${idx}, 'bodyL', this.value)" placeholder="70">
                 </div>
                 <div class="col-span-2">
-                    <input type="number" min="0" step="0.1" class="calc-input !h-9 text-[13px] text-center" value="${sz.chest}" 
+                    <input type="number" min="0" step="0.1" class="calc-input !h-9 text-[13px] text-center" value="${sz.chest > 0 ? sz.chest : ''}" 
                            oninput="onSizePropChange(${idx}, 'chest', this.value)" placeholder="54">
                 </div>
                 <div class="col-span-1">
-                    <input type="number" min="0" step="0.1" class="calc-input !h-9 text-[13px] text-center !px-1" value="${sz.slvL}" 
+                    <input type="number" min="0" step="0.1" class="calc-input !h-9 text-[13px] text-center !px-1" value="${sz.slvL > 0 ? sz.slvL : ''}" 
                            oninput="onSizePropChange(${idx}, 'slvL', this.value)" placeholder="22">
                 </div>
                 <div class="col-span-1">
-                    <input type="number" min="0" step="0.1" class="calc-input !h-9 text-[13px] text-center !px-1" value="${sz.slvDia}" 
+                    <input type="number" min="0" step="0.1" class="calc-input !h-9 text-[13px] text-center !px-1" value="${sz.slvDia > 0 ? sz.slvDia : ''}" 
                            oninput="onSizePropChange(${idx}, 'slvDia', this.value)" placeholder="18">
                 </div>
                 <div class="col-span-1 text-right">
@@ -178,10 +178,10 @@ function renderSizeGrid() {
             <div class="flex sm:hidden flex-col gap-3 bg-surface-container-lowest/90 dark:bg-slate-800/60 p-3.5 rounded-2xl border border-outline-variant/25 dark:border-slate-800 shadow-sm" data-size-id-mobile="${sz.id}">
                 <div class="flex justify-between items-center">
                     <div class="flex items-center gap-2">
-                        <input type="text" class="calc-input !h-8 !w-20 text-[13px] font-bold" value="${sz.name}" 
+                        <input type="text" class="calc-input !h-8 !w-20 text-[13px] font-bold" value="${sz.name || ''}" 
                                oninput="onSizePropChange(${idx}, 'name', this.value)" placeholder="Size">
                         <span class="text-[11px] text-secondary font-medium">Qty:</span>
-                        <input type="number" min="0" class="calc-input !h-8 !w-24 text-[13px] font-bold text-center" value="${sz.qty}" 
+                        <input type="number" min="0" class="calc-input !h-8 !w-24 text-[13px] font-bold text-center" value="${sz.qty > 0 ? sz.qty : ''}" 
                                oninput="onSizePropChange(${idx}, 'qty', this.value)" placeholder="0">
                     </div>
                     <div class="flex items-center gap-1.5">
@@ -197,22 +197,22 @@ function renderSizeGrid() {
                 <div class="grid grid-cols-4 gap-2 pt-1 border-t border-outline-variant/15 text-center">
                     <div>
                         <span class="text-[10px] text-secondary block mb-1">Body L (${uLabel})</span>
-                        <input type="number" min="0" step="0.1" class="calc-input !h-8 text-[12px] text-center !px-1" value="${sz.bodyL}" 
+                        <input type="number" min="0" step="0.1" class="calc-input !h-8 text-[12px] text-center !px-1" value="${sz.bodyL > 0 ? sz.bodyL : ''}" 
                                oninput="onSizePropChange(${idx}, 'bodyL', this.value)" placeholder="70">
                     </div>
                     <div>
                         <span class="text-[10px] text-secondary block mb-1">Chest (${uLabel})</span>
-                        <input type="number" min="0" step="0.1" class="calc-input !h-8 text-[12px] text-center !px-1" value="${sz.chest}" 
+                        <input type="number" min="0" step="0.1" class="calc-input !h-8 text-[12px] text-center !px-1" value="${sz.chest > 0 ? sz.chest : ''}" 
                                oninput="onSizePropChange(${idx}, 'chest', this.value)" placeholder="54">
                     </div>
                     <div>
                         <span class="text-[10px] text-secondary block mb-1">Slv L (${uLabel})</span>
-                        <input type="number" min="0" step="0.1" class="calc-input !h-8 text-[12px] text-center !px-1" value="${sz.slvL}" 
+                        <input type="number" min="0" step="0.1" class="calc-input !h-8 text-[12px] text-center !px-1" value="${sz.slvL > 0 ? sz.slvL : ''}" 
                                oninput="onSizePropChange(${idx}, 'slvL', this.value)" placeholder="22">
                     </div>
                     <div>
                         <span class="text-[10px] text-secondary block mb-1">Slv Dia (${uLabel})</span>
-                        <input type="number" min="0" step="0.1" class="calc-input !h-8 text-[12px] text-center !px-1" value="${sz.slvDia}" 
+                        <input type="number" min="0" step="0.1" class="calc-input !h-8 text-[12px] text-center !px-1" value="${sz.slvDia > 0 ? sz.slvDia : ''}" 
                                oninput="onSizePropChange(${idx}, 'slvDia', this.value)" placeholder="18">
                     </div>
                 </div>
@@ -245,14 +245,14 @@ window.addNewSizeRow = function() {
 
     const unit = s.unit || 'cm';
     const isInches = unit === 'in';
-    const lastSize = s.sizes[s.sizes.length - 1] || { bodyL: isInches ? 28 : 70, chest: isInches ? 21 : 52, slvL: isInches ? 8.5 : 21, slvDia: isInches ? 7.5 : 18 };
+    const lastSize = s.sizes[s.sizes.length - 1] || { bodyL: 0, chest: 0, slvL: 0, slvDia: 0 };
 
     store.addSize(nextName, {
         qty: 0,
-        bodyL: (lastSize.bodyL || (isInches ? 28 : 70)) + (isInches ? 0.8 : 2),
-        chest: (lastSize.chest || (isInches ? 21 : 52)) + (isInches ? 0.8 : 2),
-        slvL: (lastSize.slvL || (isInches ? 8.5 : 21)) + (isInches ? 0.4 : 1),
-        slvDia: (lastSize.slvDia || (isInches ? 7.5 : 18)) + (isInches ? 0.2 : 0.5)
+        bodyL: lastSize.bodyL > 0 ? lastSize.bodyL + (isInches ? 0.8 : 2) : 0,
+        chest: lastSize.chest > 0 ? lastSize.chest + (isInches ? 0.8 : 2) : 0,
+        slvL: lastSize.slvL > 0 ? lastSize.slvL + (isInches ? 0.4 : 1) : 0,
+        slvDia: lastSize.slvDia > 0 ? lastSize.slvDia + (isInches ? 0.2 : 0.5) : 0
     });
 
     renderSizeGrid();
@@ -641,7 +641,11 @@ window.resetCalculator = function() {
 
 function syncFormFromStore() {
     const s = store.state;
-    const setVal = (id, v) => { if ($(id)) $(id).value = (v || v === 0) ? v : ''; };
+    const setVal = (id, v) => {
+        if ($(id)) {
+            $(id).value = (v !== undefined && v !== null && v !== '' && v !== 0 && !isNaN(Number(v))) ? Number(v) : (typeof v === 'string' ? v : '');
+        }
+    };
 
     setVal('adv-client', s.clientName);
     setVal('adv-garment-name', s.garmentName);
@@ -807,13 +811,13 @@ async function loadCostingById(id) {
 
         store.update({
             clientName: c.clientId || c.clientName || u.clientName || '',
-            garmentName: c.styleRef || u.garmentName || 'Garment',
+            garmentName: c.styleRef || u.garmentName || '',
             garmentType: c.garmentType || u.garmentType || 'T-Shirt',
             currency: c.currency || u.currency || '₹',
             sizes: parsedSizes,
-            gsm: parseFloat(u.gsm ?? c.gsm ?? 180),
+            gsm: parseFloat(u.gsm ?? c.gsm ?? 0),
             fabricPriceKg: parseFloat(u.fabricPriceKg ?? c.fabricPriceKg ?? 0),
-            wastage: parseFloat(u.wastage ?? c.wastage ?? 5),
+            wastage: parseFloat(u.wastage ?? c.wastage ?? 0),
             cmtMode: u.cmtMode || c.cmtMode || 'combined',
             cmt: parseFloat(u.cmt ?? c.cmt ?? 0),
             cutting: parseFloat(u.cutting ?? c.cutting ?? 0),
@@ -828,7 +832,7 @@ async function loadCostingById(id) {
             pattern: parseFloat(u.pattern ?? c.pattern ?? 0),
             allowances: parseFloat(u.allowances ?? c.allowances ?? 0),
             overheads: parseFloat(u.overheads ?? c.overheads ?? 0),
-            profitPct: parseFloat(u.profitPct ?? c.profitPct ?? 30),
+            profitPct: parseFloat(u.profitPct ?? c.profitPct ?? 0),
             spPc: parseFloat(u.spPc ?? c.retailPrice ?? 0),
             cpPc: parseFloat(u.cpPc ?? c.totalUnitCost ?? 0)
         });

@@ -53,9 +53,9 @@ function restoreSession() {
             // Rehydrate DOM inputs from state
             const setVal = (id, v) => {
                 const el = $(id);
-                if (el && v !== undefined && v !== null && v !== '') {
+                if (el) {
                     const numV = Number(v);
-                    el.value = (!isNaN(numV) && numV !== 0) ? numV : (v === 0 ? 0 : v);
+                    el.value = (v !== undefined && v !== null && v !== '' && !isNaN(numV) && numV !== 0) ? numV : '';
                 }
             };
             setVal('u-qty', u.qty);

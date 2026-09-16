@@ -56,12 +56,13 @@ export function FormSegmentedControl({ id, options = [], value = '' }) {
 }
 
 export function HeroAmountInput({ id, value = '' }) {
+    const valStr = (value !== '' && value !== null && value !== undefined && !isNaN(Number(value))) ? Number(value) : '';
     return `
     <div class="flex flex-col items-center justify-center py-6 mb-2">
         <label class="text-[12px] font-bold text-secondary uppercase tracking-widest mb-3">Amount</label>
         <div class="relative flex items-center justify-center">
             <span class="text-[36px] font-bold text-on-surface mr-1 -mt-1">₹</span>
-            <input type="number" step="0.01" id="${id}" value="${value}" required placeholder="0.00"
+            <input type="number" step="0.01" id="${id}" value="${valStr}" required placeholder="0.00"
                    class="bg-transparent border-none outline-none focus:ring-0 text-[56px] font-bold text-on-surface text-center w-full max-w-[240px] placeholder:text-outline-variant/50 tracking-tight p-0 [&::-webkit-inner-spin-button]:appearance-none"
                    style="-moz-appearance: textfield;">
         </div>
@@ -198,6 +199,21 @@ export function getBalanceSheetDetailHTML(type, items = [], parties = { customer
     const today = new Date();
     const daysSince = (dateStr) => Math.floor((today - new Date(dateStr)) / 86400000);
 
+    const getTxnAmount = (t) => {
+        if (!t) return 0;
+        let total = parseFloat(t.amount) || 0;
+        if (t.subEntries) {
+            let entries = [];
+            try {
+                entries = typeof t.subEntries === 'string' ? JSON.parse(t.subEntries) : (Array.isArray(t.subEntries) ? t.subEntries : []);
+            } catch { entries = []; }
+            if (Array.isArray(entries)) {
+                total += entries.reduce((s, se) => s + (parseFloat(se.amount) || 0), 0);
+            }
+        }
+        return total;
+    };
+
     // ── 1. CASH LEDGER ──────────────────────────────────────────────────────
     if (type === 'cash') {
         const sorted = [...items].sort((a, b) => {
@@ -209,12 +225,12 @@ export function getBalanceSheetDetailHTML(type, items = [], parties = { customer
         const openingBalance = balance;
 
         const rows = sorted.map(t => {
-            const amount = parseFloat(t.amount || 0);
+            const amount = getTxnAmount(t);
             const isIncome = t.type === 'Income';
             const debit = isIncome ? 0 : amount;
             const credit = isIncome ? amount : 0;
             balance += isIncome ? amount : -amount;
-            return { ...t, debit, credit, balance };
+            return { ...t, debit, credit, balance, totalAmount: amount };
         });
 
         const closingBalance = rows.length > 0 ? rows[rows.length - 1].balance : openingBalance;
@@ -299,7 +315,7 @@ export function getBalanceSheetDetailHTML(type, items = [], parties = { customer
             grouped[key].push(t);
         });
 
-        const total = items.reduce((s, t) => s + parseFloat(t.amount || 0), 0);
+        const total = items.reduce((s, t) => s + getTxnAmount(t), 0);
         const avgDays = items.length ? Math.round(items.reduce((s, t) => s + daysSince(t.date), 0) / items.length) : 0;
         const overdueCount = items.filter(t => daysSince(t.date) > 30).length;
 
@@ -335,7 +351,7 @@ export function getBalanceSheetDetailHTML(type, items = [], parties = { customer
                     </thead>
                     <tbody>
                         ${Object.entries(grouped).map(([customer, txns]) => {
-                            const custTotal = txns.reduce((s, t) => s + parseFloat(t.amount || 0), 0);
+                            const custTotal = txns.reduce((s, t) => s + getTxnAmount(t), 0);
                             return `
                             <tr class="bg-[#5E5CE6]/5 border-y border-[#5E5CE6]/20">
                                 <td class="px-3 py-2 text-[12px] font-bold text-on-surface">
@@ -357,7 +373,7 @@ export function getBalanceSheetDetailHTML(type, items = [], parties = { customer
                                     </td>
                                     <td class="px-3 py-2.5 text-[11px] text-secondary whitespace-nowrap">${t.date}</td>
                                     <td class="px-3 py-2.5 text-center"><span class="px-1.5 py-0.5 rounded-md text-[10px] font-bold ${ageClr}">${days}d</span></td>
-                                    <td class="px-3 py-2.5 text-[12px] font-semibold text-right text-[#008A00]">${fmt(parseFloat(t.amount || 0))}</td>
+                                    <td class="px-3 py-2.5 text-[12px] font-semibold text-right text-[#008A00]">${fmt(getTxnAmount(t))}</td>
                                 </tr>`;
                             }).join('')}`;
                         }).join('')}
@@ -383,7 +399,7 @@ export function getBalanceSheetDetailHTML(type, items = [], parties = { customer
             grouped[key].push(t);
         });
 
-        const total = items.reduce((s, t) => s + parseFloat(t.amount || 0), 0);
+        const total = items.reduce((s, t) => s + getTxnAmount(t), 0);
         const overdueCount = items.filter(t => daysSince(t.date) > 30).length;
         const avgDays = items.length ? Math.round(items.reduce((s, t) => s + daysSince(t.date), 0) / items.length) : 0;
 
@@ -419,7 +435,7 @@ export function getBalanceSheetDetailHTML(type, items = [], parties = { customer
                     </thead>
                     <tbody>
                         ${Object.entries(grouped).map(([vendor, txns]) => {
-                            const vendTotal = txns.reduce((s, t) => s + parseFloat(t.amount || 0), 0);
+                            const vendTotal = txns.reduce((s, t) => s + getTxnAmount(t), 0);
                             return `
                             <tr class="bg-[#FF9F0A]/5 border-y border-[#FF9F0A]/20">
                                 <td class="px-3 py-2 text-[12px] font-bold text-on-surface">
@@ -442,7 +458,7 @@ export function getBalanceSheetDetailHTML(type, items = [], parties = { customer
                                     </td>
                                     <td class="px-3 py-2.5 text-[11px] text-secondary whitespace-nowrap">${t.date}</td>
                                     <td class="px-3 py-2.5 text-center"><span class="px-1.5 py-0.5 rounded-md text-[10px] font-bold ${ageClr}">${days}d</span></td>
-                                    <td class="px-3 py-2.5 text-[12px] font-semibold text-right text-error">${fmt(parseFloat(t.amount || 0))}</td>
+                                    <td class="px-3 py-2.5 text-[12px] font-semibold text-right text-error">${fmt(getTxnAmount(t))}</td>
                                 </tr>`;
                             }).join('')}`;
                         }).join('')}
@@ -609,10 +625,11 @@ export function getTransactionDetailsHeader(t) {
     if (t.subEntries) {
         try {
             const entries = typeof t.subEntries === 'string' ? JSON.parse(t.subEntries) : (Array.isArray(t.subEntries) ? t.subEntries : []);
-            subTotal = entries.reduce((s, se) => s + parseFloat(se.amount || 0), 0);
+            subTotal = entries.reduce((s, se) => s + (parseFloat(se.amount) || 0), 0);
         } catch { subTotal = 0; }
     }
-    const displayAmount = parseFloat(t.amount) + subTotal;
+    const baseAmount = parseFloat(t.amount) || 0;
+    const displayAmount = baseAmount + subTotal;
     const amountStr = (isIncome ? '+' : '-') + '₹' + displayAmount.toLocaleString(undefined, {minimumFractionDigits:2});
     const hasAdds = subTotal > 0;
     const statusColor = t.status === 'Completed' ? 'bg-[#008A00]/10 text-[#008A00]' : (t.status === 'Pending' ? 'bg-[#FF9F0A]/10 text-[#FF9F0A]' : 'bg-surface-variant text-secondary');
@@ -673,6 +690,7 @@ export function getTransactionDetailsContent(t) {
         } catch { subEntries = []; }
     }
     const hasSubEntries = subEntries.length > 0;
+    const baseAmount = parseFloat(t.amount) || 0;
 
     // Build instalments timeline
     const instalmentsHTML = hasSubEntries ? `
@@ -691,7 +709,7 @@ export function getTransactionDetailsContent(t) {
                     <div class="flex-1 min-w-0 pb-2">
                         <div class="flex justify-between items-center">
                             <span class="text-[13px] font-semibold text-on-surface">Initial Entry</span>
-                            <span class="text-[13px] font-bold text-on-surface">₹${parseFloat(t.amount).toLocaleString()}</span>
+                            <span class="text-[13px] font-bold text-on-surface">₹${baseAmount.toLocaleString(undefined, {minimumFractionDigits:2})}</span>
                         </div>
                         <span class="text-[11px] text-secondary">${t.date} · ${t.paymentMethod || 'N/A'}</span>
                     </div>
@@ -706,7 +724,7 @@ export function getTransactionDetailsContent(t) {
                         <div class="flex-1 min-w-0 pb-2">
                             <div class="flex justify-between items-center">
                                 <span class="text-[13px] font-semibold text-error">${se.note || 'Additional Payment'}</span>
-                                <span class="text-[13px] font-bold text-error">+₹${parseFloat(se.amount).toLocaleString()}</span>
+                                <span class="text-[13px] font-bold text-error">+₹${(parseFloat(se.amount) || 0).toLocaleString(undefined, {minimumFractionDigits:2})}</span>
                             </div>
                             <span class="text-[11px] text-secondary">${se.date} · ${se.paymentMethod || 'N/A'}</span>
                         </div>

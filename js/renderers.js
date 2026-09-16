@@ -628,7 +628,15 @@ export const renderers = {
             : 'bg-gradient-to-br from-[#FF6B6B] to-[#FF453A] text-white shadow-[0_2px_8px_rgba(255,69,58,0.3)]';
         const icon = isIncome ? 'arrow_downward' : 'arrow_upward';
         
-        const amountStr = (isIncome ? '+' : '-') + '₹' + parseFloat(t.amount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        let subTotal = 0;
+        if (t.subEntries) {
+            try {
+                const entries = typeof t.subEntries === 'string' ? JSON.parse(t.subEntries) : (Array.isArray(t.subEntries) ? t.subEntries : []);
+                subTotal = entries.reduce((s, se) => s + (parseFloat(se.amount) || 0), 0);
+            } catch {}
+        }
+        const finalAmount = (parseFloat(t.amount) || 0) + subTotal;
+        const amountStr = (isIncome ? '+' : '-') + '₹' + finalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         
         // Refined Badges with micro-icons
         const statusUI = t.status === 'Completed' 
@@ -730,7 +738,15 @@ export const renderers = {
         const isIncome = t.type === 'Income';
         const color = isIncome ? 'text-[#008A00]' : 'text-error';
         const bg = isIncome ? 'bg-[#008A00]/10' : 'bg-error/10';
-        const amountStr = (isIncome ? '+' : '-') + '₹' + parseFloat(t.amount).toLocaleString(undefined, {minimumFractionDigits:2});
+        let subTotal = 0;
+        if (t.subEntries) {
+            try {
+                const entries = typeof t.subEntries === 'string' ? JSON.parse(t.subEntries) : (Array.isArray(t.subEntries) ? t.subEntries : []);
+                subTotal = entries.reduce((s, se) => s + (parseFloat(se.amount) || 0), 0);
+            } catch {}
+        }
+        const finalAmount = (parseFloat(t.amount) || 0) + subTotal;
+        const amountStr = (isIncome ? '+' : '-') + '₹' + finalAmount.toLocaleString(undefined, {minimumFractionDigits:2});
         
         return `
             <div class="p-md flex items-center justify-between active:bg-surface-variant/50 transition-colors cursor-pointer" onclick="window.location.href='finance.html'">

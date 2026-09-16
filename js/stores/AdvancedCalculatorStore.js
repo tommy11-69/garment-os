@@ -9,7 +9,7 @@ class AdvancedCalculatorStore {
     getInitialState() {
         return {
             clientName: '',
-            garmentName: 'Classic Crew Neck T-Shirt',
+            garmentName: '',
             garmentType: 'T-Shirt',
             currency: '₹',
             unit: 'cm', // 'cm' or 'in'
@@ -17,23 +17,23 @@ class AdvancedCalculatorStore {
 
             // Dynamic Size Array (cm dimensions)
             sizes: [
-                { id: 'sz_1', name: 'S', qty: 0, bodyL: 68, chest: 50, slvL: 20, slvDia: 17, weightGms: 0, totalKg: 0 },
-                { id: 'sz_2', name: 'M', qty: 0, bodyL: 70, chest: 52, slvL: 21, slvDia: 18, weightGms: 0, totalKg: 0 },
-                { id: 'sz_3', name: 'L', qty: 0, bodyL: 72, chest: 54, slvL: 22, slvDia: 19, weightGms: 0, totalKg: 0 },
-                { id: 'sz_4', name: 'XL', qty: 0, bodyL: 74, chest: 56, slvL: 23, slvDia: 20, weightGms: 0, totalKg: 0 }
+                { id: 'sz_1', name: 'S', qty: 0, bodyL: 0, chest: 0, slvL: 0, slvDia: 0, weightGms: 0, totalKg: 0 },
+                { id: 'sz_2', name: 'M', qty: 0, bodyL: 0, chest: 0, slvL: 0, slvDia: 0, weightGms: 0, totalKg: 0 },
+                { id: 'sz_3', name: 'L', qty: 0, bodyL: 0, chest: 0, slvL: 0, slvDia: 0, weightGms: 0, totalKg: 0 },
+                { id: 'sz_4', name: 'XL', qty: 0, bodyL: 0, chest: 0, slvL: 0, slvDia: 0, weightGms: 0, totalKg: 0 }
             ],
             totalQty: 0,
 
             // Global Seam & Hem Margin Allowances (+cm)
-            bodyLM: 6,
-            chestM: 4,
-            slvLM: 4,
-            slvDiaM: 4,
+            bodyLM: 0,
+            chestM: 0,
+            slvLM: 0,
+            slvDiaM: 0,
 
             // Global Fabric Spec
-            gsm: 180,
-            fabricPriceKg: 420,
-            wastage: 5,
+            gsm: 0,
+            fabricPriceKg: 0,
+            wastage: 0,
 
             // Aggregated Computed Fabric Results
             totalFabricKg: 0,
@@ -44,15 +44,15 @@ class AdvancedCalculatorStore {
 
             // Making / CMT Mode
             cmtMode: 'combined', // 'combined' or 'separate'
-            cmt: 25,
+            cmt: 0,
             cmtTotal: 0,
-            cutting: 5,
+            cutting: 0,
             cuttingTotal: 0,
-            fusing: 2,
+            fusing: 0,
             fusingTotal: 0,
-            wages: 12,
+            wages: 0,
             wagesTotal: 0,
-            packing: 3,
+            packing: 0,
             packingTotal: 0,
 
             // Printing & Sublimation
@@ -81,7 +81,7 @@ class AdvancedCalculatorStore {
             totalCost: 0,
             spPc: null,
             totalSales: 0,
-            profitPct: 30,
+            profitPct: 0,
             profitDone: 0,
             lastEdited: 'pct'
         };
@@ -111,10 +111,10 @@ class AdvancedCalculatorStore {
             id,
             name,
             qty: (defaults.qty !== undefined && defaults.qty !== null) ? defaults.qty : 0,
-            bodyL: defaults.bodyL || 70,
-            chest: defaults.chest || 52,
-            slvL: defaults.slvL || 21,
-            slvDia: defaults.slvDia || 18,
+            bodyL: defaults.bodyL || 0,
+            chest: defaults.chest || 0,
+            slvL: defaults.slvL || 0,
+            slvDia: defaults.slvDia || 0,
             weightGms: 0,
             totalKg: 0
         };

@@ -461,6 +461,22 @@
         const fmt = n => '₹' + Math.abs(n).toLocaleString('en-IN', { maximumFractionDigits: 0 });
         const DAY_MS = 86400000;
 
+        function getTxnAmount(t) {
+            if (!t) return 0;
+            const base = parseFloat(t.amount);
+            let total = isNaN(base) ? 0 : base;
+            if (t.subEntries) {
+                let entries = [];
+                try {
+                    entries = typeof t.subEntries === 'string' ? JSON.parse(t.subEntries) : (Array.isArray(t.subEntries) ? t.subEntries : []);
+                } catch { entries = []; }
+                if (Array.isArray(entries)) {
+                    total += entries.reduce((s, se) => s + (parseFloat(se.amount) || 0), 0);
+                }
+            }
+            return total;
+        }
+
         function getPeriodDays() {
             if (_period === 'custom' && _customStartDate && _customEndDate) {
                 const s = new Date(_customStartDate + 'T00:00:00');
@@ -496,8 +512,8 @@
                         const dayTxns = txns.filter(t => (t.date || '').split('T')[0] === key);
                         buckets.push({
                             label: cur.getDate() + ' ' + cur.toLocaleString('en', { month: 'short' }),
-                            income: dayTxns.filter(t => t.type === 'Income').reduce((s, t) => s + +t.amount, 0),
-                            expenses: dayTxns.filter(t => t.type === 'Expense').reduce((s, t) => s + +t.amount, 0),
+                            income: dayTxns.filter(t => t.type === 'Income').reduce((s, t) => s + getTxnAmount(t), 0),
+                            expenses: dayTxns.filter(t => t.type === 'Expense').reduce((s, t) => s + getTxnAmount(t), 0),
                         });
                     }
                 } else {
@@ -516,8 +532,8 @@
                         });
                         buckets.push({
                             label: curStart.toLocaleString('en', { month: 'short' }) + ' ' + curStart.getDate(),
-                            income: bucketTxns.filter(t => t.type === 'Income').reduce((s, t) => s + +t.amount, 0),
-                            expenses: bucketTxns.filter(t => t.type === 'Expense').reduce((s, t) => s + +t.amount, 0),
+                            income: bucketTxns.filter(t => t.type === 'Income').reduce((s, t) => s + getTxnAmount(t), 0),
+                            expenses: bucketTxns.filter(t => t.type === 'Expense').reduce((s, t) => s + getTxnAmount(t), 0),
                         });
                     }
                 }
@@ -537,8 +553,8 @@
                         : _period === '1m'
                             ? d.getDate() + ''
                             : d.toLocaleString('en', { weekday: 'short' }),
-                    income:   dayTxns.filter(t => t.type === 'Income').reduce((s, t) => s + +t.amount, 0),
-                    expenses: dayTxns.filter(t => t.type === 'Expense').reduce((s, t) => s + +t.amount, 0),
+                    income:   dayTxns.filter(t => t.type === 'Income').reduce((s, t) => s + getTxnAmount(t), 0),
+                    expenses: dayTxns.filter(t => t.type === 'Expense').reduce((s, t) => s + getTxnAmount(t), 0),
                 });
             }
             return buckets;
@@ -551,8 +567,8 @@
                 const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
                 const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
                 const mTxns = txns.filter(t => t.date && t.date.startsWith(key));
-                const income   = mTxns.filter(t => t.type === 'Income').reduce((s, t) => s + +t.amount, 0);
-                const expenses = mTxns.filter(t => t.type === 'Expense').reduce((s, t) => s + +t.amount, 0);
+                const income   = mTxns.filter(t => t.type === 'Income').reduce((s, t) => s + getTxnAmount(t), 0);
+                const expenses = mTxns.filter(t => t.type === 'Expense').reduce((s, t) => s + getTxnAmount(t), 0);
                 months.push({
                     label: d.toLocaleString('en', { month: 'short' }),
                     net: income - expenses,
@@ -716,7 +732,7 @@
             const catMap = {};
             expenses.forEach(t => {
                 const cat = t.category || 'Other';
-                catMap[cat] = (catMap[cat] || 0) + +t.amount;
+                catMap[cat] = (catMap[cat] || 0) + getTxnAmount(t);
             });
             const total = Object.values(catMap).reduce((s, v) => s + v, 0);
 
@@ -781,7 +797,7 @@
 
             const periodT = getPeriodTransactions(txns);
             const incomes = periodT.filter(t => t.type === 'Income');
-            const total   = incomes.reduce((s, t) => s + +t.amount, 0);
+            const total   = incomes.reduce((s, t) => s + getTxnAmount(t), 0);
 
             if (total === 0) {
                 container.innerHTML = `<p class="text-[13px] text-secondary italic">No income in this period</p>`;
@@ -791,7 +807,7 @@
             const catMap = {};
             incomes.forEach(t => {
                 const cat = t.category || 'Other';
-                catMap[cat] = (catMap[cat] || 0) + +t.amount;
+                catMap[cat] = (catMap[cat] || 0) + getTxnAmount(t);
             });
 
             const sorted = Object.entries(catMap).sort((a, b) => b[1] - a[1]).slice(0, 6);

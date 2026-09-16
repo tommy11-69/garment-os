@@ -51,28 +51,76 @@ class FinanceStore extends BaseStore {
         let pendingPayments = 0;
         let pendingReceivables = 0;
 
-        // All mock transactions combined for current balance
-        transactions.forEach(t => {
-            const amount = parseFloat(t.amount) || 0;
+        const txList = Array.isArray(transactions) ? transactions : [];
+
+        txList.forEach(t => {
+            if (!t) return;
+            const parsedBase = parseFloat(t.amount);
+            const baseAmount = isNaN(parsedBase) ? 0 : parsedBase;
+
+            // Sum subEntries (e.g. expense instalments/additions)
+            let subTotal = 0;
+            let subToday = 0;
+            let subMonth = 0;
+
+            if (t.subEntries) {
+                let entries = [];
+                try {
+                    entries = typeof t.subEntries === 'string' ? JSON.parse(t.subEntries) : (Array.isArray(t.subEntries) ? t.subEntries : []);
+                } catch { entries = []; }
+
+                if (Array.isArray(entries)) {
+                    entries.forEach(se => {
+                        const seAmt = parseFloat(se.amount);
+                        const cleanSeAmt = isNaN(seAmt) ? 0 : seAmt;
+                        subTotal += cleanSeAmt;
+
+                        const seDateStr = se.date || t.date;
+                        if (seDateStr) {
+                            const seDate = new Date(seDateStr);
+                            seDate.setHours(0, 0, 0, 0);
+                            if (!isNaN(seDate.getTime())) {
+                                if (seDate.getTime() === today.getTime()) {
+                                    subToday += cleanSeAmt;
+                                }
+                                if (seDate.getMonth() === thisMonth && seDate.getFullYear() === thisYear) {
+                                    subMonth += cleanSeAmt;
+                                }
+                            }
+                        }
+                    });
+                }
+            }
+
+            const totalAmount = baseAmount + subTotal;
+
             const tDate = new Date(t.date);
-            tDate.setHours(0,0,0,0);
+            tDate.setHours(0, 0, 0, 0);
+            const isValidDate = !isNaN(tDate.getTime());
             
-            const isToday = tDate.getTime() === today.getTime();
-            const isThisMonth = tDate.getMonth() === thisMonth && tDate.getFullYear() === thisYear;
+            const isToday = isValidDate && tDate.getTime() === today.getTime();
+            const isThisMonth = isValidDate && tDate.getMonth() === thisMonth && tDate.getFullYear() === thisYear;
+
+            const isExpense = t.type === 'Expense' || t.isNegative === 1 || t.isNegative === true;
+            const isIncome = t.type === 'Income' && !isExpense;
             
             if (t.status === 'Completed') {
-                if (t.type === 'Income') {
-                    totalIncome += amount;
-                    if (isToday) totalIncomeToday += amount;
-                    if (isThisMonth) totalIncomeMonth += amount;
-                } else if (t.type === 'Expense') {
-                    totalExpenses += amount;
-                    if (isToday) totalExpensesToday += amount;
-                    if (isThisMonth) totalExpensesMonth += amount;
+                if (isIncome) {
+                    totalIncome += totalAmount;
+                    if (isToday) totalIncomeToday += baseAmount;
+                    totalIncomeToday += subToday;
+                    if (isThisMonth) totalIncomeMonth += baseAmount;
+                    totalIncomeMonth += subMonth;
+                } else if (isExpense) {
+                    totalExpenses += totalAmount;
+                    if (isToday) totalExpensesToday += baseAmount;
+                    totalExpensesToday += subToday;
+                    if (isThisMonth) totalExpensesMonth += baseAmount;
+                    totalExpensesMonth += subMonth;
                 }
             } else if (t.status === 'Pending') {
-                if (t.type === 'Income') pendingReceivables += amount;
-                if (t.type === 'Expense') pendingPayments += amount;
+                if (isIncome) pendingReceivables += totalAmount;
+                if (isExpense) pendingPayments += totalAmount;
             }
         });
 
@@ -80,13 +128,15 @@ class FinanceStore extends BaseStore {
 
         return {
             currentBalance,
+            totalIncome,
+            totalExpenses,
             totalIncomeToday,
             totalExpensesToday,
             netCashFlowToday: totalIncomeToday - totalExpensesToday,
             totalIncomeMonth,
             totalExpensesMonth,
             netCashFlowMonth: totalIncomeMonth - totalExpensesMonth,
-            totalTransactions: transactions.length,
+            totalTransactions: txList.length,
             pendingPayments,
             pendingReceivables
         };

@@ -158,7 +158,7 @@
                         </div>
                         <div>
                             <label class="field-label">Style / Garment Name</label>
-                            <input id="adv-garment-name" type="text" placeholder="e.g. Classic Crew Tee / Zip Hoodie" value="Classic Crew Neck T-Shirt" class="calc-input w-full">
+                            <input id="adv-garment-name" type="text" placeholder="e.g. Classic Crew Tee / Zip Hoodie" class="calc-input w-full">
                         </div>
                     </div>
 
@@ -224,7 +224,7 @@
                                 <label class="field-label text-[11px]">Body Length Margin</label>
                                 <div class="relative flex items-center">
                                     <span class="absolute left-2.5 text-[12px] font-bold text-secondary">+</span>
-                                    <input id="pat-margin-body" type="number" value="6" class="calc-input !h-9 text-center pl-6 text-[13px]" oninput="onGlobalParamChange()">
+                                    <input id="pat-margin-body" type="number" placeholder="6" class="calc-input !h-9 text-center pl-6 text-[13px]" oninput="onGlobalParamChange()">
                                     <span class="absolute right-2.5 text-[11px] text-secondary font-medium">cm</span>
                                 </div>
                             </div>
@@ -232,7 +232,7 @@
                                 <label class="field-label text-[11px]">Chest Margin</label>
                                 <div class="relative flex items-center">
                                     <span class="absolute left-2.5 text-[12px] font-bold text-secondary">+</span>
-                                    <input id="pat-margin-chest" type="number" value="4" class="calc-input !h-9 text-center pl-6 text-[13px]" oninput="onGlobalParamChange()">
+                                    <input id="pat-margin-chest" type="number" placeholder="4" class="calc-input !h-9 text-center pl-6 text-[13px]" oninput="onGlobalParamChange()">
                                     <span class="absolute right-2.5 text-[11px] text-secondary font-medium">cm</span>
                                 </div>
                             </div>
@@ -240,7 +240,7 @@
                                 <label class="field-label text-[11px]">Sleeve Length Margin</label>
                                 <div class="relative flex items-center">
                                     <span class="absolute left-2.5 text-[12px] font-bold text-secondary">+</span>
-                                    <input id="pat-margin-slv" type="number" value="4" class="calc-input !h-9 text-center pl-6 text-[13px]" oninput="onGlobalParamChange()">
+                                    <input id="pat-margin-slv" type="number" placeholder="4" class="calc-input !h-9 text-center pl-6 text-[13px]" oninput="onGlobalParamChange()">
                                     <span class="absolute right-2.5 text-[11px] text-secondary font-medium">cm</span>
                                 </div>
                             </div>
@@ -248,7 +248,7 @@
                                 <label class="field-label text-[11px]">Sleeve Dia Margin</label>
                                 <div class="relative flex items-center">
                                     <span class="absolute left-2.5 text-[12px] font-bold text-secondary">+</span>
-                                    <input id="pat-margin-dia" type="number" value="4" class="calc-input !h-9 text-center pl-6 text-[13px]" oninput="onGlobalParamChange()">
+                                    <input id="pat-margin-dia" type="number" placeholder="4" class="calc-input !h-9 text-center pl-6 text-[13px]" oninput="onGlobalParamChange()">
                                     <span class="absolute right-2.5 text-[11px] text-secondary font-medium">cm</span>
                                 </div>
                             </div>
@@ -287,7 +287,7 @@
                             <div>
                                 <label class="field-label">Wastage %</label>
                                 <div class="relative">
-                                    <input id="adv-wastage" type="number" min="0" placeholder="5" value="5" class="calc-input w-full pr-8" oninput="onGlobalParamChange()">
+                                    <input id="adv-wastage" type="number" min="0" placeholder="5" class="calc-input w-full pr-8" oninput="onGlobalParamChange()">
                                     <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">%</span>
                                 </div>
                             </div>
@@ -630,7 +630,7 @@
                         <div class="col-span-1">
                             <label class="field-label">Profit %</label>
                             <div class="relative">
-                                <input id="u-profit-pct" type="number" min="0" step="0.5" placeholder="30" value="30" class="calc-input w-full pr-8" oninput="onUSPChange('pct')">
+                                <input id="u-profit-pct" type="number" min="0" step="0.5" placeholder="30" class="calc-input w-full pr-8" oninput="onUSPChange('pct')">
                                 <span class="absolute right-3.5 top-1/2 -translate-y-1/2 text-secondary text-[15px] font-semibold">%</span>
                             </div>
                         </div>
@@ -641,7 +641,7 @@
                             <span id="u-margin-label" class="font-bold text-secondary dark:text-slate-300">—</span>
                         </div>
                         <div class="w-full bg-surface-container dark:bg-slate-800 h-2.5 rounded-full overflow-hidden">
-                            <div id="u-profit-bar" class="profit-bar-fill h-full rounded-full bg-primary" style="width:30%"></div>
+                            <div id="u-profit-bar" class="profit-bar-fill h-full rounded-full bg-primary" style="width:0%"></div>
                         </div>
                     </div>
                 </div>
