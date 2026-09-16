@@ -205,9 +205,82 @@ $rawInput = file_get_contents('php://input');
 $body = json_decode($rawInput, true) ?: [];
 
 // Auto-migrate schema fixes (only runs once or when marker is missing)
-$migrationMarker = __DIR__ . '/.migrated_v56';
+$migrationMarker = __DIR__ . '/.migrated_v57';
+
+function ensureBillingTablesExist($pdo) {
+    try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `billing_counters` (
+            `id` INT AUTO_INCREMENT PRIMARY KEY,
+            `type_key` VARCHAR(50) UNIQUE NOT NULL,
+            `last_seq` INT NOT NULL DEFAULT 0
+        )");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `billing_master` (
+            `_rowid` INT AUTO_INCREMENT PRIMARY KEY,
+            `id` VARCHAR(191) UNIQUE NOT NULL,
+            `invoice_number` VARCHAR(50) UNIQUE NOT NULL,
+            `transaction_type` VARCHAR(50) NOT NULL,
+            `contact_id` VARCHAR(191) NOT NULL,
+            `contact_type` VARCHAR(20) DEFAULT 'customer',
+            `contact_name` VARCHAR(255) DEFAULT '',
+            `contact_gstin` VARCHAR(20) DEFAULT '',
+            `date` DATE NOT NULL,
+            `due_date` DATE DEFAULT NULL,
+            `subtotal` DOUBLE DEFAULT 0,
+            `discount` DOUBLE DEFAULT 0,
+            `tax_total` DOUBLE DEFAULT 0,
+            `grand_total` DOUBLE DEFAULT 0,
+            `amount_paid` DOUBLE DEFAULT 0,
+            `status` VARCHAR(30) DEFAULT 'Draft',
+            `notes` LONGTEXT DEFAULT '',
+            `linked_bill_id` VARCHAR(191) DEFAULT '',
+            `createdAt` DATETIME DEFAULT CURRENT_TIMESTAMP,
+            `updatedAt` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `billing_items` (
+            `id` VARCHAR(191) PRIMARY KEY,
+            `billing_master_id` VARCHAR(191) NOT NULL,
+            `item_name` VARCHAR(255) DEFAULT '',
+            `item_id` VARCHAR(191) DEFAULT '',
+            `description` LONGTEXT DEFAULT '',
+            `quantity` DOUBLE DEFAULT 1,
+            `unit` VARCHAR(20) DEFAULT 'pcs',
+            `unit_price` DOUBLE DEFAULT 0,
+            `discount_pct` DOUBLE DEFAULT 0,
+            `tax_pct` DOUBLE DEFAULT 0,
+            `tax_amount` DOUBLE DEFAULT 0,
+            `row_total` DOUBLE DEFAULT 0,
+            `createdAt` DATETIME DEFAULT CURRENT_TIMESTAMP
+        )");
+
+        // Seed legacy quotations if missing
+        $checkLegacy = $pdo->query("SELECT COUNT(*) FROM `billing_master` WHERE `id` IN ('bill-qt-33531', 'bill-qt-77195')")->fetchColumn();
+        if ((int)$checkLegacy < 2) {
+            $pdo->exec("INSERT IGNORE INTO `billing_counters` (`type_key`, `last_seq`) VALUES ('AG-QTY-2026', 2) ON DUPLICATE KEY UPDATE `last_seq` = GREATEST(`last_seq`, 2)");
+            
+            $pdo->exec("INSERT IGNORE INTO `billing_master` 
+                (`id`, `invoice_number`, `transaction_type`, `contact_id`, `contact_type`, `contact_name`, `contact_gstin`, `date`, `due_date`, `subtotal`, `discount`, `tax_total`, `grand_total`, `amount_paid`, `status`, `notes`, `linked_bill_id`, `createdAt`, `updatedAt`)
+                VALUES
+                ('bill-qt-33531', 'AG-QTY-2026-0001', 'Quotation', 'c-sai-sharvesh', 'customer', 'Sai Sharvesh', '', '2026-08-19', '2026-09-18', 45250, 0, 0, 45250, 0, 'Expired', 'Migrated from legacy quotations', '', '2026-08-19 10:00:00', '2026-08-19 10:00:00'),
+                ('bill-qt-77195', 'AG-QTY-2026-0002', 'Quotation', 'c-milton-school', 'customer', 'Milton School', '', '2026-08-19', '2026-09-18', 42560, 0, 0, 42560, 0, 'Converted', 'Honeycomb tshirts - 2 colours', '', '2026-08-19 10:00:00', '2026-08-19 10:00:00')
+            ");
+
+            $pdo->exec("INSERT IGNORE INTO `billing_items`
+                (`id`, `billing_master_id`, `item_name`, `item_id`, `description`, `quantity`, `unit`, `unit_price`, `discount_pct`, `tax_pct`, `tax_amount`, `row_total`, `createdAt`)
+                VALUES
+                ('bitem-33531-1', 'bill-qt-33531', 'Polo Tshirt', '', 'Polo Tshirt', 25, 'pcs', 250, 0, 0, 0, 6250, '2026-08-19 10:00:00'),
+                ('bitem-33531-2', 'bill-qt-33531', 'Jersey', '', 'Jersey', 260, 'pcs', 150, 0, 0, 0, 39000, '2026-08-19 10:00:00'),
+                ('bitem-77195-1', 'bill-qt-77195', 'Polyester round neck tshirt', '', 'Polyester round neck tshirt - Honeycomb tshirts - 2 colours', 133, 'pcs', 190, 0, 0, 0, 25270, '2026-08-19 10:00:00'),
+                ('bitem-77195-2', 'bill-qt-77195', 'Caps', '', 'Caps', 133, 'pcs', 130, 0, 0, 0, 17290, '2026-08-19 10:00:00')
+            ");
+        }
+    } catch (Exception $e) { /* ignore */ }
+}
+
 if (!file_exists($migrationMarker)) {
     try {
+        ensureBillingTablesExist($pdo);
         $colInfo = $pdo->query("SHOW COLUMNS FROM `sessions` LIKE 'expiresAt'")->fetch();
         if ($colInfo && strpos(strtolower($colInfo['Type']), 'bigint') === false) {
             $pdo->exec("ALTER TABLE `sessions` MODIFY `expiresAt` BIGINT NOT NULL");
@@ -614,6 +687,7 @@ if ($relPath === 'auth/login') {
         // Connect to Demo DB and store session there
         try {
             $demoPdo = connectDatabase($dbConfig, true);
+            ensureBillingTablesExist($demoPdo);
             // Ensure sessions table exists in demo db
             $demoPdo->exec("CREATE TABLE IF NOT EXISTS `sessions` (`token` VARCHAR(191) PRIMARY KEY, `userId` VARCHAR(191) NOT NULL, `expiresAt` BIGINT NOT NULL, `createdAt` DATETIME DEFAULT CURRENT_TIMESTAMP)");
             $stmt = $demoPdo->prepare('INSERT INTO sessions (`token`, `userId`, `expiresAt`) VALUES (?, ?, ?)');
@@ -1027,6 +1101,7 @@ $isDemoSession = str_starts_with($token, 'demo-');
 if ($isDemoSession) {
     try {
         $pdo = connectDatabase($dbConfig, true);
+        ensureBillingTablesExist($pdo);
     } catch (PDOException $e) {
         jsonResponse(['error' => 'Failed to connect to Demo Database: ' . $e->getMessage()], 500);
     }
