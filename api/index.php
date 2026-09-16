@@ -86,19 +86,19 @@ function hydrateRow($table, $row) {
     
     $jsonCols = JSON_COLUMNS[$table] ?? [];
     foreach ($jsonCols as $col) {
-        if (isset($row[$col])) {
+        if (isset($row[$col]) && $row[$col] !== null && $row[$col] !== '') {
             if (is_string($row[$col])) {
                 $raw = $row[$col];
                 if (strpos($raw, '`') !== false) {
                     $raw = str_replace('`', '"', $raw);
                 }
                 $decoded = json_decode($raw, true);
-                $row[$col] = (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) ? $decoded : [];
-            } elseif (!is_array($row[$col])) {
-                $row[$col] = [];
+                $row[$col] = (json_last_error() === JSON_ERROR_NONE && $decoded !== null) ? $decoded : ($col === 'uData' ? new stdClass() : []);
+            } elseif (!is_array($row[$col]) && !is_object($row[$col])) {
+                $row[$col] = $col === 'uData' ? new stdClass() : [];
             }
         } else {
-            $row[$col] = [];
+            $row[$col] = $col === 'uData' ? new stdClass() : [];
         }
     }
     // Booleans
@@ -108,9 +108,9 @@ function hydrateRow($table, $row) {
         }
     }
     // Numbers
-    foreach (['creditLimit', 'unitPrice', 'subtotal', 'discount', 'tax', 'shipping', 'grandTotal', 'value', 'incurredCost', 'quotedCost', 'progressPercentage', 'paymentReceived', 'quantity', 'historicalAvgConsumption', 'progress', 'amount', 'totalUnitCost', 'retailPrice', 'totalAmount', 'boxes', 'qty', 'costPrice', 'totalValue', 'minStock'] as $numField) {
+    foreach (['creditLimit', 'unitPrice', 'subtotal', 'discount', 'tax', 'shipping', 'grandTotal', 'value', 'incurredCost', 'quotedCost', 'progressPercentage', 'paymentReceived', 'quantity', 'historicalAvgConsumption', 'progress', 'amount', 'totalUnitCost', 'retailPrice', 'totalAmount', 'boxes', 'qty', 'costPrice', 'totalValue', 'minStock', 'pcsPerKg', 'weightGms', 'fabricPriceKg', 'wastage', 'fabricCostPc', 'bodyL', 'bodyLM', 'chest', 'chestM', 'slvL', 'slvLM', 'slvDia', 'slvDiaM', 'gsm', 'cmt', 'cutting', 'fusing', 'wages', 'packing', 'printing', 'sublimation', 'allowances', 'overheads', 'acc1', 'acc2', 'acc3', 'pattern', 'totalCost', 'profitPct', 'totalSales', 'profitDone', 'patternCalcOpen'] as $numField) {
         if (isset($row[$numField]) && is_numeric($row[$numField])) {
-            $row[$numField] = strpos($row[$numField], '.') !== false ? (float)$row[$numField] : (int)$row[$numField];
+            $row[$numField] = strpos((string)$row[$numField], '.') !== false ? (float)$row[$numField] : (int)$row[$numField];
         }
     }
     return $row;
@@ -232,6 +232,60 @@ if (!file_exists($migrationMarker)) {
             }
         }
 
+
+        // ── Costings Table Migration ─────────────────────────────────────
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `costings` (
+            `_rowid` INT AUTO_INCREMENT PRIMARY KEY,
+            `id` VARCHAR(191) UNIQUE NOT NULL,
+            `styleRef` LONGTEXT DEFAULT '',
+            `clientId` LONGTEXT DEFAULT '',
+            `clientName` LONGTEXT DEFAULT '',
+            `garmentType` LONGTEXT DEFAULT '',
+            `currency` VARCHAR(10) DEFAULT '₹',
+            `mode` VARCHAR(30) DEFAULT 'unified',
+            `qty` DOUBLE DEFAULT 0,
+            `pcsPerKg` DOUBLE DEFAULT 0,
+            `weightGms` DOUBLE DEFAULT 0,
+            `fabricPriceKg` DOUBLE DEFAULT 0,
+            `wastage` DOUBLE DEFAULT 0,
+            `fabricCostPc` DOUBLE DEFAULT 0,
+            `bodyL` DOUBLE DEFAULT 0,
+            `bodyLM` DOUBLE DEFAULT 0,
+            `chest` DOUBLE DEFAULT 0,
+            `chestM` DOUBLE DEFAULT 0,
+            `slvL` DOUBLE DEFAULT 0,
+            `slvLM` DOUBLE DEFAULT 0,
+            `slvDia` DOUBLE DEFAULT 0,
+            `slvDiaM` DOUBLE DEFAULT 0,
+            `gsm` DOUBLE DEFAULT 0,
+            `cmtMode` VARCHAR(30) DEFAULT 'combined',
+            `cmt` DOUBLE DEFAULT 0,
+            `cutting` DOUBLE DEFAULT 0,
+            `fusing` DOUBLE DEFAULT 0,
+            `wages` DOUBLE DEFAULT 0,
+            `packing` DOUBLE DEFAULT 0,
+            `printing` DOUBLE DEFAULT 0,
+            `sublimation` DOUBLE DEFAULT 0,
+            `allowances` DOUBLE DEFAULT 0,
+            `overheads` DOUBLE DEFAULT 0,
+            `acc1` DOUBLE DEFAULT 0,
+            `acc2` DOUBLE DEFAULT 0,
+            `acc3` DOUBLE DEFAULT 0,
+            `pattern` DOUBLE DEFAULT 0,
+            `totalCost` DOUBLE DEFAULT 0,
+            `profitPct` DOUBLE DEFAULT 0,
+            `totalSales` DOUBLE DEFAULT 0,
+            `profitDone` DOUBLE DEFAULT 0,
+            `patternCalcOpen` INT DEFAULT 0,
+            `totalUnitCost` DOUBLE DEFAULT 0,
+            `retailPrice` DOUBLE DEFAULT 0,
+            `status` VARCHAR(50) DEFAULT 'Draft',
+            `date` VARCHAR(50) DEFAULT '',
+            `materials` LONGTEXT DEFAULT '[]',
+            `uData` LONGTEXT DEFAULT '{}',
+            `createdAt` DATETIME DEFAULT CURRENT_TIMESTAMP,
+            `updatedAt` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )");
 
         // ── Transactions Attachments Column Migration ─────────────────────
         $txCols = $pdo->query("SHOW COLUMNS FROM `transactions`")->fetchAll();

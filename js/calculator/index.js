@@ -51,7 +51,13 @@ function restoreSession() {
             }
 
             // Rehydrate DOM inputs from state
-            const setVal = (id, v) => { const el = $(id); if (el && (v || v === 0) && v !== 0) el.value = v; };
+            const setVal = (id, v) => {
+                const el = $(id);
+                if (el && v !== undefined && v !== null && v !== '') {
+                    const numV = Number(v);
+                    el.value = (!isNaN(numV) && numV !== 0) ? numV : (v === 0 ? 0 : v);
+                }
+            };
             setVal('u-qty', u.qty);
             setVal('shared-qty', u.qty);  // keep shared qty input in sync too
             setVal('u-pcs-per-kg', u.pcsPerKg);
@@ -143,7 +149,71 @@ function restoreSession() {
                 }, 300);
             }
         }
-    } catch (_) {}
+async function loadCostingById(id) {
+    try {
+        window.showToast?.('Loading saved costing...', 'info');
+        const c = await api.getCostingById(id);
+        if (!c || c.error) throw new Error(c?.error || 'Costing not found');
+
+        let u = {};
+        if (c.uData && typeof c.uData === 'object') {
+            u = { ...c.uData };
+        } else if (typeof c.uData === 'string' && c.uData) {
+            try { u = JSON.parse(c.uData); } catch (_) {}
+        }
+
+        const clientName = c.clientId || c.clientName || u.clientName || '';
+        const draft = {
+            sharedClient: clientName,
+            u: {
+                ...u,
+                clientName,
+                qty: parseFloat(u.qty ?? c.qty ?? 0),
+                pcsPerKg: parseFloat(u.pcsPerKg ?? c.pcsPerKg ?? 0),
+                weightGms: parseFloat(u.weightGms ?? c.weightGms ?? 0),
+                fabricPriceKg: parseFloat(u.fabricPriceKg ?? c.fabricPriceKg ?? 0),
+                wastage: parseFloat(u.wastage ?? c.wastage ?? 0),
+                fabricCostPc: parseFloat(u.fabricCostPc ?? c.fabricCostPc ?? 0),
+                bodyL: parseFloat(u.bodyL ?? c.bodyL ?? 0),
+                bodyLM: parseFloat(u.bodyLM ?? c.bodyLM ?? 0),
+                chest: parseFloat(u.chest ?? c.chest ?? 0),
+                chestM: parseFloat(u.chestM ?? c.chestM ?? 0),
+                slvL: parseFloat(u.slvL ?? c.slvL ?? 0),
+                slvLM: parseFloat(u.slvLM ?? c.slvLM ?? 0),
+                slvDia: parseFloat(u.slvDia ?? c.slvDia ?? 0),
+                slvDiaM: parseFloat(u.slvDiaM ?? c.slvDiaM ?? 0),
+                gsm: parseFloat(u.gsm ?? c.gsm ?? 0),
+                cmtMode: u.cmtMode || c.cmtMode || 'combined',
+                cmt: parseFloat(u.cmt ?? c.cmt ?? 0),
+                cutting: parseFloat(u.cutting ?? c.cutting ?? 0),
+                fusing: parseFloat(u.fusing ?? c.fusing ?? 0),
+                wages: parseFloat(u.wages ?? c.wages ?? 0),
+                packing: parseFloat(u.packing ?? c.packing ?? 0),
+                printing: parseFloat(u.printing ?? c.printing ?? 0),
+                sublimation: parseFloat(u.sublimation ?? c.sublimation ?? 0),
+                allowances: parseFloat(u.allowances ?? c.allowances ?? 0),
+                overheads: parseFloat(u.overheads ?? c.overheads ?? 0),
+                acc1: parseFloat(u.acc1 ?? c.acc1 ?? 0),
+                acc2: parseFloat(u.acc2 ?? c.acc2 ?? 0),
+                acc3: parseFloat(u.acc3 ?? c.acc3 ?? 0),
+                pattern: parseFloat(u.pattern ?? c.pattern ?? 0),
+                cp: parseFloat(u.cp ?? c.totalUnitCost ?? 0),
+                sp: parseFloat(u.sp ?? c.retailPrice ?? 0),
+                profitPct: parseFloat(u.profitPct ?? c.profitPct ?? 0),
+                totalCost: parseFloat(u.totalCost ?? c.totalCost ?? 0),
+                totalSales: parseFloat(u.totalSales ?? c.totalSales ?? 0),
+                profitDone: parseFloat(u.profitDone ?? c.profitDone ?? 0),
+                garmentType: c.styleRef || c.garmentType || u.garmentType || 'T-Shirt',
+            }
+        };
+
+        sessionStorage.setItem(SESSION_KEY, JSON.stringify(draft));
+        restoreSession();
+        window.showToast?.('Costing loaded', 'success');
+    } catch (e) {
+        console.error('Error loading costing by ID:', e);
+        window.showToast?.('Could not load costing', 'error');
+    }
 }
 
 
@@ -805,11 +875,20 @@ window.saveCosting = async function() {
     }
 
     try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const editId = urlParams.get('id');
+
         window.showToast?.('Saving costing...', 'info');
         const payload = buildCostingPayload(s, client, { status: 'Saved' });
-        const res = await api.saveCosting(payload);
-        if (res.error) throw new Error(res.error);
-        window.showToast?.('Costing saved successfully!', 'success');
+        
+        let res;
+        if (editId) {
+            res = await api.updateCosting(editId, payload);
+        } else {
+            res = await api.saveCosting(payload);
+        }
+        if (res && res.error) throw new Error(res.error);
+        window.showToast?.(`Costing successfully ${editId ? 'updated' : 'saved'}!`, 'success');
     } catch (err) {
         console.error('Error saving costing:', err);
         window.showToast?.('Failed to save costing', 'error');
@@ -1259,8 +1338,14 @@ async function initModule() {
         }, 1000);
     });
 
-    // Phase 3: restore session after DOM + sheets are ready
-    restoreSession();
+    // Phase 3: restore session or load from DB if ID in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const costingId = urlParams.get('id');
+    if (costingId) {
+        await loadCostingById(costingId);
+    } else {
+        restoreSession();
+    }
 }
 
 if (document.readyState === 'loading') {
