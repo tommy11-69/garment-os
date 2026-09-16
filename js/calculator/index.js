@@ -149,6 +149,9 @@ function restoreSession() {
                 }, 300);
             }
         }
+    } catch (_) {}
+}
+
 async function loadCostingById(id) {
     try {
         window.showToast?.('Loading saved costing...', 'info');
@@ -1401,4 +1404,5 @@ window.convertToOrder = function() {
     setTimeout(() => {
         window.location.href = 'orders.html?from=costing';
     }, 900);
+
 };
