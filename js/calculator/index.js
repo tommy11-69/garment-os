@@ -191,6 +191,8 @@ async function loadCostingById(id) {
         const savedPct = (u.profitPct !== undefined && u.profitPct !== null) ? parseFloat(u.profitPct) : (c.profitPct !== undefined && c.profitPct !== null ? parseFloat(c.profitPct) : null);
         const inferredLastEdited = u.lastEdited || (savedSp !== null && savedSp > 0 ? 'sp-pc' : (savedPct !== null ? 'pct' : null));
 
+        const clientName = c.clientId || c.clientName || u.clientName || '';
+
         const draft = {
             sharedClient: clientName,
             u: {
