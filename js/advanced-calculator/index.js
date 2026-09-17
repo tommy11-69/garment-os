@@ -96,10 +96,10 @@ window.setMeasurementUnit = function(newUnit) {
         slvDia: sz.slvDia > 0 ? parseFloat((sz.slvDia * factor).toFixed(1)) : 0,
     }));
 
-    const newBodyLM = s.bodyLM > 0 ? parseFloat((s.bodyLM * factor).toFixed(1)) : 0;
-    const newChestM = s.chestM > 0 ? parseFloat((s.chestM * factor).toFixed(1)) : 0;
-    const newSlvLM = s.slvLM > 0 ? parseFloat((s.slvLM * factor).toFixed(1)) : 0;
-    const newSlvDiaM = s.slvDiaM > 0 ? parseFloat((s.slvDiaM * factor).toFixed(1)) : 0;
+    const newBodyLM = (s.bodyLM || 6) * factor;
+    const newChestM = (s.chestM || 4) * factor;
+    const newSlvLM = (s.slvLM || 4) * factor;
+    const newSlvDiaM = (s.slvDiaM || 4) * factor;
 
     store.update({
         unit: newUnit,
@@ -871,10 +871,10 @@ async function loadCostingById(id) {
             spPc: savedSp,
             cpPc: parseFloat(u.cpPc ?? u.cp ?? c.totalUnitCost ?? 0),
             lastEdited: inferredLastEdited,
-            bodyLM: parseFloat(u.bodyLM ?? c.bodyLM ?? 0),
-            chestM: parseFloat(u.chestM ?? c.chestM ?? 0),
-            slvLM: parseFloat(u.slvLM ?? c.slvLM ?? 0),
-            slvDiaM: parseFloat(u.slvDiaM ?? c.slvDiaM ?? 0),
+            bodyLM: parseFloat(u.bodyLM ?? c.bodyLM ?? 0) || 6,
+            chestM: parseFloat(u.chestM ?? c.chestM ?? 0) || 4,
+            slvLM: parseFloat(u.slvLM ?? c.slvLM ?? 0) || 4,
+            slvDiaM: parseFloat(u.slvDiaM ?? c.slvDiaM ?? 0) || 4,
         });
 
         renderSizeGrid();

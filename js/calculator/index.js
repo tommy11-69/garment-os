@@ -62,8 +62,14 @@ function restoreSession() {
         if ($('shared-client') && clientName) $('shared-client').value = clientName;
 
         if (d.u) {
-            calculatorStore.updateU(d.u);
-            const u = d.u;
+            const u = {
+                ...d.u,
+                bodyLM: Number(d.u.bodyLM) || 6,
+                chestM: Number(d.u.chestM) || 4,
+                slvLM: Number(d.u.slvLM) || 4,
+                slvDiaM: Number(d.u.slvDiaM) || 4,
+            };
+            calculatorStore.updateU(u);
 
             // Rehydrate DOM inputs from state
             const setVal = (id, v) => {
@@ -197,13 +203,13 @@ async function loadCostingById(id) {
                 wastage: parseFloat(u.wastage ?? c.wastage ?? 0),
                 fabricCostPc: parseFloat(u.fabricCostPc ?? c.fabricCostPc ?? 0),
                 bodyL: parseFloat(u.bodyL ?? c.bodyL ?? 0),
-                bodyLM: parseFloat(u.bodyLM ?? c.bodyLM ?? 0),
+                bodyLM: parseFloat(u.bodyLM ?? c.bodyLM ?? 0) || 6,
                 chest: parseFloat(u.chest ?? c.chest ?? 0),
-                chestM: parseFloat(u.chestM ?? c.chestM ?? 0),
+                chestM: parseFloat(u.chestM ?? c.chestM ?? 0) || 4,
                 slvL: parseFloat(u.slvL ?? c.slvL ?? 0),
-                slvLM: parseFloat(u.slvLM ?? c.slvLM ?? 0),
+                slvLM: parseFloat(u.slvLM ?? c.slvLM ?? 0) || 4,
                 slvDia: parseFloat(u.slvDia ?? c.slvDia ?? 0),
-                slvDiaM: parseFloat(u.slvDiaM ?? c.slvDiaM ?? 0),
+                slvDiaM: parseFloat(u.slvDiaM ?? c.slvDiaM ?? 0) || 4,
                 gsm: parseFloat(u.gsm ?? c.gsm ?? 0),
                 cmtMode: u.cmtMode || c.cmtMode || 'combined',
                 cmt: parseFloat(u.cmt ?? c.cmt ?? 0),
@@ -859,13 +865,13 @@ function buildCostingPayload(s, client, overrides = {}) {
         wastage:       s.wastage || 0,
         fabricCostPc:  s.fabricCostPc || 0,
         bodyL:         s.bodyL || 0,
-        bodyLM:        s.bodyLM || 6,
+        bodyLM:        s.bodyLM || 0,
         chest:         s.chest || 0,
-        chestM:        s.chestM || 4,
+        chestM:        s.chestM || 0,
         slvL:          s.slvL || 0,
-        slvLM:         s.slvLM || 4,
+        slvLM:         s.slvLM || 0,
         slvDia:        s.slvDia || 0,
-        slvDiaM:       s.slvDiaM || 4,
+        slvDiaM:       s.slvDiaM || 0,
         gsm:           s.gsm || 0,
         cmtMode:       s.cmtMode || 'combined',
         cmt:           s.cmt || 0,

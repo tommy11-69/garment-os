@@ -25,10 +25,10 @@ class AdvancedCalculatorStore {
             totalQty: 0,
 
             // Global Seam & Hem Margin Allowances (+cm)
-            bodyLM: 0,
-            chestM: 0,
-            slvLM: 0,
-            slvDiaM: 0,
+            bodyLM: 6,
+            chestM: 4,
+            slvLM: 4,
+            slvDiaM: 4,
 
             // Global Fabric Spec
             gsm: 0,
