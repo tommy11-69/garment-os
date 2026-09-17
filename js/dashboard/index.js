@@ -32,7 +32,26 @@ function updateGreeting() {
     let greet = 'Good morning';
     if (hour >= 12 && hour < 17) greet = 'Good afternoon';
     else if (hour >= 17) greet = 'Good evening';
-    greetingEl.textContent = `${greet}, Udhayaa`;
+
+    let name = 'Udhayaa'; // Default / Main DB
+    try {
+        const userObj = JSON.parse(localStorage.getItem('gos_user') || '{}');
+        const token = localStorage.getItem('gos_token');
+        let identifier = (userObj.username || userObj.name || userObj.role || userObj.db || '').toLowerCase();
+        
+        if (!identifier && token && token.includes('.')) {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            identifier = (payload.username || payload.name || payload.role || payload.db || '').toLowerCase();
+        }
+
+        if (identifier.includes('guest')) {
+            name = 'Guest';
+        } else {
+            name = 'Udhayaa';
+        }
+    } catch (e) {}
+
+    greetingEl.textContent = `${greet}, ${name}`;
 }
 
 async function loadDashboardTelemetry() {
@@ -94,19 +113,7 @@ async function loadDashboardTelemetry() {
 }
 
 async function fetchTelemetryData() {
-    try {
-        const token = localStorage.getItem('gos_token');
-        const headers = { 'Content-Type': 'application/json' };
-        if (token) headers['Authorization'] = `Bearer ${token}`;
-
-        const res = await fetch('/api/telemetry/dashboard', { headers });
-        if (res.ok) {
-            const data = await res.json();
-            if (data && data.success) return data;
-        }
-    } catch (e) { /* fallback to direct API calculations */ }
-
-    // Fallback calculation via unified API calls
+    // Dynamic calculation from currently logged-in database collections via unified API calls
     const [billings, inventory, orders, transactions] = await Promise.all([
         api.getBillings().catch(() => []),
         api.getInventory().catch(() => []),
