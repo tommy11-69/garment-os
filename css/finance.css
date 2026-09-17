@@ -1,0 +1,76 @@
+/* Finance control states use the shared theme tokens. */
+.period-pill.active,
+#tab-cash-flow.bg-primary,
+#tab-balance-sheet.bg-primary,
+.quick-chip.active {
+    background-color: var(--gos-primary) !important;
+    color: var(--gos-on-primary) !important;
+    border-color: var(--gos-primary) !important;
+}
+
+.period-pill.inactive,
+.quick-chip:not(.active),
+#tab-cash-flow:not(.bg-primary),
+#tab-balance-sheet:not(.bg-primary) {
+    color: var(--gos-text-muted);
+}
+
+.dark .period-pill.inactive,
+.dark .quick-chip:not(.active),
+.dark #tab-cash-flow:not(.bg-primary),
+.dark #tab-balance-sheet:not(.bg-primary) {
+    background-color: var(--gos-surface-muted) !important;
+    color: var(--gos-text-muted) !important;
+    border-color: var(--gos-border-subtle) !important;
+}
+
+.dark .period-pill.inactive:hover,
+.dark .quick-chip:not(.active):hover,
+.dark #tab-cash-flow:not(.bg-primary):hover,
+.dark #tab-balance-sheet:not(.bg-primary):hover {
+    background-color: var(--gos-surface-hover) !important;
+    color: var(--gos-text) !important;
+    border-color: var(--gos-primary) !important;
+}
+
+.dark .period-pill.active,
+.dark .quick-chip.active,
+.dark #tab-cash-flow.bg-primary,
+.dark #tab-balance-sheet.bg-primary {
+    background-color: var(--gos-primary) !important;
+    color: var(--gos-on-primary) !important;
+}
+
+.dark #cash-flow-period-selector,
+.dark #quick-filter-chips,
+.dark #transactions-list,
+.dark #balance-sheet-view,
+.dark #cash-flow-view {
+    color: var(--gos-text);
+}
+
+.dark .radio-pills-container button:not(.bg-primary):not(.bg-error),
+.dark .preset-pill:not(.bg-primary) {
+    background-color: var(--gos-surface-muted) !important;
+    color: var(--gos-text-muted) !important;
+    border-color: var(--gos-border-subtle) !important;
+}
+
+.dark .radio-pills-container button:hover,
+.dark .preset-pill:hover {
+    background-color: var(--gos-surface-hover) !important;
+    color: var(--gos-text) !important;
+    border-color: var(--gos-primary) !important;
+}
+
+.dark .chart-tooltip {
+    background: var(--gos-surface-hover);
+    color: var(--gos-text);
+    border: 1px solid var(--gos-border);
+}
+
+.dark #bs-detail-sheet {
+    background-color: var(--gos-surface) !important;
+    color: var(--gos-text);
+    border-color: var(--gos-border-subtle);
+}

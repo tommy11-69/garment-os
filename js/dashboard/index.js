@@ -234,7 +234,7 @@ function renderKPIs(metrics) {
              class="bg-surface-container-lowest border border-outline-variant/60 rounded-3xl p-4 shadow-sm flex flex-col justify-between cursor-pointer active-scale transition-apple hover:border-primary/50 group"
              title="Click to view Cash Flow & P&L">
             <div class="flex items-center justify-between">
-                <span class="text-[12px] font-semibold text-secondary uppercase tracking-wider group-hover:text-primary transition-colors">Net Profit</span>
+                <span class="text-[12px] font-semibold text-secondary uppercase tracking-wider group-hover:text-primary transition-colors">Net Balance</span>
                 <div class="w-8 h-8 rounded-xl ${netProfit >= 0 ? 'bg-[#008A00]/10 text-[#008A00]' : 'bg-error/10 text-error'} flex items-center justify-center">
                     <span class="material-symbols-outlined text-[18px]">account_balance</span>
                 </div>

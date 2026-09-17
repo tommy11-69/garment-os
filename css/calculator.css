@@ -144,3 +144,53 @@ details[open] summary .material-symbols-outlined.expand-icon {
     border-color: rgba(51, 65, 85, 0.4);
     color: #64748b;
 }
+
+.dark #unified-calc-form > div,
+.dark #shared-order-info {
+    background-color: var(--gos-surface-raised) !important;
+    border-color: var(--gos-border-subtle) !important;
+    box-shadow: var(--gos-shadow) !important;
+}
+
+.dark .section-toggle {
+    color: var(--gos-text);
+}
+
+.dark .section-toggle:hover,
+.dark .section-toggle:focus-visible {
+    background-color: var(--gos-surface-hover);
+}
+
+.dark .cmt-toggle-btn:not(.active),
+.dark .currency-btn:not(.active),
+.dark #q-unit-in,
+.dark #q-unit-cm:not(.active) {
+    background-color: var(--gos-surface-muted) !important;
+    color: var(--gos-text-muted) !important;
+    border-color: var(--gos-border-subtle);
+}
+
+.dark .cmt-toggle-btn.active,
+.dark .currency-btn.active,
+.dark #q-unit-cm.active,
+.dark #q-unit-in.active {
+    background-color: var(--gos-primary) !important;
+    border-color: var(--gos-primary) !important;
+    color: var(--gos-on-primary) !important;
+}
+
+.dark .auto-badge {
+    color: var(--gos-primary);
+    background-color: color-mix(in srgb, var(--gos-primary) 16%, transparent);
+}
+
+.dark #pattern-calc-block,
+.dark #u-kg-info,
+.dark .section-body > .flex.bg-surface-container-high {
+    background-color: var(--gos-surface-muted) !important;
+    border-color: var(--gos-border-subtle) !important;
+}
+
+.dark #pat-wt-res {
+    color: var(--gos-primary);
+}
