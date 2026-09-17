@@ -181,11 +181,11 @@
                                 </h3>
                                 <!-- Unit Toggle Switcher -->
                                 <div class="inline-flex bg-surface-container-high dark:bg-slate-800 p-0.5 rounded-lg border border-outline-variant/30 ml-1">
-                                    <button type="button" onclick="setMeasurementUnit('cm')" class="unit-toggle-btn active px-2 py-0.5 text-[11px] font-bold rounded-md transition-all">cm</button>
-                                    <button type="button" onclick="setMeasurementUnit('in')" class="unit-toggle-btn px-2 py-0.5 text-[11px] font-bold rounded-md transition-all">inches</button>
+                                    <button type="button" onclick="setMeasurementUnit('cm')" class="unit-toggle-btn px-2 py-0.5 text-[11px] font-bold rounded-md transition-all">cm</button>
+                                    <button type="button" onclick="setMeasurementUnit('in')" class="unit-toggle-btn active px-2 py-0.5 text-[11px] font-bold rounded-md transition-all">inches</button>
                                 </div>
                             </div>
-                            <p class="text-[12px] text-secondary dark:text-slate-400" id="unit-subtitle">Dimensions in cm. Fabric weight is calculated per size individually.</p>
+                            <p class="text-[12px] text-secondary dark:text-slate-400" id="unit-subtitle">Dimensions in inches (in). Fabric weight is calculated per size individually.</p>
                         </div>
                         
                         <!-- Order Total Badge -->
@@ -210,7 +210,7 @@
                         <button type="button" onclick="toggleAllowancesDrawer()" class="flex items-center justify-between w-full text-left text-[12px] font-semibold text-secondary hover:text-on-surface transition-colors py-1">
                             <span class="flex items-center gap-1.5">
                                 <span class="material-symbols-outlined text-[16px] text-secondary">tune</span>
-                                Pattern Seam &amp; Hem Margins (Default cm allowances added to each piece)
+                                Pattern Seam &amp; Hem Margins (Default inch allowances added to each piece)
                             </span>
                             <span id="allowances-drawer-icon" class="material-symbols-outlined text-[16px] transition-transform">expand_more</span>
                         </button>
@@ -219,32 +219,32 @@
                                 <label class="field-label text-[11px]">Body Length Margin</label>
                                 <div class="relative flex items-center">
                                     <span class="absolute left-2.5 text-[12px] font-bold text-secondary">+</span>
-                                    <input id="pat-margin-body" type="number" value="6" placeholder="6" class="calc-input !h-9 text-center pl-6 text-[13px]" oninput="onGlobalParamChange()">
-                                    <span class="absolute right-2.5 text-[11px] text-secondary font-medium">cm</span>
+                                    <input id="pat-margin-body" type="number" value="2.5" placeholder="2.5" class="calc-input !h-9 text-center pl-6 text-[13px]" oninput="onGlobalParamChange()">
+                                    <span class="absolute right-2.5 text-[11px] text-secondary font-medium">in</span>
                                 </div>
                             </div>
                             <div>
                                 <label class="field-label text-[11px]">Chest Margin</label>
                                 <div class="relative flex items-center">
                                     <span class="absolute left-2.5 text-[12px] font-bold text-secondary">+</span>
-                                    <input id="pat-margin-chest" type="number" value="4" placeholder="4" class="calc-input !h-9 text-center pl-6 text-[13px]" oninput="onGlobalParamChange()">
-                                    <span class="absolute right-2.5 text-[11px] text-secondary font-medium">cm</span>
+                                    <input id="pat-margin-chest" type="number" value="1.5" placeholder="1.5" class="calc-input !h-9 text-center pl-6 text-[13px]" oninput="onGlobalParamChange()">
+                                    <span class="absolute right-2.5 text-[11px] text-secondary font-medium">in</span>
                                 </div>
                             </div>
                             <div>
                                 <label class="field-label text-[11px]">Sleeve Length Margin</label>
                                 <div class="relative flex items-center">
                                     <span class="absolute left-2.5 text-[12px] font-bold text-secondary">+</span>
-                                    <input id="pat-margin-slv" type="number" value="4" placeholder="4" class="calc-input !h-9 text-center pl-6 text-[13px]" oninput="onGlobalParamChange()">
-                                    <span class="absolute right-2.5 text-[11px] text-secondary font-medium">cm</span>
+                                    <input id="pat-margin-slv" type="number" value="1.5" placeholder="1.5" class="calc-input !h-9 text-center pl-6 text-[13px]" oninput="onGlobalParamChange()">
+                                    <span class="absolute right-2.5 text-[11px] text-secondary font-medium">in</span>
                                 </div>
                             </div>
                             <div>
                                 <label class="field-label text-[11px]">Sleeve Dia Margin</label>
                                 <div class="relative flex items-center">
                                     <span class="absolute left-2.5 text-[12px] font-bold text-secondary">+</span>
-                                    <input id="pat-margin-dia" type="number" value="4" placeholder="4" class="calc-input !h-9 text-center pl-6 text-[13px]" oninput="onGlobalParamChange()">
-                                    <span class="absolute right-2.5 text-[11px] text-secondary font-medium">cm</span>
+                                    <input id="pat-margin-dia" type="number" value="1.5" placeholder="1.5" class="calc-input !h-9 text-center pl-6 text-[13px]" oninput="onGlobalParamChange()">
+                                    <span class="absolute right-2.5 text-[11px] text-secondary font-medium">in</span>
                                 </div>
                             </div>
                         </div>

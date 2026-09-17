@@ -12,23 +12,25 @@ class AdvancedCalculatorStore {
             garmentName: '',
             garmentType: 'T-Shirt',
             currency: '₹',
-            unit: 'cm', // 'cm' or 'in'
+            unit: 'in', // 'in' or 'cm'
             mode: 'advanced', // Distinguishes from quick costing
 
-            // Dynamic Size Array (cm dimensions)
+            // Dynamic Size Array (inch dimensions default)
             sizes: [
-                { id: 'sz_1', name: 'S', qty: 0, bodyL: 0, chest: 0, slvL: 0, slvDia: 0, weightGms: 0, totalKg: 0 },
-                { id: 'sz_2', name: 'M', qty: 0, bodyL: 0, chest: 0, slvL: 0, slvDia: 0, weightGms: 0, totalKg: 0 },
-                { id: 'sz_3', name: 'L', qty: 0, bodyL: 0, chest: 0, slvL: 0, slvDia: 0, weightGms: 0, totalKg: 0 },
-                { id: 'sz_4', name: 'XL', qty: 0, bodyL: 0, chest: 0, slvL: 0, slvDia: 0, weightGms: 0, totalKg: 0 }
+                { id: 'sz_1', name: '34 (XS)', qty: 0, bodyL: 23.75, chest: 18.00, slvL: 7.75, slvDia: 6.25, weightGms: 0, totalKg: 0 },
+                { id: 'sz_2', name: '36 (S)',  qty: 0, bodyL: 25.00, chest: 18.75, slvL: 8.00, slvDia: 6.50, weightGms: 0, totalKg: 0 },
+                { id: 'sz_3', name: '38 (M)',  qty: 0, bodyL: 26.25, chest: 19.50, slvL: 8.25, slvDia: 6.75, weightGms: 0, totalKg: 0 },
+                { id: 'sz_4', name: '40 (L)',  qty: 0, bodyL: 27.50, chest: 20.25, slvL: 8.50, slvDia: 7.00, weightGms: 0, totalKg: 0 },
+                { id: 'sz_5', name: '42 (XL)', qty: 0, bodyL: 28.75, chest: 21.00, slvL: 8.75, slvDia: 7.25, weightGms: 0, totalKg: 0 },
+                { id: 'sz_6', name: '44 (2XL)',qty: 0, bodyL: 30.00, chest: 21.75, slvL: 9.00, slvDia: 7.50, weightGms: 0, totalKg: 0 }
             ],
             totalQty: 0,
 
-            // Global Seam & Hem Margin Allowances (+cm)
-            bodyLM: 6,
-            chestM: 4,
-            slvLM: 4,
-            slvDiaM: 4,
+            // Global Seam & Hem Margin Allowances (+in)
+            bodyLM: 2.5,
+            chestM: 1.5,
+            slvLM: 1.5,
+            slvDiaM: 1.5,
 
             // Global Fabric Spec
             gsm: 0,

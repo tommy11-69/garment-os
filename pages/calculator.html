@@ -319,8 +319,8 @@
                             <span class="text-[13px] font-bold text-on-surface flex items-center gap-1"><span class="material-symbols-outlined text-[16px] text-primary">straighten</span> Pattern Calculator</span>
                             <div class="flex items-center gap-2">
                                 <div class="inline-flex bg-surface-container-high p-0.5 rounded-lg border border-outline/10">
-                                    <button type="button" onclick="setQuickUnit('cm')" id="q-unit-cm" class="px-2 py-0.5 text-[10px] font-bold rounded bg-primary text-white">cm</button>
-                                    <button type="button" onclick="setQuickUnit('in')" id="q-unit-in" class="px-2 py-0.5 text-[10px] font-bold rounded text-secondary">in</button>
+                                    <button type="button" onclick="setQuickUnit('cm')" id="q-unit-cm" class="px-2 py-0.5 text-[10px] font-bold rounded text-secondary">cm</button>
+                                    <button type="button" onclick="setQuickUnit('in')" id="q-unit-in" class="px-2 py-0.5 text-[10px] font-bold rounded bg-primary text-white">in</button>
                                 </div>
                                 <button type="button" onclick="togglePatternMode()" class="text-secondary"><span class="material-symbols-outlined text-[16px]">close</span></button>
                             </div>
@@ -329,33 +329,33 @@
                             <div>
                                 <label class="field-label text-[11px] mb-1">Body L + Marg</label>
                                 <div class="flex items-center gap-1">
-                                    <input id="pat-body-l" type="number" placeholder="70" class="calc-input w-full px-2 py-1.5 text-[13px]" oninput="calcPattern()">
+                                    <input id="pat-body-l" type="number" placeholder="27.5" class="calc-input w-full px-2 py-1.5 text-[13px]" oninput="calcPattern()">
                                     <span class="text-secondary font-bold">+</span>
-                                    <input id="pat-body-l-m" type="number" value="6" placeholder="6" class="calc-input w-10 px-1 py-1.5 text-center text-[13px] bg-surface-container-high" oninput="calcPattern()">
+                                    <input id="pat-body-l-m" type="number" value="2.5" placeholder="2.5" class="calc-input w-10 px-1 py-1.5 text-center text-[13px] bg-surface-container-high" oninput="calcPattern()">
                                 </div>
                             </div>
                             <div>
                                 <label class="field-label text-[11px] mb-1">Chest + Marg</label>
                                 <div class="flex items-center gap-1">
-                                    <input id="pat-chest" type="number" placeholder="54" class="calc-input w-full px-2 py-1.5 text-[13px]" oninput="calcPattern()">
+                                    <input id="pat-chest" type="number" placeholder="20.25" class="calc-input w-full px-2 py-1.5 text-[13px]" oninput="calcPattern()">
                                     <span class="text-secondary font-bold">+</span>
-                                    <input id="pat-chest-m" type="number" value="4" placeholder="4" class="calc-input w-10 px-1 py-1.5 text-center text-[13px] bg-surface-container-high" oninput="calcPattern()">
+                                    <input id="pat-chest-m" type="number" value="1.5" placeholder="1.5" class="calc-input w-10 px-1 py-1.5 text-center text-[13px] bg-surface-container-high" oninput="calcPattern()">
                                 </div>
                             </div>
                             <div>
                                 <label class="field-label text-[11px] mb-1">Sleeve L + Marg</label>
                                 <div class="flex items-center gap-1">
-                                    <input id="pat-sleeve-l" type="number" placeholder="22" class="calc-input w-full px-2 py-1.5 text-[13px]" oninput="calcPattern()">
+                                    <input id="pat-sleeve-l" type="number" placeholder="8.5" class="calc-input w-full px-2 py-1.5 text-[13px]" oninput="calcPattern()">
                                     <span class="text-secondary font-bold">+</span>
-                                    <input id="pat-sleeve-l-m" type="number" value="4" placeholder="4" class="calc-input w-10 px-1 py-1.5 text-center text-[13px] bg-surface-container-high" oninput="calcPattern()">
+                                    <input id="pat-sleeve-l-m" type="number" value="1.5" placeholder="1.5" class="calc-input w-10 px-1 py-1.5 text-center text-[13px] bg-surface-container-high" oninput="calcPattern()">
                                 </div>
                             </div>
                             <div>
-                                <label class="field-label text-[11px] mb-1">Slv Dia + Marg</label>
+                                <label class="field-label text-[11px] mb-1">Sleeve Dia + Marg</label>
                                 <div class="flex items-center gap-1">
-                                    <input id="pat-sleeve-dia" type="number" placeholder="18" class="calc-input w-full px-2 py-1.5 text-[13px]" oninput="calcPattern()">
+                                    <input id="pat-sleeve-dia" type="number" placeholder="7" class="calc-input w-full px-2 py-1.5 text-[13px]" oninput="calcPattern()">
                                     <span class="text-secondary font-bold">+</span>
-                                    <input id="pat-sleeve-dia-m" type="number" value="4" placeholder="4" class="calc-input w-10 px-1 py-1.5 text-center text-[13px] bg-surface-container-high" oninput="calcPattern()">
+                                    <input id="pat-sleeve-dia-m" type="number" value="1.5" placeholder="1.5" class="calc-input w-10 px-1 py-1.5 text-center text-[13px] bg-surface-container-high" oninput="calcPattern()">
                                 </div>
                             </div>
                             <div class="col-span-2 flex items-center gap-3 mt-1">
@@ -863,7 +863,7 @@
             if (window.calcUnified) window.calcUnified();
         }
 
-        let currentQuickUnit = 'cm';
+        let currentQuickUnit = 'in';
 
         function setQuickUnit(u) {
             currentQuickUnit = u;

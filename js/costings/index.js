@@ -264,8 +264,8 @@ function buildDetailHTML(c, sheetId) {
     // ── 1.5 Pattern & Fabric Weight Card
     const hasPattern = u.weightGms > 0;
     const patternBody = hasPattern ? [
-        fieldRow('Body + Margins', `${u.bodyL||0} + ${u.bodyLM||0}`, `Chest: ${u.chest||0} + ${u.chestM||0}`),
-        fieldRow('Sleeve + Margins', `${u.slvL||0} + ${u.slvLM||0}`, `Dia: ${u.slvDia||0} + ${u.slvDiaM||0}`),
+        fieldRow('Body + Margins (in)', `${u.bodyL||0} + ${u.bodyLM||0}`, `Chest: ${u.chest||0} + ${u.chestM||0}`),
+        fieldRow('Sleeve + Margins (in)', `${u.slvL||0} + ${u.slvLM||0}`, `Dia: ${u.slvDia||0} + ${u.slvDiaM||0}`),
         fieldRow('Fabric GSM', u.gsm ? u.gsm + ' gsm' : '—'),
         fieldRow('Weight / pc', u.weightGms ? u.weightGms.toFixed(1) + ' gms' : '—')
     ].filter(Boolean).join('') : '';

@@ -82,7 +82,7 @@ function bindGlobalEvents() {
 // ══════════════════════════════════════════════════════
 window.setMeasurementUnit = function(newUnit) {
     const s = store.state;
-    const oldUnit = s.unit || 'cm';
+    const oldUnit = s.unit || 'in';
     if (oldUnit === newUnit) return;
 
     const isToInches = newUnit === 'in';
@@ -90,16 +90,16 @@ window.setMeasurementUnit = function(newUnit) {
 
     const newSizes = s.sizes.map(sz => ({
         ...sz,
-        bodyL: sz.bodyL > 0 ? parseFloat((sz.bodyL * factor).toFixed(1)) : 0,
-        chest: sz.chest > 0 ? parseFloat((sz.chest * factor).toFixed(1)) : 0,
-        slvL: sz.slvL > 0 ? parseFloat((sz.slvL * factor).toFixed(1)) : 0,
-        slvDia: sz.slvDia > 0 ? parseFloat((sz.slvDia * factor).toFixed(1)) : 0,
+        bodyL: sz.bodyL > 0 ? parseFloat((sz.bodyL * factor).toFixed(2)) : 0,
+        chest: sz.chest > 0 ? parseFloat((sz.chest * factor).toFixed(2)) : 0,
+        slvL: sz.slvL > 0 ? parseFloat((sz.slvL * factor).toFixed(2)) : 0,
+        slvDia: sz.slvDia > 0 ? parseFloat((sz.slvDia * factor).toFixed(2)) : 0,
     }));
 
-    const newBodyLM = (s.bodyLM || 6) * factor;
-    const newChestM = (s.chestM || 4) * factor;
-    const newSlvLM = (s.slvLM || 4) * factor;
-    const newSlvDiaM = (s.slvDiaM || 4) * factor;
+    const newBodyLM = (s.bodyLM || 2.5) * factor;
+    const newChestM = (s.chestM || 1.5) * factor;
+    const newSlvLM = (s.slvLM || 1.5) * factor;
+    const newSlvDiaM = (s.slvDiaM || 1.5) * factor;
 
     store.update({
         unit: newUnit,
@@ -245,6 +245,21 @@ function renderSizeGrid() {
     container.innerHTML = html;
 }
 
+const DEFAULT_SIZE_MEASUREMENTS = {
+    '34 (XS)': { bodyL: 23.75, chest: 18.00, slvL: 7.75, slvDia: 6.25 },
+    '36 (S)':  { bodyL: 25.00, chest: 18.75, slvL: 8.00, slvDia: 6.50 },
+    '38 (M)':  { bodyL: 26.25, chest: 19.50, slvL: 8.25, slvDia: 6.75 },
+    '40 (L)':  { bodyL: 27.50, chest: 20.25, slvL: 8.50, slvDia: 7.00 },
+    '42 (XL)': { bodyL: 28.75, chest: 21.00, slvL: 8.75, slvDia: 7.25 },
+    '44 (2XL)':{ bodyL: 30.00, chest: 21.75, slvL: 9.00, slvDia: 7.50 },
+    'XS':      { bodyL: 23.75, chest: 18.00, slvL: 7.75, slvDia: 6.25 },
+    'S':       { bodyL: 25.00, chest: 18.75, slvL: 8.00, slvDia: 6.50 },
+    'M':       { bodyL: 26.25, chest: 19.50, slvL: 8.25, slvDia: 6.75 },
+    'L':       { bodyL: 27.50, chest: 20.25, slvL: 8.50, slvDia: 7.00 },
+    'XL':      { bodyL: 28.75, chest: 21.00, slvL: 8.75, slvDia: 7.25 },
+    '2XL':     { bodyL: 30.00, chest: 21.75, slvL: 9.00, slvDia: 7.50 }
+};
+
 // Targeted handler without destroying input focus!
 window.onSizePropChange = function(index, prop, val) {
     const s = store.state;
@@ -252,6 +267,16 @@ window.onSizePropChange = function(index, prop, val) {
 
     if (prop === 'name') {
         s.sizes[index].name = val;
+        const key = val?.trim();
+        const preset = DEFAULT_SIZE_MEASUREMENTS[key] || DEFAULT_SIZE_MEASUREMENTS[key?.toUpperCase()];
+        if (preset) {
+            const isCm = (s.unit || 'in') === 'cm';
+            const mult = isCm ? 2.54 : 1.0;
+            if (!s.sizes[index].bodyL) s.sizes[index].bodyL = parseFloat((preset.bodyL * mult).toFixed(2));
+            if (!s.sizes[index].chest) s.sizes[index].chest = parseFloat((preset.chest * mult).toFixed(2));
+            if (!s.sizes[index].slvL) s.sizes[index].slvL = parseFloat((preset.slvL * mult).toFixed(2));
+            if (!s.sizes[index].slvDia) s.sizes[index].slvDia = parseFloat((preset.slvDia * mult).toFixed(2));
+        }
     } else {
         s.sizes[index][prop] = parseFloat(val) || 0;
     }
@@ -261,21 +286,33 @@ window.onSizePropChange = function(index, prop, val) {
 
 window.addNewSizeRow = function() {
     const s = store.state;
-    const standardSizes = ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL', '4XL'];
+    const standardSizes = ['34 (XS)', '36 (S)', '38 (M)', '40 (L)', '42 (XL)', '44 (2XL)'];
     const existingNames = s.sizes.map(x => x.name.toUpperCase());
-    const nextName = standardSizes.find(n => !existingNames.includes(n)) || `Size ${s.sizes.length + 1}`;
+    const nextName = standardSizes.find(n => !existingNames.includes(n.toUpperCase())) || `Size ${s.sizes.length + 1}`;
 
-    const unit = s.unit || 'cm';
-    const isInches = unit === 'in';
+    const unit = s.unit || 'in';
+    const isCm = unit === 'cm';
+    const preset = DEFAULT_SIZE_MEASUREMENTS[nextName];
     const lastSize = s.sizes[s.sizes.length - 1] || { bodyL: 0, chest: 0, slvL: 0, slvDia: 0 };
 
-    store.addSize(nextName, {
-        qty: 0,
-        bodyL: lastSize.bodyL > 0 ? lastSize.bodyL + (isInches ? 0.8 : 2) : 0,
-        chest: lastSize.chest > 0 ? lastSize.chest + (isInches ? 0.8 : 2) : 0,
-        slvL: lastSize.slvL > 0 ? lastSize.slvL + (isInches ? 0.4 : 1) : 0,
-        slvDia: lastSize.slvDia > 0 ? lastSize.slvDia + (isInches ? 0.2 : 0.5) : 0
-    }, nextName === 'XS' ? 0 : null);
+    let defaults = {};
+    if (preset) {
+        defaults = isCm ? {
+            bodyL: parseFloat((preset.bodyL * 2.54).toFixed(2)),
+            chest: parseFloat((preset.chest * 2.54).toFixed(2)),
+            slvL: parseFloat((preset.slvL * 2.54).toFixed(2)),
+            slvDia: parseFloat((preset.slvDia * 2.54).toFixed(2))
+        } : { ...preset };
+    } else {
+        defaults = {
+            bodyL: lastSize.bodyL > 0 ? lastSize.bodyL + (isCm ? 2 : 1.25) : 0,
+            chest: lastSize.chest > 0 ? lastSize.chest + (isCm ? 2 : 0.75) : 0,
+            slvL: lastSize.slvL > 0 ? lastSize.slvL + (isCm ? 1 : 0.25) : 0,
+            slvDia: lastSize.slvDia > 0 ? lastSize.slvDia + (isCm ? 0.5 : 0.25) : 0
+        };
+    }
+
+    store.addSize(nextName, defaults);
 
     renderSizeGrid();
     recalcAdvanced();
@@ -871,10 +908,10 @@ async function loadCostingById(id) {
             spPc: savedSp,
             cpPc: parseFloat(u.cpPc ?? u.cp ?? c.totalUnitCost ?? 0),
             lastEdited: inferredLastEdited,
-            bodyLM: parseFloat(u.bodyLM ?? c.bodyLM ?? 0) || 6,
-            chestM: parseFloat(u.chestM ?? c.chestM ?? 0) || 4,
-            slvLM: parseFloat(u.slvLM ?? c.slvLM ?? 0) || 4,
-            slvDiaM: parseFloat(u.slvDiaM ?? c.slvDiaM ?? 0) || 4,
+            bodyLM: parseFloat(u.bodyLM ?? c.bodyLM ?? 0) || 2.5,
+            chestM: parseFloat(u.chestM ?? c.chestM ?? 0) || 1.5,
+            slvLM: parseFloat(u.slvLM ?? c.slvLM ?? 0) || 1.5,
+            slvDiaM: parseFloat(u.slvDiaM ?? c.slvDiaM ?? 0) || 1.5,
         });
 
         renderSizeGrid();
