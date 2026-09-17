@@ -1,0 +1,285 @@
+/* Orders page responsive corrections */
+#main-content-area,
+#orders-list,
+#orders-kanban,
+#orders-analytics-container,
+#orders-search-container,
+#orders-segmented-control,
+#orders-bulk-bar {
+    box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
+}
+
+#orders-list > *,
+#orders-analytics-container > *,
+#orders-bulk-bar > * {
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+#orders-kanban:not(.hidden) {
+    display: flex;
+}
+
+@media (max-width: 767px) {
+    html,
+    body {
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+
+    .mobile-wrapper,
+    #main-content-area {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        box-sizing: border-box;
+    }
+
+    #main-content-area {
+        gap: 12px;
+        padding: 12px;
+        padding-bottom: 112px;
+    }
+
+    #main-content-area > * {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+    }
+
+    #main-content-area .px-xs {
+        padding-left: 0;
+        padding-right: 0;
+    }
+
+    #main-content-area h2 {
+        max-width: 100%;
+        overflow-wrap: anywhere;
+        font-size: 24px;
+        line-height: 1.15;
+    }
+
+    #main-content-area h2 + span {
+        flex-shrink: 0;
+    }
+
+    #main-content-area > .px-xs:first-child > div:first-child > div:first-child {
+        align-items: flex-start;
+        flex-wrap: wrap;
+    }
+
+    #main-content-area > .px-xs:first-child > div:last-child {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    #main-content-area > .px-xs:first-child > div:last-child button {
+        flex: 1 1 0;
+        min-width: 0;
+        justify-content: center;
+    }
+
+    #orders-search-container {
+        gap: 8px;
+    }
+
+    #orders-search-container input,
+    #orders-search-container select {
+        min-width: 0;
+        width: 100%;
+        box-sizing: border-box;
+        font-size: 16px;
+    }
+
+    #orders-search-container > div:last-child {
+        width: 100%;
+    }
+
+    #orders-search-container > div:last-child select {
+        flex: 1 1 auto;
+    }
+
+    #orders-segmented-control > div:first-child {
+        gap: 8px;
+    }
+
+    #orders-segmented-control .min-w-\[220px\] {
+        min-width: 0;
+        width: 100%;
+    }
+
+    #orders-segmented-control .overflow-x-auto {
+        width: 100%;
+        max-width: 100%;
+        padding-bottom: 3px;
+    }
+
+    #orders-segmented-control .self-end {
+        align-self: flex-start;
+    }
+
+    .stage-chips-row {
+        width: 100%;
+        max-width: 100%;
+        flex-wrap: nowrap;
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+    }
+
+    .stage-chip,
+    .urgency-chip {
+        flex: 0 0 auto;
+    }
+
+    #orders-bulk-bar > div {
+        padding: 12px;
+    }
+
+    #orders-bulk-bar > div > div {
+        min-width: 0;
+        max-width: 100%;
+        flex-wrap: wrap;
+    }
+
+    #orders-bulk-bar button {
+        max-width: 100%;
+        white-space: normal;
+    }
+
+    #orders-list {
+        display: flex !important;
+        flex-direction: column;
+        gap: 12px;
+        padding-left: 0;
+        padding-right: 0;
+        overflow: visible;
+    }
+
+    #orders-list > [role="button"] {
+        width: 100%;
+        max-width: 100%;
+        min-width: 0;
+        padding: 14px;
+        border-radius: 18px;
+        overflow: hidden;
+        align-items: stretch;
+    }
+
+    #orders-list > [role="button"] > div {
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    #orders-list > [role="button"] > div > div:first-child {
+        min-width: 0;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    #orders-list > [role="button"] h4,
+    #orders-list > [role="button"] .font-mono,
+    #orders-list > [role="button"] .text-body {
+        max-width: 100%;
+        min-width: 0;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+
+    #orders-list > [role="button"] .font-mono {
+        line-height: 1.25;
+    }
+
+    #orders-list > [role="button"] > div > div:first-child > div:last-child {
+        max-width: 100%;
+        align-items: flex-start;
+        flex: 0 1 auto;
+    }
+
+    #orders-list > [role="button"] .inline-flex {
+        max-width: 100%;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+
+    #orders-list > [role="button"] .overflow-x-auto {
+        max-width: 100%;
+        overscroll-behavior-x: contain;
+    }
+
+    #orders-list > [role="button"] > div > div:last-child {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    #orders-list > [role="button"] > div > div:last-child > div:last-child {
+        width: 100%;
+        min-width: 0;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+    }
+
+    #orders-list > [role="button"] button {
+        min-height: 40px;
+        max-width: 100%;
+    }
+
+    #orders-list > [role="button"] button:last-child {
+        flex: 1 1 auto;
+    }
+
+    #orders-kanban {
+        width: 100%;
+        max-width: 100%;
+        padding-left: 0;
+        padding-right: 0;
+        gap: 10px;
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+    }
+
+    #orders-kanban > div {
+        flex: 0 0 min(290px, calc(100vw - 36px));
+        width: min(290px, calc(100vw - 36px));
+        min-width: 0;
+        max-width: calc(100vw - 36px);
+        box-sizing: border-box;
+    }
+
+    #orderDetailsSheet-content {
+        width: 100%;
+        max-width: 100vw;
+        box-sizing: border-box;
+    }
+
+    #orderDetailsSheet-content table {
+        display: block;
+        width: 100%;
+        max-width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    #orderDetailsSheet-content th,
+    #orderDetailsSheet-content td {
+        white-space: normal;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+
+    #orderDetailsSheet-content img,
+    #orderDetailsSheet-content svg {
+        max-width: 100%;
+        height: auto;
+    }
+}
+
+@media (min-width: 768px) {
+    #orders-list {
+        display: grid !important;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        align-items: start;
+    }
+}
