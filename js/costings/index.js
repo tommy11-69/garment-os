@@ -37,29 +37,29 @@ async function loadCostings() {
                 <div class="costing-card p-4 flex flex-col gap-3" onclick="openCosting('${c.id}')">
                     <div class="flex justify-between items-start">
                         <div>
-                            <h3 class="text-[16px] font-bold text-on-surface">${c.clientId || 'Unnamed Client'}</h3>
-                            <p class="text-[13px] text-secondary">${c.styleRef || 'Garment'}</p>
+                            <h3 class="text-[16px] font-bold text-on-surface dark:text-white">${c.clientId || 'Unnamed Client'}</h3>
+                            <p class="text-[13px] text-secondary dark:text-slate-400">${c.styleRef || 'Garment'}</p>
                         </div>
                         <div class="flex items-center gap-1.5" onclick="event.stopPropagation()">
-                            <span class="text-[11px] text-secondary bg-surface-container-high px-2 py-1 rounded-md font-medium">
+                            <span class="text-[11px] text-secondary dark:text-slate-400 bg-surface-container-high dark:bg-slate-800/90 px-2 py-1 rounded-md font-medium border border-transparent dark:border-slate-700/50">
                                 ${date}
                             </span>
-                            <button type="button" onclick="printCosting('${c.id}')" title="Print Costing" class="w-7 h-7 rounded-full bg-primary/10 hover:bg-primary/20 flex items-center justify-center text-primary active-scale transition-apple">
+                            <button type="button" onclick="printCosting('${c.id}')" title="Print Costing" class="w-7 h-7 rounded-full bg-primary/10 dark:bg-primary/20 hover:bg-primary/20 flex items-center justify-center text-primary dark:text-blue-400 active-scale transition-apple">
                                 <span class="material-symbols-outlined text-[16px]">print</span>
                             </button>
                         </div>
                     </div>
-                    <div class="grid grid-cols-3 gap-2 mt-1 pt-3 border-t border-outline-variant/30">
+                    <div class="grid grid-cols-3 gap-2 mt-1 pt-3 border-t border-outline-variant/30 dark:border-slate-800">
                         <div>
-                            <p class="text-[10px] font-semibold text-secondary uppercase tracking-wider mb-0.5">CP/pc</p>
-                            <p class="text-[14px] font-bold text-on-surface">₹${cp.toFixed(2)}</p>
+                            <p class="text-[10px] font-semibold text-secondary dark:text-slate-400 uppercase tracking-wider mb-0.5">CP/pc</p>
+                            <p class="text-[14px] font-bold text-on-surface dark:text-slate-100">₹${cp.toFixed(2)}</p>
                         </div>
                         <div>
-                            <p class="text-[10px] font-semibold text-secondary uppercase tracking-wider mb-0.5">SP/pc</p>
-                            <p class="text-[14px] font-bold text-primary">₹${sp > 0 ? sp.toFixed(2) : '—'}</p>
+                            <p class="text-[10px] font-semibold text-secondary dark:text-slate-400 uppercase tracking-wider mb-0.5">SP/pc</p>
+                            <p class="text-[14px] font-bold text-primary dark:text-blue-400">₹${sp > 0 ? sp.toFixed(2) : '—'}</p>
                         </div>
                         <div>
-                            <p class="text-[10px] font-semibold text-secondary uppercase tracking-wider mb-0.5">Margin</p>
+                            <p class="text-[10px] font-semibold text-secondary dark:text-slate-400 uppercase tracking-wider mb-0.5">Margin</p>
                             <p class="text-[14px] font-bold ${profitClass}">${profit}</p>
                         </div>
                     </div>
@@ -150,22 +150,22 @@ function buildDetailHTML(c, sheetId) {
 
     // ── Helper: a two-column field row
     const fieldRow = (label, val, sub = '') => `
-        <div class="flex justify-between items-center py-3 border-b border-outline-variant/15 last:border-0">
-            <span class="text-[13px] text-secondary font-medium tracking-wide">${label}</span>
+        <div class="flex justify-between items-center py-3 border-b border-outline-variant/15 dark:border-slate-800/80 last:border-0">
+            <span class="text-[13px] text-secondary dark:text-slate-400 font-medium tracking-wide">${label}</span>
             <div class="text-right">
-                <span class="text-[14px] font-bold text-on-surface">${val}</span>
-                ${sub ? `<span class="text-[11px] text-secondary ml-1 font-medium">${sub}</span>` : ''}
+                <span class="text-[14px] font-bold text-on-surface dark:text-slate-100">${val}</span>
+                ${sub ? `<span class="text-[11px] text-secondary dark:text-slate-400 ml-1 font-medium">${sub}</span>` : ''}
             </div>
         </div>`;
 
     // ── Helper: section card wrapper
     const card = (icon, title, color, body) => `
-        <div class="bg-white border border-outline-variant/30 rounded-[20px] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.03)] flex-shrink-0">
-            <div class="flex items-center gap-2 px-5 py-3.5 border-b border-outline-variant/15" style="background: ${color}0A;">
+        <div class="bg-white dark:bg-slate-900 border border-outline-variant/30 dark:border-slate-800 rounded-[20px] overflow-hidden shadow-[0_2px_12px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)] flex-shrink-0">
+            <div class="flex items-center gap-2 px-5 py-3.5 border-b border-outline-variant/15 dark:border-slate-800" style="background: ${color}14;">
                 <span class="material-symbols-outlined text-[18px]" style="color:${color};">${icon}</span>
                 <h3 class="text-[13px] font-bold uppercase tracking-widest" style="color:${color};">${title}</h3>
             </div>
-            <div class="px-5 pb-2 pt-1">${body}</div>
+            <div class="px-5 pb-2 pt-1 text-on-surface dark:text-slate-100">${body}</div>
         </div>`;
 
     // ── 1. Order Summary Card
@@ -174,20 +174,20 @@ function buildDetailHTML(c, sheetId) {
     const totalProfit = savedTotalProfit !== null ? savedTotalProfit : ((profitPc !== null && qty > 0) ? profitPc * qty : null);
     const summaryCard = card('analytics', 'Order Summary', '#0071E3', `
         <div class="grid grid-cols-2 gap-2 py-3">
-            <div class="bg-blue-50 rounded-xl p-3 text-center">
-                <p class="text-[10px] font-semibold text-secondary uppercase tracking-wider mb-1">CP / pc</p>
-                <p class="text-[15px] font-bold text-on-surface">${rs(cp)}</p>
+            <div class="bg-blue-50/70 dark:bg-blue-950/40 border border-blue-100 dark:border-blue-900/40 rounded-xl p-3 text-center">
+                <p class="text-[10px] font-semibold text-secondary dark:text-slate-400 uppercase tracking-wider mb-1">CP / pc</p>
+                <p class="text-[15px] font-bold text-on-surface dark:text-white">${rs(cp)}</p>
             </div>
-            <div class="bg-blue-50/50 rounded-xl p-3 text-center">
-                <p class="text-[10px] font-semibold text-secondary uppercase tracking-wider mb-1">SP / pc</p>
-                <p class="text-[15px] font-bold text-primary">${sp > 0 ? rs(sp) : '—'}</p>
+            <div class="bg-blue-50/40 dark:bg-blue-950/30 border border-blue-100/60 dark:border-blue-900/30 rounded-xl p-3 text-center">
+                <p class="text-[10px] font-semibold text-secondary dark:text-slate-400 uppercase tracking-wider mb-1">SP / pc</p>
+                <p class="text-[15px] font-bold text-primary dark:text-blue-400">${sp > 0 ? rs(sp) : '—'}</p>
             </div>
-            <div class="rounded-xl p-3 text-center" style="background:${profitColor}18;">
-                <p class="text-[10px] font-semibold text-secondary uppercase tracking-wider mb-1">Profit / pc</p>
+            <div class="rounded-xl p-3 text-center border" style="background:${profitColor}14; border-color:${profitColor}28;">
+                <p class="text-[10px] font-semibold text-secondary dark:text-slate-400 uppercase tracking-wider mb-1">Profit / pc</p>
                 <p class="text-[15px] font-bold" style="color:${profitColor};">${profitPc !== null ? rs(profitPc) : '—'}</p>
             </div>
-            <div class="rounded-xl p-3 text-center" style="background:${profitColor}10;">
-                <p class="text-[10px] font-semibold text-secondary uppercase tracking-wider mb-1">Total Profit</p>
+            <div class="rounded-xl p-3 text-center border" style="background:${profitColor}10; border-color:${profitColor}20;">
+                <p class="text-[10px] font-semibold text-secondary dark:text-slate-400 uppercase tracking-wider mb-1">Total Profit</p>
                 <p class="text-[15px] font-bold" style="color:${profitColor};">${totalProfit !== null ? '₹' + Math.abs(totalProfit).toLocaleString('en-IN', {maximumFractionDigits:0}) : '—'}</p>
             </div>
         </div>
@@ -226,12 +226,12 @@ function buildDetailHTML(c, sheetId) {
             u.components.forEach(comp => {
                 const compYield = comp.pcsPerKg || (comp.weightGms > 0 ? (1000 / comp.weightGms) : 0);
                 fabricBody += `
-                <div class="py-3 border-b border-outline-variant/15 last:border-0">
+                <div class="py-3 border-b border-outline-variant/15 dark:border-slate-800/80 last:border-0">
                     <div class="flex justify-between items-center mb-1">
-                        <span class="text-[13px] font-bold text-on-surface">${comp.name}</span>
-                        <span class="text-[14px] font-bold text-[#0071E3]">${rs(comp.costPc)} / pc</span>
+                        <span class="text-[13px] font-bold text-on-surface dark:text-slate-100">${comp.name}</span>
+                        <span class="text-[14px] font-bold text-[#0071E3] dark:text-blue-400">${rs(comp.costPc)} / pc</span>
                     </div>
-                    <div class="text-[11px] text-secondary font-medium flex justify-between">
+                    <div class="text-[11px] text-secondary dark:text-slate-400 font-medium flex justify-between">
                         <span>Price: ${rs(comp.fabricPriceKg)}/kg</span>
                         <span>Wt: ${comp.weightGms?.toFixed(1) || 0} gms</span>
                         <span>Yield: ${compYield > 0 ? compYield.toFixed(2) + ' p/kg' : '—'}</span>
@@ -373,11 +373,11 @@ function buildDetailHTML(c, sheetId) {
         return `<div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
                 <div class="w-2.5 h-2.5 rounded-sm flex-shrink-0" style="background:${i.color};"></div>
-                <span class="text-[12px] text-on-surface">${i.label}</span>
+                <span class="text-[12px] text-on-surface dark:text-slate-200">${i.label}</span>
             </div>
             <div class="flex items-center gap-3">
-                <span class="text-[11px] text-secondary">${pct}%</span>
-                <span class="text-[12px] font-bold text-on-surface">₹${i.value.toFixed(2)}</span>
+                <span class="text-[11px] text-secondary dark:text-slate-400">${pct}%</span>
+                <span class="text-[12px] font-bold text-on-surface dark:text-slate-100">₹${i.value.toFixed(2)}</span>
             </div>
         </div>`;
     }).join('');
@@ -408,44 +408,44 @@ window.openCosting = async function(id) {
             const container = document.createElement('div');
             container.innerHTML = `
                 <div id="${sheetId}-overlay" class="bottom-sheet-overlay"></div>
-                <div id="${sheetId}-content" class="bottom-sheet-content flex flex-col" style="height:88vh;max-height:88vh;">
+                <div id="${sheetId}-content" class="bottom-sheet-content flex flex-col bg-white dark:bg-slate-900 text-on-surface dark:text-slate-100" style="height:88vh;max-height:88vh;">
                     <div class="sheet-handle"></div>
 
                     <!-- Header -->
-                    <div class="px-4 pb-3 pt-1 flex justify-between items-start border-b border-outline-variant/30 flex-shrink-0">
+                    <div class="px-4 pb-3 pt-1 flex justify-between items-start border-b border-outline-variant/30 dark:border-slate-800 flex-shrink-0">
                         <div class="flex-1 min-w-0">
-                            <h2 class="text-[18px] font-bold text-on-surface truncate">${c.clientId || 'Unnamed Client'}</h2>
-                            <p class="text-[12px] text-secondary">${c.styleRef || 'Garment'} &bull; ${dateStr} &bull; <span class="font-medium">${c.status || 'Saved'}</span></p>
+                            <h2 class="text-[18px] font-bold text-on-surface dark:text-white truncate">${c.clientId || 'Unnamed Client'}</h2>
+                            <p class="text-[12px] text-secondary dark:text-slate-400">${c.styleRef || 'Garment'} &bull; ${dateStr} &bull; <span class="font-medium text-primary dark:text-blue-400">${c.status || 'Saved'}</span></p>
                         </div>
                         <div class="flex items-center gap-2 flex-shrink-0 ml-3">
                             <button type="button" id="costing-print-btn" title="Print / Export PDF"
-                                class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary active-scale transition-apple hover:bg-primary/20">
+                                class="w-8 h-8 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center text-primary dark:text-blue-400 active-scale transition-apple hover:bg-primary/20">
                                 <span class="material-symbols-outlined text-[18px]">print</span>
                             </button>
                             <button type="button" id="costing-delete-btn" title="Delete"
-                                class="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center text-red-500 active-scale transition-apple hover:bg-red-100">
+                                class="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 dark:text-red-400 active-scale transition-apple hover:bg-red-500/20">
                                 <span class="material-symbols-outlined text-[18px]">delete</span>
                             </button>
                             <button type="button" id="costing-close-x"
-                                class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-secondary active-scale transition-apple">
+                                class="w-8 h-8 rounded-full bg-surface-variant dark:bg-slate-800 flex items-center justify-center text-secondary dark:text-slate-300 active-scale transition-apple hover:bg-surface-variant/80">
                                 <span class="material-symbols-outlined text-[20px]">close</span>
                             </button>
                         </div>
                     </div>
 
                     <!-- Scrollable Body -->
-                    <div class="flex-1 overflow-y-auto px-4 py-5 flex flex-col gap-5" style="background:#f4f5f7;">
+                    <div class="flex-1 overflow-y-auto px-4 py-5 flex flex-col gap-4 bg-[#f4f5f7] dark:bg-slate-950">
                         ${buildDetailHTML(c, sheetId)}
                     </div>
 
                     <!-- Footer Actions -->
-                    <div class="p-4 border-t border-outline-variant/30 bg-white safe-bottom flex gap-3 flex-shrink-0">
+                    <div class="p-4 border-t border-outline-variant/30 dark:border-slate-800 bg-white dark:bg-slate-900 safe-bottom flex gap-3 flex-shrink-0">
                         <button type="button" id="costing-close-btn"
-                            class="flex-1 bg-surface-container-high text-on-surface font-semibold py-3.5 rounded-xl active-scale transition-apple text-[14px]">
+                            class="flex-1 bg-surface-container-high dark:bg-slate-800 text-on-surface dark:text-slate-200 font-semibold py-3.5 rounded-xl active-scale transition-apple text-[14px]">
                             Close
                         </button>
                         <button type="button" id="costing-print-footer-btn"
-                            class="flex-1 bg-primary/10 text-primary font-semibold py-3.5 rounded-xl active-scale transition-apple flex items-center justify-center gap-1.5 text-[14px]">
+                            class="flex-1 bg-primary/10 dark:bg-primary/20 text-primary dark:text-blue-400 font-semibold py-3.5 rounded-xl active-scale transition-apple flex items-center justify-center gap-1.5 text-[14px]">
                             <span class="material-symbols-outlined text-[16px]">print</span>
                             Print / PDF
                         </button>

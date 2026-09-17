@@ -222,17 +222,17 @@ textarea:focus-visible {
 }
 .dark .text-on-surface,
 .dark .text-on-background {
-    color: var(--gos-text);
+    color: var(--gos-text) !important;
 }
 .dark .text-secondary,
 .dark .text-on-surface-variant {
-    color: var(--gos-text-muted);
+    color: var(--gos-text-muted) !important;
 }
 .dark .border-outline-variant {
-    border-color: var(--gos-border-subtle);
+    border-color: var(--gos-border-subtle) !important;
 }
 .dark .border-outline {
-    border-color: var(--gos-border);
+    border-color: var(--gos-border) !important;
 }
 .dark input:not([type="checkbox"]):not([type="radio"]),
 .dark select,

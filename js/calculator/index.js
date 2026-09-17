@@ -64,9 +64,13 @@ function restoreSession() {
         if (d.u) {
             const u = {
                 ...d.u,
+                bodyL: (d.u.bodyL !== undefined && d.u.bodyL !== null && d.u.bodyL !== '' && Number(d.u.bodyL) > 0) ? Number(d.u.bodyL) : 27.5,
                 bodyLM: (d.u.bodyLM !== undefined && d.u.bodyLM !== null && d.u.bodyLM !== '') ? Number(d.u.bodyLM) : 2.5,
+                chest: (d.u.chest !== undefined && d.u.chest !== null && d.u.chest !== '' && Number(d.u.chest) > 0) ? Number(d.u.chest) : 20.25,
                 chestM: (d.u.chestM !== undefined && d.u.chestM !== null && d.u.chestM !== '') ? Number(d.u.chestM) : 1.5,
+                slvL: (d.u.slvL !== undefined && d.u.slvL !== null && d.u.slvL !== '' && Number(d.u.slvL) > 0) ? Number(d.u.slvL) : 8.5,
                 slvLM: (d.u.slvLM !== undefined && d.u.slvLM !== null && d.u.slvLM !== '') ? Number(d.u.slvLM) : 1.5,
+                slvDia: (d.u.slvDia !== undefined && d.u.slvDia !== null && d.u.slvDia !== '' && Number(d.u.slvDia) > 0) ? Number(d.u.slvDia) : 7.0,
                 slvDiaM: (d.u.slvDiaM !== undefined && d.u.slvDiaM !== null && d.u.slvDiaM !== '') ? Number(d.u.slvDiaM) : 1.5,
             };
             calculatorStore.updateU(u);
@@ -204,13 +208,13 @@ async function loadCostingById(id) {
                 fabricPriceKg: parseFloat(u.fabricPriceKg ?? c.fabricPriceKg ?? 0),
                 wastage: parseFloat(u.wastage ?? c.wastage ?? 0),
                 fabricCostPc: parseFloat(u.fabricCostPc ?? c.fabricCostPc ?? 0),
-                bodyL: parseFloat(u.bodyL ?? c.bodyL ?? 0),
+                bodyL: parseFloat(u.bodyL ?? c.bodyL ?? 0) || 27.5,
                 bodyLM: parseFloat(u.bodyLM ?? c.bodyLM ?? 0) || 2.5,
-                chest: parseFloat(u.chest ?? c.chest ?? 0),
+                chest: parseFloat(u.chest ?? c.chest ?? 0) || 20.25,
                 chestM: parseFloat(u.chestM ?? c.chestM ?? 0) || 1.5,
-                slvL: parseFloat(u.slvL ?? c.slvL ?? 0),
+                slvL: parseFloat(u.slvL ?? c.slvL ?? 0) || 8.5,
                 slvLM: parseFloat(u.slvLM ?? c.slvLM ?? 0) || 1.5,
-                slvDia: parseFloat(u.slvDia ?? c.slvDia ?? 0),
+                slvDia: parseFloat(u.slvDia ?? c.slvDia ?? 0) || 7.0,
                 slvDiaM: parseFloat(u.slvDiaM ?? c.slvDiaM ?? 0) || 1.5,
                 gsm: parseFloat(u.gsm ?? c.gsm ?? 0),
                 cmtMode: u.cmtMode || c.cmtMode || 'combined',
