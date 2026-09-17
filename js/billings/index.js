@@ -16,6 +16,7 @@ let currentFormItems = [];
 let cachedInventory = [];
 let cachedContacts = {};  // { customer: [...], vendor: [...] }
 let sheetsContainer = null;
+let billingSaveInFlight = false;
 
 // ── Init ────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
@@ -586,6 +587,8 @@ window.saveBillingAndFinalize = async function () {
 };
 
 async function saveBilling(data) {
+    if (billingSaveInFlight) return;
+    billingSaveInFlight = true;
     try {
         window.showToast?.('Saving...', 'info');
         let saved;
@@ -602,6 +605,8 @@ async function saveBilling(data) {
     } catch (e) {
         console.error('Save billing error:', e);
         window.showToast?.(e.message || 'Failed to save', 'error');
+    } finally {
+        billingSaveInFlight = false;
     }
 }
 

@@ -1160,19 +1160,48 @@ function generateBillingSerial($pdo, $transactionType) {
     $prefix = $prefixMap[$transactionType] ?? 'DOC';
     $year   = date('Y');
     $typeKey = $prefix . '-' . $year;
+    $fullPrefix = "AG-{$prefix}-{$year}-";
 
-    // Upsert counter atomically
+    // Create the lock row before opening the transaction so concurrent first saves
+    // cannot race while creating the counter itself.
     $pdo->prepare(
-        "INSERT INTO `billing_counters` (`type_key`, `last_seq`) VALUES (?, 1)
-         ON DUPLICATE KEY UPDATE `last_seq` = `last_seq` + 1"
+        "INSERT IGNORE INTO `billing_counters` (`type_key`, `last_seq`) VALUES (?, 0)"
     )->execute([$typeKey]);
 
-    // Re-fetch cleanly
-    $stmt = $pdo->prepare("SELECT `last_seq` FROM `billing_counters` WHERE `type_key` = ?");
-    $stmt->execute([$typeKey]);
-    $seq = (int)($stmt->fetch()['last_seq'] ?? 1);
+    $pdo->beginTransaction();
+    try {
+        // Lock this document type's counter for the whole allocation operation.
+        $counterStmt = $pdo->prepare(
+            "SELECT `last_seq` FROM `billing_counters` WHERE `type_key` = ? FOR UPDATE"
+        );
+        $counterStmt->execute([$typeKey]);
+        $counterSeq = (int)($counterStmt->fetchColumn() ?: 0);
 
-    return "AG-{$prefix}-{$year}-" . str_pad($seq, 4, '0', STR_PAD_LEFT);
+        // Reconcile counters created before the counter table was introduced or
+        // changed by a manual import, preventing reuse of an existing invoice number.
+        $existingStmt = $pdo->prepare(
+            "SELECT `invoice_number` FROM `billing_master` WHERE `invoice_number` LIKE ?"
+        );
+        $existingStmt->execute([$fullPrefix . '%']);
+        $maxExistingSeq = 0;
+        foreach ($existingStmt->fetchAll(PDO::FETCH_COLUMN) as $invoiceNumber) {
+            if (preg_match('/^' . preg_quote($fullPrefix, '/') . '(\d+)$/', $invoiceNumber, $matches)) {
+                $maxExistingSeq = max($maxExistingSeq, (int)$matches[1]);
+            }
+        }
+
+        $seq = max($counterSeq, $maxExistingSeq) + 1;
+        $updateStmt = $pdo->prepare(
+            "UPDATE `billing_counters` SET `last_seq` = ? WHERE `type_key` = ?"
+        );
+        $updateStmt->execute([$seq, $typeKey]);
+        $pdo->commit();
+
+        return $fullPrefix . str_pad($seq, 4, '0', STR_PAD_LEFT);
+    } catch (Throwable $e) {
+        if ($pdo->inTransaction()) $pdo->rollBack();
+        throw $e;
+    }
 }
 
 function getBillingWithItems($pdo, $billingId) {
