@@ -105,7 +105,7 @@ class AdvancedCalculatorStore {
         this.notify();
     }
 
-    addSize(name = 'New Size', defaults = {}) {
+    addSize(name = 'New Size', defaults = {}, insertIndex = null) {
         const id = 'sz_' + Date.now() + '_' + Math.random().toString(36).substr(2, 4);
         const newSize = {
             id,
@@ -120,7 +120,9 @@ class AdvancedCalculatorStore {
         };
         this.update(s => ({
             ...s,
-            sizes: [...s.sizes, newSize]
+            sizes: insertIndex === null
+                ? [...s.sizes, newSize]
+                : [...s.sizes.slice(0, insertIndex), newSize, ...s.sizes.slice(insertIndex)]
         }));
     }
 

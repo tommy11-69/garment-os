@@ -275,7 +275,7 @@ window.addNewSizeRow = function() {
         chest: lastSize.chest > 0 ? lastSize.chest + (isInches ? 0.8 : 2) : 0,
         slvL: lastSize.slvL > 0 ? lastSize.slvL + (isInches ? 0.4 : 1) : 0,
         slvDia: lastSize.slvDia > 0 ? lastSize.slvDia + (isInches ? 0.2 : 0.5) : 0
-    });
+    }, nextName === 'XS' ? 0 : null);
 
     renderSizeGrid();
     recalcAdvanced();
