@@ -358,14 +358,18 @@
                                     <input id="pat-sleeve-dia-m" type="number" value="1.5" placeholder="1.5" class="calc-input w-10 px-1 py-1.5 text-center text-[13px] bg-surface-container-high" oninput="calcPattern()">
                                 </div>
                             </div>
-                            <div class="col-span-2 flex items-center gap-3 mt-1">
+                            <div class="col-span-2 flex items-center gap-2 mt-1">
                                 <div class="flex-1">
                                     <label class="field-label text-[11px] mb-1">GSM</label>
                                     <input id="pat-gsm" type="number" placeholder="180" class="calc-input w-full px-2 py-1.5 text-[13px]" oninput="calcPattern()">
                                 </div>
-                                <div class="flex-1 bg-white border border-primary/20 rounded-lg p-2 text-right">
+                                <div class="flex-1 bg-white dark:bg-slate-800 border border-primary/20 rounded-lg p-2 text-right">
                                     <div class="text-[10px] text-secondary font-bold uppercase tracking-wide">Wt/Pc</div>
                                     <div class="text-[14px] font-bold text-primary"><span id="pat-wt-res">0.0</span> <span class="text-[10px]">gms</span></div>
+                                </div>
+                                <div class="flex-1 bg-white dark:bg-slate-800 border border-primary/20 rounded-lg p-2 text-right">
+                                    <div class="text-[10px] text-secondary font-bold uppercase tracking-wide">Yield</div>
+                                    <div class="text-[14px] font-bold text-primary"><span id="pat-pcs-kg-res">0.00</span> <span class="text-[10px]">pcs/kg</span></div>
                                 </div>
                             </div>
                         </div>
@@ -866,13 +870,53 @@
         let currentQuickUnit = 'in';
 
         function setQuickUnit(u) {
+            if (currentQuickUnit === u) return;
+            const isToCm = u === 'cm';
             currentQuickUnit = u;
             const btnCm = document.getElementById('q-unit-cm');
             const btnIn = document.getElementById('q-unit-in');
             if (btnCm && btnIn) {
-                btnCm.classList.toggle('active', u === 'cm');
-                btnIn.classList.toggle('active', u === 'in');
+                btnCm.classList.toggle('active', isToCm);
+                btnIn.classList.toggle('active', !isToCm);
             }
+
+            const factor = isToCm ? 2.54 : (1 / 2.54);
+
+            const updateInput = (id, inDefault, cmDefault, inPh, cmPh) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                
+                if (inPh && cmPh) {
+                    el.placeholder = isToCm ? cmPh : inPh;
+                }
+
+                const rawVal = el.value.trim();
+                if (rawVal !== '') {
+                    const numVal = parseFloat(rawVal);
+                    if (!isNaN(numVal) && numVal > 0) {
+                        if (!isToCm && Math.abs(numVal - cmDefault) < 0.15) {
+                            el.value = inDefault;
+                        } else if (isToCm && Math.abs(numVal - inDefault) < 0.15) {
+                            el.value = cmDefault;
+                        } else {
+                            const converted = numVal * factor;
+                            el.value = parseFloat(converted.toFixed(isToCm ? 1 : 2));
+                        }
+                    }
+                } else if (inDefault !== undefined && cmDefault !== undefined) {
+                    el.value = isToCm ? cmDefault : inDefault;
+                }
+            };
+
+            updateInput('pat-body-l', 27.5, 70, '27.5', '70');
+            updateInput('pat-body-l-m', 2.5, 6, '2.5', '6');
+            updateInput('pat-chest', 20.25, 52, '20.25', '52');
+            updateInput('pat-chest-m', 1.5, 4, '1.5', '4');
+            updateInput('pat-sleeve-l', 8.5, 22, '8.5', '22');
+            updateInput('pat-sleeve-l-m', 1.5, 4, '1.5', '4');
+            updateInput('pat-sleeve-dia', 7, 18, '7', '18');
+            updateInput('pat-sleeve-dia-m', 1.5, 4, '1.5', '4');
+
             calcPattern();
         }
 
@@ -889,6 +933,8 @@
 
             if (gsm === 0 || (bodyL === 0 && chest === 0)) {
                 document.getElementById('pat-wt-res').textContent = '0.0';
+                const yieldEl = document.getElementById('pat-pcs-kg-res');
+                if (yieldEl) yieldEl.textContent = '0.00';
                 return;
             }
 
@@ -901,6 +947,8 @@
 
             if (totalGms > 0) {
                 const pcsPerKg = 1000 / totalGms;
+                const yieldEl = document.getElementById('pat-pcs-kg-res');
+                if (yieldEl) yieldEl.textContent = pcsPerKg.toFixed(2);
                 document.getElementById('u-pcs-per-kg').value = pcsPerKg.toFixed(2);
                 if (window.calcUnified) window.calcUnified();
             }

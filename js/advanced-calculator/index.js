@@ -184,9 +184,12 @@ function renderSizeGrid() {
                     <input type="number" min="0" step="0.1" class="calc-input !h-9 text-[13px] text-center !px-1" value="${sz.slvDia > 0 ? sz.slvDia : ''}" 
                            oninput="onSizePropChange(${idx}, 'slvDia', this.value)" placeholder="18">
                 </div>
-                <div class="col-span-1 text-right">
+                <div class="col-span-1 text-right flex flex-col items-end justify-center">
                     <span id="sz-wt-desktop-${idx}" class="text-[13px] font-bold text-primary dark:text-blue-400 tabular-nums">
                         ${sz.weightGms > 0 ? sz.weightGms.toFixed(1) : '0.0'}g
+                    </span>
+                    <span id="sz-yield-desktop-${idx}" class="text-[10px] text-secondary dark:text-slate-400 font-semibold tabular-nums">
+                        ${sz.weightGms > 0 ? (1000 / sz.weightGms).toFixed(1) + ' p/kg' : '—'}
                     </span>
                 </div>
                 <div class="col-span-1 text-right">
@@ -207,9 +210,14 @@ function renderSizeGrid() {
                                oninput="onSizePropChange(${idx}, 'qty', this.value)" placeholder="0">
                     </div>
                     <div class="flex items-center gap-1.5">
-                        <span id="sz-wt-mobile-${idx}" class="text-[12px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md">
-                            ${sz.weightGms > 0 ? sz.weightGms.toFixed(1) : '0.0'} gms
-                        </span>
+                        <div class="flex flex-col items-end">
+                            <span id="sz-wt-mobile-${idx}" class="text-[12px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md">
+                                ${sz.weightGms > 0 ? sz.weightGms.toFixed(1) : '0.0'} gms
+                            </span>
+                            <span id="sz-yield-mobile-${idx}" class="text-[10px] text-secondary dark:text-slate-400 font-medium mt-0.5">
+                                ${sz.weightGms > 0 ? (1000 / sz.weightGms).toFixed(1) + ' pcs/kg' : ''}
+                            </span>
+                        </div>
                         <button type="button" onclick="removeSizeRow(${idx})" class="w-7 h-7 rounded-lg text-secondary hover:text-error flex items-center justify-center" title="Delete">
                             <span class="material-symbols-outlined text-[16px]">delete</span>
                         </button>
@@ -532,8 +540,13 @@ window.recalcAdvanced = function(updateGridDOM = true) {
         // In-place live element update without cursor disruption
         const dtEl = $(`sz-wt-desktop-${idx}`);
         if (dtEl) dtEl.textContent = (weightGms > 0 ? weightGms.toFixed(1) : '0.0') + 'g';
+        const dtYieldEl = $(`sz-yield-desktop-${idx}`);
+        if (dtYieldEl) dtYieldEl.textContent = weightGms > 0 ? (1000 / weightGms).toFixed(1) + ' p/kg' : '—';
+
         const mbEl = $(`sz-wt-mobile-${idx}`);
         if (mbEl) mbEl.textContent = (weightGms > 0 ? weightGms.toFixed(1) : '0.0') + ' gms';
+        const mbYieldEl = $(`sz-yield-mobile-${idx}`);
+        if (mbYieldEl) mbYieldEl.textContent = weightGms > 0 ? (1000 / weightGms).toFixed(1) + ' pcs/kg' : '';
     });
 
     // Total Fabric Required (with Wastage)
@@ -620,6 +633,7 @@ function updateAggregatedUI() {
     // Fabric Rollup
     if ($('res-total-fabric-kg')) $('res-total-fabric-kg').textContent = s.totalFabricKg.toFixed(2) + ' kg';
     if ($('res-avg-wt-gms')) $('res-avg-wt-gms').textContent = s.avgWeightGms.toFixed(1) + ' gms';
+    if ($('res-pcs-per-kg')) $('res-pcs-per-kg').textContent = (s.pcsPerKg || (s.avgWeightGms > 0 ? 1000 / s.avgWeightGms : 0)).toFixed(2) + ' pcs/kg';
     if ($('res-fabric-cost-pc')) $('res-fabric-cost-pc').textContent = sym + s.fabricCostPc.toFixed(2) + ' /pc';
     if ($('res-fabric-cost-total')) $('res-fabric-cost-total').textContent = sym + s.totalFabricCost.toFixed(2);
 
@@ -1139,7 +1153,7 @@ window.openQuotePreview = function() {
             <span class="font-bold text-on-surface">${sz.name}</span>
             <div class="flex items-center gap-3 tabular-nums">
                 <span class="text-secondary font-medium">${sz.qty} pcs</span>
-                <span class="text-secondary font-medium">${sz.weightGms.toFixed(1)} g/pc</span>
+                <span class="text-secondary font-medium">${sz.weightGms.toFixed(1)} g <span class="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold">(${sz.weightGms > 0 ? (1000 / sz.weightGms).toFixed(1) : 0} p/kg)</span></span>
                 <span class="font-bold text-primary">${sz.totalKg.toFixed(2)} kg</span>
             </div>
         </div>
@@ -1199,7 +1213,10 @@ window.openQuotePreview = function() {
         <div class="bg-white/70 dark:bg-slate-800/70 border border-outline-variant/30 rounded-2xl p-4 mb-4">
             <div class="flex justify-between items-center mb-3">
                 <h4 class="text-[12px] font-bold text-secondary dark:text-slate-300 uppercase tracking-wider">Size Run &amp; Fabric Consumption</h4>
-                <span class="text-[11px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">${s.totalFabricKg.toFixed(2)} kg total</span>
+                <div class="flex items-center gap-2">
+                    <span class="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">${(s.pcsPerKg || (s.avgWeightGms > 0 ? 1000 / s.avgWeightGms : 0)).toFixed(2)} pcs/kg yield</span>
+                    <span class="text-[11px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-full">${s.totalFabricKg.toFixed(2)} kg total</span>
+                </div>
             </div>
             <div class="flex flex-col">
                 ${sizesHTML}
@@ -1267,7 +1284,7 @@ window.downloadQuotePDF = function() {
             <td style="padding: 9px 10px; border-bottom: 1px solid #E5E7EB; text-align: center;">${sz.chest > 0 ? sz.chest : '—'}</td>
             <td style="padding: 9px 10px; border-bottom: 1px solid #E5E7EB; text-align: center;">${sz.slvL > 0 ? sz.slvL : '—'}</td>
             <td style="padding: 9px 10px; border-bottom: 1px solid #E5E7EB; text-align: center;">${sz.slvDia > 0 ? sz.slvDia : '—'}</td>
-            <td style="padding: 9px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${sz.weightGms.toFixed(1)} g</td>
+            <td style="padding: 9px 10px; border-bottom: 1px solid #E5E7EB; text-align: right;">${sz.weightGms.toFixed(1)} g<br><span style="font-size: 10px; color: #6B7280;">(${(sz.weightGms > 0 ? 1000 / sz.weightGms : 0).toFixed(1)} p/kg)</span></td>
             <td style="padding: 9px 10px; border-bottom: 1px solid #E5E7EB; text-align: right; font-weight: bold;">${sz.totalKg.toFixed(2)} kg</td>
         </tr>
     `).join('');
@@ -1336,7 +1353,7 @@ window.downloadQuotePDF = function() {
                 .metric-card h4 { margin: 4px 0 0 0; font-size: 18px; font-weight: 800; color: #111827; }
                 .metric-card.highlight h4 { color: #0071E3; }
                 
-                .fabric-spec-box { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 10px; padding: 12px; margin-bottom: 20px; font-size: 11px; }
+                .fabric-spec-box { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 10px; padding: 12px; margin-bottom: 20px; font-size: 11px; }
                 .fabric-spec-item { text-align: center; }
                 .fabric-spec-item span { display: block; color: #6B7280; text-transform: uppercase; font-size: 9px; font-weight: 700; margin-bottom: 2px; }
                 .fabric-spec-item strong { font-size: 13px; color: #111827; }
@@ -1425,7 +1442,7 @@ window.downloadQuotePDF = function() {
                         <td style="padding: 10px;">Total / Average</td>
                         <td style="text-align: center; color: #0071E3;">${qty.toLocaleString()} pcs</td>
                         <td colspan="4" style="text-align: center; color: #6B7280; font-size: 11px;">(Margins Included)</td>
-                        <td style="text-align: right;">${s.avgWeightGms.toFixed(1)} g</td>
+                        <td style="text-align: right;">${s.avgWeightGms.toFixed(1)} g<br><span style="font-size: 10px; color: #0071E3;">(${(s.pcsPerKg || (s.avgWeightGms > 0 ? 1000 / s.avgWeightGms : 0)).toFixed(2)} pcs/kg)</span></td>
                         <td style="text-align: right; color: #0071E3;">${s.totalFabricKg.toFixed(2)} kg</td>
                     </tr>
                 </tbody>
@@ -1439,6 +1456,10 @@ window.downloadQuotePDF = function() {
                 <div class="fabric-spec-item">
                     <span>Price / kg</span>
                     <strong>${sym}${s.fabricPriceKg.toFixed(2)}</strong>
+                </div>
+                <div class="fabric-spec-item">
+                    <span>Avg Yield (Pcs/Kg)</span>
+                    <strong style="color: #0071E3;">${(s.pcsPerKg || (s.avgWeightGms > 0 ? 1000 / s.avgWeightGms : 0)).toFixed(2)} pcs/kg</strong>
                 </div>
                 <div class="fabric-spec-item">
                     <span>Cutting Wastage</span>

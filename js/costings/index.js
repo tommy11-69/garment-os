@@ -205,18 +205,26 @@ function buildDetailHTML(c, sheetId) {
     if (u.mode === 'advanced' || c.mode === 'advanced') {
         // ── Advanced Calculator Detailed View ──
         
-        // 1. Size Ratios
+        // 1. Size Ratios & Yield
         let sizeBody = '';
         if (u.sizes && u.sizes.length) {
-            sizeBody = u.sizes.map(s => fieldRow(`${s.name}${s.ratio !== undefined && s.ratio !== null && s.ratio !== '' ? ` (Ratio: ${s.ratio})` : ''}`, `${s.qty} pcs`)).join('');
+            sizeBody = u.sizes.map(s => {
+                const yieldStr = s.weightGms > 0 ? ` (${s.weightGms.toFixed(1)}g · ${(1000 / s.weightGms).toFixed(1)} p/kg)` : '';
+                return fieldRow(`${s.name}${s.ratio !== undefined && s.ratio !== null && s.ratio !== '' ? ` (Ratio: ${s.ratio})` : ''}`, `${s.qty} pcs${yieldStr}`);
+            }).join('');
             sizeBody += fieldRow('Total Order Qty', `${u.totalQty || qty} pcs`);
+            if (u.pcsPerKg > 0 || u.avgWeightGms > 0) {
+                const avgYield = u.pcsPerKg || (u.avgWeightGms > 0 ? 1000 / u.avgWeightGms : 0);
+                sizeBody += fieldRow('Average Yield', `${avgYield.toFixed(2)} pcs/kg (${(u.avgWeightGms || (1000 / avgYield)).toFixed(1)} g/pc)`);
+            }
         }
-        const sizeCard = sizeBody ? card('straighten', 'Size Ratio', '#FF9F0A', sizeBody) : '';
+        const sizeCard = sizeBody ? card('straighten', 'Size Matrix & Yield', '#FF9F0A', sizeBody) : '';
         
-        // 2. Multi-Fabric Engine
+        // 2. Multi-Fabric / Standard Fabric Engine
         let fabricBody = '';
         if (u.components && u.components.length) {
             u.components.forEach(comp => {
+                const compYield = comp.pcsPerKg || (comp.weightGms > 0 ? (1000 / comp.weightGms) : 0);
                 fabricBody += `
                 <div class="py-3 border-b border-outline-variant/15 last:border-0">
                     <div class="flex justify-between items-center mb-1">
@@ -226,14 +234,26 @@ function buildDetailHTML(c, sheetId) {
                     <div class="text-[11px] text-secondary font-medium flex justify-between">
                         <span>Price: ${rs(comp.fabricPriceKg)}/kg</span>
                         <span>Wt: ${comp.weightGms?.toFixed(1) || 0} gms</span>
-                        <span>GSM: ${comp.gsm || 0}</span>
+                        <span>Yield: ${compYield > 0 ? compYield.toFixed(2) + ' p/kg' : '—'}</span>
                     </div>
                 </div>`;
             });
             const totalFab = u.components.reduce((acc, comp) => acc + (comp.costPc || 0), 0);
             fabricBody += fieldRow('Total Fabric / pc', rs(totalFab));
+        } else if (u.totalFabricKg > 0 || u.fabricCostPc > 0 || u.fabricPriceKg > 0) {
+            const advYield = u.pcsPerKg || (u.avgWeightGms > 0 ? (1000 / u.avgWeightGms) : 0);
+            fabricBody = [
+                u.gsm > 0 ? fieldRow('Fabric GSM', `${u.gsm} gsm`) : '',
+                u.fabricPriceKg > 0 ? fieldRow('Fabric Price / kg', rs(u.fabricPriceKg)) : '',
+                advYield > 0 ? fieldRow('Avg Yield (Pcs / kg)', advYield.toFixed(2) + ' pcs/kg') : '',
+                u.avgWeightGms > 0 ? fieldRow('Avg Weight / pc', u.avgWeightGms.toFixed(1) + ' gms') : '',
+                u.totalFabricKg > 0 ? fieldRow('Total Fabric Required', u.totalFabricKg.toFixed(2) + ' kg') : '',
+                u.wastage > 0 ? fieldRow('Cutting Wastage', u.wastage + '%') : '',
+                fieldRow('Fabric Cost / pc', rs(u.fabricCostPc)),
+                u.totalFabricCost > 0 ? fieldRow('Total Fabric Cost', rs(u.totalFabricCost)) : ''
+            ].filter(Boolean).join('');
         }
-        const fabricCard = fabricBody ? card('layers', 'Multi-Fabric BOM', '#0071E3', fabricBody) : '';
+        const fabricCard = fabricBody ? card('layers', 'Fabric Specification', '#0071E3', fabricBody) : '';
 
         // 3. Trims Engine
         let trimsBody = '';
@@ -263,18 +283,21 @@ function buildDetailHTML(c, sheetId) {
 
     // ── 1.5 Pattern & Fabric Weight Card
     const hasPattern = u.weightGms > 0;
+    const patternYield = (u.pcsPerKg > 0) ? u.pcsPerKg : (u.weightGms > 0 ? (1000 / u.weightGms) : 0);
     const patternBody = hasPattern ? [
         fieldRow('Body + Margins (in)', `${u.bodyL||0} + ${u.bodyLM||0}`, `Chest: ${u.chest||0} + ${u.chestM||0}`),
         fieldRow('Sleeve + Margins (in)', `${u.slvL||0} + ${u.slvLM||0}`, `Dia: ${u.slvDia||0} + ${u.slvDiaM||0}`),
         fieldRow('Fabric GSM', u.gsm ? u.gsm + ' gsm' : '—'),
-        fieldRow('Weight / pc', u.weightGms ? u.weightGms.toFixed(1) + ' gms' : '—')
+        fieldRow('Weight / pc', u.weightGms ? u.weightGms.toFixed(1) + ' gms' : '—'),
+        patternYield > 0 ? fieldRow('Yield (Pcs / kg)', patternYield.toFixed(2) + ' pcs/kg') : ''
     ].filter(Boolean).join('') : '';
     const patternCard = hasPattern ? card('straighten', 'Pattern & Fabric Weight', '#5856D6', patternBody) : '';
 
     // ── 2. Fabric Card
+    const fabricYield = (u.pcsPerKg > 0) ? u.pcsPerKg : (u.weightGms > 0 ? (1000 / u.weightGms) : 0);
     const fabricBody = [
         u.fabricPriceKg > 0 ? fieldRow('Fabric Price / kg', rs(u.fabricPriceKg)) : '',
-        u.pcsPerKg > 0 ? fieldRow('Pcs per kg', u.pcsPerKg + ' pcs') : '',
+        fabricYield > 0 ? fieldRow('Yield (Pcs / kg)', fabricYield.toFixed(2) + ' pcs/kg') : '',
         u.wastage > 0 ? fieldRow('Wastage', u.wastage + '%') : '',
         fieldRow('Fabric Cost / pc', rs(u.fabricCostPc)),
         qty > 0 && u.fabricCostPc > 0 ? fieldRow('Total Fabric Cost', rs(u.fabricCostPc * qty), `(${qty} pcs)`) : '',

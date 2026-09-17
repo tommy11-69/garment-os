@@ -242,6 +242,15 @@
                             <span class="text-[12px] font-semibold text-white/90">gms</span>
                         </div>
                     </div>
+
+                    <!-- Theoretical Yield Block -->
+                    <div class="flex-1 bg-emerald-600 text-white rounded-2xl p-3 flex flex-col justify-center result-card-glow transform transition-transform hover:scale-[1.02]">
+                        <div class="text-[11px] font-bold text-white/80 uppercase tracking-wider mb-0.5">Yield (Pcs/Kg)</div>
+                        <div class="flex items-end gap-1">
+                            <span id="res-pcs-per-kg" class="text-2xl leading-none font-bold">0.00</span>
+                            <span class="text-[12px] font-semibold text-white/90">pcs/kg</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>
@@ -286,6 +295,8 @@
             document.getElementById('res-body-gms').textContent = body > 0 ? body.toFixed(1) : '0.0';
             document.getElementById('res-sleeve-gms').textContent = sleeve > 0 ? sleeve.toFixed(1) : '0.0';
             document.getElementById('res-total-gms').textContent = total > 0 ? total.toFixed(1) : '0.0';
+            const yieldEl = document.getElementById('res-pcs-per-kg');
+            if (yieldEl) yieldEl.textContent = total > 0 ? (1000 / total).toFixed(2) : '0.00';
         }
 
         // Initialize with empty state
