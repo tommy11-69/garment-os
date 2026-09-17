@@ -20,6 +20,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (sheetsContainer) {
         try {
             sheetsContainer.innerHTML = await getOrderSheetsHTML();
+            sheetsContainer.querySelectorAll('.bottom-sheet-overlay, .bottom-sheet-content').forEach((sheetPart) => {
+                sheetPart.classList.remove('active');
+            });
+            document.body.style.overflow = '';
         } catch (e) {
             console.error("Failed to render order sheets:", e);
         }

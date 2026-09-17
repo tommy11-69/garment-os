@@ -35,6 +35,21 @@ body {
     overflow: visible;
 }
 
+#sheets-container .bottom-sheet-overlay:not(.active),
+#sheets-container .bottom-sheet-content:not(.active) {
+    pointer-events: none;
+}
+
+#sheets-container .bottom-sheet-content:not(.active) {
+    visibility: hidden;
+}
+
+#sheets-container .bottom-sheet-overlay.active,
+#sheets-container .bottom-sheet-content.active {
+    pointer-events: auto;
+    visibility: visible;
+}
+
 @media (max-width: 767px) {
     html,
     body {
