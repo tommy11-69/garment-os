@@ -20,6 +20,27 @@ const state = new Proxy({}, {
 //  SESSION PERSISTENCE  (Phase 3)
 // ══════════════════════════════════════════════════════
 const SESSION_KEY = 'gos_calc_v2_draft';
+let isSavingCosting = false;
+
+function applyEditMode(editId) {
+    const isEditMode = Boolean(editId);
+    const badge = $('edit-mode-badge');
+    const saveButton = $('btn-save-costing');
+    const submitButton = $('save-cost-submit');
+    const quoteSaveButton = $('quote-save-costing');
+
+    if (badge) {
+        badge.classList.toggle('hidden', !isEditMode);
+        badge.classList.toggle('flex', isEditMode);
+    }
+
+    if (isEditMode) {
+        const label = '<span class="material-symbols-outlined text-[18px]">update</span> Update Costing';
+        if (saveButton) saveButton.innerHTML = label;
+        if (submitButton) submitButton.textContent = 'Update Costing';
+        if (quoteSaveButton) quoteSaveButton.innerHTML = '<span class="material-symbols-outlined text-[18px]">update</span> Update';
+    }
+}
 
 function saveSession() {
     try {
@@ -897,6 +918,7 @@ function buildCostingPayload(s, client, overrides = {}) {
 //  SAVE DRAFT
 // ══════════════════════════════════════════════════════
 window.saveCosting = async function() {
+    if (isSavingCosting) return;
     const s = state.u;
     const client = $('shared-client')?.value || 'Unnamed Client';
 
@@ -905,11 +927,16 @@ window.saveCosting = async function() {
         return;
     }
 
-    try {
-        const urlParams = new URLSearchParams(window.location.search);
-        const editId = urlParams.get('id');
+    const button = $('btn-save-costing');
+    const editId = new URLSearchParams(window.location.search).get('id');
+    isSavingCosting = true;
+    if (button) {
+        button.disabled = true;
+        button.innerHTML = `<span class="material-symbols-outlined text-[18px]">${editId ? 'update' : 'save'}</span> ${editId ? 'Updating...' : 'Saving...'}`;
+    }
 
-        window.showToast?.('Saving costing...', 'info');
+    try {
+        window.showToast?.(`${editId ? 'Updating' : 'Saving'} costing...`, 'info');
         const payload = buildCostingPayload(s, client, { status: 'Saved' });
         
         let res;
@@ -920,9 +947,16 @@ window.saveCosting = async function() {
         }
         if (res && res.error) throw new Error(res.error);
         window.showToast?.(`Costing successfully ${editId ? 'updated' : 'saved'}!`, 'success');
+        sessionStorage.removeItem(SESSION_KEY);
+        setTimeout(() => { window.location.href = 'costings.html'; }, 600);
     } catch (err) {
         console.error('Error saving costing:', err);
         window.showToast?.('Failed to save costing', 'error');
+        if (button) {
+            button.disabled = false;
+            applyEditMode(editId);
+        }
+        isSavingCosting = false;
     }
 };
 
@@ -1279,7 +1313,7 @@ async function initModule() {
             <button onclick="convertToOrder()" class="bg-surface-container-high text-on-surface font-semibold text-[14px] py-3 rounded-xl active-scale transition-apple flex items-center justify-center gap-1.5">
                 <span class="material-symbols-outlined text-[18px]">shopping_cart</span> Order
             </button>
-            <button onclick="saveCosting(); window.closeSheet('quotePreviewSheet');" class="bg-surface-container-high text-on-surface font-semibold text-[14px] py-3 rounded-xl active-scale transition-apple flex items-center justify-center gap-1.5">
+            <button id="quote-save-costing" onclick="saveCosting(); window.closeSheet('quotePreviewSheet');" class="bg-surface-container-high text-on-surface font-semibold text-[14px] py-3 rounded-xl active-scale transition-apple flex items-center justify-center gap-1.5">
                 <span class="material-symbols-outlined text-[18px]">save</span> Save
             </button>
         </div>
@@ -1318,6 +1352,9 @@ async function initModule() {
         BottomSheet({ id:'ratesEditorSheet',  title:'Default Rates',  content:ratesContent,    footerContent:ratesFooter }),
     ].join('');
 
+    const editId = new URLSearchParams(window.location.search).get('id');
+    applyEditMode(editId);
+
     const clientSelect = $('save-client');
     if (clientSelect) {
         clientSelect.addEventListener('change', (e) => {
@@ -1341,6 +1378,7 @@ async function initModule() {
     bindFormValidation('saveCostSheet-content', 'save-cost-submit');
 
     $('save-cost-submit')?.addEventListener('click', async () => {
+        if (isSavingCosting) return;
         const styleRef = $('save-style')?.value;
         const clientId = $('save-client')?.value;
         const status   = $('save-status')?.value;
@@ -1348,25 +1386,37 @@ async function initModule() {
         const client = $('shared-client')?.value || '';
 
         const displayName = styleRef || client;
-        await api.saveCosting(
-            buildCostingPayload(s, clientId || displayName, {
+        const submitButton = $('save-cost-submit');
+        isSavingCosting = true;
+        if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.textContent = editId ? 'Updating...' : 'Saving...';
+        }
+
+        try {
+            const payload = buildCostingPayload(s, clientId || displayName, {
                 styleRef:  styleRef || s.garmentType || 'Garment',
                 clientId:  clientId || displayName,
                 clientName: displayName,
                 status,
                 uData: { ...s, clientName: displayName },
-            })
-        );
+            });
+            const res = editId ? await api.updateCosting(editId, payload) : await api.saveCosting(payload);
+            if (res && res.error) throw new Error(res.error);
 
-        // Clear session persistence and reset calculator
-        sessionStorage.removeItem('gos_calc_v2_draft');
-        
-        window.closeSheet('saveCostSheet');
-        window.showToast?.(`Costing saved as ${status}`, 'success');
-        
-        setTimeout(() => {
-            window.location.reload();
-        }, 1000);
+            sessionStorage.removeItem(SESSION_KEY);
+            window.closeSheet('saveCostSheet');
+            window.showToast?.(`Costing ${editId ? 'updated' : 'saved'} as ${status}`, 'success');
+            setTimeout(() => { window.location.href = 'costings.html'; }, 600);
+        } catch (err) {
+            console.error('Error saving costing from sheet:', err);
+            window.showToast?.('Failed to save costing', 'error');
+            if (submitButton) {
+                submitButton.disabled = false;
+                applyEditMode(editId);
+            }
+            isSavingCosting = false;
+        }
     });
 
     // Phase 3: restore session or load from DB if ID in URL

@@ -4,6 +4,24 @@ import { BottomSheet } from '../components/index.js?v=5.2';
 
 const $ = (id) => document.getElementById(id);
 const num = (id) => parseFloat($(id)?.value) || 0;
+let isSavingCosting = false;
+
+function applyEditMode(editId) {
+    const isEditMode = Boolean(editId);
+    const badge = $('edit-mode-badge');
+    const saveButton = $('btn-save-draft');
+    const quoteSaveButton = $('quote-save-costing');
+
+    if (badge) {
+        badge.classList.toggle('hidden', !isEditMode);
+        badge.classList.toggle('flex', isEditMode);
+    }
+
+    if (isEditMode) {
+        if (saveButton) saveButton.innerHTML = '<span class="material-symbols-outlined text-[18px]">update</span> Update Costing';
+        if (quoteSaveButton) quoteSaveButton.innerHTML = '<span class="material-symbols-outlined text-[18px]">update</span> Update';
+    }
+}
 
 // Colors for Breakdown Bar
 const C = {
@@ -27,6 +45,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Check URL for ID (Edit Mode or Print)
         const params = new URLSearchParams(window.location.search);
         const id = params.get('id');
+        applyEditMode(id);
         
         if (id) {
             await loadCostingById(id);
@@ -691,6 +710,7 @@ function syncFormFromStore() {
 //  SAVE, LOAD & QUOTE PREVIEW
 // ══════════════════════════════════════════════════════
 window.saveCosting = async function(status = 'saved') {
+    if (isSavingCosting) return;
     const s = store.state;
     const clientName = $('adv-client')?.value?.trim() || s.clientName;
     if (!clientName) {
@@ -704,8 +724,13 @@ window.saveCosting = async function(status = 'saved') {
     }
 
     const btn = $('btn-save-draft');
-    const originalText = btn ? btn.textContent : '';
-    if (btn) btn.textContent = 'Saving...';
+    const params = new URLSearchParams(window.location.search);
+    const editId = params.get('id');
+    isSavingCosting = true;
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = `<span class="material-symbols-outlined text-[18px]">${editId ? 'update' : 'save'}</span> ${editId ? 'Updating...' : 'Saving...'}`;
+    }
 
     try {
         const materials = [
@@ -718,9 +743,6 @@ window.saveCosting = async function(status = 'saved') {
             { name: 'Accessories', unit: 'lump', cost: (s.acc1 || 0) + (s.acc2 || 0) + (s.acc3 || 0) + (s.pattern || 0) },
             { name: 'Overheads & Allow', unit: 'per pc', cost: (s.allowances || 0) + (s.overheads || 0) }
         ].filter(m => m.cost > 0);
-
-        const params = new URLSearchParams(window.location.search);
-        const editId = params.get('id');
 
         const payload = {
             id: editId || 'adv_' + Date.now(),
@@ -780,19 +802,17 @@ window.saveCosting = async function(status = 'saved') {
         }
 
         window.showToast?.(`Costing successfully ${editId ? 'updated' : 'saved'}!`, 'success');
-
-        // Save active draft to session too
-        sessionStorage.setItem('gos_calc_v2_draft', JSON.stringify({
-            sharedClient: clientName,
-            mode: 'advanced',
-            u: payload.uData
-        }));
+        sessionStorage.removeItem('gos_calc_v2_draft');
+        setTimeout(() => { window.location.href = 'costings.html'; }, 600);
 
     } catch (err) {
         console.error('Save Costing Error:', err);
         window.showToast?.('Failed to save costing: ' + (err.message || 'Unknown error'), 'error');
-    } finally {
-        if (btn) btn.textContent = originalText;
+        if (btn) {
+            btn.disabled = false;
+            applyEditMode(editId);
+        }
+        isSavingCosting = false;
     }
 };
 
@@ -900,7 +920,7 @@ function initSheets() {
             <button onclick="convertToOrder()" class="bg-surface-container-high text-on-surface font-semibold text-[14px] py-3 rounded-xl active-scale transition-apple flex items-center justify-center gap-1.5">
                 <span class="material-symbols-outlined text-[18px]">shopping_cart</span> Order
             </button>
-            <button onclick="saveCosting('draft'); window.closeSheet('quotePreviewSheet');" class="bg-surface-container-high text-on-surface font-semibold text-[14px] py-3 rounded-xl active-scale transition-apple flex items-center justify-center gap-1.5">
+            <button id="quote-save-costing" onclick="saveCosting('draft'); window.closeSheet('quotePreviewSheet');" class="bg-surface-container-high text-on-surface font-semibold text-[14px] py-3 rounded-xl active-scale transition-apple flex items-center justify-center gap-1.5">
                 <span class="material-symbols-outlined text-[18px]">save</span> Save
             </button>
         </div>
