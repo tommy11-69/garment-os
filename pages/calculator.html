@@ -870,13 +870,8 @@
             const btnCm = document.getElementById('q-unit-cm');
             const btnIn = document.getElementById('q-unit-in');
             if (btnCm && btnIn) {
-                if (u === 'cm') {
-                    btnCm.className = 'px-2 py-0.5 text-[10px] font-bold rounded bg-primary text-white';
-                    btnIn.className = 'px-2 py-0.5 text-[10px] font-bold rounded text-secondary';
-                } else {
-                    btnIn.className = 'px-2 py-0.5 text-[10px] font-bold rounded bg-primary text-white';
-                    btnCm.className = 'px-2 py-0.5 text-[10px] font-bold rounded text-secondary';
-                }
+                btnCm.classList.toggle('active', u === 'cm');
+                btnIn.classList.toggle('active', u === 'in');
             }
             calcPattern();
         }

@@ -243,22 +243,161 @@ function renderSizeGrid() {
     });
 
     container.innerHTML = html;
+    updateKidsChipsState();
 }
 
 const DEFAULT_SIZE_MEASUREMENTS = {
-    '34 (XS)': { bodyL: 23.75, chest: 18.00, slvL: 7.75, slvDia: 6.25 },
-    '36 (S)':  { bodyL: 25.00, chest: 18.75, slvL: 8.00, slvDia: 6.50 },
-    '38 (M)':  { bodyL: 26.25, chest: 19.50, slvL: 8.25, slvDia: 6.75 },
-    '40 (L)':  { bodyL: 27.50, chest: 20.25, slvL: 8.50, slvDia: 7.00 },
-    '42 (XL)': { bodyL: 28.75, chest: 21.00, slvL: 8.75, slvDia: 7.25 },
-    '44 (2XL)':{ bodyL: 30.00, chest: 21.75, slvL: 9.00, slvDia: 7.50 },
-    'XS':      { bodyL: 23.75, chest: 18.00, slvL: 7.75, slvDia: 6.25 },
-    'S':       { bodyL: 25.00, chest: 18.75, slvL: 8.00, slvDia: 6.50 },
-    'M':       { bodyL: 26.25, chest: 19.50, slvL: 8.25, slvDia: 6.75 },
-    'L':       { bodyL: 27.50, chest: 20.25, slvL: 8.50, slvDia: 7.00 },
-    'XL':      { bodyL: 28.75, chest: 21.00, slvL: 8.75, slvDia: 7.25 },
-    '2XL':     { bodyL: 30.00, chest: 21.75, slvL: 9.00, slvDia: 7.50 }
+    // Kids / Small Sizes
+    '22"':      { bodyL: 16.25, chest: 13.50, slvL: 6.25, slvDia: 4.75 },
+    '22':       { bodyL: 16.25, chest: 13.50, slvL: 6.25, slvDia: 4.75 },
+    '24"':      { bodyL: 17.50, chest: 14.25, slvL: 6.50, slvDia: 5.00 },
+    '24':       { bodyL: 17.50, chest: 14.25, slvL: 6.50, slvDia: 5.00 },
+    '26"':      { bodyL: 18.75, chest: 15.00, slvL: 6.75, slvDia: 5.25 },
+    '26':       { bodyL: 18.75, chest: 15.00, slvL: 6.75, slvDia: 5.25 },
+    '28"':      { bodyL: 20.00, chest: 15.75, slvL: 7.00, slvDia: 5.50 },
+    '28':       { bodyL: 20.00, chest: 15.75, slvL: 7.00, slvDia: 5.50 },
+    '30"':      { bodyL: 21.25, chest: 16.50, slvL: 7.25, slvDia: 5.75 },
+    '30':       { bodyL: 21.25, chest: 16.50, slvL: 7.25, slvDia: 5.75 },
+    '32"':      { bodyL: 22.50, chest: 17.25, slvL: 7.50, slvDia: 6.00 },
+    '32':       { bodyL: 22.50, chest: 17.25, slvL: 7.50, slvDia: 6.00 },
+
+    // Adult Standard Sizes
+    '34"':      { bodyL: 23.75, chest: 18.00, slvL: 7.75, slvDia: 6.25 },
+    '34':       { bodyL: 23.75, chest: 18.00, slvL: 7.75, slvDia: 6.25 },
+    '34 (XS)':  { bodyL: 23.75, chest: 18.00, slvL: 7.75, slvDia: 6.25 },
+    '36"':      { bodyL: 25.00, chest: 18.75, slvL: 8.00, slvDia: 6.50 },
+    '36':       { bodyL: 25.00, chest: 18.75, slvL: 8.00, slvDia: 6.50 },
+    '36 (S)':   { bodyL: 25.00, chest: 18.75, slvL: 8.00, slvDia: 6.50 },
+    '38"':      { bodyL: 26.25, chest: 19.50, slvL: 8.25, slvDia: 6.75 },
+    '38':       { bodyL: 26.25, chest: 19.50, slvL: 8.25, slvDia: 6.75 },
+    '38 (M)':   { bodyL: 26.25, chest: 19.50, slvL: 8.25, slvDia: 6.75 },
+    '40"':      { bodyL: 27.50, chest: 20.25, slvL: 8.50, slvDia: 7.00 },
+    '40':       { bodyL: 27.50, chest: 20.25, slvL: 8.50, slvDia: 7.00 },
+    '40 (L)':   { bodyL: 27.50, chest: 20.25, slvL: 8.50, slvDia: 7.00 },
+    '42"':      { bodyL: 28.75, chest: 21.00, slvL: 8.75, slvDia: 7.25 },
+    '42':       { bodyL: 28.75, chest: 21.00, slvL: 8.75, slvDia: 7.25 },
+    '42 (XL)':  { bodyL: 28.75, chest: 21.00, slvL: 8.75, slvDia: 7.25 },
+    '44"':      { bodyL: 30.00, chest: 21.75, slvL: 9.00, slvDia: 7.50 },
+    '44':       { bodyL: 30.00, chest: 21.75, slvL: 9.00, slvDia: 7.50 },
+    '44 (2XL)': { bodyL: 30.00, chest: 21.75, slvL: 9.00, slvDia: 7.50 },
+
+    // Short Code Fallbacks
+    'XS':       { bodyL: 23.75, chest: 18.00, slvL: 7.75, slvDia: 6.25 },
+    'S':        { bodyL: 25.00, chest: 18.75, slvL: 8.00, slvDia: 6.50 },
+    'M':        { bodyL: 26.25, chest: 19.50, slvL: 8.25, slvDia: 6.75 },
+    'L':        { bodyL: 27.50, chest: 20.25, slvL: 8.50, slvDia: 7.00 },
+    'XL':       { bodyL: 28.75, chest: 21.00, slvL: 8.75, slvDia: 7.25 },
+    '2XL':      { bodyL: 30.00, chest: 21.75, slvL: 9.00, slvDia: 7.50 }
 };
+
+function findSortedInsertIndex(newSizeName) {
+    const numMatch = newSizeName.match(/\d+/);
+    if (!numMatch) return null;
+    const newNum = parseInt(numMatch[0], 10);
+    const s = store.state;
+    for (let i = 0; i < s.sizes.length; i++) {
+        const curMatch = s.sizes[i].name.match(/\d+/);
+        if (curMatch && parseInt(curMatch[0], 10) > newNum) {
+            return i;
+        }
+    }
+    return null;
+}
+
+window.toggleKidsSizePicker = function() {
+    const tray = $('kids-size-tray');
+    if (!tray) return;
+    const isHidden = tray.classList.contains('hidden');
+    if (isHidden) {
+        tray.classList.remove('hidden');
+        tray.classList.add('flex');
+        updateKidsChipsState();
+    } else {
+        tray.classList.remove('flex');
+        tray.classList.add('hidden');
+    }
+};
+
+window.addSizeByPreset = function(sizeKey) {
+    const s = store.state;
+    const cleanKey = sizeKey.replace(/"/g, '').trim();
+    const existing = s.sizes.find(x => x.name.replace(/"/g, '').trim() === cleanKey);
+    if (existing) {
+        window.showToast?.(`Size ${sizeKey} is already in the order`, 'info');
+        return;
+    }
+
+    const preset = DEFAULT_SIZE_MEASUREMENTS[sizeKey] || DEFAULT_SIZE_MEASUREMENTS[cleanKey];
+    if (!preset) return;
+
+    const unit = s.unit || 'in';
+    const isCm = unit === 'cm';
+    const mult = isCm ? 2.54 : 1.0;
+    const defaults = {
+        qty: 0,
+        bodyL: parseFloat((preset.bodyL * mult).toFixed(2)),
+        chest: parseFloat((preset.chest * mult).toFixed(2)),
+        slvL: parseFloat((preset.slvL * mult).toFixed(2)),
+        slvDia: parseFloat((preset.slvDia * mult).toFixed(2))
+    };
+
+    const insertIdx = findSortedInsertIndex(sizeKey);
+    store.addSize(sizeKey, defaults, insertIdx);
+
+    renderSizeGrid();
+    recalcAdvanced();
+    updateKidsChipsState();
+    window.showToast?.(`Added size ${sizeKey}`, 'success');
+};
+
+window.addKidsRun = function() {
+    const kidsSizes = ['22"', '24"', '26"', '28"', '30"', '32"'];
+    let addedCount = 0;
+    kidsSizes.forEach(sz => {
+        const cleanKey = sz.replace(/"/g, '').trim();
+        const existing = store.state.sizes.find(x => x.name.replace(/"/g, '').trim() === cleanKey);
+        if (!existing) {
+            const preset = DEFAULT_SIZE_MEASUREMENTS[sz];
+            const unit = store.state.unit || 'in';
+            const isCm = unit === 'cm';
+            const mult = isCm ? 2.54 : 1.0;
+            const defaults = {
+                qty: 0,
+                bodyL: parseFloat((preset.bodyL * mult).toFixed(2)),
+                chest: parseFloat((preset.chest * mult).toFixed(2)),
+                slvL: parseFloat((preset.slvL * mult).toFixed(2)),
+                slvDia: parseFloat((preset.slvDia * mult).toFixed(2))
+            };
+            const insertIdx = findSortedInsertIndex(sz);
+            store.addSize(sz, defaults, insertIdx);
+            addedCount++;
+        }
+    });
+
+    renderSizeGrid();
+    recalcAdvanced();
+    updateKidsChipsState();
+    if (addedCount > 0) {
+        window.showToast?.(`Added ${addedCount} kids sizes (22"–32")`, 'success');
+    } else {
+        window.showToast?.('All kids sizes are already added', 'info');
+    }
+};
+
+function updateKidsChipsState() {
+    const s = store.state;
+    const existingClean = s.sizes.map(x => x.name.replace(/"/g, '').trim());
+    document.querySelectorAll('.kids-chip-btn').forEach(btn => {
+        const sz = (btn.getAttribute('data-size') || btn.textContent.replace('+', '').replace(/"/g, '')).trim();
+        if (existingClean.includes(sz)) {
+            btn.classList.add('opacity-40', 'pointer-events-none');
+            btn.classList.remove('hover:bg-primary', 'hover:text-white');
+        } else {
+            btn.classList.remove('opacity-40', 'pointer-events-none');
+            btn.classList.add('hover:bg-primary', 'hover:text-white');
+        }
+    });
+}
 
 // Targeted handler without destroying input focus!
 window.onSizePropChange = function(index, prop, val) {
@@ -268,7 +407,8 @@ window.onSizePropChange = function(index, prop, val) {
     if (prop === 'name') {
         s.sizes[index].name = val;
         const key = val?.trim();
-        const preset = DEFAULT_SIZE_MEASUREMENTS[key] || DEFAULT_SIZE_MEASUREMENTS[key?.toUpperCase()];
+        const cleanKey = key?.replace(/"/g, '');
+        const preset = DEFAULT_SIZE_MEASUREMENTS[key] || DEFAULT_SIZE_MEASUREMENTS[cleanKey] || DEFAULT_SIZE_MEASUREMENTS[key?.toUpperCase()];
         if (preset) {
             const isCm = (s.unit || 'in') === 'cm';
             const mult = isCm ? 2.54 : 1.0;
@@ -312,10 +452,12 @@ window.addNewSizeRow = function() {
         };
     }
 
-    store.addSize(nextName, defaults);
+    const insertIdx = findSortedInsertIndex(nextName);
+    store.addSize(nextName, defaults, insertIdx);
 
     renderSizeGrid();
     recalcAdvanced();
+    updateKidsChipsState();
 };
 
 window.removeSizeRow = function(idx) {

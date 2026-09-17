@@ -194,3 +194,39 @@ details[open] summary .material-symbols-outlined.expand-icon {
 .dark #pat-wt-res {
     color: var(--gos-primary);
 }
+
+/* Unit Toggle Button Styles (Light & Dark Mode) */
+.unit-toggle-btn {
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+}
+
+.unit-toggle-btn:not(.active) {
+    background-color: transparent !important;
+    color: #6E6E73 !important;
+}
+
+.unit-toggle-btn:not(.active):hover {
+    color: #1D1D1F !important;
+}
+
+.unit-toggle-btn.active {
+    background-color: #0071E3 !important;
+    color: #FFFFFF !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+}
+
+.dark .unit-toggle-btn:not(.active) {
+    background-color: transparent !important;
+    color: #94A3B8 !important;
+}
+
+.dark .unit-toggle-btn:not(.active):hover {
+    color: #F8FAFC !important;
+}
+
+.dark .unit-toggle-btn.active {
+    background-color: #0071E3 !important;
+    color: #FFFFFF !important;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+}
