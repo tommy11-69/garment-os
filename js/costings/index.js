@@ -86,11 +86,10 @@ window.navigateToCalculator = function(c, autoPrint = false) {
 
     // Default fallbacks from top-level properties if not in uData
     if (!uState.garmentType) uState.garmentType = c.styleRef || c.garmentType || 'T-Shirt';
-    if (!uState.cp)          uState.cp = c.totalUnitCost || 0;
-    if (!uState.sp)          uState.sp = c.retailPrice || 0;
-
-    // NOTE: we no longer reconstruct from materials[] since uData now contains
-    // the complete calculator state for all records saved after this fix.
+    if (!uState.cp && !uState.cpPc) uState.cp = c.totalUnitCost || 0;
+    if (!uState.sp && !uState.spPc) uState.sp = c.retailPrice || 0;
+    if (uState.profitPct === undefined || uState.profitPct === null) uState.profitPct = c.profitPct;
+    if (!uState.lastEdited && (uState.sp || uState.spPc || c.retailPrice)) uState.lastEdited = 'sp-pc';
 
     const draft = {
         sharedClient: c.clientId || uState.clientName || '',

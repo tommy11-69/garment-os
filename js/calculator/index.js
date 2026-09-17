@@ -95,19 +95,20 @@ function restoreSession() {
                 }
             }
 
-            // SP fields
+            // SP & Profit fields
             if (u.sp) {
                 if (u.lastEdited === 'sp-pc') setVal('u-sp-pc', u.sp);
                 else if (u.lastEdited === 'sp-total' && u.qty > 0) setVal('u-sp-total', u.sp * u.qty);
                 else setVal('u-sp-pc', u.sp);
             }
+            if (u.profitPct !== null && u.profitPct !== undefined) {
+                setVal('u-profit-pct', u.profitPct);
+            }
 
             if (u.cmtMode === 'separate') {
-                const btn = document.querySelector('button[onclick="setCMTMode(\'separate\')"]');
-                if (btn) btn.click();
+                window.setCMTMode('separate', true);
             } else {
-                const btn = document.querySelector('button[onclick="setCMTMode(\'combined\')"]');
-                if (btn) btn.click();
+                window.setCMTMode('combined', true);
             }
 
             // Restore pattern calculator fields
@@ -165,7 +166,10 @@ async function loadCostingById(id) {
             try { u = JSON.parse(c.uData); } catch (_) {}
         }
 
-        const clientName = c.clientId || c.clientName || u.clientName || '';
+        const savedSp = (u.sp !== undefined && u.sp !== null) ? parseFloat(u.sp) : ((u.spPc !== undefined && u.spPc !== null) ? parseFloat(u.spPc) : (c.retailPrice !== undefined && c.retailPrice !== null ? parseFloat(c.retailPrice) : null));
+        const savedPct = (u.profitPct !== undefined && u.profitPct !== null) ? parseFloat(u.profitPct) : (c.profitPct !== undefined && c.profitPct !== null ? parseFloat(c.profitPct) : null);
+        const inferredLastEdited = u.lastEdited || (savedSp !== null && savedSp > 0 ? 'sp-pc' : (savedPct !== null ? 'pct' : null));
+
         const draft = {
             sharedClient: clientName,
             u: {
@@ -200,12 +204,13 @@ async function loadCostingById(id) {
                 acc2: parseFloat(u.acc2 ?? c.acc2 ?? 0),
                 acc3: parseFloat(u.acc3 ?? c.acc3 ?? 0),
                 pattern: parseFloat(u.pattern ?? c.pattern ?? 0),
-                cp: parseFloat(u.cp ?? c.totalUnitCost ?? 0),
-                sp: parseFloat(u.sp ?? c.retailPrice ?? 0),
-                profitPct: parseFloat(u.profitPct ?? c.profitPct ?? 0),
+                cp: parseFloat(u.cp ?? u.cpPc ?? c.totalUnitCost ?? 0),
+                sp: savedSp,
+                profitPct: savedPct,
                 totalCost: parseFloat(u.totalCost ?? c.totalCost ?? 0),
                 totalSales: parseFloat(u.totalSales ?? c.totalSales ?? 0),
                 profitDone: parseFloat(u.profitDone ?? c.profitDone ?? 0),
+                lastEdited: inferredLastEdited,
                 garmentType: c.styleRef || c.garmentType || u.garmentType || 'T-Shirt',
             }
         };
@@ -360,7 +365,7 @@ window.selectGarmentType = function(btn) {
 // ══════════════════════════════════════════════════════
 //  CMT MODE SWITCHING
 // ══════════════════════════════════════════════════════
-window.setCMTMode = function(mode) {
+window.setCMTMode = function(mode, keepValues = false) {
     calculatorStore.updateU({ cmtMode: mode });
     
     // Toggle active buttons
@@ -381,15 +386,19 @@ window.setCMTMode = function(mode) {
     if (mode === 'combined') {
         if (combinedEl) combinedEl.style.display = 'block';
         if (separateEl) separateEl.style.display = 'none';
-        // Clear separate inputs & state
-        ['u-cutting', 'u-fusing', 'u-wages', 'u-packing'].forEach(id => { if ($(id)) $(id).value = ''; });
-        calculatorStore.updateU({ cutting: 0, fusing: 0, wages: 0, packing: 0 });
+        if (!keepValues) {
+            // Clear separate inputs & state
+            ['u-cutting', 'u-fusing', 'u-wages', 'u-packing'].forEach(id => { if ($(id)) $(id).value = ''; });
+            calculatorStore.updateU({ cutting: 0, fusing: 0, wages: 0, packing: 0 });
+        }
     } else {
         if (combinedEl) combinedEl.style.display = 'none';
         if (separateEl) separateEl.style.display = 'block';
-        // Clear combined input & state
-        if ($('u-cmt')) $('u-cmt').value = '';
-        calculatorStore.updateU({ cmt: 0 });
+        if (!keepValues) {
+            // Clear combined input & state
+            if ($('u-cmt')) $('u-cmt').value = '';
+            calculatorStore.updateU({ cmt: 0 });
+        }
     }
     
     window.calcUnified();
@@ -543,25 +552,43 @@ function recomputeSP() {
     let userSpTotal = parseFloat(spTotalInput.value);
     let userPct = parseFloat(pctInput.value);
     
-    let finalSpPc = null;
-    let finalPct = null;
+    let finalSpPc = (state.u.sp !== undefined && state.u.sp !== null) ? state.u.sp : null;
+    let finalPct = (state.u.profitPct !== undefined && state.u.profitPct !== null) ? state.u.profitPct : null;
     let finalTotalSales = 0;
     
-    if (last === 'sp-pc' && !isNaN(userSpPc) && spPcInput.value !== '') {
-        finalSpPc = userSpPc;
-        finalPct = cpPc > 0 ? (finalSpPc - cpPc) / cpPc * 100 : 0;
-        pctInput.value = finalPct.toFixed(1);
-        if (qty > 0) spTotalInput.value = (finalSpPc * qty).toFixed(2);
-    } else if (last === 'sp-total' && !isNaN(userSpTotal) && spTotalInput.value !== '') {
-        finalSpPc = qty > 0 ? userSpTotal / qty : 0;
-        finalPct = cpPc > 0 ? (finalSpPc - cpPc) / cpPc * 100 : 0;
-        pctInput.value = finalPct.toFixed(1);
-        if (finalSpPc > 0) spPcInput.value = finalSpPc.toFixed(2);
-    } else if (last === 'pct' && !isNaN(userPct) && pctInput.value !== '') {
-        finalPct = userPct;
-        finalSpPc = cpPc > 0 ? cpPc * (1 + userPct / 100) : 0;
-        spPcInput.value = finalSpPc > 0 ? finalSpPc.toFixed(2) : '';
-        if (qty > 0) spTotalInput.value = (finalSpPc * qty).toFixed(2);
+    if (last === 'sp-pc' || (!last && !isNaN(userSpPc) && userSpPc > 0) || (!last && finalSpPc !== null && finalSpPc > 0)) {
+        if (!isNaN(userSpPc) && userSpPc > 0) {
+            finalSpPc = userSpPc;
+        } else if (finalSpPc !== null && finalSpPc > 0) {
+            spPcInput.value = finalSpPc.toFixed(2);
+        }
+        if (finalSpPc !== null && finalSpPc > 0) {
+            finalPct = cpPc > 0 ? (finalSpPc - cpPc) / cpPc * 100 : 0;
+            pctInput.value = finalPct.toFixed(1);
+            if (qty > 0) spTotalInput.value = (finalSpPc * qty).toFixed(2);
+        }
+    } else if (last === 'sp-total' || (!last && !isNaN(userSpTotal) && userSpTotal > 0)) {
+        if (!isNaN(userSpTotal) && userSpTotal > 0) {
+            finalSpPc = qty > 0 ? userSpTotal / qty : 0;
+        } else if (finalSpPc !== null && finalSpPc > 0) {
+            spPcInput.value = finalSpPc.toFixed(2);
+        }
+        if (finalSpPc !== null && finalSpPc > 0) {
+            finalPct = cpPc > 0 ? (finalSpPc - cpPc) / cpPc * 100 : 0;
+            pctInput.value = finalPct.toFixed(1);
+            if (qty > 0) spTotalInput.value = (finalSpPc * qty).toFixed(2);
+        }
+    } else if (last === 'pct' || (!last && !isNaN(userPct)) || (!last && finalPct !== null)) {
+        if (!isNaN(userPct) && pctInput.value !== '') {
+            finalPct = userPct;
+        } else if (finalPct !== null) {
+            pctInput.value = finalPct.toFixed(1);
+        }
+        if (finalPct !== null) {
+            finalSpPc = cpPc > 0 ? cpPc * (1 + finalPct / 100) : 0;
+            spPcInput.value = finalSpPc > 0 ? finalSpPc.toFixed(2) : '';
+            if (qty > 0) spTotalInput.value = (finalSpPc * qty).toFixed(2);
+        }
     } else {
         if (cpPc > 0) {
             finalPct = 33;
@@ -576,7 +603,7 @@ function recomputeSP() {
         }
     }
     
-    finalTotalSales = finalSpPc && qty ? finalSpPc * qty : 0;
+    finalTotalSales = (finalSpPc || 0) * qty;
     const profitDone = finalTotalSales - (cpPc * qty);
     
     calculatorStore.updateU({ 
@@ -855,6 +882,7 @@ function buildCostingPayload(s, client, overrides = {}) {
         profitPct:     s.profitPct || 0,
         totalSales:    s.totalSales || 0,
         profitDone:    s.profitDone || 0,
+        lastEdited:    s.lastEdited || null,
         patternCalcOpen: s.patternCalcOpen ? 1 : 0,
         totalUnitCost: s.cp          || 0,
         retailPrice:   s.sp          || 0,
