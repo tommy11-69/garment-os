@@ -803,6 +803,27 @@ window.deleteBillingDraft = async function (id) {
     });
 };
 
+window.deleteBillingVoid = async function (id) {
+    window.showConfirmation?.({
+        title: 'Delete Voided Document Permanently',
+        message: 'This will permanently remove the voided document and its line items. This cannot be undone.',
+        confirmText: 'Delete Permanently',
+        confirmColor: 'bg-error text-white',
+        onConfirm: async () => {
+            try {
+                window.showToast?.('Deleting voided document...', 'info');
+                await api.deleteBillingVoid(id);
+                window.closeBillingDetails();
+                allBillings[currentTab] = null;
+                await Promise.all([loadBillings(currentTab), loadStats()]);
+                window.showToast?.('Voided document permanently deleted', 'success');
+            } catch (e) {
+                window.showToast?.(e.message || 'Failed to delete document', 'error');
+            }
+        }
+    });
+};
+
 window.duplicateBillingDoc = async function (id) {
     try {
         const doc = await api.getBilling(id);

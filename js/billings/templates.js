@@ -493,7 +493,14 @@ export function getBillingDetailsHTML(doc) {
             </div>` : ''}
 
             <div class="flex gap-2">
-                ${!isVoid && isDraft ? `
+                ${isVoid ? `
+                <button type="button" onclick="window.deleteBillingVoid('${doc.id}')"
+                    class="w-full bg-error/10 text-error font-semibold py-3 rounded-xl active-scale text-[14px]">
+                    <span class="flex items-center justify-center gap-1">
+                        <span class="material-symbols-outlined text-[16px]">delete_forever</span> Delete Permanently
+                    </span>
+                </button>
+                ` : isDraft ? `
                 <button type="button" onclick="window.editBillingDoc('${doc.id}')"
                     class="flex-1 bg-surface-container-high text-on-surface font-semibold py-3 rounded-xl active-scale text-[14px]">
                     <span class="flex items-center justify-center gap-1">

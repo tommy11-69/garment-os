@@ -1423,12 +1423,12 @@ if ($segments[0] === 'billings') {
 
         $isPermanent = isset($_GET['permanent']) && $_GET['permanent'] === 'true';
         if ($isPermanent) {
-            if ($row['status'] !== 'Draft') {
-                jsonResponse(['error' => 'Only Draft documents can be permanently deleted'], 400);
+            if (!in_array($row['status'], ['Draft', 'Void'], true)) {
+                jsonResponse(['error' => 'Only Draft or Void documents can be permanently deleted'], 400);
             }
             $pdo->prepare("DELETE FROM `billing_items` WHERE `billing_master_id` = ?")->execute([$billingId]);
             $pdo->prepare("DELETE FROM `billing_master` WHERE `id` = ?")->execute([$billingId]);
-            jsonResponse(['success' => true, 'message' => 'Draft document permanently deleted']);
+            jsonResponse(['success' => true, 'message' => 'Document permanently deleted']);
         }
 
         $pdo->prepare("UPDATE `billing_master` SET `status` = 'Void', `updatedAt` = NOW() WHERE `id` = ?")->execute([$billingId]);

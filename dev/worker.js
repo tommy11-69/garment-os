@@ -793,12 +793,12 @@ export default {
                         const isPermanent = url.searchParams.get('permanent') === 'true';
 
                         if (isPermanent) {
-                            if (existing.status !== 'Draft') {
-                                return json({ error: 'Only Draft documents can be permanently deleted' }, 400);
+                            if (!['Draft', 'Void'].includes(existing.status)) {
+                                return json({ error: 'Only Draft or Void documents can be permanently deleted' }, 400);
                             }
                             await env.DB.prepare(`DELETE FROM billing_items WHERE billing_master_id = ?`).bind(billingId).run();
                             await env.DB.prepare(`DELETE FROM billing_master WHERE id = ?`).bind(billingId).run();
-                            return json({ success: true, message: 'Draft document permanently deleted' });
+                            return json({ success: true, message: 'Document permanently deleted' });
                         }
 
                         await env.DB.prepare(
