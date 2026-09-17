@@ -198,7 +198,7 @@ async function loadCostingById(id) {
             u: {
                 ...u,
                 clientName,
-                qty: parseFloat(u.qty ?? c.qty ?? 0),
+                qty: parseFloat(u.qty ?? u.totalQty ?? c.qty ?? 0),
                 pcsPerKg: parseFloat(u.pcsPerKg ?? c.pcsPerKg ?? 0),
                 weightGms: parseFloat(u.weightGms ?? c.weightGms ?? 0),
                 fabricPriceKg: parseFloat(u.fabricPriceKg ?? c.fabricPriceKg ?? 0),

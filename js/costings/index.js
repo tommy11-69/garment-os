@@ -140,9 +140,9 @@ function buildDetailHTML(c, sheetId) {
     const hasUData = u && Object.keys(u).length > 2;
 
     const rs = (v) => v > 0 ? '₹' + Number(v).toFixed(2) : '—';
-    const qty = u.qty || 0;
-    const cp  = u.cp || c.totalUnitCost || 0;
-    const sp  = u.sp || c.retailPrice || 0;
+    const qty = parseFloat(u.qty ?? u.totalQty ?? c.qty ?? 0);
+    const cp  = parseFloat(u.cp ?? u.cpPc ?? c.totalUnitCost ?? 0);
+    const sp  = parseFloat(u.sp ?? u.spPc ?? c.retailPrice ?? 0);
     const profitPct = (cp > 0 && sp > 0) ? (((sp - cp) / cp) * 100) : null;
     const profitAmt = sp > 0 ? (sp - cp) : null;
     const profitColor = (profitPct !== null && profitPct >= 0) ? '#34C759' : '#FF3B30';
@@ -169,8 +169,9 @@ function buildDetailHTML(c, sheetId) {
         </div>`;
 
     // ── 1. Order Summary Card
+    const savedTotalProfit = (u.profitDone !== undefined && u.profitDone !== null && u.profitDone !== 0) ? parseFloat(u.profitDone) : ((c.profitDone !== undefined && c.profitDone !== null && c.profitDone !== 0) ? parseFloat(c.profitDone) : null);
     const profitPc   = sp > 0 ? (sp - cp) : null;
-    const totalProfit = (profitPc !== null && qty > 0) ? profitPc * qty : null;
+    const totalProfit = savedTotalProfit !== null ? savedTotalProfit : ((profitPc !== null && qty > 0) ? profitPc * qty : null);
     const summaryCard = card('analytics', 'Order Summary', '#0071E3', `
         <div class="grid grid-cols-2 gap-2 py-3">
             <div class="bg-blue-50 rounded-xl p-3 text-center">
@@ -207,8 +208,8 @@ function buildDetailHTML(c, sheetId) {
         // 1. Size Ratios
         let sizeBody = '';
         if (u.sizes && u.sizes.length) {
-            sizeBody = u.sizes.map(s => fieldRow(`${s.name} (Ratio: ${s.ratio})`, `${s.qty} pcs`)).join('');
-            sizeBody += fieldRow('Total Order Qty', `${u.totalQty} pcs`);
+            sizeBody = u.sizes.map(s => fieldRow(`${s.name}${s.ratio !== undefined && s.ratio !== null && s.ratio !== '' ? ` (Ratio: ${s.ratio})` : ''}`, `${s.qty} pcs`)).join('');
+            sizeBody += fieldRow('Total Order Qty', `${u.totalQty || qty} pcs`);
         }
         const sizeCard = sizeBody ? card('straighten', 'Size Ratio', '#FF9F0A', sizeBody) : '';
         

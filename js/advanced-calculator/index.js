@@ -792,7 +792,7 @@ window.saveCosting = async function(status = 'saved') {
             retailPrice: s.spPc || 0,
             status: status,
             materials: materials,
-            uData: { ...s, clientName, lastEdited: s.lastEdited || null }
+            uData: { ...s, clientName, qty: s.totalQty, cp: s.cpPc, sp: s.spPc, profitDone: s.profitDone, lastEdited: s.lastEdited || null }
         };
 
         if (editId) {
