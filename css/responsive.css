@@ -32,6 +32,10 @@
 ───────────────────────────────────────────────────────────────────────── */
 @media (min-width: 768px) {
 
+    #run-rate-chart-wrap {
+        height: 280px !important;
+    }
+
     /* ── Show Sidebar ── */
     #sidebar-container {
         display: block !important;
@@ -273,12 +277,6 @@
         overflow-x: visible;
     }
 
-    /* ── Finance charts: taller on desktop ── */
-    .chart-wrapper,
-    [id*="chart-container"] {
-        min-height: 280px;
-    }
-
     /* ── Settings: keep embedded header working with offset layout ── */
     /* settings.html has its own sticky header inside .mobile-wrapper — no changes needed */
 
@@ -311,12 +309,6 @@
     }
 
     /* ── Orders: stays 2-col — card content is dense ── */
-
-    /* ── Finance charts: even taller ── */
-    .chart-wrapper,
-    [id*="chart-container"] {
-        min-height: 320px;
-    }
 
     /* ── Inner content max-width (prevents extreme stretching on ultrawide) ── */
     #main-content-area {

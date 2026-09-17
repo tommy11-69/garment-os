@@ -48,7 +48,6 @@
     <link rel="stylesheet" href="../css/layout.css">
     <link rel="stylesheet" href="../css/typography.css">
     <link rel="stylesheet" href="../css/utilities.css">
-    <link rel="stylesheet" href="../css/finance.css">
 
     <style>
         /* ── Chart Container Animations ── */
@@ -101,6 +100,7 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
     </style>
     <link rel="stylesheet" href="../css/responsive.css?v=5.5">
+    <link rel="stylesheet" href="../css/finance.css">
 </head>
 <body class="font-body text-body antialiased bg-background dark:bg-slate-950 text-on-surface dark:text-slate-100">
 
@@ -597,7 +597,11 @@
                 sub.textContent = _period === '7d' ? 'Last 7 days' : _period === '1m' ? 'Last 1 month' : 'Last 3 months';
             }
 
-            const W = 340, H = 160, PAD = { t: 10, b: 30, l: 8, r: 8 };
+            const chartBounds = svg.parentElement?.getBoundingClientRect() || { width: 340, height: 160 };
+            const W = Math.max(340, Math.round(chartBounds.width));
+            const H = Math.max(160, Math.round(chartBounds.height));
+            svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+            const PAD = { t: 10, b: 30, l: 8, r: 8 };
             const cW = W - PAD.l - PAD.r;
             const cH = H - PAD.t - PAD.b;
             const n  = data.length;

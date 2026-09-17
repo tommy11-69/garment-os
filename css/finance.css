@@ -74,3 +74,29 @@
     color: var(--gos-text);
     border-color: var(--gos-border-subtle);
 }
+
+@media (min-width: 768px) {
+    #finance-charts-section .chart-card:first-child > .relative {
+        height: 240px !important;
+    }
+
+    #finance-charts-section .chart-card:nth-child(2) #bar-chart-container {
+        height: 180px !important;
+        min-height: 0 !important;
+    }
+
+    #area-chart-svg {
+        width: 100%;
+        height: 100%;
+    }
+}
+
+@media (min-width: 1024px) {
+    #finance-charts-section .chart-card:first-child > .relative {
+        height: 280px !important;
+    }
+
+    #finance-charts-section .chart-card:nth-child(2) #bar-chart-container {
+        height: 210px !important;
+    }
+}
