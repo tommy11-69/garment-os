@@ -34,7 +34,14 @@
 
     /* ── Show Sidebar ── */
     #sidebar-container {
-        display: block;
+        display: block !important;
+        visibility: visible !important;
+        position: fixed !important;
+        inset: 0 auto 0 0 !important;
+        width: var(--sidebar-w) !important;
+        height: 100vh !important;
+        z-index: 50 !important;
+        pointer-events: auto !important;
     }
 
     /* ── Hide Mobile-Only Navigation ── */
@@ -82,6 +89,8 @@
         box-shadow: 2px 0 16px rgba(0, 0, 0, 0.04);
         scrollbar-width: thin;
         scrollbar-color: #E0E0E6 transparent;
+        visibility: visible !important;
+        pointer-events: auto !important;
     }
 
     .sidebar-nav::-webkit-scrollbar {

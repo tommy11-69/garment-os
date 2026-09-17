@@ -289,6 +289,18 @@ function initApp() {
     if (!sidebarContainer.innerHTML || sidebarContainer.innerHTML.trim() === '') {
         sidebarContainer.innerHTML = STATIC_SIDEBAR_HTML;
     }
+
+    const syncSidebarVisibility = () => {
+        const isDesktop = window.matchMedia('(min-width: 768px)').matches;
+        sidebarContainer.style.display = isDesktop ? 'block' : '';
+        sidebarContainer.style.visibility = isDesktop ? 'visible' : '';
+    };
+    syncSidebarVisibility();
+    if (!sidebarContainer.dataset.visibilityBound) {
+        window.addEventListener('resize', syncSidebarVisibility, { passive: true });
+        sidebarContainer.dataset.visibilityBound = 'true';
+    }
+
     // Instantly set active tab state synchronously
     updateSidebarActiveState(currentPage);
 
