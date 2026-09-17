@@ -65,12 +65,6 @@ function restoreSession() {
             calculatorStore.updateU(d.u);
             const u = d.u;
 
-            // Restore garment chip
-            if (u.garmentType) {
-                const chips = document.querySelectorAll('#shared-garment-chips .garment-chip');
-                chips.forEach(b => b.classList.toggle('active', b.dataset.type === u.garmentType));
-            }
-
             // Rehydrate DOM inputs from state
             const setVal = (id, v) => {
                 const el = $(id);
@@ -371,18 +365,6 @@ function renderBreakdown(barId, legendId, containerId, totalLabelId, items) {
 // ══════════════════════════════════════════════════════
 //  GARMENT TYPE CHIPS  (Phase 2: single shared chip set)
 // ══════════════════════════════════════════════════════
-window.selectGarmentType = function(btn) {
-    const container = $('shared-garment-chips');
-    if (container) {
-        container.querySelectorAll('.garment-chip').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-    }
-    calculatorStore.updateU({ garmentType: btn.dataset.type });
-    saveSession();
-};
-
-
-
 // ══════════════════════════════════════════════════════
 //  CMT MODE SWITCHING
 // ══════════════════════════════════════════════════════
@@ -864,7 +846,7 @@ function buildCostingPayload(s, client, overrides = {}) {
     ].filter(m => m.cost > 0);
 
     return {
-        styleRef:      s.garmentType || 'Garment',
+        styleRef:      s.garmentName || s.garmentType || 'Garment',
         clientId:      client,
         clientName:    client,
         garmentType:   s.garmentType || 'T-Shirt',
@@ -921,6 +903,8 @@ window.saveCosting = async function() {
     if (isSavingCosting) return;
     const s = state.u;
     const client = $('shared-client')?.value || 'Unnamed Client';
+    const garmentName = $('shared-garment-name')?.value?.trim() || s.garmentName || '';
+    calculatorStore.updateU({ garmentName });
 
     if (s.cp <= 0) {
         window.showToast?.('Fill in costs before saving', 'error');
@@ -937,7 +921,7 @@ window.saveCosting = async function() {
 
     try {
         window.showToast?.(`${editId ? 'Updating' : 'Saving'} costing...`, 'info');
-        const payload = buildCostingPayload(s, client, { status: 'Saved' });
+        const payload = buildCostingPayload({ ...s, garmentName }, client, { status: 'Saved' });
         
         let res;
         if (editId) {
@@ -966,6 +950,7 @@ window.saveCosting = async function() {
 window.openQuotePreview = function() {
     const s       = state.u;
     const client  = $('shared-client')?.value || '—';
+    const garment = s.garmentName || s.garmentType || 'Garment';
     const qty     = num('shared-qty') || s.qty;
     if (s.cp <= 0) {
         window.showToast?.('Fill in costs first', 'error');
@@ -986,8 +971,8 @@ window.openQuotePreview = function() {
             <div class="flex justify-between items-start mb-6 relative z-10">
                 <div>
                     <p class="text-[11px] font-bold text-secondary uppercase tracking-wider mb-1">Costing Quote</p>
-                    <h2 class="text-[22px] font-bold text-on-surface leading-tight tracking-tight">${client !== '—' ? client : s.garmentType}</h2>
-                    <p class="text-[14px] text-secondary mt-1 font-medium">${s.qty > 0 ? s.qty.toLocaleString() + ' pcs · ' : ''}${s.garmentType}</p>
+                    <h2 class="text-[22px] font-bold text-on-surface leading-tight tracking-tight">${client !== '—' ? client : garment}</h2>
+                    <p class="text-[14px] text-secondary mt-1 font-medium">${s.qty > 0 ? s.qty.toLocaleString() + ' pcs · ' : ''}${garment}</p>
                 </div>
                 <div class="w-12 h-12 bg-white/80 border border-white shadow-sm rounded-2xl flex items-center justify-center flex-shrink-0">
                     <span class="material-symbols-outlined text-primary text-[22px]">receipt_long</span>
@@ -1034,11 +1019,12 @@ window.openQuotePreview = function() {
 window.copyQuoteToClipboard = function() {
     const s      = state.u;
     const client = $('shared-client')?.value || '—';
+    const garment = s.garmentName || s.garmentType || 'Garment';
 
     const lines = [
         '📋 Garment OS Quote',
         `Client: ${client}`,
-        `Garment: ${s.garmentType}`,
+        `Garment: ${garment}`,
         s.qty > 0 ? `Qty: ${s.qty.toLocaleString()} pcs` : '',
         `CP/pc: ${fmtFull(s.cp)}`,
         `SP/pc: ${s.sp ? fmtFull(s.sp) : 'Not set'}`,
@@ -1053,7 +1039,7 @@ window.copyQuoteToClipboard = function() {
 window.downloadQuotePDF = function() {
     const s       = state.u;
     const client  = $('shared-client')?.value || 'Valued Customer';
-    const garment = s.garmentType || 'Garment';
+    const garment = s.garmentName || s.garmentType || 'Garment';
     const qty     = s.qty || 0;
     
     const quoteNo = 'QT-' + Math.floor(100000 + Math.random() * 900000);
@@ -1376,6 +1362,9 @@ async function initModule() {
     }
 
     bindFormValidation('saveCostSheet-content', 'save-cost-submit');
+    $('shared-garment-name')?.addEventListener('input', (event) => {
+        calculatorStore.updateU({ garmentName: event.target.value });
+    });
 
     $('save-cost-submit')?.addEventListener('click', async () => {
         if (isSavingCosting) return;
@@ -1384,6 +1373,8 @@ async function initModule() {
         const status   = $('save-status')?.value;
         const s = state.u;
         const client = $('shared-client')?.value || '';
+        const garmentName = $('shared-garment-name')?.value?.trim() || s.garmentName || '';
+        calculatorStore.updateU({ garmentName });
 
         const displayName = styleRef || client;
         const submitButton = $('save-cost-submit');
@@ -1394,12 +1385,12 @@ async function initModule() {
         }
 
         try {
-            const payload = buildCostingPayload(s, clientId || displayName, {
-                styleRef:  styleRef || s.garmentType || 'Garment',
+            const payload = buildCostingPayload({ ...s, garmentName }, clientId || displayName, {
+                styleRef:  styleRef || garmentName || s.garmentType || 'Garment',
                 clientId:  clientId || displayName,
                 clientName: displayName,
                 status,
-                uData: { ...s, clientName: displayName },
+                uData: { ...s, clientName: displayName, garmentName },
             });
             const res = editId ? await api.updateCosting(editId, payload) : await api.saveCosting(payload);
             if (res && res.error) throw new Error(res.error);
@@ -1443,11 +1434,12 @@ window.shareQuoteViaWhatsApp = function() {
     const s      = state.u;
     const client = $('shared-client')?.value || '—';
     const qty    = num('shared-qty') || s.qty;
+    const garment = s.garmentName || s.garmentType || 'Garment';
 
     const lines = [
         '📊 *Garment OS Costing Quote*',
         `👔 *Client:* ${client}`,
-        `👕 *Garment:* ${s.garmentType}`,
+        `👕 *Garment:* ${garment}`,
         qty > 0 ? `📦 *Qty:* ${qty.toLocaleString()} pcs` : '',
         `💰 *Cost Price (CP):* ${fmtFull(s.cp)}/pc`,
         s.sp ? `🏷 *Selling Price (SP):* ${fmtFull(s.sp)}/pc` : '',

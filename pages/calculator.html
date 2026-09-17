@@ -292,8 +292,13 @@
                         Garment &amp; Specs
                     </h3>
                     <div class="grid grid-cols-2 gap-3">
-                            <label class="field-label">Client / Style Name</label>
+                        <div>
+                            <label class="field-label">Client / Buyer Name</label>
                             <input id="shared-client" type="text" placeholder="e.g. Chennai Silks" class="calc-input w-full">
+                        </div>
+                        <div>
+                            <label class="field-label">Style / Garment Name</label>
+                            <input id="shared-garment-name" type="text" placeholder="e.g. Classic Crew Tee" class="calc-input w-full">
                         </div>
                         <div>
                             <label class="field-label">Total Quantity (pcs)</label>
@@ -364,21 +369,11 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
                     <!-- Auto kg info -->
                     <div id="u-kg-info" class="hidden bg-primary/5 border border-primary/20 rounded-xl px-4 py-2.5 flex justify-between items-center">
                         <span class="text-[13px] text-secondary font-medium">Total Fabric Required</span>
                         <span id="u-kg-val" class="text-[15px] font-bold text-primary">— kg</span>
-                    </div>
-                    <!-- Garment Type -->
-                    <div>
-                        <label class="field-label">Garment Type</label>
-                        <div class="flex gap-2 flex-wrap mt-1" id="shared-garment-chips">
-                            <button type="button" class="garment-chip active" data-type="T-Shirt" onclick="selectGarmentType(this)">👕 T-Shirt</button>
-                            <button type="button" class="garment-chip" data-type="Polo" onclick="selectGarmentType(this)">🎽 Polo</button>
-                            <button type="button" class="garment-chip" data-type="Hoodie" onclick="selectGarmentType(this)">🧥 Hoodie</button>
-                            <button type="button" class="garment-chip" data-type="Jacket" onclick="selectGarmentType(this)">🧣 Jacket</button>
-                            <button type="button" class="garment-chip" data-type="Shorts" onclick="selectGarmentType(this)">🩳 Shorts</button>
-                        </div>
                     </div>
                 </div>
 

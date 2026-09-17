@@ -10,7 +10,7 @@ class CalculatorStore extends BaseStore {
             ...this.state,
             currency: '₹',
             u: {
-                qty: 0, pcsPerKg: 0, garmentType: 'T-Shirt', cmtMode: 'combined',
+                qty: 0, pcsPerKg: 0, garmentName: '', garmentType: 'T-Shirt', cmtMode: 'combined',
                 fabricPriceKg: 0, wastage: 0, fabricCostPc: 0,
                 // Pattern Auto-Calc inputs
                 bodyL: 0, bodyLM: 0, chest: 0, chestM: 0,
