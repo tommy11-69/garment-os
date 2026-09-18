@@ -225,9 +225,103 @@ export const WORKFLOW_ROUTES = {
 };
 
 /**
+ * Human-readable metadata and badges for all workflow types
+ */
+export const WORKFLOW_CONFIG = {
+    default: {
+        key: 'default',
+        label: 'Standard CMT',
+        shortLabel: 'CMT',
+        icon: 'precision_manufacturing',
+        color: 'text-[#007AFF]',
+        bgColor: 'bg-[#007AFF]/10',
+        borderColor: 'border-[#007AFF]/30',
+        pipeline: 'Sourcing → Fabric → Cutting → Stitching → Print/Wash → Packing → Dispatch',
+        description: 'Standard cut, make & trim garment manufacturing'
+    },
+    full_vertical: {
+        key: 'full_vertical',
+        label: 'Yarn Dyeing & Vertical',
+        shortLabel: 'Yarn Dyeing',
+        icon: 'water_drop',
+        color: 'text-[#8B5CF6]',
+        bgColor: 'bg-[#8B5CF6]/10',
+        borderColor: 'border-[#8B5CF6]/30',
+        pipeline: 'Yarn Sourcing → Winding → Knitting → Dyeing → Cutting → Stitching → Packing → Dispatch',
+        description: 'Yarn-to-garment manufacturing with winding, knitting & dyeing'
+    },
+    print_before_stitch: {
+        key: 'print_before_stitch',
+        label: 'Print-First (Panels)',
+        shortLabel: 'Print-First',
+        icon: 'palette',
+        color: 'text-[#AF52DE]',
+        bgColor: 'bg-[#AF52DE]/10',
+        borderColor: 'border-[#AF52DE]/30',
+        pipeline: 'Sourcing → Fabric → Cutting → Print/Embroidery → Stitching → Packing → Dispatch',
+        description: 'Panels printed or sublimated before sewing assembly'
+    },
+    wash_before_stitch: {
+        key: 'wash_before_stitch',
+        label: 'Enzyme / Garment Wash',
+        shortLabel: 'Wash Finish',
+        icon: 'waves',
+        color: 'text-[#30B0C7]',
+        bgColor: 'bg-[#30B0C7]/10',
+        borderColor: 'border-[#30B0C7]/30',
+        pipeline: 'Cutting → Stitching → Garment Wash → Pack → Dispatch',
+        description: 'Garments washed after sewing for vintage/enzyme feel'
+    },
+    stitch_before_embroidery: {
+        key: 'stitch_before_embroidery',
+        label: 'Finished Garment Embellishment',
+        shortLabel: 'Stitch First',
+        icon: 'auto_fix_high',
+        color: 'text-[#FF9500]',
+        bgColor: 'bg-[#FF9500]/10',
+        borderColor: 'border-[#FF9500]/30',
+        pipeline: 'Cutting → Stitching → Assembled Embroidery → Packing → Dispatch',
+        description: 'Embroidery or transfers applied on fully assembled garments'
+    },
+    direct_fulfillment: {
+        key: 'direct_fulfillment',
+        label: 'Direct Trading / Sourcing',
+        shortLabel: 'Direct Trading',
+        icon: 'local_shipping',
+        color: 'text-[#34C759]',
+        bgColor: 'bg-[#34C759]/10',
+        borderColor: 'border-[#34C759]/30',
+        pipeline: 'Procurement → Audit → Dispatch',
+        description: 'Ready goods trading — skips floor cutting and sewing'
+    },
+    custom: {
+        key: 'custom',
+        label: 'Custom Workflow Route',
+        shortLabel: 'Custom Route',
+        icon: 'alt_route',
+        color: 'text-[#FF2D55]',
+        bgColor: 'bg-[#FF2D55]/10',
+        borderColor: 'border-[#FF2D55]/30',
+        pipeline: 'Custom Tailored Factory Floor Route',
+        description: 'Tailored stage-by-stage factory route for this specific item'
+    }
+};
+
+/**
+ * Return badge and display information for a workflow key
+ */
+export function getWorkflowBadgeInfo(wfKey) {
+    return WORKFLOW_CONFIG[wfKey] || WORKFLOW_CONFIG.default;
+}
+
+/**
  * Resolve the operational stage sequence for a given product
  */
 export function getProductWorkflowStages(product, orderWorkflowType = 'default') {
+    // If product has explicit custom stages array defined
+    if (product?.customStages && Array.isArray(product.customStages) && product.customStages.length > 0) {
+        return product.customStages;
+    }
     const wfKey = product?.workflowType || orderWorkflowType || 'default';
     return WORKFLOW_ROUTES[wfKey] || WORKFLOW_ROUTES.default;
 }

@@ -13,8 +13,9 @@ import {
     STAGE_KEYS, 
     getProductWorkflowStages, 
     normalizeStageKey, 
-    calculateOrderRollup 
-} from './domain/workflowEngine.js?v=5.5';
+    calculateOrderRollup,
+    getWorkflowBadgeInfo
+} from './domain/workflowEngine.js?v=6.0';
 import { hydrateStageData } from './domain/stageSchemas.js?v=5.5';
 
 import { OverviewWorkspace }      from './stages/OverviewWorkspace.js?v=5.5';
@@ -170,6 +171,8 @@ class ProductionApp {
         const products = Array.isArray(ord.products) && ord.products.length > 0 ? ord.products : [this.getActiveProduct()];
         const activeProd = this.getActiveProduct();
         const activeWorkflow = getProductWorkflowStages(activeProd, ord.workflowType);
+        const activeWfKey = activeProd.workflowType || ord.workflowType || 'default';
+        const activeWfInfo = getWorkflowBadgeInfo(activeWfKey);
 
         container.innerHTML = `
             <div class="bg-surface-container-lowest border border-outline-variant rounded-2xl p-4 shadow-sm flex flex-col gap-3 animate-fade-in">
@@ -213,12 +216,21 @@ class ProductionApp {
                     <div class="pt-2 border-t border-outline-variant/40 flex items-center gap-2 flex-wrap">
                         <span class="text-[12px] font-bold text-secondary shrink-0">Product Lines:</span>
                         <div class="flex items-center gap-1.5 overflow-x-auto pb-1">
-                            ${products.map((p, idx) => `
-                                <button onclick="window.productionRouter.switchProduct(${idx})" 
-                                    class="px-3 py-1 rounded-xl text-[12px] font-bold active-scale transition-apple ${idx === this.activeProductIndex ? 'bg-primary text-white shadow-sm' : 'bg-surface-container text-on-surface hover:bg-surface-variant'}">
-                                    ${p.name} (${p.qty} pcs)
-                                </button>
-                            `).join('')}
+                            ${products.map((p, idx) => {
+                                const pWf = p.workflowType || ord.workflowType || 'default';
+                                const wfInfo = getWorkflowBadgeInfo(pWf);
+                                const isAct = idx === this.activeProductIndex;
+                                return `
+                                    <button onclick="window.productionRouter.switchProduct(${idx})" 
+                                        class="px-3 py-1.5 rounded-xl text-[12px] font-bold active-scale transition-apple flex items-center gap-1.5 ${isAct ? 'bg-primary text-white shadow-sm' : 'bg-surface-container text-on-surface hover:bg-surface-variant'}">
+                                        <span>${p.name || `Product #${idx+1}`}</span>
+                                        <span class="text-[10px] opacity-80">(${p.qty} pcs)</span>
+                                        <span class="px-1.5 py-0.2 rounded text-[9px] font-extrabold ${isAct ? 'bg-white/25 text-white' : `${wfInfo.bgColor} ${wfInfo.color}`}">
+                                            ${wfInfo.shortLabel || wfInfo.label}
+                                        </span>
+                                    </button>
+                                `;
+                            }).join('')}
                         </div>
                     </div>
                 ` : ''}
@@ -226,6 +238,11 @@ class ProductionApp {
                 <!-- Active Workflow Route Pipeline Visualization -->
                 <div class="pt-2 border-t border-outline-variant/40 flex items-center gap-2 overflow-x-auto pb-1 text-[11px] font-semibold text-secondary">
                     <span class="font-bold text-on-surface shrink-0">Workflow Route:</span>
+                    <span class="inline-flex items-center gap-1 text-[11px] font-extrabold ${activeWfInfo.color} ${activeWfInfo.bgColor} px-2.5 py-0.5 rounded-md border ${activeWfInfo.borderColor} shrink-0">
+                        <span class="material-symbols-outlined text-[13px]">${activeWfInfo.icon}</span>
+                        ${activeWfInfo.label}
+                    </span>
+                    <span class="text-secondary/50">|</span>
                     <div class="flex items-center gap-1.5 shrink-0">
                         ${activeWorkflow.map((stKey, idx) => {
                             const def = STAGE_DEFINITIONS[stKey] || { label: stKey };
@@ -234,7 +251,7 @@ class ProductionApp {
 
                             return `
                                 <div class="flex items-center gap-1">
-                                    <span class="px-2 py-0.5 rounded-md ${isCurrent ? 'bg-primary text-white font-bold' : isPast ? 'bg-[#34C759]/15 text-[#34C759] font-bold' : 'bg-surface-container text-secondary'}">
+                                    <span class="px-2 py-0.5 rounded-md ${isCurrent ? 'bg-primary text-white font-bold ring-2 ring-primary/20' : isPast ? 'bg-[#34C759]/15 text-[#34C759] font-bold' : 'bg-surface-container text-secondary'}">
                                         ${def.label}
                                     </span>
                                     ${idx < activeWorkflow.length - 1 ? '<span class="material-symbols-outlined text-[12px] text-outline">chevron_right</span>' : ''}

@@ -1,5 +1,5 @@
 import { ProgressBar } from './components/index.js?v=5.2';
-import { calculateOrderRollup, normalizeStageKey, STAGE_DEFINITIONS, getProductWorkflowStages, WORKFLOW_ROUTES } from './production/domain/workflowEngine.js?v=5.5';
+import { calculateOrderRollup, normalizeStageKey, STAGE_DEFINITIONS, getProductWorkflowStages, WORKFLOW_ROUTES, getWorkflowBadgeInfo } from './production/domain/workflowEngine.js?v=6.0';
 
 function renderStagePipeline(order) {
     // Determine workflow type from the primary product (new schema) or order-level fallback
@@ -147,18 +147,27 @@ export const renderers = {
             </div>
         ` : '';
 
-        // Product-level stage badges (if multiple products exist)
+        // Product-level stage and workflow badges
         let productChipsHtml = '';
-        if (rollup.productsSummary && rollup.productsSummary.length > 1) {
+        const orderProducts = Array.isArray(order.products) && order.products.length > 0 ? order.products : null;
+        if (orderProducts && orderProducts.length > 0) {
             productChipsHtml = `
                 <div class="flex flex-wrap gap-1.5 mt-2.5">
-                    ${rollup.productsSummary.map(p => `
-                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-surface-variant text-on-surface-variant border border-outline-variant/40">
-                            <span class="font-bold">${p.name}:</span>
-                            <span class="text-primary font-bold">${p.stageLabel}</span>
-                            <span class="text-secondary text-[9px]">(${p.percentage}%)</span>
-                        </span>
-                    `).join('')}
+                    ${orderProducts.map(p => {
+                        const pWf = p.workflowType || order.workflowType || 'default';
+                        const wfInfo = getWorkflowBadgeInfo(pWf);
+                        const pStatus = p.status || rollup.activeStageDef.shortLabel;
+                        return `
+                            <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-surface-variant text-on-surface-variant border border-outline-variant/40">
+                                <span class="font-bold">${p.name || 'Item'}:</span>
+                                <span class="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded font-extrabold ${wfInfo.bgColor} ${wfInfo.color}">
+                                    <span class="material-symbols-outlined text-[10px]">${wfInfo.icon}</span>
+                                    ${wfInfo.shortLabel || wfInfo.label}
+                                </span>
+                                <span class="text-primary font-bold">• ${pStatus}</span>
+                            </span>
+                        `;
+                    }).join('')}
                 </div>
             `;
         }

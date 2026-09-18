@@ -3,7 +3,7 @@
  * Real-time operational pulse across all running orders and department bottlenecks.
  */
 
-import { STAGE_DEFINITIONS, calculateOrderRollup } from '../domain/workflowEngine.js?v=5.5';
+import { STAGE_DEFINITIONS, calculateOrderRollup, getWorkflowBadgeInfo } from '../domain/workflowEngine.js?v=6.0';
 
 export const OverviewWorkspace = {
     render(orders, activeOrderId, onSelectOrder, onSelectStage) {
@@ -16,6 +16,9 @@ export const OverviewWorkspace = {
         const now = Date.now();
         const stageWorkloads = {
             procurement: 0,
+            winding: 0,
+            knitting: 0,
+            dyeing: 0,
             fabric: 0,
             cutting: 0,
             print_wash: 0,
@@ -42,7 +45,10 @@ export const OverviewWorkspace = {
 
         const stagesList = [
             { key: 'procurement', label: 'Procurement', icon: 'shopping_cart', count: stageWorkloads.procurement, color: 'text-[#5856D6]', bg: 'bg-[#5856D6]/10' },
-            { key: 'fabric', label: 'Fabric', icon: 'texture', count: stageWorkloads.fabric, color: 'text-[#007AFF]', bg: 'bg-[#007AFF]/10' },
+            { key: 'winding', label: 'Winding', icon: 'rotate_right', count: stageWorkloads.winding, color: 'text-[#FF6B35]', bg: 'bg-[#FF6B35]/10' },
+            { key: 'knitting', label: 'Knitting', icon: 'grid_on', count: stageWorkloads.knitting, color: 'text-[#0EA5E9]', bg: 'bg-[#0EA5E9]/10' },
+            { key: 'dyeing', label: 'Dyeing', icon: 'water_drop', count: stageWorkloads.dyeing, color: 'text-[#8B5CF6]', bg: 'bg-[#8B5CF6]/10' },
+            { key: 'fabric', label: 'Fabric Inward', icon: 'texture', count: stageWorkloads.fabric, color: 'text-[#007AFF]', bg: 'bg-[#007AFF]/10' },
             { key: 'cutting', label: 'Cutting', icon: 'content_cut', count: stageWorkloads.cutting, color: 'text-[#FF9500]', bg: 'bg-[#FF9500]/10' },
             { key: 'print_wash', label: 'Print / Wash', icon: 'palette', count: stageWorkloads.print_wash, color: 'text-[#AF52DE]', bg: 'bg-[#AF52DE]/10' },
             { key: 'stitching', label: 'Stitching', icon: 'precision_manufacturing', count: stageWorkloads.stitching, color: 'text-[#34C759]', bg: 'bg-[#34C759]/10' },
@@ -86,7 +92,7 @@ export const OverviewWorkspace = {
                         <h4 class="text-[14px] font-bold text-on-surface uppercase tracking-wider">Department Workloads</h4>
                         <span class="text-[12px] text-secondary">Orders queued</span>
                     </div>
-                    <div class="grid grid-cols-2 sm:grid-cols-7 gap-2">
+                    <div class="grid grid-cols-2 sm:grid-cols-5 lg:grid-cols-10 gap-2">
                         ${stagesList.map(s => `
                             <button onclick="window.productionRouter.switchStage('${s.key}')" 
                                 class="p-3 rounded-xl border border-outline-variant/60 hover:border-primary flex flex-col items-center justify-center gap-1 active-scale transition-apple text-center ${s.count > 0 ? 'bg-surface-container-lowest' : 'opacity-60'}">
@@ -116,6 +122,19 @@ export const OverviewWorkspace = {
                             const isSelected = ord.id === activeOrderId;
                             const isOverdue = ord.deliveryDate && new Date(ord.deliveryDate).getTime() < now;
 
+                            const productsList = Array.isArray(ord.products) && ord.products.length > 0
+                                ? ord.products
+                                : [{ name: ord.product || 'Apparel Item', workflowType: ord.workflowType || 'default' }];
+
+                            const wfBadgesHtml = productsList.map(p => {
+                                const pWf = p.workflowType || ord.workflowType || 'default';
+                                const wfInfo = getWorkflowBadgeInfo(pWf);
+                                return `<span class="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-md ${wfInfo.bgColor} ${wfInfo.color} border ${wfInfo.borderColor}">
+                                    <span class="material-symbols-outlined text-[11px]">${wfInfo.icon}</span>
+                                    ${p.name ? `${p.name}: ` : ''}${wfInfo.shortLabel || wfInfo.label}
+                                </span>`;
+                            }).join(' ');
+
                             return `
                                 <div onclick="window.productionRouter.switchOrder('${ord.id}', '${roll.activeStageKey}')"
                                     class="p-4 rounded-xl border ${isSelected ? 'border-primary ring-2 ring-primary/20 bg-primary/5' : 'border-outline-variant/60 hover:border-primary'} flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 cursor-pointer active-scale transition-apple">
@@ -127,7 +146,10 @@ export const OverviewWorkspace = {
                                             ${isOverdue ? '<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-error/10 text-error">Overdue</span>' : ''}
                                         </div>
                                         <h5 class="text-[15px] font-bold text-on-surface truncate mt-0.5">${ord.product || 'Apparel Order'}</h5>
-                                        <p class="text-[12px] text-secondary mt-0.5">${roll.totalOrderQty} pcs • Promised: ${ord.deliveryDate || 'Not set'}</p>
+                                        <div class="flex items-center gap-1.5 flex-wrap mt-1">
+                                            ${wfBadgesHtml}
+                                        </div>
+                                        <p class="text-[12px] text-secondary mt-1">${roll.totalOrderQty} pcs • Promised: ${ord.deliveryDate || 'Not set'}</p>
                                     </div>
 
                                     <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">

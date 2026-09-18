@@ -22,6 +22,8 @@ import { api }           from '../services/api.js?v=5.2';
 import {
     STAGE_DEFINITIONS,
     WORKFLOW_ROUTES,
+    WORKFLOW_CONFIG,
+    getProductWorkflowStages,
     mergeLineItemsToFlatStageData
 } from '../production/domain/workflowEngine.js?v=6.0';
 
@@ -68,6 +70,14 @@ const WORKFLOW_PRESETS = [
         desc:    'Standard cut, make & trim garment manufacturing'
     },
     {
+        key:     'full_vertical',
+        label:   'Full Vertical Integration (Yarn Dyeing)',
+        icon:    'water_drop',
+        color:   '#8B5CF6',
+        pipeline:'Yarn → Winding → Knitting → Dyeing → Cutting → Stitching → Pack → Dispatch',
+        desc:    'Yarn-to-garment manufacturing with in-house knitting & dyeing'
+    },
+    {
         key:     'print_before_stitch',
         label:   'Print-First / Sublimation',
         icon:    'palette',
@@ -78,7 +88,7 @@ const WORKFLOW_PRESETS = [
     {
         key:     'wash_before_stitch',
         label:   'Enzyme / Garment Wash',
-        icon:    'water_drop',
+        icon:    'waves',
         color:   '#30B0C7',
         pipeline:'Cutting → Stitching → Industrial Wash → Pack → Dispatch',
         desc:    'Garments washed after stitching for enzyme or vintage treatment'
@@ -100,13 +110,26 @@ const WORKFLOW_PRESETS = [
         desc:    'Ready-made goods procurement — no in-house cutting or sewing'
     },
     {
-        key:     'full_vertical',
-        label:   'Full Vertical Integration',
-        icon:    'factory',
-        color:   '#5856D6',
-        pipeline:'Yarn → Winding → Knitting → Dyeing → Cutting → Stitching → Pack → Dispatch',
-        desc:    'Yarn-to-garment manufacturing with in-house knitting & dyeing'
+        key:     'custom',
+        label:   'Custom Route (Stage Picker)',
+        icon:    'alt_route',
+        color:   '#FF2D55',
+        pipeline:'Custom Stage-by-Stage Selection',
+        desc:    'Build an exact sequence of factory stages for this specific item'
     }
+];
+
+const AVAILABLE_FACTORY_STAGES = [
+    { key: 'procurement', label: 'Procurement & Yarn', icon: 'shopping_cart' },
+    { key: 'winding',     label: 'Yarn Winding',       icon: 'rotate_right' },
+    { key: 'knitting',    label: 'Knitting',           icon: 'grid_on' },
+    { key: 'dyeing',      label: 'Dyeing & Compacting',icon: 'water_drop' },
+    { key: 'fabric',      label: 'Fabric Inward & QC', icon: 'texture' },
+    { key: 'cutting',     label: 'Cutting & Bundles',  icon: 'content_cut' },
+    { key: 'print_wash',  label: 'Print & Embroidery', icon: 'palette' },
+    { key: 'stitching',   label: 'Stitching Assembly', icon: 'precision_manufacturing' },
+    { key: 'packing',     label: 'Finishing & Packing',icon: 'inventory_2' },
+    { key: 'dispatch',    label: 'Dispatch & Gate Pass',icon: 'local_shipping' }
 ];
 
 // ─── Wizard Steps ─────────────────────────────────────────────────────────────
@@ -123,6 +146,8 @@ function makeDefaultProduct(n = 1) {
         id:                   `prod-${Date.now()}-${n}`,
         name:                 '',
         category:             'Adults',
+        workflowType:         (typeof coState !== 'undefined' && coState?.orderWorkflowType) ? coState.orderWorkflowType : 'default',
+        customStages:         [],
         qty:                  0,
         sizes:                { XS: 0, S: 0, M: 0, L: 0, XL: 0, XXL: 0, XXXL: 0, XXXXL: 0 },
         freeSizes:            [{ label: 'S', qty: 0 }, { label: 'M', qty: 0 }, { label: 'L', qty: 0 }],
@@ -283,6 +308,8 @@ async function loadExistingOrderForEdit(orderId) {
                 id: p.id || `prod-${Date.now()}-${i + 1}`,
                 name: p.name || order.product || '',
                 category: p.category || 'Adults',
+                workflowType: p.workflowType || wf,
+                customStages: Array.isArray(p.customStages) ? p.customStages : [],
                 qty: pQty,
                 sizes,
                 freeSizes,
@@ -329,6 +356,8 @@ async function loadExistingOrderForEdit(orderId) {
             id: `prod-${Date.now()}-1`,
             name: order.product || '',
             category: 'Adults',
+            workflowType: order.workflowType || wf,
+            customStages: Array.isArray(order.customStages) ? order.customStages : [],
             qty: oQty,
             sizes,
             freeSizes,
@@ -467,10 +496,14 @@ window.coSetPriority = function(prio) {
 
 // ─── Workflow Type Picker ─────────────────────────────────────────────────────
 window.coSelectOrderWorkflow = function(wfKey) {
+    const prevWf = coState.orderWorkflowType;
     coState.orderWorkflowType = wfKey;
 
-    // Auto-set decoration for locked workflows on all products
+    // Apply to products that matched previous global workflow or were default
     coState.products.forEach(prod => {
+        if (!prod.workflowType || prod.workflowType === 'default' || prod.workflowType === prevWf) {
+            prod.workflowType = wfKey;
+        }
         if (workflowLocksPrint(wfKey)) {
             prod.decorationType = 'Screen';
         } else if (workflowLocksEmbroidery(wfKey)) {
@@ -481,6 +514,43 @@ window.coSelectOrderWorkflow = function(wfKey) {
     renderWorkflowPicker();
     renderProducts();
     calculateFinancials();
+};
+
+window.coSetProductWorkflow = function(idx, wfKey) {
+    const prod = coState.products[idx];
+    if (!prod) return;
+    prod.workflowType = wfKey;
+    if (wfKey === 'custom' && (!prod.customStages || prod.customStages.length === 0)) {
+        prod.customStages = ['procurement', 'fabric', 'cutting', 'stitching', 'packing', 'dispatch'];
+    }
+    if (workflowLocksPrint(wfKey)) prod.decorationType = 'Screen';
+    if (workflowLocksEmbroidery(wfKey)) prod.decorationType = 'Embroidery';
+    renderProducts();
+    calculateFinancials();
+    const wfInfo = WORKFLOW_PRESETS.find(w => w.key === wfKey);
+    if (window.showToast) {
+        window.showToast(`Updated "${prod.name || `Product #${idx + 1}`}" workflow to ${wfInfo?.label || wfKey}`, 'info');
+    }
+};
+
+window.coToggleProductCustomStage = function(idx, stageKey) {
+    const prod = coState.products[idx];
+    if (!prod) return;
+    if (!Array.isArray(prod.customStages)) prod.customStages = [];
+    const sIdx = prod.customStages.indexOf(stageKey);
+    if (sIdx >= 0) {
+        if (prod.customStages.length > 1) {
+            prod.customStages.splice(sIdx, 1);
+        } else {
+            showToast('At least one production stage is required', 'error');
+            return;
+        }
+    } else {
+        prod.customStages.push(stageKey);
+        const ALL_ORDER = ['procurement', 'winding', 'knitting', 'dyeing', 'fabric', 'cutting', 'print_wash', 'stitching', 'packing', 'dispatch'];
+        prod.customStages.sort((a, b) => ALL_ORDER.indexOf(a) - ALL_ORDER.indexOf(b));
+    }
+    renderProducts();
 };
 
 function renderWorkflowPicker() {
@@ -575,7 +645,8 @@ window.coAddProduct = function() {
     const newIdx = coState.products.length + 1;
     const p = makeDefaultProduct(newIdx);
     // Auto-lock decoration for certain workflows
-    const wf = coState.orderWorkflowType;
+    const wf = coState.orderWorkflowType || 'default';
+    p.workflowType = wf;
     if (workflowLocksPrint(wf)) p.decorationType = 'Screen';
     if (workflowLocksEmbroidery(wf)) p.decorationType = 'Embroidery';
     coState.products.push(p);
@@ -777,13 +848,22 @@ function updateProductSumBadge(idx) {
 
 // ─── Product Card Renderer ────────────────────────────────────────────────────
 function renderProductCard(prod, idx) {
-    const wf         = coState.orderWorkflowType;
-    const isDirect   = workflowIsDirectFulfillment(wf);
-    const isFullVert = workflowIsFullVertical(wf);
-    const needsFab   = workflowNeedsFabric(wf);
-    const needsDec   = workflowNeedsDecoration(wf);
-    const lockPrint  = workflowLocksPrint(wf);
-    const lockEmb    = workflowLocksEmbroidery(wf);
+    const prodWf     = prod.workflowType || coState.orderWorkflowType || 'default';
+    const isDirect   = workflowIsDirectFulfillment(prodWf);
+    const isFullVert = workflowIsFullVertical(prodWf);
+    const isCustom   = prodWf === 'custom';
+    const needsFab   = isCustom ? (prod.customStages?.includes('fabric') || prod.customStages?.includes('cutting') || prod.customStages?.includes('knitting')) : workflowNeedsFabric(prodWf);
+    const needsDec   = isCustom ? (prod.customStages?.includes('print_wash')) : workflowNeedsDecoration(prodWf);
+    const lockPrint  = workflowLocksPrint(prodWf);
+    const lockEmb    = workflowLocksEmbroidery(prodWf);
+
+    const activeWfPreset = WORKFLOW_PRESETS.find(w => w.key === prodWf) || {
+        key: prodWf,
+        label: prodWf === 'custom' ? 'Custom Route' : prodWf,
+        color: '#007AFF',
+        icon: 'alt_route',
+        pipeline: 'Custom Route'
+    };
 
     const isGeneral = prod.category === 'General';
     const isAdults  = prod.category === 'Adults';
@@ -1119,6 +1199,76 @@ function renderProductCard(prod, idx) {
             </div>
         </div>
 
+        <!-- ── Per-Product Workflow Route Selector Bar ────────────────────── -->
+        <div class="px-5 py-3.5 bg-surface-container/30 border-b border-outline-variant/50 flex flex-col gap-2.5">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+                <div class="flex items-center gap-2.5 flex-wrap">
+                    <div class="w-7 h-7 rounded-lg flex items-center justify-center shrink-0 shadow-2xs" style="background: ${activeWfPreset.color}18;">
+                        <span class="material-symbols-outlined text-[16px]" style="color:${activeWfPreset.color}">${activeWfPreset.icon}</span>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            <span class="text-[11px] font-extrabold uppercase tracking-wider text-secondary">Workflow:</span>
+                            <span class="text-[12px] font-extrabold px-2.5 py-0.5 rounded-md flex items-center gap-1 shadow-2xs" style="background: ${activeWfPreset.color}15; color: ${activeWfPreset.color}; border: 1px solid ${activeWfPreset.color}35;">
+                                ${activeWfPreset.label}
+                            </span>
+                            ${prodWf !== (coState.orderWorkflowType || 'default') ? '<span class="text-[10px] font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">Custom for this product</span>' : ''}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Inline Workflow Preset Dropdown -->
+                <div class="flex items-center gap-2 self-start sm:self-auto bg-surface-container/60 px-3 py-1.5 rounded-xl border border-outline-variant/60">
+                    <span class="material-symbols-outlined text-[16px] text-secondary">alt_route</span>
+                    <label class="text-[11px] font-bold text-secondary whitespace-nowrap">Change Route:</label>
+                    <select onchange="window.coSetProductWorkflow(${idx}, this.value)"
+                        class="bg-surface border border-outline-variant rounded-lg px-2 py-1 text-[12px] font-bold text-on-surface outline-none focus:ring-2 focus:ring-primary/20 cursor-pointer">
+                        ${WORKFLOW_PRESETS.map(w => `
+                            <option value="${w.key}" ${w.key === prodWf ? 'selected' : ''}>
+                                ${w.label}
+                            </option>
+                        `).join('')}
+                    </select>
+                </div>
+            </div>
+
+            <!-- Pipeline Flow Preview or Custom Stage Toggles -->
+            ${!isCustom ? `
+                <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar text-[11px] text-secondary/80 font-mono py-1">
+                    <span class="text-[10px] font-bold text-secondary uppercase tracking-wider shrink-0 font-sans">Pipeline:</span>
+                    ${(WORKFLOW_ROUTES[prodWf] || WORKFLOW_ROUTES.default).map((stKey, sIdx, arr) => `
+                        <span class="px-2 py-0.5 rounded bg-surface border border-outline-variant/60 text-on-surface text-[10px] font-bold shrink-0">
+                            ${STAGE_DEFINITIONS[stKey]?.shortLabel || STAGE_DEFINITIONS[stKey]?.label || stKey}
+                        </span>
+                        ${sIdx < arr.length - 1 ? '<span class="text-secondary/50 text-[10px]">→</span>' : ''}
+                    `).join('')}
+                </div>
+            ` : `
+                <div class="flex flex-col gap-2 pt-2 border-t border-outline-variant/30">
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-bold text-secondary uppercase tracking-wider">Select Factory Stages For This Product:</span>
+                        <span class="text-[11px] font-bold text-primary">${(prod.customStages || []).length} stages active</span>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+                        ${AVAILABLE_FACTORY_STAGES.map(st => {
+                            const isChecked = (prod.customStages || []).includes(st.key);
+                            return `
+                                <button type="button" onclick="window.coToggleProductCustomStage(${idx}, '${st.key}')"
+                                    class="p-2 rounded-xl border text-left flex items-center gap-1.5 transition-all text-[11px] font-bold ${
+                                        isChecked
+                                            ? 'border-primary bg-primary/10 text-primary shadow-2xs'
+                                            : 'border-outline-variant bg-surface text-secondary hover:border-outline'
+                                    }">
+                                    <span class="material-symbols-outlined text-[15px]">${isChecked ? 'check_box' : 'check_box_outline_blank'}</span>
+                                    <span class="truncate">${st.label}</span>
+                                </button>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            `}
+        </div>
+
         ${sizingHtml}
         ${fabricHtml}
         ${decorationHtml}
@@ -1157,7 +1307,8 @@ function renderPricingTable() {
     const wf = coState.orderWorkflowType;
 
     container.innerHTML = coState.products.map((prod, idx) => {
-        const isDirect = workflowIsDirectFulfillment(wf);
+        const prodWf   = prod.workflowType || wf || 'default';
+        const isDirect = workflowIsDirectFulfillment(prodWf);
         const qty      = isDirect
             ? prod.freeSizes.reduce((s, r) => s + (r.qty || 0), 0)
             : (prod.qty || 0);
@@ -1169,7 +1320,9 @@ function renderPricingTable() {
         const lineProfit = qty * (sp - cp);
 
         // Subtitle details
+        const wfPreset = WORKFLOW_PRESETS.find(w => w.key === prodWf);
         let subtitleParts = [`${qty.toLocaleString()} pcs`];
+        if (wfPreset) subtitleParts.push(wfPreset.label);
         if (!isDirect && prod.fabric.type) subtitleParts.push(`${prod.fabric.type}${prod.fabric.gsm ? ' ' + prod.fabric.gsm + ' GSM' : ''}`);
         if (prod.decorationType && prod.decorationType !== 'None') subtitleParts.push(prod.decorationType);
         if (isDirect && prod.sourceSupplier) subtitleParts.push(prod.sourceSupplier);
@@ -1228,13 +1381,13 @@ function renderPricingTable() {
 // ─── Financials Calculator ─────────────────────────────────────────────────────
 function calculateFinancials() {
     const wf = coState.orderWorkflowType;
-    const isDirect = workflowIsDirectFulfillment(wf);
 
     let grandRevenue  = 0;
     let totalCost     = 0;
     let totalQty      = 0;
 
     coState.products.forEach((prod, idx) => {
+        const isDirect = workflowIsDirectFulfillment(prod.workflowType || wf);
         const qty   = isDirect
             ? prod.freeSizes.reduce((s, r) => s + (r.qty || 0), 0)
             : (prod.qty || 0);
@@ -1319,34 +1472,36 @@ function buildWorkflowSummary() {
             </div>
             <div class="flex flex-col gap-4">
                 ${coState.products.map((prod, idx) => {
-                    const stages = WORKFLOW_ROUTES[coState.orderWorkflowType] || WORKFLOW_ROUTES.default;
+                    const prodWf = prod.workflowType || coState.orderWorkflowType || 'default';
+                    const stages = getProductWorkflowStages(prod, coState.orderWorkflowType);
+                    const wfInfo = WORKFLOW_CONFIG[prodWf] || WORKFLOW_PRESETS.find(w => w.key === prodWf) || { label: prodWf, color: '#5856D6' };
                     const stagePills = stages.map((stageKey, i) => {
-                        const def    = STAGE_DEFINITIONS[stageKey];
+                        const def    = STAGE_DEFINITIONS[stageKey] || { label: stageKey, shortLabel: stageKey, icon: 'circle', color: 'text-primary', bgColor: 'bg-primary/10', borderColor: 'border-primary/20' };
                         const isLast = i === stages.length - 1;
                         return `<div class="flex items-center gap-1">
                             <div class="flex flex-col items-center gap-0.5">
                                 <div class="w-8 h-8 rounded-full ${def.bgColor} ${def.borderColor} border flex items-center justify-center shrink-0">
                                     <span class="material-symbols-outlined text-[13px] ${def.color}">${def.icon}</span>
                                 </div>
-                                <span class="text-[8px] font-bold text-secondary uppercase whitespace-nowrap">${def.shortLabel}</span>
+                                <span class="text-[8px] font-bold text-secondary uppercase whitespace-nowrap">${def.shortLabel || def.label}</span>
                             </div>
                             ${!isLast ? `<span class="text-outline-variant/70 text-[12px] mb-4">→</span>` : ''}
                         </div>`;
                     }).join('');
 
-                    const isDirect = workflowIsDirectFulfillment(coState.orderWorkflowType);
+                    const isDirect = workflowIsDirectFulfillment(prodWf);
                     const qty = isDirect
                         ? prod.freeSizes.reduce((s, r) => s + (r.qty || 0), 0)
                         : (prod.qty || 0);
 
                     return `
                     <div class="bg-surface-container/40 rounded-xl p-3 border border-outline-variant/50">
-                        <div class="flex items-center gap-2 mb-2.5">
+                        <div class="flex items-center gap-2 mb-2.5 flex-wrap">
                             <span class="w-5 h-5 rounded-full bg-primary text-white text-[10px] font-extrabold flex items-center justify-center shrink-0">${idx + 1}</span>
                             <span class="text-[13px] font-bold text-on-surface">${prod.name || `Product #${idx+1}`}</span>
-                            <span class="text-[11px] text-secondary">${qty.toLocaleString()} pcs</span>
-                            <span class="ml-auto px-2 py-0.5 rounded-full bg-[#5856D6]/10 text-[#5856D6] text-[10px] font-bold border border-[#5856D6]/20">
-                                ${WORKFLOW_PRESETS.find(w => w.key === coState.orderWorkflowType)?.label || coState.orderWorkflowType}
+                            <span class="text-[11px] text-secondary font-semibold">• ${qty.toLocaleString()} pcs</span>
+                            <span class="ml-auto px-2.5 py-0.5 rounded-full text-[10px] font-extrabold" style="background: ${wfInfo.color}18; color: ${wfInfo.color}; border: 1px solid ${wfInfo.color}35;">
+                                ${wfInfo.label}
                             </span>
                         </div>
                         <div class="flex items-start gap-1 overflow-x-auto no-scrollbar pb-0.5">
@@ -1583,34 +1738,37 @@ window.coSaveOrder = async function(launchOption = 'orders_tower') {
     let totalQty     = 0;
 
     const lineItems = coState.products.map(prod => {
-        const qty    = isDirect ? prod.freeSizes.reduce((s, r) => s + (r.qty || 0), 0) : (prod.qty || 0);
-        const sp     = Number(prod.unitPrice) || 0;
-        const cp     = Number(prod.cp) || 0;
-        const stages = WORKFLOW_ROUTES[wf] || WORKFLOW_ROUTES.default;
+        const prodWf       = prod.workflowType || wf || 'default';
+        const isProdDirect = workflowIsDirectFulfillment(prodWf);
+        const qty          = isProdDirect ? prod.freeSizes.reduce((s, r) => s + (r.qty || 0), 0) : (prod.qty || 0);
+        const sp           = Number(prod.unitPrice) || 0;
+        const cp           = Number(prod.cp) || 0;
+        const stages       = getProductWorkflowStages(prod, wf);
 
         grandRevenue += qty * sp;
         totalCost    += qty * cp;
         totalQty     += qty;
 
         // Build sizes object from freeSizes for direct, or standard sizes
-        const sizesMap = isDirect
+        const sizesMap = isProdDirect
             ? prod.freeSizes.reduce((acc, r) => { if (r.label) acc[r.label] = r.qty || 0; return acc; }, {})
             : { ...prod.sizes };
 
         return {
             productId:      prod.id,
             productName:    prod.name.trim(),
-            workflowType:   wf,
+            workflowType:   prodWf,
+            customStages:   Array.isArray(prod.customStages) ? prod.customStages : [],
             workflowStages: stages,
             stageData: {
                 procurement: { status: 'Allotted' },
-                ...(!isDirect && prod.fabric.type ? {
+                ...(!isProdDirect && prod.fabric.type ? {
                     fabric: {
                         type:      prod.fabric.type,
                         subType:   prod.fabric.subtype,
                         gsm:       Number(prod.fabric.gsm) || 0,
                         dia:       Number(prod.fabric.dia)  || 0,
-                        ...(workflowIsFullVertical(wf) ? {
+                        ...(workflowIsFullVertical(prodWf) ? {
                             yarnCount: prod.fabric.yarnCount || '',
                             yarnBlend: prod.fabric.yarnBlend || ''
                         } : {})
@@ -1635,19 +1793,22 @@ window.coSaveOrder = async function(launchOption = 'orders_tower') {
     const initialDef    = STAGE_DEFINITIONS[initialStage] || { label: 'Procurement' };
 
     const productsData = coState.products.map(prod => {
-        const qty = isDirect ? prod.freeSizes.reduce((s, r) => s + (r.qty || 0), 0) : (prod.qty || 0);
-        const sizesMap = isDirect
+        const prodWf       = prod.workflowType || wf || 'default';
+        const isProdDirect = workflowIsDirectFulfillment(prodWf);
+        const qty          = isProdDirect ? prod.freeSizes.reduce((s, r) => s + (r.qty || 0), 0) : (prod.qty || 0);
+        const sizesMap     = isProdDirect
             ? prod.freeSizes.reduce((acc, r) => { if (r.label) acc[r.label] = r.qty || 0; return acc; }, {})
             : { ...prod.sizes };
         return {
             id:                  prod.id,
             name:                prod.name.trim(),
-            category:            isDirect ? 'General' : prod.category,
+            category:            isProdDirect ? 'General' : prod.category,
             qty,
             cp:                  Number(prod.cp) || 0,
             unitPrice:           Number(prod.unitPrice) || 0,
             status:              initialDef.label,
-            workflowType:        wf,
+            workflowType:        prodWf,
+            customStages:        Array.isArray(prod.customStages) ? prod.customStages : [],
             sizes:               sizesMap,
             fabric:              { ...prod.fabric },
             decorationType:      prod.decorationType      || '',

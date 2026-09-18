@@ -318,41 +318,67 @@ export const api = {
 
     // -- ORDERS --
     
+    async generateNextOrderId() {
+        const year = new Date().getFullYear();
+        const prefix = `ORD-${year}-`;
+        let maxSeq = 0;
+        try {
+            const existing = await db.getAll('orders');
+            if (Array.isArray(existing)) {
+                for (const o of existing) {
+                    const id = o.id || '';
+                    if (id.startsWith(prefix)) {
+                        const seqStr = id.slice(prefix.length);
+                        const seqNum = parseInt(seqStr, 10);
+                        if (!isNaN(seqNum) && seqNum > maxSeq) {
+                            maxSeq = seqNum;
+                        }
+                    }
+                }
+            }
+        } catch (e) {}
+        const nextSeq = maxSeq + 1;
+        return `${prefix}${String(nextSeq).padStart(4, '0')}`;
+    },
+
     async saveOrder(orderData) {
         if (orderData.id) {
             // Update
             const existing = await db.getById('orders', orderData.id);
-            if (!existing.timeline) existing.timeline = [];
-            existing.timeline.unshift({
-                id: `t-${Date.now()}`,
-                date: new Date().toISOString().split('T')[0],
-                title: 'Order Details Edited',
-                user: 'System',
-                type: 'action'
-            });
-            const updates = { ...orderData, timeline: existing.timeline };
-            delete updates._id; // avoid Mongo immutable _id error
-            return await db.update('orders', orderData.id, updates);
-        } else {
-            // Create
-            const newOrder = {
-                id: `ORD-${Math.floor(1000 + Math.random() * 9000)}`,
-                ...orderData,
-                status: orderData.status || "Draft",
-                statusColor: "bg-surface-variant text-secondary",
-                dateMonth: new Date().toLocaleString('default', { month: 'short' }),
-                dateDay: new Date().getDate().toString(),
-                incurredCost: 0,
-                timeline: [{
+            if (existing) {
+                if (!existing.timeline) existing.timeline = [];
+                existing.timeline.unshift({
                     id: `t-${Date.now()}`,
                     date: new Date().toISOString().split('T')[0],
-                    title: 'Order Created',
+                    title: 'Order Details Edited',
                     user: 'System',
                     type: 'action'
-                }]
-            };
-            return await db.insert('orders', newOrder);
+                });
+                const updates = { ...orderData, timeline: existing.timeline };
+                delete updates._id; // avoid Mongo immutable _id error
+                return await db.update('orders', orderData.id, updates);
+            }
         }
+
+        // Create
+        const orderId = orderData.id || (await this.generateNextOrderId());
+        const newOrder = {
+            ...orderData,
+            id: orderId,
+            status: orderData.status || "Draft",
+            statusColor: "bg-surface-variant text-secondary",
+            dateMonth: new Date().toLocaleString('default', { month: 'short' }),
+            dateDay: new Date().getDate().toString(),
+            incurredCost: 0,
+            timeline: [{
+                id: `t-${Date.now()}`,
+                date: new Date().toISOString().split('T')[0],
+                title: 'Order Created',
+                user: 'System',
+                type: 'action'
+            }]
+        };
+        return await db.insert('orders', newOrder);
     },
 
     async updateOrder(orderId, updates) {
@@ -380,9 +406,10 @@ export const api = {
         const original = await db.getById('orders', orderId);
         if (!original) throw new Error("Order not found");
         
+        const newId = await this.generateNextOrderId();
         const duplicate = {
             ...original,
-            id: `ORD-${Math.floor(1000 + Math.random() * 9000)}`,
+            id: newId,
             status: "Draft",
             statusColor: "bg-surface-variant text-secondary",
             progressPercentage: 0,

@@ -48,9 +48,37 @@ class OrderStore extends BaseStore {
         }
     }
 
+    async generateNextOrderId() {
+        const year = new Date().getFullYear();
+        const prefix = `ORD-${year}-`;
+        let maxSeq = 0;
+        try {
+            const orders = await orderRepository.getAll();
+            if (Array.isArray(orders)) {
+                for (const o of orders) {
+                    const id = o.id || '';
+                    if (id.startsWith(prefix)) {
+                        const seqStr = id.slice(prefix.length);
+                        const seqNum = parseInt(seqStr, 10);
+                        if (!isNaN(seqNum) && seqNum > maxSeq) {
+                            maxSeq = seqNum;
+                        }
+                    }
+                }
+            }
+        } catch (e) {
+            console.error('Failed to calculate max order sequence:', e);
+        }
+        const nextSeq = maxSeq + 1;
+        return `${prefix}${String(nextSeq).padStart(4, '0')}`;
+    }
+
     async create(data) {
         // Ensure JSON fields are serialised for storage
         const payload = { ...data };
+        if (!payload.id) {
+            payload.id = await this.generateNextOrderId();
+        }
         if (payload.stageData && typeof payload.stageData === 'object') {
             payload.stageData = JSON.stringify(payload.stageData);
         }

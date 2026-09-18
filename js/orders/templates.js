@@ -1,7 +1,15 @@
 import { api } from '../services/api.js?v=5.2';
 import { SelectInput, TextInput, TextareaInput } from '../components/inputs.js?v=5.2';
 import { BottomSheet } from '../components/index.js?v=5.2';
-import { calculateOrderRollup, STAGE_DEFINITIONS, normalizeStageKey, getProductWorkflowStages, WORKFLOW_ROUTES } from '../production/domain/workflowEngine.js?v=5.5';
+import {
+    calculateOrderRollup,
+    STAGE_DEFINITIONS,
+    normalizeStageKey,
+    getProductWorkflowStages,
+    WORKFLOW_ROUTES,
+    WORKFLOW_CONFIG,
+    getWorkflowBadgeInfo
+} from '../production/domain/workflowEngine.js?v=6.0';
 
 export async function getOrderSheetsHTML() {
     let customers = [];
@@ -508,15 +516,20 @@ function renderProductsMatrixTab(order) {
                 const initialStage = pStages[0] || 'procurement';
                 const currentNormStage = normalizeStageKey(p.status || initialStage);
                 const stageDef = STAGE_DEFINITIONS[currentNormStage] || STAGE_DEFINITIONS[initialStage] || STAGE_DEFINITIONS.procurement;
+                const wfInfo = getWorkflowBadgeInfo(pWf);
 
                 return `
-                    <div class="bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant shadow-sm">
-                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3 pb-3 border-b border-outline-variant/40">
+                    <div class="bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant shadow-sm flex flex-col gap-3">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-outline-variant/40">
                             <div>
                                 <h4 class="text-[16px] font-bold text-on-surface">${p.name}</h4>
-                                <div class="flex items-center gap-2 mt-1">
+                                <div class="flex items-center gap-2 mt-1 flex-wrap">
                                     <span class="text-[11px] font-bold text-secondary uppercase tracking-wide bg-surface-variant px-2 py-0.5 rounded-md">${p.category || 'Adults'}</span>
                                     <span class="text-[12px] font-bold text-on-surface">${p.qty || 0} pcs</span>
+                                    <span class="inline-flex items-center gap-1 text-[11px] font-extrabold ${wfInfo.color} ${wfInfo.bgColor} px-2.5 py-0.5 rounded-md border ${wfInfo.borderColor}">
+                                        <span class="material-symbols-outlined text-[13px]">${wfInfo.icon}</span>
+                                        ${wfInfo.label}
+                                    </span>
                                     <span class="inline-flex items-center gap-1 text-[11px] font-bold ${stageDef.color} ${stageDef.bgColor} px-2 py-0.5 rounded-md">
                                         <span class="material-symbols-outlined text-[13px]">${stageDef.icon}</span>
                                         ${stageDef.label}
@@ -530,7 +543,33 @@ function renderProductsMatrixTab(order) {
                                 <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
                             </button>
                         </div>
+
                         ${sizesContentHtml}
+
+                        <!-- Visual Route Pipeline Preview -->
+                        <div class="pt-2 border-t border-outline-variant/30 flex items-center gap-1.5 overflow-x-auto no-scrollbar py-1">
+                            <span class="text-[10px] font-bold text-secondary uppercase tracking-wider shrink-0 mr-1">Route:</span>
+                            ${pStages.map((stKey, sIdx) => {
+                                const def = STAGE_DEFINITIONS[stKey] || { label: stKey, shortLabel: stKey, icon: 'circle' };
+                                const isCurrent = stKey === currentNormStage;
+                                const isPast = pStages.indexOf(currentNormStage) > sIdx;
+                                return `
+                                    <div class="flex items-center gap-1 shrink-0">
+                                        <span class="px-2 py-0.5 rounded-lg text-[10px] font-bold flex items-center gap-1 ${
+                                            isCurrent
+                                                ? 'bg-primary text-white shadow-xs font-extrabold ring-2 ring-primary/20'
+                                                : isPast
+                                                    ? 'bg-[#34C759]/15 text-[#34C759] border border-[#34C759]/30'
+                                                    : 'bg-surface-container text-secondary border border-outline-variant/50'
+                                        }">
+                                            ${isPast ? '<span class="material-symbols-outlined text-[10px]">check</span>' : ''}
+                                            ${def.shortLabel || def.label}
+                                        </span>
+                                        ${sIdx < pStages.length - 1 ? '<span class="material-symbols-outlined text-[11px] text-outline">chevron_right</span>' : ''}
+                                    </div>
+                                `;
+                            }).join('')}
+                        </div>
                     </div>
                 `;
             }).join('')}
@@ -760,22 +799,16 @@ function renderPrintDocsTab(order) {
 
 // ─── Production Data Tab ──────────────────────────────────────────────────────
 function renderProductionDataTab(order) {
-    const primaryProd = (Array.isArray(order.products) && order.products.length > 0)
-        ? order.products[0]
-        : null;
+    const products = (Array.isArray(order.products) && order.products.length > 0)
+        ? order.products
+        : [{ name: order.product || 'Garment Item', workflowType: order.workflowType || 'default' }];
+    const primaryProd = products[0];
     const workflowType = primaryProd?.workflowType || order.workflowType || 'default';
     const stageKeys = getProductWorkflowStages(primaryProd, workflowType);
     const rollup = calculateOrderRollup(order);
-
-    const WORKFLOW_TITLES = {
-        default: 'Standard Knits (Fabric → Cut → Stitch → Print → Pack)',
-        print_before_stitch: 'Print-First Route (Print Cut Panels Before Sewing)',
-        wash_before_stitch: 'Panel-Wash Route (Pre-Wash Panels Before Assembly)',
-        stitch_before_embroidery: 'Post-Assembly Embellishment',
-        direct_fulfillment: 'Trading / Direct Fulfillment (Source & Dispatch)',
-        full_vertical: 'Full Vertical Integration (Yarn → Winding → Knitting → Dyeing → Cut → Stitch)'
-    };
-    const wfName = WORKFLOW_TITLES[workflowType] || workflowType.replace(/_/g, ' ');
+    const uniqueWorkflows = [...new Set(products.map(p => p.workflowType || order.workflowType || 'default'))];
+    const isMixedWorkflow = uniqueWorkflows.length > 1;
+    const primaryWfInfo = getWorkflowBadgeInfo(workflowType);
 
     const stagesList = stageKeys.map(key => {
         const def = STAGE_DEFINITIONS[key] || {
@@ -791,16 +824,42 @@ function renderProductionDataTab(order) {
         };
     });
 
+    const workflowHeaderHtml = isMixedWorkflow ? `
+        <div class="flex flex-col gap-1.5">
+            <div class="flex items-center gap-2">
+                <span class="text-[11px] font-bold text-secondary uppercase tracking-wider">Order Workflow Setup:</span>
+                <span class="px-2 py-0.5 rounded text-[10px] font-extrabold bg-amber-500/10 text-amber-600 border border-amber-500/20">Mixed Product Routes (${uniqueWorkflows.length})</span>
+            </div>
+            <div class="flex items-center gap-1.5 flex-wrap mt-0.5">
+                ${products.map(p => {
+                    const pWf = p.workflowType || order.workflowType || 'default';
+                    const wfInfo = getWorkflowBadgeInfo(pWf);
+                    return `
+                        <span class="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-md ${wfInfo.bgColor} ${wfInfo.color} border ${wfInfo.borderColor}">
+                            <span class="material-symbols-outlined text-[11px]">${wfInfo.icon}</span>
+                            <strong>${p.name}:</strong> ${wfInfo.shortLabel || wfInfo.label}
+                        </span>
+                    `;
+                }).join('')}
+            </div>
+        </div>
+    ` : `
+        <div class="flex items-center gap-2">
+            <span class="text-[11px] font-bold text-secondary uppercase tracking-wider">Workflow Route:</span>
+            <span class="inline-flex items-center gap-1 text-[11px] font-extrabold ${primaryWfInfo.bgColor} ${primaryWfInfo.color} px-2.5 py-0.5 rounded-md border ${primaryWfInfo.borderColor}">
+                <span class="material-symbols-outlined text-[13px]">${primaryWfInfo.icon}</span>
+                ${primaryWfInfo.label}
+            </span>
+        </div>
+    `;
+
     return `
         <div class="flex flex-col gap-4">
             <!-- Header Status -->
             <div class="bg-surface-container-lowest border border-outline-variant rounded-2xl p-4 shadow-sm">
-                <div class="flex items-center justify-between mb-3">
-                    <div class="flex items-center gap-2">
-                        <span class="text-[11px] font-bold text-secondary uppercase tracking-wider">Workflow Route:</span>
-                        <span class="px-2.5 py-1 rounded-md text-[11px] font-bold bg-primary/10 text-primary capitalize">${wfName}</span>
-                    </div>
-                    <span class="text-[13px] font-bold text-primary">${rollup.overallPercentage}% Complete</span>
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
+                    ${workflowHeaderHtml}
+                    <span class="text-[13px] font-bold text-primary shrink-0">${rollup.overallPercentage}% Complete</span>
                 </div>
                 <div class="w-full h-2 rounded-full bg-surface-variant overflow-hidden mb-3">
                     <div class="h-full bg-primary rounded-full" style="width: ${rollup.overallPercentage}%"></div>
