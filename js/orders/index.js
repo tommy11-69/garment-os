@@ -569,44 +569,14 @@ window.submitNewOrder = async function() {
     }
 }
 
-window.openEditOrder = function() {
-    if (!activeOrder) return;
-    document.getElementById('edit-product').value = activeOrder.product || '';
-    document.getElementById('edit-qty').value = activeOrder.qty || '';
-    document.getElementById('edit-price').value = (activeOrder.value / (activeOrder.qty || 1)) || '';
-    document.getElementById('edit-priority').value = activeOrder.priority || 'Normal';
-    document.getElementById('edit-delivery').value = activeOrder.deliveryDate || '';
-    
-    window.closeSheet('orderDetailsSheet');
-    window.openSheet('editOrderSheet');
-}
-
-window.submitEditOrder = async function() {
-    if (!activeOrder) return;
-    const product = document.getElementById('edit-product').value;
-    const qty = parseInt(document.getElementById('edit-qty').value) || activeOrder.qty;
-    const unitPrice = parseFloat(document.getElementById('edit-price').value) || 0;
-    const priority = document.getElementById('edit-priority').value;
-    const deliveryDate = document.getElementById('edit-delivery').value;
-
-    const updates = {
-        product,
-        qty,
-        priority,
-        deliveryDate,
-        value: (qty * unitPrice)
-    };
-
-    try {
-        await api.updateOrder(activeOrder.id, updates);
-        window.showToast?.('Order updated', 'success');
-        window.closeSheet('editOrderSheet');
-        await loadOrders();
-        window.openOrderDetails(activeOrder.id);
-    } catch (e) {
-        window.showToast?.('Failed to update', 'error');
+window.openEditOrder = function(orderId) {
+    const id = orderId || activeOrder?.id;
+    if (!id) {
+        window.showToast?.('No order selected to edit', 'error');
+        return;
     }
-}
+    window.location.href = `create-order.html?edit=${encodeURIComponent(id)}`;
+};
 
 window.deleteOrder = async function () {
     if (!activeOrder) return;

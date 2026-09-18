@@ -208,10 +208,176 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Bind advance payment listener
     qs('co-advance-payment')?.addEventListener('input', calculateFinancials);
 
-    // Initial renders
+    // Check for ?edit=ORD-XXXX or ?orderId=ORD-XXXX
+    const urlParams = new URLSearchParams(window.location.search);
+    const editOrderId = urlParams.get('edit') || urlParams.get('orderId') || urlParams.get('id');
+
+    if (editOrderId) {
+        try {
+            await loadExistingOrderForEdit(editOrderId);
+        } catch (err) {
+            console.error('Failed to load order for edit:', err);
+            showToast('Failed to load order for editing', 'error');
+        }
+    } else {
+        // Initial renders
+        calculateFinancials();
+        renderStep();
+    }
+});
+
+// ─── Load Existing Order for Editing ─────────────────────────────────────────
+async function loadExistingOrderForEdit(orderId) {
+    let order = null;
+    try {
+        order = await api.getOrderById(orderId);
+    } catch (e) {
+        const all = await api.getOrders().catch(() => []);
+        order = all.find(o => o.id === orderId);
+    }
+
+    if (!order) {
+        showToast(`Order "${orderId}" not found`, 'error');
+        calculateFinancials();
+        renderStep();
+        return;
+    }
+
+    coState.editingOrderId = orderId;
+    coState.editingOrder   = order;
+
+    // Update Header / UI Title
+    const titleEl = qs('co-page-title');
+    if (titleEl) titleEl.textContent = `Edit Apparel Order (${orderId})`;
+    document.title = `Garment OS - Edit Order ${orderId}`;
+
+    const saveHeaderBtn = qs('co-header-save-btn');
+    if (saveHeaderBtn) {
+        saveHeaderBtn.innerHTML = `<span class="material-symbols-outlined text-[16px]">save</span> <span>Save Changes</span>`;
+    }
+
+    // Set Priority
+    coState.priority = order.priority || 'Normal';
+    window.coSetPriority(coState.priority);
+
+    // Set Workflow Type
+    const wf = order.orderWorkflowType || order.workflowType || (order.products?.[0]?.workflowType) || 'default';
+    coState.orderWorkflowType = wf;
+
+    // Reconstruct Products array
+    if (Array.isArray(order.products) && order.products.length > 0) {
+        coState.products = order.products.map((p, i) => {
+            const def = makeDefaultProduct(i + 1);
+            const sizes = (typeof p.sizes === 'object' && p.sizes !== null) ? { ...def.sizes, ...p.sizes } : def.sizes;
+            const freeSizes = Array.isArray(p.freeSizes) && p.freeSizes.length > 0
+                ? p.freeSizes
+                : (typeof p.sizes === 'object' && p.sizes !== null && Object.keys(p.sizes).length > 0
+                    ? Object.entries(p.sizes).map(([label, qty]) => ({ label, qty: Number(qty) || 0 }))
+                    : def.freeSizes);
+
+            const pQty = Number(p.qty) || 0;
+            const pCp = p.cp !== undefined && p.cp !== null && p.cp !== '' ? p.cp : (order.qty ? Math.round((order.incurredCost || 0) / order.qty) : '');
+            const pSp = p.unitPrice !== undefined && p.unitPrice !== null && p.unitPrice !== '' ? p.unitPrice : (order.qty ? Math.round((order.value || 0) / order.qty) : '');
+
+            return {
+                id: p.id || `prod-${Date.now()}-${i + 1}`,
+                name: p.name || order.product || '',
+                category: p.category || 'Adults',
+                qty: pQty,
+                sizes,
+                freeSizes,
+                fabric: {
+                    type: p.fabric?.type || (typeof order.fabric === 'string' ? order.fabric.split(' ')[0] : '') || 'Cotton',
+                    subtype: p.fabric?.subtype || p.fabric?.subType || '',
+                    gsm: p.fabric?.gsm || '',
+                    dia: p.fabric?.dia || '',
+                    yarnCount: p.fabric?.yarnCount || '',
+                    yarnBlend: p.fabric?.yarnBlend || ''
+                },
+                decorationType: p.decorationType || '',
+                decorationPlacement: p.decorationPlacement || '',
+                decorationColors: p.decorationColors || '',
+                sourceSupplier: p.sourceSupplier || '',
+                sourceRef: p.sourceRef || '',
+                sourceColor: p.sourceColor || '',
+                sourceNotes: p.sourceNotes || '',
+                cp: pCp,
+                unitPrice: pSp
+            };
+        });
+    } else {
+        const def = makeDefaultProduct(1);
+        const sizes = (typeof order.sizes === 'object' && order.sizes !== null)
+            ? { ...def.sizes, ...order.sizes }
+            : def.sizes;
+        const freeSizes = (typeof order.sizes === 'object' && order.sizes !== null && Object.keys(order.sizes).length > 0)
+            ? Object.entries(order.sizes).map(([label, qty]) => ({ label, qty: Number(qty) || 0 }))
+            : (typeof order.sizes === 'string' && order.sizes.trim()
+                ? order.sizes.split(',').map(s => {
+                    const parts = s.trim().split(':');
+                    return { label: parts[0]?.trim() || 'S', qty: Number(parts[1]?.trim()) || 0 };
+                })
+                : def.freeSizes);
+
+        const oQty = Number(order.qty) || 0;
+        const oVal = Number(order.value) || 0;
+        const oCost = Number(order.incurredCost) || 0;
+        const unitPrice = oQty > 0 ? Number((oVal / oQty).toFixed(2)) : '';
+        const cp = oQty > 0 ? Number((oCost / oQty).toFixed(2)) : '';
+
+        coState.products = [{
+            id: `prod-${Date.now()}-1`,
+            name: order.product || '',
+            category: 'Adults',
+            qty: oQty,
+            sizes,
+            freeSizes,
+            fabric: {
+                type: (typeof order.fabric === 'string' ? order.fabric.split(' ')[0] : '') || 'Cotton',
+                subtype: '',
+                gsm: '',
+                dia: '',
+                yarnCount: '',
+                yarnBlend: ''
+            },
+            decorationType: '',
+            decorationPlacement: '',
+            decorationColors: '',
+            sourceSupplier: '',
+            sourceRef: '',
+            sourceColor: '',
+            sourceNotes: '',
+            cp,
+            unitPrice
+        }];
+    }
+
+    // Pre-fill Step 1 inputs
+    const custSel = qs('co-customer');
+    if (custSel) {
+        custSel.value = order.customerId || '';
+    }
+    const poInput = qs('co-customer-po');
+    if (poInput) poInput.value = order.customerPO || order.poNumber || '';
+
+    const delInput = qs('co-delivery');
+    if (delInput && order.deliveryDate) delInput.value = order.deliveryDate;
+
+    const termsInput = qs('co-payment-terms');
+    if (termsInput && order.paymentTerms) termsInput.value = order.paymentTerms;
+
+    const notesInput = qs('co-order-notes');
+    if (notesInput && (order.notes || order.instructions)) notesInput.value = order.notes || order.instructions;
+
+    const advInput = qs('co-advance-payment');
+    if (advInput && order.paymentReceived !== undefined) advInput.value = order.paymentReceived;
+
+    renderWorkflowPicker();
+    renderProducts();
     calculateFinancials();
     renderStep();
-});
+    showToast(`Loaded order ${orderId} for editing`, 'info');
+}
 
 // ─── Customers Dropdown ───────────────────────────────────────────────────────
 function populateCustomers() {
@@ -1531,8 +1697,52 @@ window.coSaveOrder = async function(launchOption = 'orders_tower') {
 
     try {
         const saveBtn = qs('co-header-save-btn');
-        if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving...'; }
+        if (saveBtn) { 
+            saveBtn.disabled = true; 
+            saveBtn.textContent = coState.editingOrderId ? 'Saving Changes...' : 'Saving...'; 
+        }
 
+        if (coState.editingOrderId) {
+            // Edit Mode: Update existing order
+            const existing = coState.editingOrder || {};
+            const updatedOrderData = {
+                ...existing,
+                ...orderData,
+                id: coState.editingOrderId,
+                updatedAt: new Date().toISOString(),
+                timeline: [
+                    {
+                        status: 'Order Details Updated via Wizard',
+                        date:   new Date().toISOString(),
+                        user:   'Merchandiser'
+                    },
+                    ...(Array.isArray(existing.timeline) ? existing.timeline : [])
+                ]
+            };
+
+            // Preserve current progress and status if order has already started production
+            if (existing.status && existing.status !== 'Draft') {
+                updatedOrderData.status = existing.status;
+                updatedOrderData.progressPercentage = existing.progressPercentage;
+                updatedOrderData.progressLabel = existing.progressLabel;
+            }
+
+            await orderStore.updateOrder(coState.editingOrderId, updatedOrderData);
+            showToast(`Order ${coState.editingOrderId} successfully updated!`, 'success');
+
+            setTimeout(() => {
+                if (launchOption === 'launch_floor') {
+                    window.location.href = `production.html?orderId=${coState.editingOrderId}&stage=${initialStage}`;
+                } else if (launchOption === 'print_traveler') {
+                    window.location.href = `orders.html?orderId=${coState.editingOrderId}&print=traveler`;
+                } else {
+                    window.location.href = `orders.html?orderId=${coState.editingOrderId}`;
+                }
+            }, 700);
+            return;
+        }
+
+        // Create Mode: Create new order
         const createdOrder = await orderStore.create(orderData);
         const orderId      = createdOrder?.id || orderData.id;
 
@@ -1549,9 +1759,12 @@ window.coSaveOrder = async function(launchOption = 'orders_tower') {
         }, 800);
     } catch (err) {
         console.error('Failed to save order:', err);
-        showToast('Failed to save order. Please check required fields.', 'error');
+        showToast(coState.editingOrderId ? 'Failed to update order. Please check required fields.' : 'Failed to save order. Please check required fields.', 'error');
         const saveBtn = qs('co-header-save-btn');
-        if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = 'Save Order'; }
+        if (saveBtn) { 
+            saveBtn.disabled = false; 
+            saveBtn.textContent = coState.editingOrderId ? 'Save Changes' : 'Save Order'; 
+        }
     }
 };
 

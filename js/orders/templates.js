@@ -93,15 +93,85 @@ export async function getOrderSheetsHTML() {
         <button id="wizard-next-btn" type="button" onclick="window.goToOrderStep(1)" class="flex-1 bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active-scale transition-apple shadow-sm">Next Step</button>
         <button id="create-order-submit" type="button" onclick="window.submitNewOrder()" class="hidden flex-1 bg-[#008A00] text-white font-bold text-[16px] py-4 rounded-2xl active-scale transition-apple shadow-sm">Save Order</button>`;
 
-    const editOrderContent = `<div class="flex flex-col gap-4">
-        ${TextInput({ label: 'Product Name', id: 'edit-product' })}
-        ${TextInput({ label: 'Total Quantity', id: 'edit-qty', type: 'number' })}
-        ${TextInput({ label: 'Unit Price (₹)', id: 'edit-price', type: 'number' })}
-        ${SelectInput({ label: 'Priority', id: 'edit-priority', options: [{label:'Normal', value:'Normal'},{label:'High', value:'High'},{label:'Urgent', value:'Urgent'}] })}
-        ${TextInput({ label: 'Delivery Date', id: 'edit-delivery', type: 'date' })}
-    </div><div class="h-10"></div>`;
+    const workflowOptions = [
+        {label: 'Standard Knits (Fabric → Cut → Stitch → Print → Pack)', value: 'default'},
+        {label: 'Print Panels First (Cut → Print → Stitch → Pack)', value: 'print_before_stitch'},
+        {label: 'Garment Wash (Cut → Stitch → Wash → Pack)', value: 'wash_before_stitch'},
+        {label: 'Stitch First, Embroidery Later', value: 'stitch_before_embroidery'},
+        {label: 'Direct Fulfillment / Trading (Procure → Dispatch)', value: 'direct_fulfillment'}
+    ];
 
-    const editOrderFooter = `<button id="edit-order-submit" type="button" onclick="window.submitEditOrder()" class="w-full bg-primary text-on-primary font-bold text-[16px] py-4 rounded-2xl active-scale transition-apple shadow-sm">Save Changes</button>`;
+    const editOrderContent = `<form id="edit-order-form" onsubmit="event.preventDefault(); window.submitEditOrder();">
+        <div class="flex flex-col gap-4">
+            <input type="hidden" id="edit-order-id" value="">
+            
+            <!-- Buyer / Customer -->
+            <div class="bg-surface-variant/20 p-3.5 rounded-2xl border border-outline-variant/60">
+                <span class="text-[12px] font-bold text-secondary uppercase tracking-wider block mb-2">1. Buyer Information</span>
+                ${SelectInput({ label: 'Customer / Buyer *', id: 'edit-customer-select', options: customerOptions })}
+                <div class="mt-3">
+                    ${TextInput({ label: 'Buyer PO / Reference Number', id: 'edit-customer-po', placeholder: 'e.g. PO-2026-9901' })}
+                </div>
+            </div>
+
+            <!-- Product Specs -->
+            <div class="bg-surface-variant/20 p-3.5 rounded-2xl border border-outline-variant/60">
+                <span class="text-[12px] font-bold text-secondary uppercase tracking-wider block mb-2">2. Garment & Specifications</span>
+                <div class="flex flex-col gap-3">
+                    ${TextInput({ label: 'Product / Style Name *', id: 'edit-product', placeholder: 'e.g. Classic Polo T-Shirt' })}
+                    ${TextInput({ label: 'Fabric / Material Specs', id: 'edit-fabric', placeholder: 'e.g. 100% Combed Cotton 220 GSM' })}
+                    <div class="grid grid-cols-2 gap-3">
+                        ${TextInput({ label: 'Sizes Breakdown', id: 'edit-sizes', placeholder: 'e.g. S, M, L, XL, XXL' })}
+                        ${TextInput({ label: 'Colors', id: 'edit-colors', placeholder: 'e.g. Navy, White' })}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Pricing & Commercials -->
+            <div class="bg-surface-variant/20 p-3.5 rounded-2xl border border-outline-variant/60">
+                <span class="text-[12px] font-bold text-secondary uppercase tracking-wider block mb-2">3. Commercials & Quantity</span>
+                <div class="grid grid-cols-2 gap-3 mb-3">
+                    ${TextInput({ label: 'Total Quantity (pcs) *', id: 'edit-qty', type: 'number', placeholder: '0' })}
+                    ${TextInput({ label: 'Unit Price (₹) *', id: 'edit-price', type: 'number', placeholder: '0.00' })}
+                </div>
+                <div class="bg-surface-container-lowest p-3 rounded-xl border border-outline-variant/60 flex justify-between items-center">
+                    <span class="text-[13px] text-secondary font-medium">Calculated Order Value</span>
+                    <span id="calc-edit-grandtotal" class="text-[18px] font-bold text-primary">₹0.00</span>
+                </div>
+            </div>
+
+            <!-- Routing, Schedule & Status -->
+            <div class="bg-surface-variant/20 p-3.5 rounded-2xl border border-outline-variant/60">
+                <span class="text-[12px] font-bold text-secondary uppercase tracking-wider block mb-2">4. Floor Routing & Timeline</span>
+                <div class="grid grid-cols-2 gap-3 mb-3">
+                    ${SelectInput({ label: 'Order Status', id: 'edit-status', options: statusOptions })}
+                    ${SelectInput({ label: 'Priority', id: 'edit-priority', options: [{label:'Normal', value:'Normal'},{label:'High', value:'High'},{label:'Urgent', value:'Urgent'}] })}
+                </div>
+                <div class="mb-3">
+                    ${SelectInput({ label: 'Workflow Route Preset', id: 'edit-workflow', options: workflowOptions })}
+                </div>
+                ${TextInput({ label: 'Delivery Deadline Date', id: 'edit-delivery', type: 'date' })}
+            </div>
+
+            <!-- Notes & Handling Instructions -->
+            <div class="bg-surface-variant/20 p-3.5 rounded-2xl border border-outline-variant/60">
+                <span class="text-[12px] font-bold text-secondary uppercase tracking-wider block mb-2">5. Handling & Packaging Notes</span>
+                ${TextareaInput({ label: 'Packing & Delivery Notes', id: 'edit-notes', placeholder: 'e.g. Export polybag packaging, 50 pcs per carton...' })}
+            </div>
+        </div>
+    </form><div class="h-10"></div>`;
+
+    const editOrderFooter = `
+        <div class="flex gap-3 w-full">
+            <button type="button" onclick="window.closeSheet('editOrderSheet'); if (activeOrder) window.openOrderDetails(activeOrder.id);" class="flex-1 bg-surface-variant text-on-surface font-semibold text-[15px] py-3.5 rounded-2xl active-scale transition-apple">
+                Cancel
+            </button>
+            <button id="edit-order-submit" type="button" onclick="window.submitEditOrder()" class="flex-1 bg-primary text-on-primary font-bold text-[15px] py-3.5 rounded-2xl active-scale transition-apple shadow-sm flex items-center justify-center gap-2">
+                <span class="material-symbols-outlined text-[18px]">save</span>
+                <span>Save Changes</span>
+            </button>
+        </div>
+    `;
 
     const filterOrderContent = `<div class="flex flex-col gap-4">
         ${SelectInput({ label: 'Status', id: 'filter-status', options: [{label: 'All', value: ''}, ...statusOptions] })}
@@ -121,7 +191,7 @@ export async function getOrderSheetsHTML() {
     return `
         <div id="fabActionSheetContainer">${BottomSheet({ id: 'fabActionSheet', title: 'Order Actions', content: fabActionContent, height: 'auto' })}</div>
         <div id="createOrderSheetContainer">${BottomSheet({ id: 'createOrderSheet', title: 'Create Order', content: createOrderContent, footerContent: createOrderFooter })}</div>
-        <div id="editOrderSheetContainer">${BottomSheet({ id: 'editOrderSheet', title: 'Edit Order', content: editOrderContent, footerContent: editOrderFooter, height: 'auto' })}</div>
+        <div id="editOrderSheetContainer">${BottomSheet({ id: 'editOrderSheet', title: 'Edit Order', content: editOrderContent, footerContent: editOrderFooter, height: '90vh' })}</div>
         <div id="filterOrderSheetContainer">${BottomSheet({ id: 'filterOrderSheet', title: 'Filter Orders', content: filterOrderContent, footerContent: filterOrderFooter, height: 'auto' })}</div>
         <div id="logPaymentSheetContainer">${BottomSheet({ id: 'logPaymentSheet', title: 'Log Payment', content: logPaymentContent, footerContent: logPaymentFooter, height: 'auto' })}</div>
         <div id="orderDetailsSheetContainer">${BottomSheet({ id: 'orderDetailsSheet', customHeader: '<div class="sheet-custom-header"></div>', content: '<div id="orderDetailsSheet-inner-content"></div>', height: '95vh' })}</div>
@@ -168,7 +238,7 @@ export function getOrderDetailsHeader(order) {
                     <h2 class="text-[18px] font-bold text-on-surface line-clamp-1 mt-0.5">${headerTitle}</h2>
                 </div>
                 <div class="flex gap-2 shrink-0">
-                    <button onclick="window.openEditOrder()" class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-secondary active-scale transition-apple"><span class="material-symbols-outlined text-[18px]">edit</span></button>
+                    <button onclick="window.openEditOrder('${order.id}')" class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-secondary active-scale transition-apple" title="Edit Order"><span class="material-symbols-outlined text-[18px]">edit</span></button>
                     <button onclick="window.showConfirmation({title: 'Delete Order?', message: 'Are you sure you want to delete this order?', confirmText: 'Delete', type: 'danger', onConfirm: window.deleteOrder})" class="w-8 h-8 rounded-full bg-error-container/30 flex items-center justify-center text-error active-scale transition-apple"><span class="material-symbols-outlined text-[18px]">delete</span></button>
                     <button onclick="window.closeSheet('orderDetailsSheet')" class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-secondary active-scale transition-apple"><span class="material-symbols-outlined text-[20px]">close</span></button>
                 </div>
@@ -252,7 +322,13 @@ export function getOrderDetailsContent(order) {
             <div class="bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant mb-4 shadow-sm">
                 <div class="flex justify-between items-center mb-3">
                     <h3 class="text-[13px] font-bold text-secondary uppercase tracking-wider">Buyer Commercial Dossier</h3>
-                    <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-primary/10 text-primary">PO: ${order.customerPO || order.id}</span>
+                    <div class="flex items-center gap-2">
+                        <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-primary/10 text-primary">PO: ${order.customerPO || order.id}</span>
+                        <button onclick="window.openEditOrder('${order.id}')" class="px-2.5 py-1 rounded-xl text-[11px] font-semibold bg-surface-variant hover:bg-surface-container-high text-on-surface flex items-center gap-1 active-scale transition-all">
+                            <span class="material-symbols-outlined text-[14px]">edit</span>
+                            <span>Edit</span>
+                        </button>
+                    </div>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-[13px] pb-3 border-b border-outline-variant/40">
                     <div>
