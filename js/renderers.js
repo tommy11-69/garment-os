@@ -20,10 +20,10 @@ function renderStagePipeline(order) {
     }
 
     const chips = stageKeys.map((key, i) => {
-        const def      = STAGE_DEFINITIONS[key] || { shortLabel: key, label: key };
-        const isDone   = i < activeIdx;
+        const def = STAGE_DEFINITIONS[key] || { shortLabel: key, label: key };
+        const isDone = i < activeIdx;
         const isActive = i === activeIdx;
-        const chipCls  = isDone
+        const chipCls = isDone
             ? 'bg-[#34C759] text-white'
             : isActive
                 ? 'bg-primary text-white shadow-xs'
@@ -48,20 +48,20 @@ export const renderers = {
 
     customerCard(customer, isBulkMode = false, isSelected = false) {
         const typeAvatarColors = {
-            'Brand':        'bg-blue-500/15 text-blue-700',
+            'Brand': 'bg-blue-500/15 text-blue-700',
             'Manufacturer': 'bg-purple-500/15 text-purple-700',
-            'Exporter':     'bg-emerald-500/15 text-emerald-700',
-            'Retailer':     'bg-orange-500/15 text-orange-700',
-            'Wholesaler':   'bg-teal-500/15 text-teal-700',
-            'Distributor':  'bg-indigo-500/15 text-indigo-700',
-            'Other':        'bg-primary/15 text-primary',
+            'Exporter': 'bg-emerald-500/15 text-emerald-700',
+            'Retailer': 'bg-orange-500/15 text-orange-700',
+            'Wholesaler': 'bg-teal-500/15 text-teal-700',
+            'Distributor': 'bg-indigo-500/15 text-indigo-700',
+            'Other': 'bg-primary/15 text-primary',
         };
         const avatarCls = typeAvatarColors[customer.customerType] || typeAvatarColors['Other'];
         const initials = customer.initials || (customer.name || 'CU').split(' ').slice(0, 2).map(w => w[0]).join('').toUpperCase();
-        const avatarHtml = customer.avatar 
+        const avatarHtml = customer.avatar
             ? `<img class="w-full h-full object-cover rounded-full" src="${customer.avatar}" alt="${customer.name}"/>`
             : `<span class="font-bold text-[18px]">${initials}</span>`;
-            
+
         const outstanding = parseFloat(customer.totalOutstanding ?? customer.outstanding ?? 0);
         const checkboxHtml = isBulkMode ? `
             <div class="mr-3 flex items-center h-full">
@@ -70,7 +70,7 @@ export const renderers = {
                 </div>
             </div>
         ` : '';
-            
+
         return `
             <div role="button" tabindex="0" onclick="${isBulkMode ? `window.toggleCustomerSelection('${customer.id}')` : `window.openCustomerDetails('${customer.id}')`}" class="bg-surface-container-lowest rounded-[24px] border ${isSelected ? 'border-primary ring-1 ring-primary' : 'border-outline-variant'} p-md shadow-sm active-bg transition-colors flex items-start gap-4 cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary">
                 ${checkboxHtml}
@@ -154,10 +154,10 @@ export const renderers = {
             productChipsHtml = `
                 <div class="flex flex-wrap gap-1.5 mt-2.5">
                     ${orderProducts.map(p => {
-                        const pWf = p.workflowType || order.workflowType || 'default';
-                        const wfInfo = getWorkflowBadgeInfo(pWf);
-                        const pStatus = p.status || rollup.activeStageDef.shortLabel;
-                        return `
+                const pWf = p.workflowType || order.workflowType || 'default';
+                const wfInfo = getWorkflowBadgeInfo(pWf);
+                const pStatus = p.status || rollup.activeStageDef.shortLabel;
+                return `
                             <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-surface-variant text-on-surface-variant border border-outline-variant/40">
                                 <span class="font-bold">${p.name || 'Item'}:</span>
                                 <span class="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded font-extrabold ${wfInfo.bgColor} ${wfInfo.color}">
@@ -167,7 +167,7 @@ export const renderers = {
                                 <span class="text-primary font-bold">• ${pStatus}</span>
                             </span>
                         `;
-                    }).join('')}
+            }).join('')}
                 </div>
             `;
         }
@@ -224,14 +224,13 @@ export const renderers = {
                     <div class="mt-3 pt-2.5 border-t border-outline-variant/40 flex items-center justify-between">
                         <div class="flex items-center gap-1.5 text-[12px] text-secondary">
                             <span class="material-symbols-outlined text-[16px] text-primary">inventory_2</span>
-                            <span><strong>${(order.qty || 0).toLocaleString()} pcs</strong>${
-                                (() => {
-                                    const primary = Array.isArray(order.products) && order.products.length > 0
-                                        ? order.products[0] : null;
-                                    const name = primary?.name || order.product || '';
-                                    return name ? ` • ${name}` : '';
-                                })()
-                            }</span>
+                            <span><strong>${(order.qty || 0).toLocaleString()} pcs</strong>${(() => {
+                const primary = Array.isArray(order.products) && order.products.length > 0
+                    ? order.products[0] : null;
+                const name = primary?.name || order.product || '';
+                return name ? ` • ${name}` : '';
+            })()
+            }</span>
                         </div>
                         <div class="flex items-center gap-2">
                             <button type="button" 
@@ -254,7 +253,7 @@ export const renderers = {
         `;
     },
 
-    
+
     dashboardOrderCard(order) {
         const rollup = calculateOrderRollup(order);
         const stageDef = rollup.activeStageDef;
@@ -319,11 +318,11 @@ export const renderers = {
         const cost = Number(item.costPrice || item.unitPrice || 0);
         const totalVal = Number(item.totalValue) || (qty * cost);
         const minStock = Number(item.minStock || 0);
-        
+
         // Progress percentage against 2x minStock threshold
         const targetRef = minStock > 0 ? (minStock * 2) : 100;
         const stockPct = Math.min(100, Math.max(5, Math.round((qty / targetRef) * 100)));
-        
+
         let barColor = 'bg-[#34C759]';
         if (qty <= 0) {
             barColor = 'bg-error';
@@ -411,12 +410,12 @@ export const renderers = {
             </div>
         `;
     },
-    
+
     shipmentCard(s) {
         const isTransit = s.status === 'In Transit';
         const statusColor = isTransit ? 'bg-[#FF9F0A]/10 text-[#FF9F0A]' : 'bg-primary/10 text-primary';
         const icon = isTransit ? 'local_shipping' : 'inventory_2';
-        
+
         let detailsHtml = '';
         if (isTransit) {
             detailsHtml = `
@@ -445,14 +444,14 @@ export const renderers = {
                 </div>
             `;
         }
-        
-        const actionBtn = isTransit 
+
+        const actionBtn = isTransit
             ? `<button class="w-full bg-surface-container-high text-on-surface font-bold text-[14px] py-3 rounded-xl active-scale transition-apple">Track Shipment</button>`
             : `<div class="flex gap-2">
                 <button class="flex-1 bg-surface-container-high text-on-surface font-bold text-[14px] py-3 rounded-xl active-scale transition-apple">Print Labels</button>
                 <button onclick="window.openSheet('dispatchOrderSheet')" class="flex-1 bg-primary text-white font-bold text-[14px] py-3 rounded-xl active-scale transition-apple shadow-sm">Mark Dispatched</button>
                </div>`;
-        
+
         return `
             <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant p-lg shadow-sm mb-4">
                 <div class="flex justify-between items-start mb-4">
@@ -476,7 +475,7 @@ export const renderers = {
             </div>
         `;
     },
-    
+
     dashboardOrderCard(o) {
         const isExpedited = o.isExpedited;
         const color = isExpedited ? 'text-[#FF9F0A]' : 'text-on-surface';
@@ -525,7 +524,7 @@ export const renderers = {
         const isTransit = s.status === 'In Transit';
         const statusColor = isTransit ? 'bg-[#FF9F0A]/10 text-[#FF9F0A]' : 'bg-primary/10 text-primary';
         const icon = isTransit ? 'local_shipping' : 'inventory_2';
-        
+
         let detailsHtml = '';
         if (isTransit) {
             detailsHtml = `
@@ -554,14 +553,14 @@ export const renderers = {
                 </div>
             `;
         }
-        
-        const actionBtn = isTransit 
+
+        const actionBtn = isTransit
             ? `<button class="w-full bg-surface-container-high text-on-surface font-bold text-[14px] py-3 rounded-xl active-scale transition-apple">Track Shipment</button>`
             : `<div class="flex gap-2">
                 <button class="flex-1 bg-surface-container-high text-on-surface font-bold text-[14px] py-3 rounded-xl active-scale transition-apple">Print Labels</button>
                 <button onclick="window.openSheet('dispatchOrderSheet')" class="flex-1 bg-primary text-white font-bold text-[14px] py-3 rounded-xl active-scale transition-apple shadow-sm">Mark Dispatched</button>
                </div>`;
-        
+
         return `
             <div class="bg-surface-container-lowest rounded-[24px] border border-outline-variant p-lg shadow-sm mb-4">
                 <div class="flex justify-between items-start mb-4">
@@ -585,7 +584,7 @@ export const renderers = {
             </div>
         `;
     },
-    
+
     dashboardOrderCard(o) {
         const isExpedited = o.isExpedited;
         const color = isExpedited ? 'text-[#FF9F0A]' : 'text-on-surface';
@@ -630,27 +629,27 @@ export const renderers = {
     transactionCard(t) {
         const isIncome = t.type === 'Income';
         const amountColor = isIncome ? 'text-[#008A00]' : 'text-on-surface';
-        
+
         // Modern gradients for the icon
-        const iconGradient = isIncome 
-            ? 'bg-gradient-to-br from-[#30D158] to-[#008A00] text-white shadow-[0_2px_8px_rgba(0,138,0,0.3)]' 
+        const iconGradient = isIncome
+            ? 'bg-gradient-to-br from-[#30D158] to-[#008A00] text-white shadow-[0_2px_8px_rgba(0,138,0,0.3)]'
             : 'bg-gradient-to-br from-[#FF6B6B] to-[#FF453A] text-white shadow-[0_2px_8px_rgba(255,69,58,0.3)]';
         const icon = isIncome ? 'arrow_downward' : 'arrow_upward';
-        
+
         let subTotal = 0;
         if (t.subEntries) {
             try {
                 const entries = typeof t.subEntries === 'string' ? JSON.parse(t.subEntries) : (Array.isArray(t.subEntries) ? t.subEntries : []);
                 subTotal = entries.reduce((s, se) => s + (parseFloat(se.amount) || 0), 0);
-            } catch {}
+            } catch { }
         }
         const finalAmount = (parseFloat(t.amount) || 0) + subTotal;
         const amountStr = (isIncome ? '+' : '-') + '₹' + finalAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        
+
         // Refined Badges with micro-icons
-        const statusUI = t.status === 'Completed' 
+        const statusUI = t.status === 'Completed'
             ? '<div class="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[#008A00]/10 text-[#008A00] border border-[#008A00]/20"><span class="material-symbols-outlined text-[11px]">check_circle</span><span class="text-[11px] font-bold tracking-wide">Completed</span></div>'
-            : (t.status === 'Pending' 
+            : (t.status === 'Pending'
                 ? '<div class="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[#FF9F0A]/10 text-[#FF9F0A] border border-[#FF9F0A]/20"><span class="material-symbols-outlined text-[11px]">schedule</span><span class="text-[11px] font-bold tracking-wide">Pending</span></div>'
                 : '<div class="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-surface-variant text-secondary border border-outline-variant/30"><span class="material-symbols-outlined text-[11px]">cancel</span><span class="text-[11px] font-bold tracking-wide">Cancelled</span></div>');
 
@@ -673,29 +672,29 @@ export const renderers = {
                                 <span class="text-[11px] font-bold tracking-wide">${t.category}</span>
                             </div>
                             ${(() => {
-                                if (!t.refId) return '';
-                                let partyName = t.refId;
-                                if (window.financeParties) {
-                                    const partiesList = isIncome ? window.financeParties.customers : window.financeParties.vendors;
-                                    const party = partiesList?.find(p => String(p.id) === String(t.refId));
-                                    if (party) partyName = party.name;
-                                }
-                                return `
+                if (!t.refId) return '';
+                let partyName = t.refId;
+                if (window.financeParties) {
+                    const partiesList = isIncome ? window.financeParties.customers : window.financeParties.vendors;
+                    const party = partiesList?.find(p => String(p.id) === String(t.refId));
+                    if (party) partyName = party.name;
+                }
+                return `
                                 <div class="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-[#5E5CE6]/10 text-[#5E5CE6] border border-[#5E5CE6]/20">
                                     <span class="material-symbols-outlined text-[11px]">${isIncome ? 'person' : 'storefront'}</span>
                                     <span class="text-[11px] font-bold tracking-wide truncate max-w-[120px]">${partyName}</span>
                                 </div>`;
-                            })()}
+            })()}
                             ${statusUI}
                             ${(() => {
-                                const attCount = Array.isArray(t.attachments) ? t.attachments.length : 0;
-                                if (attCount === 0) return '';
-                                return `
+                const attCount = Array.isArray(t.attachments) ? t.attachments.length : 0;
+                if (attCount === 0) return '';
+                return `
                                 <div class="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-primary/10 text-primary border border-primary/20" title="${attCount} receipt/attachment${attCount > 1 ? 's' : ''}">
                                     <span class="material-symbols-outlined text-[11px]">attach_file</span>
                                     <span class="text-[11px] font-bold tracking-wide">${attCount}</span>
                                 </div>`;
-                            })()}
+            })()}
                         </div>
                         
                         ${t.notes ? `
@@ -752,11 +751,11 @@ export const renderers = {
             try {
                 const entries = typeof t.subEntries === 'string' ? JSON.parse(t.subEntries) : (Array.isArray(t.subEntries) ? t.subEntries : []);
                 subTotal = entries.reduce((s, se) => s + (parseFloat(se.amount) || 0), 0);
-            } catch {}
+            } catch { }
         }
         const finalAmount = (parseFloat(t.amount) || 0) + subTotal;
-        const amountStr = (isIncome ? '+' : '-') + '₹' + finalAmount.toLocaleString(undefined, {minimumFractionDigits:2});
-        
+        const amountStr = (isIncome ? '+' : '-') + '₹' + finalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 });
+
         return `
             <div class="p-md flex items-center justify-between active:bg-surface-variant/50 transition-colors cursor-pointer" onclick="window.location.href='finance.html'">
                 <div class="flex items-center gap-3">

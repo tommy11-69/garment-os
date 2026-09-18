@@ -3,7 +3,7 @@
  * Real-time operational pulse across all running orders and department bottlenecks.
  */
 
-import { STAGE_DEFINITIONS, calculateOrderRollup, getWorkflowBadgeInfo } from '../domain/workflowEngine.js?v=6.0';
+import { STAGE_DEFINITIONS, calculateOrderRollup, getWorkflowBadgeInfo, getProductWorkflowStages, normalizeStageKey } from '../domain/workflowEngine.js?v=6.0';
 
 export const OverviewWorkspace = {
     render(orders, activeOrderId, onSelectOrder, onSelectStage) {
@@ -37,9 +37,19 @@ export const OverviewWorkspace = {
                 if (days >= 0 && days <= 7) dueThisWeekCount++;
             }
 
-            const currentKey = roll.activeStageKey;
-            if (stageWorkloads[currentKey] !== undefined) {
-                stageWorkloads[currentKey]++;
+            if (Array.isArray(o.products) && o.products.length > 0) {
+                o.products.forEach(p => {
+                    const pWorkflow = getProductWorkflowStages(p, o.workflowType);
+                    const pStageKey = normalizeStageKey(p.status || p.currentStage || pWorkflow[0]);
+                    if (stageWorkloads[pStageKey] !== undefined) {
+                        stageWorkloads[pStageKey]++;
+                    }
+                });
+            } else {
+                const currentKey = roll.activeStageKey;
+                if (stageWorkloads[currentKey] !== undefined) {
+                    stageWorkloads[currentKey]++;
+                }
             }
         });
 
@@ -129,9 +139,14 @@ export const OverviewWorkspace = {
                             const wfBadgesHtml = productsList.map(p => {
                                 const pWf = p.workflowType || ord.workflowType || 'default';
                                 const wfInfo = getWorkflowBadgeInfo(pWf);
+                                const pWorkflow = getProductWorkflowStages(p, ord.workflowType);
+                                const pStageKey = normalizeStageKey(p.status || p.currentStage || pWorkflow[0]);
+                                const pStageDef = STAGE_DEFINITIONS[pStageKey] || { label: p.status || pStageKey, icon: 'bolt' };
                                 return `<span class="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-md ${wfInfo.bgColor} ${wfInfo.color} border ${wfInfo.borderColor}">
                                     <span class="material-symbols-outlined text-[11px]">${wfInfo.icon}</span>
                                     ${p.name ? `${p.name}: ` : ''}${wfInfo.shortLabel || wfInfo.label}
+                                    <span class="opacity-60">•</span>
+                                    <span class="text-[9px] uppercase tracking-wider">${pStageDef.shortLabel || pStageDef.label}</span>
                                 </span>`;
                             }).join(' ');
 

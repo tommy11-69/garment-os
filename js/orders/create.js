@@ -140,13 +140,16 @@ const WIZARD_STEPS = [
     { id: 'co-step-4', title: 'Review & Launch' }
 ];
 
+// ─── Wizard State ─────────────────────────────────────────────────────────────
+let coState = null;
+
 // ─── Default product factory ──────────────────────────────────────────────────
 function makeDefaultProduct(n = 1) {
     return {
         id:                   `prod-${Date.now()}-${n}`,
         name:                 '',
         category:             'Adults',
-        workflowType:         (typeof coState !== 'undefined' && coState?.orderWorkflowType) ? coState.orderWorkflowType : 'default',
+        workflowType:         (coState?.orderWorkflowType) ? coState.orderWorkflowType : 'default',
         customStages:         [],
         qty:                  0,
         sizes:                { XS: 0, S: 0, M: 0, L: 0, XL: 0, XXL: 0, XXXL: 0, XXXXL: 0 },
@@ -171,8 +174,7 @@ function makeDefaultProduct(n = 1) {
     };
 }
 
-// ─── Wizard State ─────────────────────────────────────────────────────────────
-let coState = {
+coState = {
     currentIdx:        0,
     priority:          'Normal',
     orderWorkflowType: '',

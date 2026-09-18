@@ -60,6 +60,14 @@ class ProductionApp {
             await this.loadOrders();
             this.renderOrderDropdown();
             this.syncCurrentOrder();
+            if (this.activeOrderId && (!new URLSearchParams(window.location.search).get('stage') || this.activeStage === 'overview')) {
+                const activeProd = this.getActiveProduct();
+                if (activeProd) {
+                    const workflow = getProductWorkflowStages(activeProd, this.activeOrder?.workflowType);
+                    const prodStageKey = normalizeStageKey(activeProd.status || activeProd.currentStage || workflow[0]);
+                    this.activeStage = workflow.includes(prodStageKey) ? prodStageKey : (workflow[0] || 'procurement');
+                }
+            }
             this.render();
 
             window.addEventListener('popstate', () => {
@@ -114,6 +122,11 @@ class ProductionApp {
         if (found) {
             // Ensure stageData is hydrated
             found.stageData = hydrateStageData(found.stageData);
+            if (Array.isArray(found.products)) {
+                found.products.forEach(p => {
+                    if (!p.stageData) p.stageData = {};
+                });
+            }
             this.activeOrder = found;
         } else {
             this.activeOrder = null;
@@ -143,14 +156,19 @@ class ProductionApp {
     getActiveProduct() {
         if (!this.activeOrder) return null;
         if (Array.isArray(this.activeOrder.products) && this.activeOrder.products.length > 0) {
-            return this.activeOrder.products[this.activeProductIndex] || this.activeOrder.products[0];
+            const prod = this.activeOrder.products[this.activeProductIndex] || this.activeOrder.products[0];
+            if (prod && !prod.stageData) {
+                prod.stageData = {};
+            }
+            return prod;
         }
         return {
             name: this.activeOrder.product || 'Standard Garment',
             qty: Number(this.activeOrder.qty) || 0,
             status: this.activeOrder.status || 'Fabric',
             workflowType: this.activeOrder.workflowType || 'default',
-            sizes: this.activeOrder.stageData?.cutting?.cutQuantitiesBySize || {}
+            sizes: this.activeOrder.stageData?.cutting?.cutQuantitiesBySize || {},
+            stageData: this.activeOrder.stageData || {}
         };
     }
 
@@ -220,13 +238,20 @@ class ProductionApp {
                                 const pWf = p.workflowType || ord.workflowType || 'default';
                                 const wfInfo = getWorkflowBadgeInfo(pWf);
                                 const isAct = idx === this.activeProductIndex;
+                                const pWorkflow = getProductWorkflowStages(p, ord.workflowType);
+                                const pStageKey = normalizeStageKey(p.status || p.currentStage || pWorkflow[0]);
+                                const pStageDef = STAGE_DEFINITIONS[pStageKey] || { label: p.status || pStageKey, icon: 'bolt', shortLabel: pStageKey };
                                 return `
-                                    <button onclick="window.productionRouter.switchProduct(${idx})" 
-                                        class="px-3 py-1.5 rounded-xl text-[12px] font-bold active-scale transition-apple flex items-center gap-1.5 ${isAct ? 'bg-primary text-white shadow-sm' : 'bg-surface-container text-on-surface hover:bg-surface-variant'}">
+                                    <button type="button" onclick="window.productionRouter.switchProduct(${idx})" 
+                                        class="px-3 py-1.5 rounded-xl text-[12px] font-bold active-scale transition-apple flex items-center gap-2 ${isAct ? 'bg-primary text-white shadow-sm ring-2 ring-primary/30' : 'bg-surface-container text-on-surface hover:bg-surface-variant'}">
                                         <span>${p.name || `Product #${idx+1}`}</span>
-                                        <span class="text-[10px] opacity-80">(${p.qty} pcs)</span>
-                                        <span class="px-1.5 py-0.2 rounded text-[9px] font-extrabold ${isAct ? 'bg-white/25 text-white' : `${wfInfo.bgColor} ${wfInfo.color}`}">
+                                        <span class="text-[10px] opacity-75">(${p.qty} pcs)</span>
+                                        <span class="px-1.5 py-0.5 rounded text-[9px] font-extrabold ${isAct ? 'bg-white/20 text-white' : `${wfInfo.bgColor} ${wfInfo.color}`}">
                                             ${wfInfo.shortLabel || wfInfo.label}
+                                        </span>
+                                        <span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-[10px] font-black ${isAct ? 'bg-white text-primary' : 'bg-primary/10 text-primary'}">
+                                            <span class="material-symbols-outlined text-[11px]">${pStageDef.icon || 'bolt'}</span>
+                                            <span>${pStageDef.shortLabel || pStageDef.label}</span>
                                         </span>
                                     </button>
                                 `;
@@ -338,9 +363,17 @@ class ProductionApp {
         }
 
         const activeProduct = this.getActiveProduct();
-        const stageData = this.activeOrder.stageData;
+        if (activeProduct && !activeProduct.stageData) {
+            activeProduct.stageData = {};
+        }
 
-        container.innerHTML = workspace.render(this.activeOrder, activeProduct, stageData);
+        // Deep merge order-level stageData with activeProduct's stageData for isolated stage execution
+        const effectiveStageData = {
+            ...(this.activeOrder.stageData || {}),
+            ...((activeProduct && activeProduct.stageData) || {})
+        };
+
+        container.innerHTML = workspace.render(this.activeOrder, activeProduct, effectiveStageData);
     }
 
     switchOrder(orderId, preferredStage = null) {
@@ -361,8 +394,15 @@ class ProductionApp {
         if (preferredStage) {
             this.activeStage = preferredStage;
         } else if (this.activeStage === 'overview' && this.activeOrder) {
-            const roll = calculateOrderRollup(this.activeOrder);
-            this.activeStage = roll.activeStageKey || 'cutting';
+            const activeProd = this.getActiveProduct();
+            if (activeProd) {
+                const workflow = getProductWorkflowStages(activeProd, this.activeOrder.workflowType);
+                const prodStageKey = normalizeStageKey(activeProd.status || activeProd.currentStage || workflow[0]);
+                this.activeStage = workflow.includes(prodStageKey) ? prodStageKey : (workflow[0] || 'procurement');
+            } else {
+                const roll = calculateOrderRollup(this.activeOrder);
+                this.activeStage = roll.activeStageKey || 'cutting';
+            }
         }
 
         this.updateQueryParams();
@@ -390,6 +430,12 @@ class ProductionApp {
 
     switchProduct(productIndex) {
         this.activeProductIndex = productIndex;
+        const activeProd = this.getActiveProduct();
+        if (activeProd) {
+            const workflow = getProductWorkflowStages(activeProd, this.activeOrder?.workflowType);
+            const prodStageKey = normalizeStageKey(activeProd.status || activeProd.currentStage || workflow[0]);
+            this.activeStage = workflow.includes(prodStageKey) ? prodStageKey : (workflow[0] || 'procurement');
+        }
         this.updateQueryParams();
         this.render();
     }
@@ -405,17 +451,38 @@ class ProductionApp {
 
         try {
             const extractedData = workspace.extractFormData();
-            
-            // Hydrate stageData
-            const currentStageData = hydrateStageData(this.activeOrder.stageData);
-            currentStageData[currentStageKey] = {
-                ...currentStageData[currentStageKey],
+            const activeProd = this.getActiveProduct();
+
+            // 1. Isolate and save data directly into activeProduct.stageData
+            if (activeProd) {
+                if (!activeProd.stageData) activeProd.stageData = {};
+                const currentProdStageData = hydrateStageData(activeProd.stageData);
+                activeProd.stageData = {
+                    ...currentProdStageData,
+                    [currentStageKey]: {
+                        ...(currentProdStageData[currentStageKey] || {}),
+                        ...extractedData
+                    }
+                };
+            }
+
+            // 2. Also keep this.activeOrder.stageData synchronized for backward compatibility
+            const currentOrderStageData = hydrateStageData(this.activeOrder.stageData);
+            currentOrderStageData[currentStageKey] = {
+                ...(currentOrderStageData[currentStageKey] || {}),
                 ...extractedData
             };
-            this.activeOrder.stageData = currentStageData;
+            this.activeOrder.stageData = currentOrderStageData;
 
-            // Determine workflow progression
-            const activeProd = this.getActiveProduct();
+            // 3. Ensure the active product in this.activeOrder.products array has updated stageData
+            if (Array.isArray(this.activeOrder.products) && this.activeOrder.products[this.activeProductIndex]) {
+                this.activeOrder.products[this.activeProductIndex] = {
+                    ...this.activeOrder.products[this.activeProductIndex],
+                    stageData: activeProd ? activeProd.stageData : {}
+                };
+            }
+
+            // 4. Advance only this active product along its own workflow
             const workflow = getProductWorkflowStages(activeProd, this.activeOrder.workflowType);
             let nextStageKey = null;
 
@@ -424,25 +491,57 @@ class ProductionApp {
                 if (currentIdx >= 0 && currentIdx < workflow.length - 1) {
                     nextStageKey = workflow[currentIdx + 1];
                     
-                    // Update active product's status
                     const nextDef = STAGE_DEFINITIONS[nextStageKey];
                     if (nextDef && activeProd) {
                         activeProd.status = nextDef.label;
+                        activeProd.currentStage = nextStageKey;
+                        if (Array.isArray(this.activeOrder.products) && this.activeOrder.products[this.activeProductIndex]) {
+                            this.activeOrder.products[this.activeProductIndex].status = nextDef.label;
+                            this.activeOrder.products[this.activeProductIndex].currentStage = nextStageKey;
+                        }
+                    }
+                } else if (currentIdx === workflow.length - 1) {
+                    // Final stage reached for this product
+                    if (activeProd) {
+                        activeProd.status = 'Completed';
+                        activeProd.currentStage = 'dispatch';
+                        if (Array.isArray(this.activeOrder.products) && this.activeOrder.products[this.activeProductIndex]) {
+                            this.activeOrder.products[this.activeProductIndex].status = 'Completed';
+                            this.activeOrder.products[this.activeProductIndex].currentStage = 'dispatch';
+                        }
                     }
                 }
             }
 
+            // 5. Update status
             if (explicitStatus) {
+                if (activeProd) {
+                    activeProd.status = explicitStatus;
+                    activeProd.currentStage = normalizeStageKey(explicitStatus);
+                    if (Array.isArray(this.activeOrder.products) && this.activeOrder.products[this.activeProductIndex]) {
+                        this.activeOrder.products[this.activeProductIndex].status = explicitStatus;
+                        this.activeOrder.products[this.activeProductIndex].currentStage = normalizeStageKey(explicitStatus);
+                    }
+                }
                 this.activeOrder.status = explicitStatus;
-                if (activeProd) activeProd.status = explicitStatus;
             } else {
-                // Roll up status
+                // Roll up status across all products
                 const roll = calculateOrderRollup(this.activeOrder);
                 if (roll.overallPercentage === 100) {
                     this.activeOrder.status = 'Dispatched';
                 } else {
                     this.activeOrder.status = roll.activeStageDef.label;
                 }
+            }
+
+            // Sync with lineItems if lineItems exists
+            if (Array.isArray(this.activeOrder.lineItems) && this.activeOrder.lineItems[this.activeProductIndex]) {
+                this.activeOrder.lineItems[this.activeProductIndex] = {
+                    ...this.activeOrder.lineItems[this.activeProductIndex],
+                    status: activeProd.status,
+                    currentStage: activeProd.currentStage,
+                    stageData: activeProd.stageData
+                };
             }
 
             // Save to Backend API
@@ -463,7 +562,7 @@ class ProductionApp {
             if (window.showToast) {
                 window.showToast(
                     shouldAdvance && nextStageKey 
-                        ? `Saved & released to ${STAGE_DEFINITIONS[nextStageKey]?.label || nextStageKey}!` 
+                        ? `[${activeProd?.name || 'Product'}] Saved & released to ${STAGE_DEFINITIONS[nextStageKey]?.label || nextStageKey}!` 
                         : 'Stage progress saved successfully!', 
                     'success'
                 );
