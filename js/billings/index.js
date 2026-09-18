@@ -264,12 +264,10 @@ window.openCreateBillingSheet = async function (type) {
             .filter(b => ['Finalized', 'Partially_Paid'].includes(b.status));
     }
 
-    if (!allBillings[type]) {
-        try {
-            allBillings[type] = await api.getBillings({ type });
-        } catch (e) {
-            allBillings[type] = [];
-        }
+    try {
+        allBillings[type] = await api.getBillings({ type });
+    } catch (e) {
+        allBillings[type] = allBillings[type] || [];
     }
     const nextSerial = getNextSerialNumber(type, allBillings[type] || []);
 

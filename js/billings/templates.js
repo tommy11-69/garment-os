@@ -117,10 +117,10 @@ export function getNextSerialNumber(type, existingDocs = []) {
     const PREFIX_MAP = {
         Quotation: 'AG-QTY',
         Sales_Bill: 'AG-INV',
-        Payment_In: 'AG-REC',
-        Purchase_Bill: 'AG-BILL',
+        Payment_In: 'AG-PIN',
+        Purchase_Bill: 'AG-PBI',
         Purchase_Order: 'AG-PO',
-        Payment_Out: 'AG-EXP'
+        Payment_Out: 'AG-POT'
     };
     const prefix = PREFIX_MAP[type] || 'AG-DOC';
     const year = new Date().getFullYear();

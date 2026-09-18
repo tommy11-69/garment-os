@@ -1151,16 +1151,17 @@ if ($relPath === 'auth/credentials') {
 // ── Billing Serial Number Generator ─────────────────────────────────
 function generateBillingSerial($pdo, $transactionType) {
     $prefixMap = [
-        'Quotation'     => 'QTY',
-        'Sales_Bill'    => 'INV',
-        'Payment_In'    => 'RCP',
-        'Purchase_Bill' => 'PO',
-        'Payment_Out'   => 'PAY',
+        'Quotation'     => 'AG-QTY',
+        'Sales_Bill'    => 'AG-INV',
+        'Payment_In'    => 'AG-PIN',
+        'Purchase_Bill' => 'AG-PBI',
+        'Purchase_Order'=> 'AG-PO',
+        'Payment_Out'   => 'AG-POT',
     ];
-    $prefix = $prefixMap[$transactionType] ?? 'DOC';
+    $prefix = $prefixMap[$transactionType] ?? 'AG-DOC';
     $year   = date('Y');
     $typeKey = $prefix . '-' . $year;
-    $fullPrefix = "AG-{$prefix}-{$year}-";
+    $fullPrefix = "{$prefix}-{$year}-";
 
     // Create the lock row before opening the transaction so concurrent first saves
     // cannot race while creating the counter itself.
@@ -1170,15 +1171,7 @@ function generateBillingSerial($pdo, $transactionType) {
 
     $pdo->beginTransaction();
     try {
-        // Lock this document type's counter for the whole allocation operation.
-        $counterStmt = $pdo->prepare(
-            "SELECT `last_seq` FROM `billing_counters` WHERE `type_key` = ? FOR UPDATE"
-        );
-        $counterStmt->execute([$typeKey]);
-        $counterSeq = (int)($counterStmt->fetchColumn() ?: 0);
-
-        // Reconcile counters created before the counter table was introduced or
-        // changed by a manual import, preventing reuse of an existing invoice number.
+        // Query existing documents in billing_master to find the true max sequence number
         $existingStmt = $pdo->prepare(
             "SELECT `invoice_number` FROM `billing_master` WHERE `invoice_number` LIKE ?"
         );
@@ -1190,7 +1183,7 @@ function generateBillingSerial($pdo, $transactionType) {
             }
         }
 
-        $seq = max($counterSeq, $maxExistingSeq) + 1;
+        $seq = $maxExistingSeq + 1;
         $updateStmt = $pdo->prepare(
             "UPDATE `billing_counters` SET `last_seq` = ? WHERE `type_key` = ?"
         );

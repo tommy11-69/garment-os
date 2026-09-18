@@ -84,25 +84,43 @@ const TYPE_PREFIX_MAP = {
 
 /**
  * Atomically generate the next serial number for a billing document type.
- * Uses SQLite's single-writer guarantee to prevent duplicates.
+ * Calculates next sequence dynamically from existing records in billing_master (max + 1),
+ * resetting to 1 (0001) if no records exist.
  */
 async function generateSerialNumber(env, transactionType) {
     const year = new Date().getFullYear();
     const prefix = TYPE_PREFIX_MAP[transactionType];
     if (!prefix) throw new Error(`Unknown transaction type: ${transactionType}`);
+    const fullPrefix = `${prefix}-${year}-`;
     const counterId = `${prefix}-${year}`;
 
-    // Atomic upsert + increment
+    // Query all existing invoice numbers for this prefix and year
+    const rows = await env.DB.prepare(
+        `SELECT invoice_number FROM billing_master WHERE invoice_number LIKE ?`
+    ).bind(`${fullPrefix}%`).all();
+
+    let maxSeq = 0;
+    if (rows && rows.results) {
+        for (const r of rows.results) {
+            const invNum = r.invoice_number || '';
+            if (invNum.startsWith(fullPrefix)) {
+                const seqStr = invNum.slice(fullPrefix.length);
+                const seqNum = parseInt(seqStr, 10);
+                if (!isNaN(seqNum) && seqNum > maxSeq) {
+                    maxSeq = seqNum;
+                }
+            }
+        }
+    }
+
+    const seq = maxSeq + 1;
+
+    // Sync billing_counters
     await env.DB.prepare(
-        `INSERT INTO billing_counters (id, last_seq) VALUES (?, 0) ON CONFLICT(id) DO UPDATE SET last_seq = last_seq + 1`
-    ).bind(counterId).run();
+        `INSERT INTO billing_counters (id, last_seq) VALUES (?, ?) ON CONFLICT(id) DO UPDATE SET last_seq = ?`
+    ).bind(counterId, seq, seq).run();
 
-    const row = await env.DB.prepare(
-        `SELECT last_seq FROM billing_counters WHERE id = ?`
-    ).bind(counterId).first();
-
-    const seq = row.last_seq;
-    return `${prefix}-${year}-${String(seq).padStart(4, '0')}`;
+    return `${fullPrefix}${String(seq).padStart(4, '0')}`;
 }
 
 /**
