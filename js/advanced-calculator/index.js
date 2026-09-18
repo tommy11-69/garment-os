@@ -1326,64 +1326,54 @@ window.downloadQuotePDF = function() {
         <html>
         <head>
             <meta charset="utf-8">
-            <title>Garment OS - Quotation ${quoteNo}</title>
+            <title>Udhayaa Textiles - Quotation ${quoteNo}</title>
             <style>
-                body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #1F2937; padding: 36px; line-height: 1.45; background: #fff; margin: 0; }
-                .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0071E3; padding-bottom: 16px; margin-bottom: 24px; }
-                .brand { font-size: 24px; font-weight: 900; color: #0071E3; letter-spacing: -0.5px; margin: 0; }
-                .tagline { font-size: 12px; color: #6B7280; margin: 3px 0 0 0; text-transform: uppercase; letter-spacing: 0.5px; }
+                @page { size: A4 portrait; margin: 6mm 8mm; }
+                * { box-sizing: border-box; margin: 0; padding: 0; }
+                body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; color: #0f172a; padding: 0; line-height: 1.35; background: #fff; font-size: 10.5px; }
+                .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0f172a; padding-bottom: 8px; margin-bottom: 10px; }
+                .brand { font-size: 18px; font-weight: 800; color: #0f172a; letter-spacing: -0.3px; margin: 0; }
+                .tagline { font-size: 9.5px; color: #64748b; margin: 1px 0 0 0; font-weight: 600; }
                 .quote-badge { text-align: right; }
-                .quote-title { margin: 0; font-size: 18px; font-weight: 800; color: #111827; }
-                .quote-meta { margin: 3px 0 0 0; font-size: 12px; color: #4B5563; }
+                .quote-title { margin: 0; font-size: 14px; font-weight: 800; color: #0f172a; }
+                .quote-meta { margin: 1px 0 0 0; font-size: 10px; color: #475569; }
                 
-                .info-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 24px; margin-bottom: 24px; background: #F9FAFB; padding: 16px 20px; border-radius: 12px; border: 1px solid #E5E7EB; }
-                .info-col h3 { font-size: 11px; text-transform: uppercase; color: #6B7280; font-weight: 700; margin: 0 0 8px 0; letter-spacing: 0.5px; }
-                .info-col p { margin: 3px 0; font-size: 13px; color: #1F2937; }
+                .info-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 10px; margin-bottom: 10px; background: #f8fafc; padding: 8px 10px; border-radius: 6px; border: 1px solid #e2e8f0; }
+                .info-col h3 { font-size: 9.5px; text-transform: uppercase; color: #64748b; font-weight: 700; margin: 0 0 4px 0; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px; }
+                .info-col p { margin: 2px 0; font-size: 11px; color: #0f172a; }
                 
-                .section-header { font-size: 13px; text-transform: uppercase; font-weight: 800; color: #374151; margin: 20px 0 10px 0; border-bottom: 1.5px solid #E5E7EB; padding-bottom: 6px; letter-spacing: 0.5px; }
+                .section-header { font-size: 10.5px; text-transform: uppercase; font-weight: 800; color: #0f172a; margin: 8px 0 4px 0; border-bottom: 1px solid #cbd5e1; padding-bottom: 2px; }
                 
-                table { width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 12px; }
-                th { background-color: #F3F4F6; padding: 8px 10px; text-align: left; font-size: 11px; font-weight: 700; color: #374151; border-bottom: 1.5px solid #D1D5DB; text-transform: uppercase; }
-                td { padding: 8px 10px; border-bottom: 1px solid #E5E7EB; }
+                table { width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 10px; border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden; }
+                th { background-color: #f1f5f9; padding: 5px 6px; text-align: left; font-size: 9px; font-weight: 700; color: #334155; border-bottom: 1px solid #cbd5e1; text-transform: uppercase; }
+                td { padding: 5px 6px; border-bottom: 1px solid #e2e8f0; }
                 
-                .metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
-                .metric-card { background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 10px; padding: 12px; text-align: center; }
-                .metric-card.highlight { background: #EFF6FF; border-color: #BFDBFE; }
-                .metric-card p { margin: 0; font-size: 10px; text-transform: uppercase; color: #6B7280; font-weight: 700; }
-                .metric-card h4 { margin: 4px 0 0 0; font-size: 18px; font-weight: 800; color: #111827; }
-                .metric-card.highlight h4 { color: #0071E3; }
+                .metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 10px; }
+                .metric-card { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 8px; text-align: center; }
+                .metric-card.highlight { background: #f1f5f9; border-color: #0f172a; }
+                .metric-card p { margin: 0; font-size: 9px; text-transform: uppercase; color: #64748b; font-weight: 700; }
+                .metric-card h4 { margin: 2px 0 0 0; font-size: 14px; font-weight: 800; color: #0f172a; }
                 
-                .fabric-spec-box { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; background: #F9FAFB; border: 1px solid #E5E7EB; border-radius: 10px; padding: 12px; margin-bottom: 20px; font-size: 11px; }
+                .fabric-spec-box { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 6px 8px; margin-bottom: 10px; font-size: 9.5px; }
                 .fabric-spec-item { text-align: center; }
-                .fabric-spec-item span { display: block; color: #6B7280; text-transform: uppercase; font-size: 9px; font-weight: 700; margin-bottom: 2px; }
-                .fabric-spec-item strong { font-size: 13px; color: #111827; }
+                .fabric-spec-item span { display: block; color: #64748b; text-transform: uppercase; font-size: 8.5px; font-weight: 700; margin-bottom: 1px; }
+                .fabric-spec-item strong { font-size: 11px; color: #0f172a; }
                 
-                .sign-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 40px; padding-top: 20px; border-top: 1px dashed #D1D5DB; }
+                .sign-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 15px; padding-top: 8px; border-top: 1px dashed #cbd5e1; }
                 .sign-box { text-align: center; }
-                .sign-line { border-bottom: 1px solid #9CA3AF; height: 35px; margin-bottom: 6px; }
-                .sign-box p { margin: 0; font-size: 11px; color: #6B7280; font-weight: 600; text-transform: uppercase; }
+                .sign-line { border-bottom: 1px solid #0f172a; height: 25px; margin-bottom: 3px; }
+                .sign-box p { margin: 0; font-size: 9.5px; color: #475569; font-weight: 700; text-transform: uppercase; }
 
-                .footer { text-align: center; font-size: 11px; color: #9CA3AF; margin-top: 30px; border-top: 1px solid #E5E7EB; padding-top: 12px; }
+                .footer { text-align: center; font-size: 9.5px; color: #64748b; margin-top: 10px; border-top: 1px solid #cbd5e1; padding-top: 6px; }
                 
-                .btn-bar { display: flex; gap: 10px; justify-content: flex-end; margin-bottom: 20px; }
-                .btn-print { background: #0071E3; color: white; border: none; padding: 9px 18px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 13px; }
-                .btn-close { background: #E5E7EB; color: #374151; border: none; padding: 9px 18px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 13px; }
+                .btn-bar { display: flex; gap: 8px; justify-content: flex-end; margin-bottom: 10px; padding: 8px; }
+                .btn-print { background: #0A84FF; color: white; border: none; padding: 6px 14px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 12px; }
+                .btn-close { background: #E5E7EB; color: #374151; border: none; padding: 6px 14px; border-radius: 6px; font-weight: bold; cursor: pointer; font-size: 12px; }
 
                 @media print {
-                    @page { size: A4 portrait; margin: 12mm; }
-                    body { padding: 0; font-size: 11px !important; }
+                    body { padding: 0; font-size: 10px !important; }
                     .btn-bar { display: none !important; }
-                    .header { margin-bottom: 16px; padding-bottom: 10px; }
-                    .info-grid { margin-bottom: 16px; padding: 10px 14px; }
-                    .metrics-grid { margin-bottom: 16px; gap: 10px; }
-                    .metric-card { padding: 8px; }
-                    .metric-card h4 { font-size: 15px; }
-                    table { margin-bottom: 16px; font-size: 11px; }
-                    th, td { padding: 5px 6px !important; }
-                    .fabric-spec-box { margin-bottom: 16px; padding: 8px; }
-                    .sign-grid { margin-top: 25px; }
-                    .footer { margin-top: 20px; }
-                    tr { page-break-inside: avoid; }
+                    tr, .info-grid, .metrics-grid, .fabric-spec-box, .sign-grid { page-break-inside: avoid; }
                 }
             </style>
         </head>
@@ -1394,14 +1384,17 @@ window.downloadQuotePDF = function() {
             </div>
 
             <div class="header">
-                <div>
-                    <h1 class="brand">GARMENT OS</h1>
-                    <p class="tagline">BOM &amp; Multi-Size Production Quotation</p>
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <img src="/assets/logo-billing.png" alt="Logo" style="height:44px;object-fit:contain;" onerror="this.outerHTML='<div style=\\'font-size:18px;font-weight:800;\\'>UDHAYAA</div>'">
+                    <div>
+                        <h1 class="brand">UDHAYAA TEXTILES</h1>
+                        <p class="tagline">BOM &amp; Multi-Size Production Quotation</p>
+                    </div>
                 </div>
                 <div class="quote-badge">
                     <h2 class="quote-title">Costing Quote</h2>
-                    <p class="quote-meta"><strong>No:</strong> ${quoteNo}</p>
-                    <p class="quote-meta"><strong>Date:</strong> ${dateStr}</p>
+                    <p class="quote-meta"><strong>No:</strong> ${quoteNo} | <strong>Date:</strong> ${dateStr}</p>
+                    <p class="quote-meta"><strong style="color:#0f172a;background:#f1f5f9;padding:1px 4px;border:1px solid #cbd5e1;border-radius:3px;">GSTIN: 33ANGPU7147M1ZE</strong></p>
                 </div>
             </div>
 

@@ -1017,24 +1017,25 @@ function openPrintWindow(title, bodyContent) {
             <link rel="preconnect" href="https://fonts.googleapis.com">
             <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
             <style>
-                @page { size: A4 portrait; margin: 12mm 15mm; }
+                @page { size: A4 portrait; margin: 6mm 8mm; }
                 * { box-sizing: border-box; margin: 0; padding: 0; }
-                body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; color: #111827; background: #fff; font-size: 12px; line-height: 1.4; padding: 20px; }
+                body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; color: #111827; background: #fff; font-size: 11px; line-height: 1.35; padding: 0; }
                 .doc-container { max-width: 800px; margin: 0 auto; }
                 .text-mono { font-family: 'JetBrains Mono', monospace; }
-                table { width: 100%; border-collapse: collapse; margin: 12px 0; }
-                th, td { border: 1px solid #d1d5db; padding: 6px 8px; text-align: left; }
-                th { background-color: #f3f4f6; font-weight: 700; font-size: 10px; text-transform: uppercase; }
-                .barcode-box { letter-spacing: 4px; font-size: 20px; font-family: monospace; font-weight: bold; padding: 6px 12px; border: 2px solid #111; display: inline-block; }
+                table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 10.5px; }
+                th, td { border: 1px solid #d1d5db; padding: 5px 6px; text-align: left; }
+                th { background-color: #f3f4f6; font-weight: 700; font-size: 9.5px; text-transform: uppercase; }
+                .barcode-box { letter-spacing: 4px; font-size: 18px; font-family: monospace; font-weight: bold; padding: 4px 10px; border: 2px solid #111; display: inline-block; }
                 @media print {
                     body { padding: 0; }
                     .no-print { display: none !important; }
+                    tr, .card, table { page-break-inside: avoid; }
                 }
             </style>
         </head>
         <body>
-            <div class="no-print" style="margin-bottom: 20px; text-align: right;">
-                <button onclick="window.print()" style="padding: 10px 24px; background: #0A84FF; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 14px; box-shadow: 0 2px 6px rgba(10,132,255,0.3);">🖨️ Print Document</button>
+            <div class="no-print" style="margin-bottom: 12px; text-align: right; padding: 8px;">
+                <button onclick="window.print()" style="padding: 8px 20px; background: #0A84FF; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 13px; box-shadow: 0 2px 6px rgba(10,132,255,0.3);">🖨️ Print Document</button>
             </div>
             <div class="doc-container">
                 ${bodyContent}
@@ -1063,32 +1064,35 @@ function generateJobTravelerHTML(order) {
     const sizesRow = sizeKeys.map(k => `<td style="text-align:center; font-weight:bold;">${sizesObj[k] || 0}</td>`).join('');
 
     return `
-        <div style="border: 2px solid #111; padding: 18px; border-radius: 8px; margin-bottom: 20px;">
+        <div style="border: 2px solid #111; padding: 14px; border-radius: 8px; margin-bottom: 12px;">
             <!-- Header -->
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom: 2px solid #111; padding-bottom: 12px; margin-bottom: 12px;">
-                <div>
-                    <h1 style="font-size: 20px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">Garment OS Factory Job Traveler</h1>
-                    <p style="font-size: 12px; color: #4b5563; font-weight: 600; margin-top: 2px;">Tirupur Apparel Export Zone • Operational Traveler &amp; Cut Ticket</p>
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom: 2px solid #111; padding-bottom: 10px; margin-bottom: 10px;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <img src="/assets/logo-billing.png" alt="Logo" style="height:44px;object-fit:contain;" onerror="this.outerHTML='<div style=\\'font-size:18px;font-weight:800;\\'>UDHAYAA</div>'">
+                    <div>
+                        <h1 style="font-size: 17px; font-weight: 800; text-transform: uppercase;">UDHAYAA TEXTILES — FACTORY JOB TRAVELER</h1>
+                        <p style="font-size: 10.5px; color: #4b5563; font-weight: 600; margin-top: 1px;">63/A Senthur Nagar, Erode 638004 • GSTIN: 33ANGPU7147M1ZE</p>
+                    </div>
                 </div>
                 <div style="text-align: right;">
                     <div class="barcode-box">||| ${order.id} ||||</div>
-                    <p style="font-size: 10px; font-weight: bold; color: #6b7280; margin-top: 3px;">PRINTED: ${new Date().toLocaleDateString('en-IN')}</p>
+                    <p style="font-size: 9.5px; font-weight: bold; color: #6b7280; margin-top: 2px;">PRINTED: ${new Date().toLocaleDateString('en-IN')}</p>
                 </div>
             </div>
 
             <!-- Meta Grid -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; font-size: 12px; margin-bottom: 14px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; font-size: 11px; margin-bottom: 10px;">
                 <div><strong>Order ID:</strong> <span class="text-mono">${order.id}</span></div>
                 <div><strong>Buyer:</strong> ${customerName}</div>
                 <div><strong>Buyer PO #:</strong> ${order.customerPO || order.id}</div>
                 <div><strong>Target Delivery:</strong> ${order.deliveryDate || 'Not specified'}</div>
                 <div><strong>Priority:</strong> <span style="text-transform:uppercase; font-weight:bold;">${order.priority || 'Normal'}</span></div>
-                <div><strong>Total Order Qty:</strong> <strong style="font-size: 14px;">${order.qty} pcs</strong></div>
+                <div><strong>Total Order Qty:</strong> <strong style="font-size: 13px;">${order.qty} pcs</strong></div>
             </div>
 
             <!-- Product & Fabric Specs -->
-            <div style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 10px; border-radius: 6px; margin-bottom: 14px;">
-                <div style="display:grid; grid-template-columns: 2fr 3fr; gap: 8px;">
+            <div style="background: #f9fafb; border: 1px solid #e5e7eb; padding: 8px 10px; border-radius: 6px; margin-bottom: 10px; font-size: 10.5px;">
+                <div style="display:grid; grid-template-columns: 2fr 3fr; gap: 6px;">
                     <div><strong>Style / Product:</strong> ${order.product || 'Garment Item'}</div>
                     <div><strong>Fabric Spec:</strong> ${order.fabric || '100% Combed Cotton Single Jersey, 180 GSM'}</div>
                     <div><strong>Route Preset:</strong> ${(order.workflowType || 'default').replace(/_/g, ' ')}</div>
@@ -1097,7 +1101,7 @@ function generateJobTravelerHTML(order) {
             </div>
 
             <!-- Marker & Size Matrix -->
-            <h3 style="font-size: 12px; font-weight: 800; text-transform: uppercase; margin-bottom: 4px;">Planned Size Ratio &amp; Bundle Matrix</h3>
+            <h3 style="font-size: 11px; font-weight: 800; text-transform: uppercase; margin-bottom: 3px;">Planned Size Ratio &amp; Bundle Matrix</h3>
             <table>
                 <thead>
                     <tr>
@@ -1121,7 +1125,7 @@ function generateJobTravelerHTML(order) {
             </table>
 
             <!-- Department Workstation Signoffs -->
-            <h3 style="font-size: 12px; font-weight: 800; text-transform: uppercase; margin-top: 14px; margin-bottom: 4px;">Department Checkpoints &amp; Quality Sign-Off</h3>
+            <h3 style="font-size: 11px; font-weight: 800; text-transform: uppercase; margin-top: 10px; margin-bottom: 3px;">Department Checkpoints &amp; Quality Sign-Off</h3>
             <table>
                 <thead>
                     <tr>
@@ -1185,9 +1189,9 @@ function generateJobTravelerHTML(order) {
                 </tbody>
             </table>
 
-            <div style="margin-top: 14px; display:flex; justify-content:space-between; align-items:flex-end; font-size:11px; color:#4b5563;">
+            <div style="margin-top: 10px; display:flex; justify-content:space-between; align-items:flex-end; font-size:10px; color:#4b5563;">
                 <p>Note: This traveler must accompany the cut bundles at all times across sewing lines.</p>
-                <div style="border-top: 1px dashed #4b5563; width: 180px; text-align:center; padding-top: 4px;">Factory Manager Authorization</div>
+                <div style="border-top: 1px dashed #4b5563; width: 180px; text-align:center; padding-top: 3px;">Factory Manager Authorization</div>
             </div>
         </div>
     `;
@@ -1198,7 +1202,7 @@ function generateProformaInvoiceHTML(order) {
     const customerName = customer.name || order.customerName || order.customerId;
     const customerCompany = customer.company || 'Buyer Organization';
     const customerGst = customer.gstNumber || customer.taxId || '33AAAAA0000A1Z5';
-    const customerAddress = customer.shippingAddress || customer.address || 'Tirupur Apparel Logistics Hub';
+    const customerAddress = customer.shippingAddress || customer.address || 'Tamil Nadu, India';
 
     const orderValue = order.value || 0;
     const unitPrice = order.qty > 0 ? (orderValue / order.qty) : 0;
@@ -1208,38 +1212,41 @@ function generateProformaInvoiceHTML(order) {
     const sgst = cgst;
 
     return `
-        <div style="border: 1px solid #d1d5db; padding: 24px; border-radius: 8px;">
+        <div style="border: 1px solid #cbd5e1; padding: 16px; border-radius: 8px;">
             <!-- Seller Info -->
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; border-bottom: 2px solid #111; padding-bottom: 16px; margin-bottom: 16px;">
-                <div>
-                    <h1 style="font-size: 22px; font-weight: 800; color: #0A84FF;">GARMENT OS APPAREL FACTORY</h1>
-                    <p style="font-size: 11px; color: #374151; margin-top: 3px;">
-                        Tirupur Apparel Export Zone, Ring Road, Tirupur, Tamil Nadu - 641602<br/>
-                        <strong>GSTIN:</strong> 33AAAAA0000A1Z5 | <strong>PAN:</strong> AABCG1234F | <strong>Email:</strong> billing@garmentos.com
-                    </p>
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid #0f172a; padding-bottom: 10px; margin-bottom: 10px;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <img src="/assets/logo-billing.png" alt="Logo" style="height:46px;object-fit:contain;" onerror="this.outerHTML='<div style=\\'font-size:20px;font-weight:800;\\'>UDHAYAA TEXTILES</div>'">
+                    <div>
+                        <h1 style="font-size: 18px; font-weight: 800; color: #0f172a;">UDHAYAA TEXTILES</h1>
+                        <p style="font-size: 10px; color: #475569; margin-top: 1px;">
+                            63/A Senthur Nagar, Ellapalayam Road, Periyasemur, Erode - 638004<br/>
+                            <strong style="color:#0f172a;background:#f1f5f9;padding:1px 4px;border:1px solid #cbd5e1;border-radius:3px;">GSTIN: 33ANGPU7147M1ZE</strong> | Phone: +91 77083 33813 | info@udhayaatextiles.com
+                        </p>
+                    </div>
                 </div>
                 <div style="text-align: right;">
-                    <h2 style="font-size: 16px; font-weight: 800; text-transform: uppercase;">PROFORMA INVOICE</h2>
-                    <p class="text-mono" style="font-size: 13px; font-weight: bold; margin-top: 4px;">PI-${order.id}</p>
-                    <p style="font-size: 11px; color: #4b5563;">Date: ${new Date().toLocaleDateString('en-IN')}</p>
+                    <h2 style="font-size: 15px; font-weight: 800; text-transform: uppercase;">PROFORMA INVOICE</h2>
+                    <p class="text-mono" style="font-size: 12px; font-weight: bold; margin-top: 2px;">PI-${order.id}</p>
+                    <p style="font-size: 10px; color: #4b5563;">Date: ${new Date().toLocaleDateString('en-IN')}</p>
                 </div>
             </div>
 
             <!-- Buyer Details -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; background: #f9fafb; padding: 12px; border-radius: 6px; border: 1px solid #e5e7eb;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; background: #f8fafc; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0;">
                 <div>
-                    <span style="font-size: 10px; font-weight: bold; text-transform: uppercase; color: #6b7280;">Billed To / Consignee:</span>
-                    <p style="font-size: 14px; font-weight: bold; margin-top: 2px;">${customerName}</p>
-                    <p style="font-size: 12px; color: #374151;">${customerCompany}</p>
-                    <p style="font-size: 11px; color: #374151; margin-top: 2px;">${customerAddress}</p>
-                    <p style="font-size: 11px; font-weight: bold; margin-top: 2px;">GSTIN: ${customerGst}</p>
+                    <span style="font-size: 9px; font-weight: bold; text-transform: uppercase; color: #64748b;">Billed To / Consignee:</span>
+                    <p style="font-size: 13px; font-weight: bold; margin-top: 2px;">${customerName}</p>
+                    <p style="font-size: 11px; color: #374151;">${customerCompany}</p>
+                    <p style="font-size: 10.5px; color: #374151; margin-top: 2px;">${customerAddress}</p>
+                    <p style="font-size: 10.5px; font-weight: bold; margin-top: 2px;">GSTIN: ${customerGst}</p>
                 </div>
                 <div>
-                    <span style="font-size: 10px; font-weight: bold; text-transform: uppercase; color: #6b7280;">Order &amp; Payment Specs:</span>
-                    <p style="font-size: 12px; margin-top: 2px;"><strong>Buyer PO Ref:</strong> ${order.customerPO || order.id}</p>
-                    <p style="font-size: 12px;"><strong>Target Dispatch:</strong> ${order.deliveryDate || 'Within 14 Days'}</p>
-                    <p style="font-size: 12px;"><strong>Payment Terms:</strong> 50% Advance, 50% Against Dispatch Challan</p>
-                    <p style="font-size: 12px;"><strong>Payment Status:</strong> <span style="font-weight:bold;">${order.paymentStatus || 'Unpaid'}</span></p>
+                    <span style="font-size: 9px; font-weight: bold; text-transform: uppercase; color: #64748b;">Order &amp; Payment Specs:</span>
+                    <p style="font-size: 11px; margin-top: 2px;"><strong>Buyer PO Ref:</strong> ${order.customerPO || order.id}</p>
+                    <p style="font-size: 11px;"><strong>Target Dispatch:</strong> ${order.deliveryDate || 'Within 14 Days'}</p>
+                    <p style="font-size: 11px;"><strong>Payment Terms:</strong> 50% Advance, 50% Against Dispatch</p>
+                    <p style="font-size: 11px;"><strong>Payment Status:</strong> <span style="font-weight:bold;">${order.paymentStatus || 'Unpaid'}</span></p>
                 </div>
             </div>
 
@@ -1260,9 +1267,9 @@ function generateProformaInvoiceHTML(order) {
                         <td>1</td>
                         <td>
                             <strong>${order.product || 'Garment Item'}</strong>
-                            <p style="font-size: 11px; color: #4b5563; margin-top: 2px;">${order.fabric || '100% Combed Cotton Single Jersey, 180 GSM'}</p>
+                            <p style="font-size: 10px; color: #4b5563; margin-top: 1px;">${order.fabric || '100% Combed Cotton Single Jersey, 180 GSM'}</p>
                         </td>
-                        <td style="text-align:center;" class="text-mono">61091000</td>
+                        <td style="text-align:center;" class="text-mono">6109</td>
                         <td style="text-align:right; font-weight:bold;">${order.qty}</td>
                         <td style="text-align:right;">₹${unitPrice.toFixed(2)}</td>
                         <td style="text-align:right; font-weight:bold;">₹${orderValue.toLocaleString('en-IN')}</td>
@@ -1271,39 +1278,39 @@ function generateProformaInvoiceHTML(order) {
             </table>
 
             <!-- Financial Totals Grid -->
-            <div style="display:flex; justify-content:space-between; margin-top: 12px; gap: 20px;">
-                <div style="flex:1; font-size: 11px; color: #374151; background:#f9fafb; padding:10px; border-radius:6px; border:1px solid #e5e7eb;">
+            <div style="display:flex; justify-content:space-between; margin-top: 8px; gap: 16px;">
+                <div style="flex:1; font-size: 10px; color: #374151; background:#f8fafc; padding:8px 10px; border-radius:6px; border:1px solid #e2e8f0;">
                     <strong>Bank Remittance Details:</strong><br/>
-                    Bank: HDFC Bank Ltd • Industrial Finance Branch<br/>
-                    A/C Name: Garment OS Technologies Private Limited<br/>
-                    A/C No: 50200087654321 • IFSC Code: HDFC0001234
+                    Bank: Indian Overseas Bank • Branch: Erode Periasemur<br/>
+                    A/C Name: Udhayaa Textiles • A/C No: 134601000036234<br/>
+                    IFSC: IOBA0001346 • UPI: info.udhayaatextiles-2@okhdfcbank
                 </div>
-                <div style="width: 280px; font-size: 12px;">
-                    <div style="display:flex; justify-content:space-between; padding: 4px 0;">
+                <div style="width: 250px; font-size: 11px;">
+                    <div style="display:flex; justify-content:space-between; padding: 2px 0;">
                         <span>Subtotal (Excl. Tax):</span>
                         <strong>₹${subtotal.toLocaleString('en-IN')}</strong>
                     </div>
-                    <div style="display:flex; justify-content:space-between; padding: 4px 0; color:#4b5563;">
-                        <span>CGST @ 2.5%:</span>
+                    <div style="display:flex; justify-content:space-between; padding: 2px 0; color:#4b5563;">
+                        <span>CGST (2.5%):</span>
                         <span>₹${cgst.toLocaleString('en-IN')}</span>
                     </div>
-                    <div style="display:flex; justify-content:space-between; padding: 4px 0; color:#4b5563;">
-                        <span>SGST @ 2.5%:</span>
+                    <div style="display:flex; justify-content:space-between; padding: 2px 0; color:#4b5563;">
+                        <span>SGST (2.5%):</span>
                         <span>₹${sgst.toLocaleString('en-IN')}</span>
                     </div>
-                    <div style="display:flex; justify-content:space-between; padding: 8px 0; border-top: 2px solid #111; font-size: 15px; font-weight: 800; margin-top: 4px;">
+                    <div style="display:flex; justify-content:space-between; padding: 4px 0; border-top: 1.5px solid #0f172a; font-size: 13px; font-weight: 800; margin-top: 2px;">
                         <span>Grand Total:</span>
-                        <span style="color: #0A84FF;">₹${orderValue.toLocaleString('en-IN')}</span>
+                        <span style="color: #0f172a;">₹${orderValue.toLocaleString('en-IN')}</span>
                     </div>
                 </div>
             </div>
 
             <!-- Signature -->
-            <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top: 30px; font-size: 11px;">
+            <div style="display:flex; justify-content:space-between; align-items:flex-end; margin-top: 18px; font-size: 10px;">
                 <p>This is a computer-generated commercial proforma invoice.</p>
-                <div style="text-align:center; width: 180px; border-top: 1px solid #111; padding-top: 4px;">
-                    <strong>For Garment OS Hub</strong><br/>
-                    Authorized Signatory
+                <div style="text-align:center; width: 160px; border-top: 1px solid #0f172a; padding-top: 3px;">
+                    <strong>For UDHAYAA TEXTILES</strong><br/>
+                    <span style="font-size:8.5px;color:#64748b">Authorized Signatory</span>
                 </div>
             </div>
         </div>

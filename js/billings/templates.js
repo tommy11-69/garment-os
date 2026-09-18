@@ -528,6 +528,10 @@ export function getBillingDetailsHTML(doc) {
 
 // ── Print Template ─────────────────────────────────────────────────────
 
+// ── Print Template ─────────────────────────────────────────────────────
+
+const BILLING_LOGO_DATA_URI = "data:image/png;base64,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TvOUfzIl6deaGUGFvHK5ZNNWBRgRAm+RZDKpGTNmnFrl0tXVZZ6SN52dnfrwww8Vi8U0efJkFRePrYdoO46jjo4OrV+/Xo8++qgee+wxtbW1maf9k2AwqDlVcV3X5FdAo791xGkReJxA4C2TTCY1c+bMU3dcjmbk29vb9c4776i/v191dXUqKysr6LNkM9XX16dt27bpN7/5jb7//e/r+eef18DA0NvQBoNBNTY26ksXLtHyyF75zrT3/Wgi8DiBwFvoZOTT6bR27tw5qmvVu7q69N5772n//v2qqKhQMpn07JTN4OCg9u/fr1deeUVr167Vo48+mtGUjE58uD1z5kzdcsst+perLlL03f975oebjCYCjxMIvKWKi4s1d+5cRaNR7d27V21tbaO2+2Rvb6+2bt2qjRs3ynEcFRcXK5FIKBQ6w9N5RtHAwIAOHDig1157TT//+c/1yCOPDGsL5kgkoubmZt1+++265ZZblOg7Kr3xJIGH5xB4iyUSCTU3N6u2tlb79u3TkSNHMpp6yIVUKqUDBw5ow4YN2rFjhxzHkd/vVzQaVTQaNU/PO8dxdPz4cX388cd644039MQTT+jhhx/W008/rdbWVvP0TxWLxbRw4ULdcccdWrNmjbsvfutuAg9PYj/4caCvr0+vv/66fvCDH+iPf/zjsIKWK8XFxVq+fLkuueQStbS0qKamRpWVlUokEuapOeM4jnp6enT48GHt3btXH3zwgf70pz/11VdfzXgq5iS/36/S0lKtWLFCt956qy655JL/+Hxh21+kH10l9R03v60w2A8eJxD4cSKVSmn79u1au3atnn32We3atWvUrub/UTQaVVNTk5YsWaLFixdrxowZmjBhgkpKSlRaWqpEIqFAIGB+W0YGBwd1/PhxHTt2TK2trTp8+LB27typTZs2acOGDXrvvfcynob5R6FQSPX19brssst08803q7m5+ZMnEHh4FIEfZ1pbW/XMM8/oiSee0JtvvlnQm5PC4bBqa2s1c+ZMTZs2TU1NTaqrq1NJSYlisZii0agikYgCgYD8fr8CgYB8Pp/S6bRSqZQGBwc1ODiovr4+dXV1qa2tTfv27dPHH3+szZs36/3339eePXtG9NlDPB7X/Pnzdf311+v6669XaWmpeQqBh2cR+HFocHBQ27dv17p16/TMM89o27Zt6unpMU8riGAwqLKyMlVUVGjixIkqLi5WJBJROBxWOBxWIBDQwMCAent71dPTo56eHrW3t2v//v06dOhQzjY+C4VCmjx5spYvX66vfOUrWrly5acv+STw8CgCP451dXXpz3/+s9atW6fXX39de/fuzWoKwyaBQEDl5eU6++yzdfnll+uKK65QTU2NedonEXh4FIEf59LptA4cOKBnn31WL7zwgt599139/e9/H3cPtPD7/Uomk5ozZ44+97nP6dprr9XcuXPN006PwMOjCDykEytODh06pN/97nd67rnntGnTJu3evVvHj3skWnkSCAQ0YcIETZs2TYsXL9aVV16pFStWKBgMmqd+OgIPjyLw+ATHcdTa2qrf//73p67oR3sN/WgIhUKqqqrSzJkztWzZMl188cVauHBhdg9OIfDwKAKPT9XZ2am33npLr7zyiv72t7/po48+0r59+9Ta2qpUKmWe7nknP8CtqalRY2OjzjvvPK1evVqzZ88e2cNSCDw8isBjSM6Jh1+88cYbevXVV7Vx40bt2bNHra2tamtrU3d3t/ktnvGPUW9oaND8+fO1dOlStbS0qKqqyjw9OwQeHkXgMSzpdFqHDx/WW2+9pQ8++EBbtmzRrl27dPTo0VPB7+zsHNHa82z5fD6Fw2GVlZWd+qqqqtK8efN0zjnnqKWlRZWVlea3jRyBh0cReIxIKpXSkSNHtHnzZm3ZskVbt27VRx99pI6ODh0/fvy0XyOd3vH7/YrFYioqKlJRUZFisZji8bhKSkpO3Th18quxsTGv2yFIBB7eReCRUyf3fzlw4IAOHjyogwcP6tChQ6f++uDBg+rs7NTg4OCpu1FTqdQnvtLptHw+nwKBwCe+gsGgQqGQEomEKisrVVVVdep/q6urVV9fr9ra2uGtgMkFAg+PIvAYValUSp2dnert7VVvb6/6+vrU19f3ib8eGBhQIBBQJBJRJBJRNBpVOBxWNBpVPB5XaWmpu4ujVxB4eBSBB0aKwMOjPmVzDQDAWEfgAcBSBB4ALEXgAcBSBB4ALEXgAcBSBB4ALEXgAcBSBB4ALEXgAcBSBB4ALEXgAcBSBB4ALEXgAcBSBB4ALEXgAcBSBB4ALEXgAcBSBB4ALEXgAcBSBB4ALEXgAcBSBB4ALEXgAcBSBB4ALEXgAcBSBB4ALEXgAcBSBB4ALEXgAcBSBB4ALEXgAcBSBB4ALEXgAcBSBB4ALEXgAcBSBB4ALEXgAcBSBB4ALEXgAcBSBB4ALEXgAcBSBB4ALEXgAcBSBB4ALEXgAcBSBB4ALEXgAcBSBB4ALEXgAcBSBB4ALEXgAcBSBB4ALEXgAcBSBB4ALEXgAcBSBB7IBccxjxSQI3npj4OCIfDASKXTUmrQPFo4jiOlBsyjGIcIPDAS6UGpr8tbgR8ckHqOmUcxDhF4YCR6jkn7N7vTIl7Rf1w6ukvq6zZHMM4QeCBb6ZR0+CPpvRfNkcIa6JH2vS/tfN1bv3gw6gg8MFzplNTdKu36m/TmU9Ku180zCu/ox9JffiJ99JrUedidSsK443McT338D+ROX7d0cKvU1WqOZMmRnLTU3yMd2i598P/cgHr1A81gWKqeLZ11mVQ9S4omJJ9Pks88MzvRpDRpthQtNkfgEQQe9jr4ofSb+6WtfzZHsuM4UnpAGux3r+LHEp9fCkUlf/BE5HOg9jPStd+TJjebI/AIAg977d8s/epuafMfzBHkQt1Z0g0/kurnmyPwCObgAcBSBB4ALEXgAcBSBB4ALEXgAcBSrKKBvdr2SK/+H2nPO+YIcmHiFOm826SKRnMEHkHgAcBSTNEAgKUIPABYisADgKUIPABYisADgKUIPABYisADgKUIPABYisADgKUIPABYisADgKUIPABYisADgKUIPABYisADgKUIPABYisADgKUIPABYisADgKUIPABYisADgKUIPABYisADgKUIPABYisADgKUIPABYisADgKUIPABYisADgKUIPABYisADgKUIPABYisADgKUIPABYisADgKUIPABYisADgKUIPABYisADgKUIPABYisADgKUIPABYisADgKUIPABY6v8Dacx18wwDfdMAAAAASUVORK5CYII=";
+
 export function getPrintHTML(doc, contactInfo = {}) {
     const meta = BILLING_TYPES[doc.transaction_type] || BILLING_TYPES.Quotation;
     const items = doc.items || [];
@@ -536,7 +540,7 @@ export function getPrintHTML(doc, contactInfo = {}) {
     const grandTotal = doc.grand_total || 0;
 
     function numberToWords(num) {
-        if (num === 0) return 'Zero Rupees only';
+        if (num === 0) return 'Zero Rupees Only';
         const a = ['','One ','Two ','Three ','Four ','Five ','Six ','Seven ','Eight ','Nine ','Ten ','Eleven ','Twelve ','Thirteen ','Fourteen ','Fifteen ','Sixteen ','Seventeen ','Eighteen ','Nineteen '];
         const b = ['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
         const numStr = Math.floor(num).toString();
@@ -549,7 +553,7 @@ export function getPrintHTML(doc, contactInfo = {}) {
         str += (n[3] != 0) ? (a[Number(n[3])] || b[n[3][0]] + ' ' + a[n[3][1]]) + 'Thousand ' : '';
         str += (n[4] != 0) ? (a[Number(n[4])] || b[n[4][0]] + ' ' + a[n[4][1]]) + 'Hundred ' : '';
         str += (n[5] != 0) ? ((str !== '') ? 'and ' : '') + (a[Number(n[5])] || b[n[5][0]] + ' ' + a[n[5][1]]) : '';
-        return str.trim() + ' Rupees only';
+        return str.trim() + ' Rupees Only';
     }
 
     const amountWords = numberToWords(Math.round(grandTotal));
@@ -557,18 +561,18 @@ export function getPrintHTML(doc, contactInfo = {}) {
     const sgst = (taxTotal / 2).toFixed(2);
 
     const itemsHTML = items.map((item, i) => {
-        const gstPct = item.tax_pct || 0;
-        const taxAmt = item.tax_amount || 0;
+        const gstPct = item.tax_pct || 5;
+        const taxAmt = item.tax_amount || (item.row_total * (gstPct / 100)) || 0;
         return `
         <tr>
-            <td style="text-align:center;color:#64748b">${i+1}</td>
-            <td>${item.item_name}${item.description ? `<br><small style="color:#64748b">${item.description}</small>` : ''}</td>
+            <td style="text-align:center;color:#64748b;font-weight:600">${i+1}</td>
+            <td style="font-weight:600;color:#0f172a">${item.item_name || 'Item'}${item.description ? `<div style="color:#64748b;font-size:9.5px;font-weight:normal;margin-top:1px">${item.description}</div>` : ''}</td>
             <td style="text-align:center;color:#64748b">6109</td>
-            <td style="text-align:center">${item.quantity} ${item.unit}</td>
-            <td style="text-align:right">₹ ${Number(item.unit_price).toFixed(2)}</td>
-            ${item.discount_pct > 0 ? `<td style="text-align:right;color:#64748b">${item.discount_pct}%</td>` : '<td></td>'}
-            <td style="text-align:right;color:#64748b">₹ ${taxAmt.toFixed(2)} (${gstPct}%)</td>
-            <td style="text-align:right;font-weight:600">₹ ${Number(item.row_total).toFixed(2)}</td>
+            <td style="text-align:center;font-weight:600">${item.quantity} <span style="font-size:9.5px;color:#64748b">${item.unit || 'pcs'}</span></td>
+            <td style="text-align:right">₹ ${Number(item.unit_price || 0).toFixed(2)}</td>
+            ${item.discount_pct > 0 ? `<td style="text-align:right;color:#64748b">${item.discount_pct}%</td>` : '<td style="text-align:center;color:#94a3b8">—</td>'}
+            <td style="text-align:right;color:#475569">₹ ${Number(taxAmt).toFixed(2)} <span style="font-size:9.5px;color:#64748b">(${gstPct}%)</span></td>
+            <td style="text-align:right;font-weight:700;color:#0f172a">₹ ${Number(item.row_total || 0).toFixed(2)}</td>
         </tr>`;
     }).join('');
 
@@ -584,159 +588,401 @@ export function getPrintHTML(doc, contactInfo = {}) {
     return `<!DOCTYPE html>
 <html>
 <head>
-    <title>${doc.invoice_number}</title>
+    <meta charset="utf-8">
+    <title>${docTitle} - ${doc.invoice_number}</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        @page { size: A4; margin: 12mm 15mm; }
-        * { box-sizing: border-box; }
-        body { font-family: 'Inter', sans-serif; font-size: 12px; color: #1e293b; margin: 0; background: #fff; line-height: 1.5; }
-        .header { display: flex; justify-content: space-between; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; margin-bottom: 24px; }
-        .company-name { font-size: 24px; font-weight: 800; }
-        .doc-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px; }
-        .doc-title { font-size: 26px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
-        .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 24px; }
-        .info-box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 14px; }
-        .info-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #64748b; font-weight: 600; margin-bottom: 6px; }
-        table { width: 100%; border-collapse: collapse; }
-        .table-wrap { border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden; margin-bottom: 24px; }
-        th { background: #f8fafc; padding: 10px 8px; font-size: 10px; font-weight: 600; color: #475569; text-transform: uppercase; letter-spacing: 0.3px; border-bottom: 2px solid #e2e8f0; }
-        td { padding: 10px 8px; border-bottom: 1px solid #f1f5f9; }
-        tr:last-child td { border-bottom: none; }
-        .totals-wrap { display: flex; justify-content: flex-end; margin-bottom: 32px; }
-        .totals-box { width: 300px; background: #f8fafc; border-radius: 8px; padding: 18px; border: 1px solid #e2e8f0; }
-        .total-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 13px; }
-        .total-grand { border-top: 2px solid #e2e8f0; padding-top: 12px; margin-top: 8px; margin-bottom: 0; font-size: 17px; font-weight: 800; }
-        .amount-words { font-style: italic; color: #64748b; text-align: right; margin-top: 8px; font-size: 11px; }
-        .footer { display: grid; grid-template-columns: 2fr 1fr; gap: 40px; border-top: 2px solid #e2e8f0; padding-top: 24px; }
-        .terms-list { padding-left: 14px; margin: 0; color: #475569; font-size: 11px; }
-        .terms-list li { margin-bottom: 5px; }
-        .sign-box { text-align: center; }
-        .sign-line { border-bottom: 1px solid #cbd5e1; margin-top: 50px; margin-bottom: 8px; }
+        @page {
+            size: A4 portrait;
+            margin: 6mm 8mm;
+        }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        html, body {
+            background: #ffffff;
+            color: #0f172a;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 10.5px;
+            line-height: 1.35;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+        .page-container {
+            width: 100%;
+            max-width: 100%;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 98vh;
+        }
+        
+        /* Header Block */
+        .top-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #0f172a;
+            padding-bottom: 8px;
+            margin-bottom: 8px;
+        }
+        .company-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .company-logo {
+            height: 48px;
+            width: auto;
+            max-width: 130px;
+            object-fit: contain;
+        }
+        .company-info-text {
+            text-align: right;
+            font-size: 10px;
+            color: #475569;
+            line-height: 1.3;
+        }
+        .company-title {
+            font-size: 17px;
+            font-weight: 800;
+            color: #0f172a;
+            letter-spacing: -0.3px;
+        }
+        .gst-badge {
+            display: inline-block;
+            font-weight: 700;
+            color: #0f172a;
+            background: #f1f5f9;
+            padding: 1px 6px;
+            border-radius: 4px;
+            border: 1px solid #cbd5e1;
+            margin-top: 2px;
+            font-size: 10px;
+        }
+
+        /* Document Banner */
+        .doc-banner {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            padding: 6px 10px;
+            margin-bottom: 8px;
+        }
+        .doc-type-title {
+            font-size: 14px;
+            font-weight: 800;
+            color: #0f172a;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+        .doc-meta-item {
+            font-size: 10.5px;
+            color: #334155;
+        }
+        .doc-meta-item strong {
+            color: #0f172a;
+            font-weight: 700;
+        }
+
+        /* 2-Column Info Cards */
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+        .info-card {
+            border: 1px solid #e2e8f0;
+            background: #fafafa;
+            border-radius: 6px;
+            padding: 7px 10px;
+            font-size: 10px;
+            line-height: 1.35;
+        }
+        .card-label {
+            font-size: 9px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #64748b;
+            margin-bottom: 3px;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 2px;
+        }
+        .card-name {
+            font-size: 12px;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 2px;
+        }
+
+        /* Table */
+        .table-wrap {
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 10px;
+        }
+        th {
+            background: #f1f5f9;
+            color: #334155;
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 9px;
+            letter-spacing: 0.3px;
+            padding: 5px 6px;
+            border-bottom: 1px solid #cbd5e1;
+            text-align: left;
+        }
+        td {
+            padding: 5px 6px;
+            border-bottom: 1px solid #e2e8f0;
+            color: #1e293b;
+            vertical-align: middle;
+        }
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* Summary & Totals */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: 1.25fr 1fr;
+            gap: 10px;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+        .amount-words-box {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 8px;
+            font-size: 10px;
+        }
+        .totals-card {
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            padding: 6px 10px;
+        }
+        .totals-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10.5px;
+            margin-bottom: 3px;
+            color: #475569;
+        }
+        .totals-row.grand {
+            border-top: 1.5px solid #0f172a;
+            margin-top: 4px;
+            padding-top: 4px;
+            margin-bottom: 0;
+            font-size: 13px;
+            font-weight: 800;
+            color: #0f172a;
+        }
+
+        /* Footer & Signatures */
+        .footer-section {
+            display: grid;
+            grid-template-columns: 1.4fr 1fr;
+            gap: 12px;
+            border-top: 1px solid #cbd5e1;
+            padding-top: 6px;
+            margin-top: auto;
+        }
+        .terms-box h4 {
+            font-size: 10px;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 3px;
+            text-transform: uppercase;
+        }
+        .terms-box ul {
+            padding-left: 12px;
+            font-size: 9px;
+            color: #475569;
+            line-height: 1.3;
+        }
+        .sign-card {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: center;
+        }
+        .sign-line {
+            width: 100%;
+            border-bottom: 1px solid #0f172a;
+            margin-top: 24px;
+            margin-bottom: 3px;
+        }
+
+        @media print {
+            body { padding: 0; }
+            .no-print { display: none !important; }
+            tr, .info-card, .totals-card, .footer-section {
+                page-break-inside: avoid;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="header">
+    <div class="page-container">
+        <!-- Top Header with Logo & Company GSTIN -->
         <div>
-            <img src="/assets/logo-primary.webp" alt="Logo" style="max-height:60px;max-width:120px;" 
-                onerror="this.outerHTML='<div style=\\'font-size:28px;font-weight:800;\\'>UDHAYAA</div>'">
-        </div>
-        <div style="text-align:right">
-            <div class="company-name"><span>Udhayaa </span><span style="color:#FF6B00">Textiles</span></div>
-            <div style="color:#64748b">63/A Senthur Nagar, Ellapalayam Road</div>
-            <div style="color:#64748b">Periyasemur, Erode, Tamil Nadu 638004</div>
-            <div style="color:#64748b;margin-top:4px">+91 77083 33813 · info@udhayaatextiles.com</div>
-        </div>
-    </div>
-
-    <div class="doc-header">
-        <div class="doc-title">${docTitle}</div>
-        <div style="text-align:right">
-            <div style="font-weight:700;font-size:15px">${doc.invoice_number}</div>
-            <div style="color:#64748b">Date: ${doc.date}</div>
-            ${doc.due_date ? `<div style="color:#64748b">Due: ${doc.due_date}</div>` : ''}
-        </div>
-    </div>
-
-    <div class="grid2">
-        <div class="info-box">
-            <div class="info-label">${meta.contactType === 'vendor' ? (isPayment ? 'Paid To Vendor' : 'Vendor') : (isPayment ? 'Received From Customer' : 'Bill To')}</div>
-            <div style="font-weight:700;font-size:15px;margin-bottom:4px">${doc.contact_name}</div>
-            ${doc.contact_gstin ? `<div style="color:#64748b">GSTIN: ${doc.contact_gstin}</div>` : ''}
-            ${contactInfo.address ? `<div style="color:#64748b">${contactInfo.address}</div>` : ''}
-            ${contactInfo.city ? `<div style="color:#64748b">${contactInfo.city}</div>` : ''}
-            ${contactInfo.email ? `<div style="color:#64748b">${contactInfo.email}</div>` : ''}
-        </div>
-        <div class="info-box">
-            <div class="info-label">Bank Details</div>
-            <div style="font-weight:600;margin-bottom:2px">Indian Overseas Bank</div>
-            <div style="color:#64748b">Branch: Erode Periasemur</div>
-            <div style="color:#64748b">A/C Name: Udhayaa Textiles</div>
-            <div style="font-weight:700;margin-top:6px">A/C No: 134601000036234</div>
-            <div style="font-weight:700">IFSC: IOBA0001346</div>
-            <div style="font-weight:700">UPI: info.udhayaatextiles-2@okhdfcbank</div>
-        </div>
-    </div>
-
-    ${isPayment ? `
-    <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; padding:20px; margin-bottom:32px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:14px; margin-bottom:14px;">
-            <div>
-                <div style="font-size:10px; text-transform:uppercase; color:#64748b; font-weight:600;">Transaction Type</div>
-                <div style="font-size:16px; font-weight:700; color:#0f172a;">${doc.transaction_type === 'Payment_In' ? 'Payment Received' : 'Payment Outflow'}</div>
+            <div class="top-header">
+                <div class="company-brand">
+                    <img src="${BILLING_LOGO_DATA_URI}" alt="Logo" class="company-logo" 
+                        onerror="this.src='/assets/logo-billing.png'; this.onerror=null;">
+                    <div>
+                        <div class="company-title">UDHAYAA TEXTILES</div>
+                        <div style="font-size:9.5px;color:#64748b;font-weight:600">Garment Manufacturing &amp; Processing Unit</div>
+                    </div>
+                </div>
+                <div class="company-info-text">
+                    <div style="font-weight:600;color:#0f172a">63/A Senthur Nagar, Ellapalayam Road</div>
+                    <div>Periyasemur, Erode, Tamil Nadu 638004</div>
+                    <div>Phone: +91 77083 33813 · Email: info@udhayaatextiles.com</div>
+                    <div><span class="gst-badge">GSTIN: 33ANGPU7147M1ZE</span></div>
+                </div>
             </div>
-            <div style="text-align:right;">
-                <div style="font-size:10px; text-transform:uppercase; color:#64748b; font-weight:600;">Total Amount</div>
-                <div style="font-size:24px; font-weight:800; color:${doc.transaction_type === 'Payment_In' ? '#00B386' : '#FF3B30'};">₹ ${grandTotal.toFixed(2)}</div>
+
+            <!-- Document Ribbon -->
+            <div class="doc-banner">
+                <div class="doc-type-title">${docTitle}</div>
+                <div class="doc-meta-item"><strong>Doc #:</strong> ${doc.invoice_number || 'N/A'}</div>
+                <div class="doc-meta-item"><strong>Date:</strong> ${doc.date || ''}</div>
+                ${doc.due_date ? `<div class="doc-meta-item"><strong>Due Date:</strong> ${doc.due_date}</div>` : ''}
+                <div class="doc-meta-item"><strong>Place of Supply:</strong> 33-Tamil Nadu</div>
+            </div>
+
+            <!-- Billed To & Bank Details Grid -->
+            <div class="info-grid">
+                <div class="info-card">
+                    <div class="card-label">${meta.contactType === 'vendor' ? (isPayment ? 'Paid To Vendor' : 'Vendor Details') : (isPayment ? 'Received From Customer' : 'Bill To (Buyer)')}</div>
+                    <div class="card-name">${doc.contact_name || 'Cash / Counter Customer'}</div>
+                    ${doc.contact_gstin ? `<div style="font-weight:600;color:#0f172a">GSTIN: <span style="font-family:monospace">${doc.contact_gstin}</span></div>` : ''}
+                    ${contactInfo.address ? `<div>${contactInfo.address}</div>` : ''}
+                    ${contactInfo.city ? `<div>${contactInfo.city}</div>` : ''}
+                    ${contactInfo.phone ? `<div>Phone: ${contactInfo.phone}</div>` : ''}
+                    ${contactInfo.email ? `<div>Email: ${contactInfo.email}</div>` : ''}
+                </div>
+                <div class="info-card">
+                    <div class="card-label">Bank &amp; Remittance Details</div>
+                    <div style="font-weight:700;color:#0f172a;margin-bottom:1px">Indian Overseas Bank</div>
+                    <div>Branch: Erode Periasemur | A/C Name: Udhayaa Textiles</div>
+                    <div style="font-weight:700;color:#0f172a;margin-top:2px">A/C No: <span style="font-family:monospace">134601000036234</span></div>
+                    <div style="font-weight:700;color:#0f172a">IFSC: <span style="font-family:monospace">IOBA0001346</span></div>
+                    <div style="font-weight:600;color:#2563eb">UPI ID: info.udhayaatextiles-2@okhdfcbank</div>
+                </div>
+            </div>
+
+            ${isPayment ? `
+            <!-- Payment Document Block -->
+            <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:6px; padding:12px; margin-bottom:8px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:8px; margin-bottom:8px;">
+                    <div>
+                        <div style="font-size:9.5px; text-transform:uppercase; color:#64748b; font-weight:700;">Voucher Type</div>
+                        <div style="font-size:14px; font-weight:800; color:#0f172a;">${doc.transaction_type === 'Payment_In' ? 'Payment Received' : 'Payment Outflow'}</div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="font-size:9.5px; text-transform:uppercase; color:#64748b; font-weight:700;">Voucher Amount</div>
+                        <div style="font-size:20px; font-weight:800; color:${doc.transaction_type === 'Payment_In' ? '#008A00' : '#dc2626'};">₹ ${grandTotal.toFixed(2)}</div>
+                    </div>
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                    <div>
+                        <div style="font-size:9px; text-transform:uppercase; color:#64748b; font-weight:700;">Amount in Words</div>
+                        <div style="font-weight:600; color:#1e293b; margin-top:2px;">${amountWords}</div>
+                    </div>
+                    <div>
+                        <div style="font-size:9px; text-transform:uppercase; color:#64748b; font-weight:700;">Linked Document / Ref</div>
+                        <div style="font-weight:600; color:#1e293b; margin-top:2px;">${doc.linked_bill_id || 'Direct Payment Voucher'}</div>
+                    </div>
+                    ${doc.notes ? `
+                    <div style="grid-column: span 2; border-top:1px dashed #cbd5e1; padding-top:6px;">
+                        <div style="font-size:9px; text-transform:uppercase; color:#64748b; font-weight:700;">Notes &amp; Particulars</div>
+                        <div style="font-weight:500; color:#334155; margin-top:2px;">${doc.notes}</div>
+                    </div>` : ''}
+                </div>
+            </div>
+            ` : `
+            <!-- Items Table -->
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width:28px;text-align:center">#</th>
+                            <th>Description</th>
+                            <th style="width:55px;text-align:center">HSN</th>
+                            <th style="width:65px;text-align:center">Qty</th>
+                            <th style="width:75px;text-align:right">Rate</th>
+                            <th style="width:50px;text-align:center">Disc</th>
+                            <th style="width:85px;text-align:right">Tax</th>
+                            <th style="width:90px;text-align:right">Total Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>${itemsHTML}</tbody>
+                </table>
+            </div>
+
+            <!-- Summary & Totals -->
+            <div class="summary-grid">
+                <div class="amount-words-box">
+                    <div style="font-size:9px;text-transform:uppercase;color:#64748b;font-weight:700;margin-bottom:2px">Amount in Words:</div>
+                    <div style="font-weight:700;color:#0f172a;font-style:italic">${amountWords}</div>
+                    <div style="font-size:9px;color:#64748b;margin-top:6px;border-top:1px dashed #cbd5e1;padding-top:4px">
+                        Tax Summary: CGST (2.5%): ₹${cgst} | SGST (2.5%): ₹${sgst} | Total Tax: ₹${Number(taxTotal).toFixed(2)}
+                    </div>
+                </div>
+                <div class="totals-card">
+                    <div class="totals-row"><span>Subtotal (Taxable Value):</span><span style="font-weight:600">₹ ${subtotal.toFixed(2)}</span></div>
+                    ${doc.discount > 0 ? `<div class="totals-row"><span>Discount:</span><span style="color:#dc2626">−₹ ${Number(doc.discount).toFixed(2)}</span></div>` : ''}
+                    <div class="totals-row"><span>CGST (2.5%):</span><span>₹ ${cgst}</span></div>
+                    <div class="totals-row"><span>SGST (2.5%):</span><span>₹ ${sgst}</span></div>
+                    <div class="totals-row grand"><span>Total Amount:</span><span>₹ ${grandTotal.toFixed(2)}</span></div>
+                </div>
+            </div>
+            `}
+        </div>
+
+        <!-- Terms & Conditions + Authorized Signatory Footer -->
+        <div class="footer-section">
+            <div class="terms-box">
+                <h4>Terms &amp; Conditions</h4>
+                <ul>
+                    <li>Payment: 50% advance to confirm order; 20% on dyeing; 30% prior to dispatch.</li>
+                    <li>Goods once sold will not be taken back or exchanged without prior approval.</li>
+                    <li>Disputes if any are subject to Erode jurisdiction only.</li>
+                    <li>All rates valid for 7 days from document generation date.</li>
+                </ul>
+            </div>
+            <div class="sign-card">
+                <div class="sign-line"></div>
+                <div style="font-size:10px;font-weight:700;color:#0f172a">For UDHAYAA TEXTILES</div>
+                <div style="font-size:8.5px;color:#64748b">Authorized Signatory</div>
             </div>
         </div>
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
-            <div>
-                <div style="font-size:10px; text-transform:uppercase; color:#64748b; font-weight:600;">Amount in Words</div>
-                <div style="font-weight:600; color:#1e293b; margin-top:2px;">${amountWords}</div>
-            </div>
-            <div>
-                <div style="font-size:10px; text-transform:uppercase; color:#64748b; font-weight:600;">Linked Document / Ref</div>
-                <div style="font-weight:600; color:#1e293b; margin-top:2px;">${doc.linked_bill_id || 'Direct Payment'}</div>
-            </div>
-            ${doc.notes ? `
-            <div style="grid-column: span 2;">
-                <div style="font-size:10px; text-transform:uppercase; color:#64748b; font-weight:600;">Notes / Particulars</div>
-                <div style="font-weight:500; color:#334155; margin-top:2px;">${doc.notes}</div>
-            </div>` : ''}
-        </div>
-    </div>
-    ` : `
-    <div class="table-wrap">
-        <table>
-            <thead>
-                <tr>
-                    <th style="width:35px;text-align:center">#</th>
-                    <th>Description</th>
-                    <th style="width:65px;text-align:center">HSN</th>
-                    <th style="width:80px;text-align:center">Qty</th>
-                    <th style="width:90px;text-align:right">Price</th>
-                    <th style="width:70px;text-align:right">Disc</th>
-                    <th style="width:100px;text-align:right">GST</th>
-                    <th style="width:100px;text-align:right">Total</th>
-                </tr>
-            </thead>
-            <tbody>${itemsHTML}</tbody>
-        </table>
     </div>
 
-    <div class="totals-wrap">
-        <div>
-            <div class="totals-box">
-                <div class="total-row"><span style="color:#64748b">Subtotal</span><span style="font-weight:500">₹ ${subtotal.toFixed(2)}</span></div>
-                ${doc.discount > 0 ? `<div class="total-row"><span style="color:#64748b">Discount</span><span>−₹ ${Number(doc.discount).toFixed(2)}</span></div>` : ''}
-                <div class="total-row"><span style="color:#64748b">CGST (${(Number(items[0]?.tax_pct||5)/2).toFixed(1)}%)</span><span>₹ ${cgst}</span></div>
-                <div class="total-row"><span style="color:#64748b">SGST (${(Number(items[0]?.tax_pct||5)/2).toFixed(1)}%)</span><span>₹ ${sgst}</span></div>
-                <div class="total-row total-grand"><span>Grand Total</span><span>₹ ${grandTotal.toFixed(2)}</span></div>
-            </div>
-            <div class="amount-words">Amount in words: ${amountWords}</div>
-        </div>
-    </div>
-    `}
-
-    <div class="footer">
-        <div>
-            <h4 style="margin:0 0 10px;font-size:13px;font-weight:700">Terms &amp; Conditions</h4>
-            <ul class="terms-list">
-                <li><strong>Advance Payment:</strong> 50% of total order value to confirm order.</li>
-                <li><strong>Fabric In House:</strong> 20% to be paid once dyeing is completed.</li>
-                <li><strong>On Completion:</strong> 30% to be paid before delivery/dispatch.</li>
-                <li>All quoted rates are valid for 7 days from date of document.</li>
-            </ul>
-        </div>
-        <div class="sign-box">
-            <div style="flex-grow:1"></div>
-            <div class="sign-line"></div>
-            <div style="font-size:11px;font-weight:600;color:#64748b">For Udhayaa Textiles</div>
-            <div style="font-size:9px;color:#64748b;margin-top:2px">Authorized Signatory</div>
-        </div>
-    </div>
-
-    <script>window.onload = () => setTimeout(() => window.print(), 500)</script>
+    <script>
+        window.onload = function() {
+            setTimeout(function() { window.print(); }, 400);
+        };
+    </script>
 </body>
 </html>`;
 }

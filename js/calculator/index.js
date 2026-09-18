@@ -1120,51 +1120,45 @@ window.downloadQuotePDF = function() {
         <!DOCTYPE html>
         <html>
         <head>
-            <title>Garment OS - Costing Quote ${quoteNo}</title>
+            <title>Udhayaa Textiles - Costing Quote ${quoteNo}</title>
             <style>
-                body { font-family: 'Inter', system-ui, sans-serif; color: #1F2937; padding: 40px; line-height: 1.5; }
-                .header { display: flex; justify-content: space-between; border-bottom: 2px solid #E5E7EB; padding-bottom: 20px; margin-bottom: 30px; }
-                .title { font-size: 26px; font-weight: bold; color: #0071E3; margin: 0; }
-                .subtitle { font-size: 14px; color: #6B7280; margin: 5px 0 0 0; }
-                .info-grid { display: grid; grid-template-cols: 1fr 1fr; gap: 40px; margin-bottom: 30px; }
-                .info-section h3 { font-size: 14px; text-transform: uppercase; color: #6B7280; margin-bottom: 10px; border-bottom: 1px solid #F3F4F6; padding-bottom: 5px; }
-                .info-section p { margin: 4px 0; font-size: 15px; }
-                table { width: 100%; border-collapse: collapse; margin-bottom: 40px; }
-                th { background-color: #F9FAFB; padding: 12px 10px; text-align: left; font-size: 13px; font-weight: 600; color: #4B5563; border-bottom: 1px solid #E5E7EB; }
-                .summary-box { background: #F9FAFB; border-radius: 12px; padding: 20px; display: grid; grid-template-cols: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
+                @page { margin: 6mm 8mm; size: A4 portrait; }
+                * { box-sizing: border-box; margin: 0; padding: 0; }
+                body { font-family: 'Inter', system-ui, sans-serif; color: #0f172a; padding: 0; line-height: 1.35; font-size: 11px; }
+                .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0f172a; padding-bottom: 8px; margin-bottom: 10px; }
+                .title { font-size: 18px; font-weight: 800; color: #0f172a; margin: 0; }
+                .subtitle { font-size: 10px; color: #64748b; margin: 1px 0 0 0; font-weight: 600; }
+                .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px; }
+                .info-section h3 { font-size: 9.5px; text-transform: uppercase; color: #64748b; font-weight: 700; margin-bottom: 4px; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px; }
+                .info-section p { margin: 2px 0; font-size: 11px; }
+                table { width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 10.5px; border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden; }
+                th { background-color: #f1f5f9; padding: 5px 6px; text-align: left; font-size: 9.5px; font-weight: 700; color: #334155; border-bottom: 1px solid #cbd5e1; }
+                td { padding: 5px 6px; border-bottom: 1px solid #e2e8f0; }
+                .summary-box { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 10px; }
                 .summary-card { text-align: center; }
-                .summary-card p { margin: 0; font-size: 11px; text-transform: uppercase; color: #6B7280; font-weight: 600; }
-                .summary-card h4 { margin: 5px 0 0 0; font-size: 20px; font-weight: bold; color: #111827; }
-                .footer { text-align: center; font-size: 12px; color: #9CA3AF; border-top: 1px solid #E5E7EB; padding-top: 20px; margin-top: 50px; }
+                .summary-card p { margin: 0; font-size: 9px; text-transform: uppercase; color: #64748b; font-weight: 700; }
+                .summary-card h4 { margin: 2px 0 0 0; font-size: 15px; font-weight: 800; color: #0f172a; }
+                .footer { text-align: center; font-size: 9.5px; color: #64748b; border-top: 1px solid #cbd5e1; padding-top: 6px; margin-top: 10px; }
                 @media print {
-                    @page { margin: 15mm; size: A4; }
-                    body { padding: 0; font-size: 13px !important; line-height: 1.4; }
-                    .header { padding-bottom: 10px; margin-bottom: 15px; }
-                    .title { font-size: 20px; }
-                    .info-grid { gap: 20px; margin-bottom: 15px; }
-                    .info-section h3 { margin-bottom: 5px; font-size: 12px; }
-                    .info-section p { font-size: 13px; margin: 2px 0; }
-                    table { margin-bottom: 15px; }
-                    th, td { padding: 6px 8px !important; font-size: 12px !important; }
-                    h3 { font-size: 13px !important; margin-bottom: 10px !important; }
-                    .summary-box { padding: 12px; gap: 10px; margin-bottom: 15px !important; }
-                    .summary-card h4 { font-size: 16px; margin-top: 2px; }
-                    .summary-card p { font-size: 10px; }
-                    .footer { margin-top: 20px; padding-top: 10px; }
-                    .no-print { display: none; }
+                    body { padding: 0; }
+                    .no-print { display: none !important; }
+                    tr, .info-grid, .summary-box, table { page-break-inside: avoid; }
                 }
             </style>
         </head>
         <body>
             <div class="header">
-                <div>
-                    <h1 class="title">GARMENT OS</h1>
-                    <p class="subtitle">Official Costing &amp; Style Quotation</p>
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <img src="/assets/logo-billing.png" alt="Logo" style="height:44px;object-fit:contain;" onerror="this.outerHTML='<div style=\\'font-size:18px;font-weight:800;\\'>UDHAYAA</div>'">
+                    <div>
+                        <h1 class="title">UDHAYAA TEXTILES</h1>
+                        <p class="subtitle">Official Costing &amp; Style Quotation</p>
+                    </div>
                 </div>
-                <div style="text-align: right;">
-                    <h2 style="margin: 0; font-size: 18px; color: #111827;">Costing Quote</h2>
-                    <p style="margin: 5px 0 0 0; font-size: 14px; color: #4B5563;"><strong>Quote No:</strong> ${quoteNo}</p>
-                    <p style="margin: 3px 0 0 0; font-size: 14px; color: #4B5563;"><strong>Date:</strong> ${dateStr}</p>
+                <div style="text-align: right; font-size: 10px; color: #475569;">
+                    <h2 style="margin: 0; font-size: 14px; color: #0f172a; font-weight: 800;">COSTING QUOTE</h2>
+                    <p style="margin: 2px 0 0 0;"><strong>Quote #:</strong> ${quoteNo} | <strong>Date:</strong> ${dateStr}</p>
+                    <p style="margin: 2px 0 0 0;"><strong style="color:#0f172a;background:#f1f5f9;padding:1px 4px;border:1px solid #cbd5e1;border-radius:3px;">GSTIN: 33ANGPU7147M1ZE</strong></p>
                 </div>
             </div>
 

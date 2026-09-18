@@ -230,68 +230,103 @@ if (typeof window !== 'undefined') {
 
             const win = window.open('', '_blank');
             win.document.write(`
+                <!DOCTYPE html>
                 <html>
                 <head>
-                    <title>Delivery Challan & Gate Pass</title>
+                    <meta charset="utf-8">
+                    <title>Delivery Challan - ${dsp.dcNumber || 'DC-8921'}</title>
+                    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
                     <style>
-                        body { font-family: sans-serif; padding: 24px; color: #111; }
-                        .header { border-bottom: 2px solid #000; padding-bottom: 12px; margin-bottom: 20px; }
-                        .header h1 { margin: 0; font-size: 22px; }
-                        .meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; font-size: 14px; }
-                        .table { width: 100%; border-collapse: collapse; margin-bottom: 24px; font-size: 14px; }
-                        .table th, .table td { border: 1px solid #333; padding: 10px; text-align: left; }
-                        .table th { background: #f5f5f5; }
-                        .signatures { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-top: 60px; text-align: center; font-size: 13px; }
-                        .sig-line { border-top: 1px solid #000; padding-top: 8px; font-weight: bold; }
+                        @page { size: A4 portrait; margin: 6mm 8mm; }
+                        * { box-sizing: border-box; margin: 0; padding: 0; }
+                        body { font-family: 'Inter', sans-serif; font-size: 11px; color: #0f172a; line-height: 1.4; padding: 0; }
+                        .top-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0f172a; padding-bottom: 8px; margin-bottom: 10px; }
+                        .banner { display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 6px 10px; margin-bottom: 10px; }
+                        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+                        .card { border: 1px solid #e2e8f0; background: #fafafa; border-radius: 6px; padding: 8px 10px; font-size: 10.5px; }
+                        .card-label { font-size: 9px; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 4px; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px; }
+                        table { width: 100%; border-collapse: collapse; margin-bottom: 14px; font-size: 11px; border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden; }
+                        th { background: #f1f5f9; padding: 6px 8px; text-align: left; font-size: 9.5px; font-weight: 700; text-transform: uppercase; border-bottom: 1px solid #cbd5e1; }
+                        td { border-bottom: 1px solid #e2e8f0; padding: 8px; }
+                        .signatures { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-top: 40px; text-align: center; font-size: 10px; }
+                        .sig-line { border-top: 1px solid #0f172a; padding-top: 6px; font-weight: 700; }
+                        @media print { body { padding: 0; } }
                     </style>
                 </head>
                 <body>
-                    <div class="header">
-                        <h1>GARMENT OS — DELIVERY CHALLAN & GATE PASS</h1>
-                        <p style="margin: 4px 0 0 0; color: #555;">Official Factory Outward Dispatch Document</p>
-                    </div>
-
-                    <div class="meta-grid">
-                        <div>
-                            <p><strong>DC Number:</strong> ${dsp.dcNumber || 'DC-8921'}</p>
-                            <p><strong>Gate Pass:</strong> ${dsp.gatePassNumber || 'GP-1092'}</p>
-                            <p><strong>Date:</strong> ${dsp.dispatchDate || new Date().toISOString().split('T')[0]}</p>
-                            <p><strong>Order PO:</strong> ${order?.id || 'ORD-001'}</p>
+                    <div class="top-header">
+                        <div style="display:flex;align-items:center;gap:10px;">
+                            <img src="/assets/logo-billing.png" alt="Logo" style="height:44px;object-fit:contain;" onerror="this.outerHTML='<div style=\\'font-size:18px;font-weight:800;\\'>UDHAYAA TEXTILES</div>'">
+                            <div>
+                                <div style="font-size:16px;font-weight:800;">UDHAYAA TEXTILES</div>
+                                <div style="font-size:9.5px;color:#64748b;font-weight:600">Garment Manufacturing &amp; Processing Unit</div>
+                            </div>
                         </div>
-                        <div>
-                            <p><strong>Consignee / Buyer:</strong> ${order?.customerName || 'Customer'}</p>
-                            <p><strong>Carrier:</strong> ${dsp.transporterName || 'Local Transport'}</p>
-                            <p><strong>Vehicle Number:</strong> ${dsp.vehicleNumber || 'TN-38-1234'}</p>
-                            <p><strong>Driver:</strong> ${dsp.driverName || 'Driver'} (${dsp.driverPhone || 'N/A'})</p>
+                        <div style="text-align:right;font-size:10px;color:#475569;">
+                            <div style="font-weight:600;color:#0f172a">63/A Senthur Nagar, Ellapalayam Road, Erode 638004</div>
+                            <div>Phone: +91 77083 33813 · info@udhayaatextiles.com</div>
+                            <div><strong style="color:#0f172a;background:#f1f5f9;padding:1px 6px;border:1px solid #cbd5e1;border-radius:4px;">GSTIN: 33ANGPU7147M1ZE</strong></div>
                         </div>
                     </div>
 
-                    <table class="table">
+                    <div class="banner">
+                        <div style="font-size:13px;font-weight:800;text-transform:uppercase;">DELIVERY CHALLAN &amp; GATE PASS</div>
+                        <div><strong>DC #:</strong> ${dsp.dcNumber || 'DC-8921'}</div>
+                        <div><strong>Gate Pass:</strong> ${dsp.gatePassNumber || 'GP-1092'}</div>
+                        <div><strong>Date:</strong> ${dsp.dispatchDate || new Date().toISOString().split('T')[0]}</div>
+                    </div>
+
+                    <div class="grid-2">
+                        <div class="card">
+                            <div class="card-label">Dispatch &amp; Consignee Details</div>
+                            <div style="font-size:12px;font-weight:700;color:#0f172a;margin-bottom:2px">${order?.customerName || 'Customer / Consignee'}</div>
+                            <div><strong>Order Ref / PO:</strong> ${order?.id || 'ORD-001'}</div>
+                            <div><strong>Dispatch Mode:</strong> ${dsp.dispatchMode || 'Road Transport'}</div>
+                        </div>
+                        <div class="card">
+                            <div class="card-label">Logistics &amp; Transport Info</div>
+                            <div><strong>Carrier:</strong> ${dsp.transporterName || 'Local Transport'}</div>
+                            <div><strong>Vehicle Number:</strong> ${dsp.vehicleNumber || 'TN-38-1234'}</div>
+                            <div><strong>Driver Name &amp; Phone:</strong> ${dsp.driverName || 'Driver'} (${dsp.driverPhone || 'N/A'})</div>
+                        </div>
+                    </div>
+
+                    <table>
                         <thead>
                             <tr>
                                 <th>Item Description</th>
-                                <th>Total Cartons</th>
-                                <th>Total Quantity</th>
-                                <th>Gross Weight</th>
+                                <th style="text-align:center">HSN/SAC</th>
+                                <th style="text-align:center">Total Cartons</th>
+                                <th style="text-align:center">Total Quantity</th>
+                                <th style="text-align:right">Gross Weight</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
                                 <td><strong>${order?.product || 'Garments'}</strong></td>
-                                <td>${dsp.totalBoxesDispatched || pck.totalCartons || 10} Boxes</td>
-                                <td><strong>${order?.qty || 500} Pieces</strong></td>
-                                <td>${pck.totalGrossWeightKg || 120} KG</td>
+                                <td style="text-align:center;color:#64748b">6109</td>
+                                <td style="text-align:center;font-weight:600">${dsp.totalBoxesDispatched || pck.totalCartons || 10} Boxes</td>
+                                <td style="text-align:center;font-weight:700">${order?.qty || 500} Pieces</td>
+                                <td style="text-align:right;font-weight:600">${pck.totalGrossWeightKg || 120} KG</td>
                             </tr>
                         </tbody>
                     </table>
 
-                    <div class="signatures">
-                        <div class="sig-line">Prepared By (Packing Master)</div>
-                        <div class="sig-line">Security Gate Officer (Outward)</div>
-                        <div class="sig-line">Carrier / Driver Acknowledgment</div>
+                    <div style="font-size:9.5px;color:#64748b;margin-bottom:15px;line-height:1.4;">
+                        <em>Note: Goods mentioned above are dispatched in good condition and delivered for commercial/job-work supply. Received goods must be verified upon delivery.</em>
                     </div>
 
-                    <script>window.print();</script>
+                    <div class="signatures">
+                        <div class="sig-line">Prepared By (Dispatch Master)</div>
+                        <div class="sig-line">Security Gate Officer (Outward)</div>
+                        <div class="sig-line">Carrier / Consignee Acknowledgment</div>
+                    </div>
+
+                    <script>
+                        window.onload = function() {
+                            setTimeout(function() { window.print(); }, 400);
+                        };
+                    </script>
                 </body>
                 </html>
             `);
