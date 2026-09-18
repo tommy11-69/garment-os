@@ -45,6 +45,7 @@ class FinanceRepository extends BaseRepository {
             referenceNo: t.referenceNo || '',
             notes: t.notes || '',
             refId: t.refId || '',
+            linkedOrderId: t.linkedOrderId || '',
             title: t.title || 'Untitled Transaction'
         };
     }

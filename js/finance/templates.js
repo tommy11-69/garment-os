@@ -107,7 +107,7 @@ export function RadioPillsInput({ label, id, options = [], value = '' }) {
     </div>`;
 }
 
-export function getAddTransactionSheetHTML(transaction = null, prefix = 'trans-', parties = { customers: [], vendors: [] }) {
+export function getAddTransactionSheetHTML(transaction = null, prefix = 'trans-', parties = { customers: [], vendors: [] }, orders = []) {
     const isEdit = !!transaction;
     
     const types = [
@@ -155,6 +155,19 @@ export function getAddTransactionSheetHTML(transaction = null, prefix = 'trans-'
             
             <div id="${prefix}party-container" class="searchable-select-wrapper overflow-visible">
                 ${SearchableSelectInput({ label: transactionType === 'Income' ? 'Customer (Optional)' : 'Vendor (Optional)', id: `${prefix}refId`, options: partyOptions, value: currentParty })}
+            </div>
+
+            <div id="${prefix}order-link-container" class="searchable-select-wrapper overflow-visible">
+                ${(function() {
+                    const orderOptions = [{ label: 'None (no order link)', value: '' }].concat(
+                        (Array.isArray(orders) ? orders : []).map(o => ({
+                            label: `${o.id}${o.customerName ? ' · ' + o.customerName : ''}`,
+                            value: o.id
+                        }))
+                    );
+                    const currentOrder = isEdit ? (transaction.linkedOrderId || '') : '';
+                    return SearchableSelectInput({ label: 'Link to Order (Optional)', id: `${prefix}linkedOrderId`, options: orderOptions, value: currentOrder });
+                })()}
             </div>
             
             <div class="grid grid-cols-2 gap-4">
@@ -1183,4 +1196,146 @@ export function getCategoryBreakdownSheetContent(category, txns, totalExpenses) 
             <div class="h-8"></div>
         </div>
     `;
+}
+
+export function getPnLTableHTML(pnlRows = [], isPeriodView = false, periodLabel = '') {
+    const fmt = (n) => '₹' + Math.abs(parseFloat(n || 0)).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+    if (pnlRows.length === 0) {
+        return `
+        <div class="flex flex-col items-center justify-center py-10 text-secondary text-center gap-3">
+            <span class="material-symbols-outlined text-[48px] opacity-30">analytics</span>
+            <p class="text-[14px] font-medium">No order-linked transactions yet</p>
+            <p class="text-[12px] opacity-70">Link transactions to orders using the <strong>Link to Order</strong> field when adding a transaction.</p>
+        </div>`;
+    }
+
+    const totalIncome  = pnlRows.reduce((s, r) => s + r.income, 0);
+    const totalExpense = pnlRows.reduce((s, r) => s + r.expense, 0);
+    const totalProfit  = totalIncome - totalExpense;
+    const isProfitable = totalProfit >= 0;
+
+    const rows = pnlRows.map(r => {
+        const isProfit = r.profit >= 0;
+        const marginStr = r.income > 0 ? r.margin.toFixed(1) + '%' : '—';
+        const statusDot = r.orderStatus ? (() => {
+            const s = r.orderStatus.toLowerCase();
+            if (s === 'delivered' || s === 'closed') return 'bg-[#008A00]';
+            if (s === 'cancelled' || s === 'archived') return 'bg-error';
+            return 'bg-[#FF9F0A]';
+        })() : 'bg-secondary/30';
+        return `
+        <button onclick="window.openPnLDetail('${r.orderId}')" class="w-full flex items-center gap-3 px-4 py-3 border-b border-outline-variant/30 last:border-0 active:bg-surface-container transition-colors group text-left">
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-1.5 mb-0.5">
+                    <span class="w-1.5 h-1.5 rounded-full ${statusDot} shrink-0"></span>
+                    <span class="text-[13px] font-bold text-on-surface truncate">${r.orderLabel}</span>
+                </div>
+                <span class="text-[11px] text-secondary truncate block">${r.customerName}</span>
+            </div>
+            <div class="text-right shrink-0">
+                <div class="text-[13px] font-bold ${isProfit ? 'text-[#008A00]' : 'text-error'}">
+                    ${isProfit ? '+' : '−'}${fmt(r.profit)}
+                </div>
+                <div class="text-[10px] text-secondary">${marginStr} margin</div>
+            </div>
+            <span class="material-symbols-outlined text-[16px] text-secondary/40 group-hover:text-secondary transition-colors">chevron_right</span>
+        </button>`;
+    }).join('');
+
+    return `
+    <div class="bg-surface-container-lowest rounded-[20px] border border-outline-variant shadow-sm overflow-hidden">
+        <!-- Rows -->
+        <div class="flex flex-col">${rows}</div>
+        <!-- Total footer -->
+        <div class="flex items-center justify-between px-4 py-3 bg-surface-variant/40 border-t-2 border-outline-variant/60 border-dashed">
+            <div>
+                <p class="text-[11px] font-bold text-secondary uppercase tracking-wider">${isPeriodView ? 'Period Total (' + periodLabel + ')' : 'Total All Orders'}</p>
+                <p class="text-[10px] text-secondary mt-0.5">${fmt(totalIncome)} in · ${fmt(totalExpense)} out</p>
+            </div>
+            <span class="text-[18px] font-bold ${isProfitable ? 'text-[#008A00]' : 'text-error'}">
+                ${isProfitable ? '+' : '−'}${fmt(totalProfit)}
+            </span>
+        </div>
+    </div>`;
+}
+
+export function getPnLDetailHTML(row) {
+    if (!row) return '<div class="p-6 text-secondary text-center">No data</div>';
+    const fmt = (n) => '₹' + Math.abs(parseFloat(n || 0)).toLocaleString('en-IN', { minimumFractionDigits: 2 });
+    const fmtDate = (d) => d ? new Date(d + 'T00:00:00').toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
+    const isProfit = row.profit >= 0;
+
+    const txnRow = (t) => {
+        const amt = (() => {
+            let total = parseFloat(t.amount) || 0;
+            if (t.subEntries) {
+                let entries = [];
+                try { entries = typeof t.subEntries === 'string' ? JSON.parse(t.subEntries) : (Array.isArray(t.subEntries) ? t.subEntries : []); } catch { entries = []; }
+                if (Array.isArray(entries)) total += entries.reduce((s, se) => s + (parseFloat(se.amount) || 0), 0);
+            }
+            return total;
+        })();
+        const isInc = t.type === 'Income';
+        return `
+        <div class="flex items-center justify-between py-3 border-b border-outline-variant/20 last:border-0">
+            <div class="flex-1 min-w-0">
+                <p class="text-[13px] font-semibold text-on-surface truncate">${t.title || 'Untitled'}</p>
+                <p class="text-[11px] text-secondary">${fmtDate(t.date)} · ${t.category || ''} · ${t.status || ''}</p>
+            </div>
+            <span class="text-[14px] font-bold ml-3 shrink-0 ${isInc ? 'text-[#008A00]' : 'text-error'}">${isInc ? '+' : '−'}${fmt(amt)}</span>
+        </div>`;
+    };
+
+    const incRows = (row.incTxns || []).map(txnRow).join('');
+    const expRows = (row.expTxns || []).map(txnRow).join('');
+
+    return `
+    <div class="flex flex-col">
+        <!-- Hero P&L badge -->
+        <div class="px-5 py-4 bg-surface-variant/40 border-b border-outline-variant/30">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-[11px] font-bold text-secondary uppercase tracking-wider mb-1">Net P&amp;L</p>
+                    <div class="text-[32px] font-bold tracking-tight ${isProfit ? 'text-[#008A00]' : 'text-error'}">
+                        ${isProfit ? '+' : '−'}${fmt(row.profit)}
+                    </div>
+                    <p class="text-[12px] text-secondary mt-1">${row.customerName} · ${row.orderStatus || 'Active'}</p>
+                </div>
+                <div class="text-right">
+                    <div class="flex flex-col gap-1.5">
+                        <div class="flex items-center gap-2 justify-end">
+                            <span class="text-[11px] text-secondary">Revenue</span>
+                            <span class="text-[14px] font-bold text-[#008A00]">+${fmt(row.income)}</span>
+                        </div>
+                        <div class="flex items-center gap-2 justify-end">
+                            <span class="text-[11px] text-secondary">Cost</span>
+                            <span class="text-[14px] font-bold text-error">−${fmt(row.expense)}</span>
+                        </div>
+                        ${row.income > 0 ? `<div class="text-[11px] font-bold text-secondary text-right">${row.margin.toFixed(1)}% margin</div>` : ''}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Income transactions -->
+        ${row.incTxns && row.incTxns.length > 0 ? `
+        <div class="px-5 pt-4 pb-2">
+            <p class="text-[12px] font-bold text-[#008A00] uppercase tracking-wider mb-1 flex items-center gap-1">
+                <span class="material-symbols-outlined text-[14px]">arrow_downward</span> Income (${row.incTxns.length})
+            </p>
+            <div>${incRows}</div>
+        </div>` : ''}
+
+        <!-- Expense transactions -->
+        ${row.expTxns && row.expTxns.length > 0 ? `
+        <div class="px-5 pt-4 pb-6">
+            <p class="text-[12px] font-bold text-error uppercase tracking-wider mb-1 flex items-center gap-1">
+                <span class="material-symbols-outlined text-[14px]">arrow_upward</span> Expenses (${row.expTxns.length})
+            </p>
+            <div>${expRows}</div>
+        </div>` : ''}
+
+        <div class="h-4"></div>
+    </div>`;
 }

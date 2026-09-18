@@ -11,7 +11,8 @@ import {
     getFilterSheetHTML, getFilterFooterHTML,
     getCategoriesByType, getCategoryBreakdownSheetContent,
     getCustomDateSheetHTML, getCustomDateFooterHTML,
-    getBalanceSheetDetailHTML
+    getBalanceSheetDetailHTML,
+    getPnLTableHTML, getPnLDetailHTML
 } from './templates.js?v=5.5';
 import {
     initPendingAttachments,
@@ -48,16 +49,18 @@ async function renderSheets() {
         const state = financeStore.getState();
         
         // Fetch parties for transaction form + live enriched inventory for balance sheet
-        const [customers, vendors, inventoryItems] = await Promise.all([
+        const [customers, vendors, inventoryItems, orders] = await Promise.all([
             api.getCustomers(), 
             api.getVendors(), 
-            inventoryRepository.getAllEnriched().catch(() => api.getInventory())
+            inventoryRepository.getAllEnriched().catch(() => api.getInventory()),
+            api.getOrders().catch(() => [])
         ]);
         window.financeParties = { customers, vendors };
         window.financeInventory = inventoryItems || [];
+        window.financeOrders = orders || [];
 
         const sheetsHTML = [
-            BottomSheet({ id: 'addTransactionSheet', title: 'New Transaction', content: getAddTransactionSheetHTML(null, 'trans-', window.financeParties), footerContent: getAddTransactionFooterHTML(false), isForm: true }),
+            BottomSheet({ id: 'addTransactionSheet', title: 'New Transaction', content: getAddTransactionSheetHTML(null, 'trans-', window.financeParties, window.financeOrders), footerContent: getAddTransactionFooterHTML(false), isForm: true }),
             BottomSheet({ id: 'editTransactionSheet', title: 'Edit Transaction', content: '<div id="edit-trans-container"></div>', footerContent: getAddTransactionFooterHTML(true), isForm: true }),
             BottomSheet({ id: 'filterSheet', title: 'Filters', content: getFilterSheetHTML(state.currentFilters), footerContent: getFilterFooterHTML(), isForm: false }),
             BottomSheet({ id: 'customDateSheet', title: 'Custom Date Range', content: getCustomDateSheetHTML(), footerContent: getCustomDateFooterHTML(), isForm: false })
@@ -75,6 +78,7 @@ async function renderSheets() {
         setupCategoryToggle('trans-');
         setupSearchableSelects('trans-category');
         setupSearchableSelects('trans-refId');
+        setupSearchableSelects('trans-linkedOrderId');
         setupCustomDateSheet();
         initPendingAttachments('trans-', []);
         setupDropzoneEvents('trans-');
@@ -337,10 +341,11 @@ function setupCustomDateSheet() {
 }
 
 function renderUI(state) {
-    const { entities, selectedIds, isBulkMode, metrics, loading, error, allTransactions, currentFilters } = state;
+    const { entities, selectedIds, isBulkMode, metrics, loading, error, allTransactions, currentFilters, pnlRows, pnlRowsPeriod } = state;
     
     renderDashboard(metrics);
     renderBalanceSheet(metrics);
+    renderPnLTable(pnlRows || [], pnlRowsPeriod || []);
     
     const container = document.getElementById('transactions-list');
     if (!container) return;
@@ -664,6 +669,84 @@ function renderBalanceSheet(metrics) {
     }
 }
 
+// ── P&L Table ────────────────────────────────────────────────────────────────
+
+// Tracks P&L view mode: 'period' or 'all'
+window._pnlViewMode = window._pnlViewMode || 'period';
+
+function renderPnLTable(pnlRowsAll = [], pnlRowsPeriod = []) {
+    const container = document.getElementById('pnl-table-container');
+    if (!container) return;
+
+    const isPeriod = window._pnlViewMode === 'period';
+    const rows     = isPeriod ? pnlRowsPeriod : pnlRowsAll;
+    const period   = window._currentFinancePeriod || '7d';
+    const custom   = window._currentFinanceCustomRange;
+    let periodLabel = period === '7d' ? 'Last 7D' : period === '1m' ? 'Last 1M' : period === '3m' ? 'Last 3M' : 'Custom';
+    if (period === 'custom' && custom && custom.startDate && custom.endDate) {
+        const s = new Date(custom.startDate + 'T00:00:00');
+        const e = new Date(custom.endDate + 'T00:00:00');
+        periodLabel = s.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) +
+            ' – ' + e.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+    }
+
+    // Toggle pill
+    const toggleHTML = `
+    <div class="flex items-center gap-0.5 p-1 bg-surface-container-lowest border border-outline-variant rounded-xl shrink-0 mb-3">
+        <button onclick="window._pnlViewMode='period'; window._reRenderPnL();"
+            class="period-pill-pnl flex-1 text-[11px] font-bold px-3 py-1.5 rounded-lg transition-all ${isPeriod ? 'bg-primary text-white' : 'text-secondary'}">
+            Period
+        </button>
+        <button onclick="window._pnlViewMode='all'; window._reRenderPnL();"
+            class="period-pill-pnl flex-1 text-[11px] font-bold px-3 py-1.5 rounded-lg transition-all ${!isPeriod ? 'bg-primary text-white' : 'text-secondary'}">
+            All Time
+        </button>
+    </div>`;
+
+    container.innerHTML = toggleHTML + getPnLTableHTML(rows, isPeriod, periodLabel);
+
+    // Store for re-render
+    container._pnlRowsAll    = pnlRowsAll;
+    container._pnlRowsPeriod = pnlRowsPeriod;
+}
+
+window._reRenderPnL = function() {
+    const container = document.getElementById('pnl-table-container');
+    if (!container) return;
+    renderPnLTable(container._pnlRowsAll || [], container._pnlRowsPeriod || []);
+};
+
+window.openPnLDetail = function(orderId) {
+    const state   = financeStore.getState();
+    const allRows = [...(state.pnlRows || []), ...(state.pnlRowsPeriod || [])];
+    // Find most complete row (all-time has more data)
+    const row = (state.pnlRows || []).find(r => r.orderId === orderId)
+             || (state.pnlRowsPeriod || []).find(r => r.orderId === orderId);
+    if (!row) return;
+
+    const sheet    = document.getElementById('pnl-detail-sheet');
+    const titleEl  = document.getElementById('pnl-detail-title');
+    const bodyEl   = document.getElementById('pnl-detail-body');
+    if (!sheet || !bodyEl) return;
+
+    if (titleEl) titleEl.textContent = row.orderLabel;
+    bodyEl.innerHTML = getPnLDetailHTML(row);
+
+    sheet.classList.remove('translate-y-full');
+    sheet.classList.add('translate-y-0');
+    document.getElementById('pnl-detail-backdrop')?.classList.remove('opacity-0', 'pointer-events-none');
+    document.getElementById('pnl-detail-backdrop')?.classList.add('opacity-100');
+};
+
+window.closePnLDetail = function() {
+    const sheet = document.getElementById('pnl-detail-sheet');
+    sheet?.classList.add('translate-y-full');
+    sheet?.classList.remove('translate-y-0');
+    const bd = document.getElementById('pnl-detail-backdrop');
+    bd?.classList.add('opacity-0', 'pointer-events-none');
+    bd?.classList.remove('opacity-100');
+};
+
 function updateBulkToolbar(state) {
     let toolbarContainer = document.getElementById('bulk-toolbar-container');
     if (state.isBulkMode) {
@@ -778,6 +861,7 @@ async function handleAddTransaction() {
     const status = document.getElementById('trans-status')?.value || 'Completed';
     const notes = document.getElementById('trans-notes')?.value?.trim() || '';
     let refId = document.getElementById('trans-refId')?.value || '';
+    const linkedOrderId = document.getElementById('trans-linkedOrderId')?.value || '';
     
     // Allow zero amounts ($0.00 balances or zeroed items) while rejecting invalid/negative inputs
     if (!title || isNaN(amount) || amount < 0) {
@@ -803,6 +887,7 @@ async function handleAddTransaction() {
             notes,
             createdBy: 'Admin',
             refId,
+            linkedOrderId,
             attachments,
             subEntries: []
         });
@@ -849,6 +934,8 @@ async function handleEditTransaction() {
     const status = document.getElementById('edit-trans-status')?.value || 'Completed';
     const notes = document.getElementById('edit-trans-notes')?.value?.trim() || '';
     let refId = document.getElementById('edit-trans-refId')?.value || '';
+    const linkedOrderId = document.getElementById('edit-trans-linkedOrderId')?.value
+        ?? (financeStore.getState().activeEntity?.linkedOrderId || '');
 
     // Allow zero amounts ($0.00 balances or zeroed items) while rejecting invalid/negative inputs
     if (!title || isNaN(amount) || amount < 0) {
@@ -878,10 +965,10 @@ async function handleEditTransaction() {
             status,
             notes,
             refId,
+            linkedOrderId,
             attachments: mergedAttachments,
             subEntries: preservedSubEntries,
             linkedBatchId: activeEntity.linkedBatchId || '',
-            linkedOrderId: activeEntity.linkedOrderId || '',
             createdBy: activeEntity.createdBy || 'Admin'
         });
         window.closeSheet('editTransactionSheet');
@@ -904,8 +991,9 @@ async function handleEditTransaction() {
 window.onFinancePeriodChanged = function(period, customRange) {
     window._currentFinancePeriod = period;
     window._currentFinanceCustomRange = customRange;
-    const metrics = financeStore.getState().metrics || {};
-    renderBalanceSheet(metrics);
+    const state = financeStore.getState();
+    renderBalanceSheet(state.metrics || {});
+    renderPnLTable(state.pnlRows || [], state.pnlRowsPeriod || []);
 };
 
 window.openBsDetail = async function(type) {
@@ -1293,13 +1381,14 @@ window.editTransaction = function() {
 
     const editContainer = document.getElementById('edit-trans-container');
     if (editContainer) {
-        editContainer.innerHTML = getAddTransactionSheetHTML(t, 'edit-trans-', window.financeParties);
+        editContainer.innerHTML = getAddTransactionSheetHTML(t, 'edit-trans-', window.financeParties, window.financeOrders || []);
         // rebind validation since content changed
         bindFormValidation('editTransactionSheet-content', 'edit-trans-submit');
         setupTypeChange('edit-trans-');
         setupCategoryToggle('edit-trans-');
         setupSearchableSelects('edit-trans-category');
         setupSearchableSelects('edit-trans-refId');
+        setupSearchableSelects('edit-trans-linkedOrderId');
         initPendingAttachments('edit-trans-', t.attachments || []);
         setupDropzoneEvents('edit-trans-');
     }

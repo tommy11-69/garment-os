@@ -130,7 +130,7 @@
                 
                 <div class="flex p-1 bg-surface-container-lowest border border-outline-variant rounded-xl w-full max-w-[400px]">
                     <button id="tab-cash-flow" onclick="window.toggleFinanceView('cash-flow')" class="flex-1 px-4 py-1.5 text-[13px] font-bold rounded-lg bg-primary text-white transition-all shadow-sm">Cash Flow</button>
-                    <button id="tab-balance-sheet" onclick="window.toggleFinanceView('balance-sheet')" class="flex-1 px-4 py-1.5 text-[13px] font-bold rounded-lg text-secondary hover:text-on-surface transition-all">Balance Sheet</button>
+                    <button id="tab-balance-sheet" onclick="window.toggleFinanceView('balance-sheet')" class="flex-1 px-4 py-1.5 text-[13px] font-bold rounded-lg text-secondary hover:text-on-surface transition-all">Reports</button>
                 </div>
             </div>
 
@@ -326,6 +326,17 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- ── P&L by Order ── -->
+                <div class="flex flex-col gap-3 mt-2">
+                    <div class="flex items-center justify-between px-1">
+                        <span class="text-[13px] font-bold text-on-surface uppercase tracking-wider">P&amp;L by Order</span>
+                        <span class="text-[11px] text-secondary font-medium">Linked transactions only</span>
+                    </div>
+                    <div id="pnl-table-container">
+                        <!-- Rendered by JS -->
+                    </div>
+                </div>
             </div>
 
         </main>
@@ -358,6 +369,27 @@
         <!-- Body (scrollable) -->
         <div id="bs-detail-body" class="overflow-y-auto flex-1 pb-6"></div>
     </div>
+
+    <!-- P&L Order Detail Sheet -->
+    <div id="pnl-detail-backdrop" class="fixed inset-0 bg-black/40 z-[200] opacity-0 pointer-events-none transition-opacity duration-300" onclick="window.closePnLDetail()"></div>
+    <div id="pnl-detail-sheet" class="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-surface rounded-t-[28px] shadow-2xl z-[201] translate-y-full transition-transform duration-300 ease-out flex flex-col" style="max-height:85vh">
+        <!-- Handle -->
+        <div class="flex justify-center pt-3 pb-1 shrink-0">
+            <div class="w-10 h-1 rounded-full bg-outline-variant"></div>
+        </div>
+        <!-- Header -->
+        <div class="flex items-center justify-between px-5 pb-4 pt-2 border-b border-outline-variant/30 shrink-0">
+            <div>
+                <p class="text-[11px] font-semibold text-secondary uppercase tracking-wider">Order P&amp;L</p>
+                <h3 id="pnl-detail-title" class="text-[18px] font-bold text-on-surface">Order Detail</h3>
+            </div>
+            <button onclick="window.closePnLDetail()" class="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-secondary active-scale transition-apple">
+                <span class="material-symbols-outlined text-[20px]">close</span>
+            </button>
+        </div>
+        <!-- Body (scrollable) -->
+        <div id="pnl-detail-body" class="overflow-y-auto flex-1 pb-6"></div>
+    </div>
     
     <div id="sheets-container"></div>
     
@@ -380,6 +412,21 @@
         sheet?.classList.add('translate-y-full');
         sheet?.classList.remove('translate-y-0');
         const bd = document.getElementById('bs-detail-backdrop');
+        bd?.classList.add('opacity-0', 'pointer-events-none');
+        bd?.classList.remove('opacity-100');
+    };
+    window.openPnLDetail = window.openPnLDetail || function(orderId) {
+        const sheet = document.getElementById('pnl-detail-sheet');
+        sheet?.classList.remove('translate-y-full');
+        sheet?.classList.add('translate-y-0');
+        document.getElementById('pnl-detail-backdrop')?.classList.remove('opacity-0', 'pointer-events-none');
+        document.getElementById('pnl-detail-backdrop')?.classList.add('opacity-100');
+    };
+    window.closePnLDetail = window.closePnLDetail || function() {
+        const sheet = document.getElementById('pnl-detail-sheet');
+        sheet?.classList.add('translate-y-full');
+        sheet?.classList.remove('translate-y-0');
+        const bd = document.getElementById('pnl-detail-backdrop');
         bd?.classList.add('opacity-0', 'pointer-events-none');
         bd?.classList.remove('opacity-100');
     };

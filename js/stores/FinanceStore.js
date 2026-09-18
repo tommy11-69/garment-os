@@ -22,14 +22,22 @@ class FinanceStore extends BaseStore {
 
     getState() {
         const state = super.getState();
-        const metrics = this._calculateMetrics(this._allEntities || state.entities);
+        const all = this._allEntities || state.entities;
+        const metrics = this._calculateMetrics(all);
+        const pnlRows = this._calculatePnL(all, window.financeOrders || []);
+        const pnlRowsPeriod = this._calculatePnL(
+            this._getPeriodTransactions(all),
+            window.financeOrders || []
+        );
         return {
             ...state,
-            allTransactions: this._allEntities || state.entities,
+            allTransactions: all,
             currentSearch: this.currentSearch,
             currentFilters: this.currentFilters,
             currentSort: this.currentSort,
-            metrics
+            metrics,
+            pnlRows,        // all-time P&L
+            pnlRowsPeriod   // period-filtered P&L
         };
     }
 
@@ -140,6 +148,72 @@ class FinanceStore extends BaseStore {
             pendingPayments,
             pendingReceivables
         };
+    }
+
+    _getTxnTotal(t) {
+        if (!t) return 0;
+        let total = parseFloat(t.amount) || 0;
+        if (t.subEntries) {
+            let entries = [];
+            try {
+                entries = typeof t.subEntries === 'string' ? JSON.parse(t.subEntries) : (Array.isArray(t.subEntries) ? t.subEntries : []);
+            } catch { entries = []; }
+            if (Array.isArray(entries)) {
+                total += entries.reduce((s, se) => s + (parseFloat(se.amount) || 0), 0);
+            }
+        }
+        return total;
+    }
+
+    // Returns transactions within the current active period (mirrors the chart engine logic)
+    _getPeriodTransactions(all) {
+        const period = window._currentFinancePeriod || '7d';
+        const custom = window._currentFinanceCustomRange;
+        if (period === 'custom' && custom && custom.startDate && custom.endDate) {
+            return all.filter(t => {
+                const d = (t.date || '').split('T')[0];
+                return d >= custom.startDate && d <= custom.endDate;
+            });
+        }
+        const days = period === '3m' ? 90 : period === '1m' ? 30 : 7;
+        const cutoff = new Date(Date.now() - days * 86400000).toISOString().split('T')[0];
+        return all.filter(t => (t.date || '').split('T')[0] >= cutoff);
+    }
+
+    // Computes P&L grouped by order for a given transaction set
+    _calculatePnL(transactions, orders) {
+        const orderMap = {};
+        const txList = Array.isArray(transactions) ? transactions : [];
+        for (const t of txList) {
+            const oid = t.linkedOrderId;
+            if (!oid || t.status === 'Cancelled') continue;
+            if (!orderMap[oid]) orderMap[oid] = { income: 0, expense: 0, incTxns: [], expTxns: [] };
+            const amt = this._getTxnTotal(t);
+            if (t.type === 'Income') {
+                orderMap[oid].income += amt;
+                orderMap[oid].incTxns.push(t);
+            } else {
+                orderMap[oid].expense += amt;
+                orderMap[oid].expTxns.push(t);
+            }
+        }
+        return Object.entries(orderMap).map(([orderId, data]) => {
+            const order = (Array.isArray(orders) ? orders : []).find(o => String(o.id) === String(orderId)) || {};
+            const profit = data.income - data.expense;
+            const margin = data.income > 0 ? (profit / data.income) * 100 : 0;
+            return {
+                orderId,
+                orderLabel: order.id || orderId,
+                customerName: order.customerName || order._customer?.name || '—',
+                orderStatus: order.status || '',
+                income: data.income,
+                expense: data.expense,
+                profit,
+                margin,
+                incTxns: data.incTxns,
+                expTxns: data.expTxns
+            };
+        }).sort((a, b) => Math.abs(b.profit) - Math.abs(a.profit));
     }
 
     async loadTransactions() {
