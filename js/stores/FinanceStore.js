@@ -203,7 +203,8 @@ class FinanceStore extends BaseStore {
             const margin = data.income > 0 ? (profit / data.income) * 100 : 0;
             return {
                 orderId,
-                orderLabel: order.id || orderId,
+                orderLabel: order.product || order.id || orderId,
+                orderSubLabel: order.id || orderId,
                 customerName: order.customerName || order._customer?.name || '—',
                 orderStatus: order.status || '',
                 income: data.income,

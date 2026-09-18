@@ -161,7 +161,7 @@ export function getAddTransactionSheetHTML(transaction = null, prefix = 'trans-'
                 ${(function() {
                     const orderOptions = [{ label: 'None (no order link)', value: '' }].concat(
                         (Array.isArray(orders) ? orders : []).map(o => ({
-                            label: `${o.id}${o.customerName ? ' · ' + o.customerName : ''}`,
+                            label: `${o.product || 'Order'}${o.customerName ? ' · ' + o.customerName : ''} (${o.id})`,
                             value: o.id
                         }))
                     );
