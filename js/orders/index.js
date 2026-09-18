@@ -10,7 +10,7 @@ let currentStageFilter = 'all';
 let currentUrgencyFilter = 'all';
 let currentSortKey = 'urgency';
 let currentSearchQuery = '';
-let currentViewMode = 'list';
+let currentViewMode = (typeof window !== 'undefined' && window.innerWidth >= 768) ? 'table' : 'list';
 let selectedOrderIds = new Set();
 
 
@@ -63,7 +63,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Open from URL if present
     const params = new URLSearchParams(window.location.search);
     const orderId = params.get('orderId');
-    if (orderId) window.openOrderDetails(orderId);
+    if (orderId) {
+        setTimeout(() => {
+            if (window.openOrderInspector) window.openOrderInspector(orderId);
+            else if (window.openOrderDetails) window.openOrderDetails(orderId);
+        }, 150);
+    }
 });
 
 async function loadOrders() {
@@ -206,15 +211,35 @@ function renderOrders() {
     // Empty CTA — show when zero orders in DB
     if (emptyCTA) emptyCTA.classList.toggle('hidden', currentOrders.length > 0);
 
-    if (currentViewMode === 'list') {
+    const tableContainer = document.getElementById('orders-table-container');
+    const tableBody      = document.getElementById('orders-table-body');
+
+    if (currentViewMode === 'table') {
+        if (tableContainer) tableContainer.classList.remove('hidden');
+        listContainer.classList.add('hidden');
+        kanbanContainer.classList.add('hidden');
+
+        if (tableBody) {
+            if (filtered.length === 0) {
+                tableBody.innerHTML = `<tr><td colspan="8" class="p-10 text-center text-secondary dark:text-slate-400">
+                    <span class="material-symbols-outlined text-[40px] opacity-40 mb-1 block">inbox</span>
+                    <p class="text-[14px] font-bold text-on-surface dark:text-slate-200">No matching orders</p>
+                    <p class="text-[12px] mt-0.5">Try clearing filters or search queries</p>
+                </td></tr>`;
+            } else {
+                tableBody.innerHTML = filtered.map(o => renderers.orderTableRow(o, selectedOrderIds.has(o.id))).join('');
+            }
+        }
+    } else if (currentViewMode === 'list') {
+        if (tableContainer) tableContainer.classList.add('hidden');
         listContainer.classList.remove('hidden');
         kanbanContainer.classList.add('hidden');
         
         if (filtered.length === 0) {
-            listContainer.innerHTML = `<div class="p-10 text-center bg-surface-container-lowest rounded-3xl border border-outline-variant/60 shadow-xs">
+            listContainer.innerHTML = `<div class="p-10 text-center bg-surface-container-lowest dark:bg-slate-900 rounded-3xl border border-outline-variant/60 dark:border-slate-800 shadow-xs">
                 <span class="material-symbols-outlined text-[48px] mb-2 block text-secondary opacity-40">inbox</span>
-                <p class="text-[15px] font-bold text-on-surface">No matching orders</p>
-                <p class="text-[13px] text-secondary mt-1">Try clearing urgency filters, stage chips, or search queries</p>
+                <p class="text-[15px] font-bold text-on-surface dark:text-slate-200">No matching orders</p>
+                <p class="text-[13px] text-secondary dark:text-slate-400 mt-1">Try clearing urgency filters, stage chips, or search queries</p>
             </div>`;
             return;
         }
@@ -222,6 +247,7 @@ function renderOrders() {
         const isBulk = selectedOrderIds.size > 0;
         listContainer.innerHTML = filtered.map(o => renderers.orderCard(o, isBulk, selectedOrderIds.has(o.id))).join('');
     } else {
+        if (tableContainer) tableContainer.classList.add('hidden');
         listContainer.classList.add('hidden');
         kanbanContainer.classList.remove('hidden');
         renderKanban(filtered);
@@ -379,17 +405,77 @@ window.setViewMode = function(mode) {
     currentViewMode = mode;
     
     // Update button states matching orders.html
+    const tableBtn = document.getElementById('view-table-btn');
     const listBtn = document.getElementById('view-list-btn');
     const kanbanBtn = document.getElementById('view-kanban-btn');
+
+    const activeCls = 'px-3 py-1.5 rounded-lg bg-primary text-white text-[12px] font-bold flex items-center gap-1.5 transition-all shadow-xs';
+    const inactiveCls = 'px-3 py-1.5 rounded-lg text-secondary dark:text-slate-400 hover:text-on-surface text-[12px] font-bold flex items-center gap-1.5 transition-all';
     
-    if (mode === 'list') {
-        if (listBtn) listBtn.className = 'px-2.5 py-1.5 rounded-lg bg-primary/10 text-primary text-[12px] font-bold flex items-center gap-1 transition-colors';
-        if (kanbanBtn) kanbanBtn.className = 'px-2.5 py-1.5 rounded-lg text-secondary hover:bg-surface-variant text-[12px] font-bold flex items-center gap-1 transition-colors';
-    } else {
-        if (kanbanBtn) kanbanBtn.className = 'px-2.5 py-1.5 rounded-lg bg-primary/10 text-primary text-[12px] font-bold flex items-center gap-1 transition-colors';
-        if (listBtn) listBtn.className = 'px-2.5 py-1.5 rounded-lg text-secondary hover:bg-surface-variant text-[12px] font-bold flex items-center gap-1 transition-colors';
+    if (tableBtn) tableBtn.className = (mode === 'table') ? activeCls : inactiveCls;
+    if (listBtn)  listBtn.className  = (mode === 'list')  ? activeCls : inactiveCls;
+    if (kanbanBtn) kanbanBtn.className = (mode === 'kanban') ? activeCls : inactiveCls;
+    
+    renderOrders();
+};
+
+window.openOrderInspector = function(orderId) {
+    const order = currentOrders.find(o => String(o.id) === String(orderId));
+    if (!order) return;
+
+    activeOrder = order;
+
+    const drawer = document.getElementById('order-inspector-drawer');
+    const backdrop = document.getElementById('order-inspector-backdrop');
+    const panel = document.getElementById('order-inspector-panel');
+    const body = document.getElementById('order-inspector-body');
+
+    if (!drawer || !panel || !body) {
+        // Fallback to bottom sheet
+        window.openOrderDetails(orderId);
+        return;
     }
-    
+
+    body.innerHTML = renderers.orderInspectorContent(order);
+
+    drawer.classList.remove('pointer-events-none');
+    if (backdrop) {
+        backdrop.classList.remove('pointer-events-none', 'opacity-0');
+        backdrop.classList.add('pointer-events-auto', 'opacity-100');
+    }
+    panel.classList.remove('translate-x-full');
+    panel.classList.add('translate-x-0');
+    document.body.style.overflow = 'hidden';
+};
+
+window.closeOrderInspector = function() {
+    const drawer = document.getElementById('order-inspector-drawer');
+    const backdrop = document.getElementById('order-inspector-backdrop');
+    const panel = document.getElementById('order-inspector-panel');
+
+    if (panel) {
+        panel.classList.remove('translate-x-0');
+        panel.classList.add('translate-x-full');
+    }
+    if (backdrop) {
+        backdrop.classList.remove('pointer-events-auto', 'opacity-100');
+        backdrop.classList.add('pointer-events-none', 'opacity-0');
+    }
+    if (drawer) {
+        setTimeout(() => {
+            drawer.classList.add('pointer-events-none');
+        }, 300);
+    }
+    document.body.style.overflow = '';
+};
+
+window.toggleSelectAll = function(checked) {
+    if (checked) {
+        currentOrders.forEach(o => selectedOrderIds.add(o.id));
+    } else {
+        selectedOrderIds.clear();
+    }
+    updateBulkBar();
     renderOrders();
 };
 

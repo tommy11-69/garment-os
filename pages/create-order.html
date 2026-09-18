@@ -143,6 +143,31 @@
     <div class="mobile-wrapper" style="margin-top: 124px; padding-bottom: 120px;">
         <main class="p-4 max-w-4xl mx-auto w-full flex flex-col gap-5">
 
+            <!-- Persistent Prominent Edit Mode Banner (Visible when ?edit= is active) -->
+            <div id="co-edit-mode-banner" class="hidden p-4 rounded-2xl bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/5 border-2 border-amber-500/40 dark:border-amber-400/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-fade-in shadow-xs">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-sm">
+                        <span class="material-symbols-outlined text-[24px]">edit_note</span>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="px-2 py-0.5 rounded-md bg-amber-500 text-white font-mono text-[11px] font-extrabold uppercase tracking-wide" id="co-edit-order-id-badge">#ORD-XXXX</span>
+                            <span class="text-[14px] font-extrabold text-on-surface dark:text-white">Active Order Edit Mode</span>
+                        </div>
+                        <p class="text-[12px] text-secondary dark:text-slate-300 mt-0.5" id="co-edit-banner-desc">You are modifying existing production specs. Saving will update commercial &amp; floor routing records.</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                    <button type="button" onclick="window.location.href='orders.html'" class="px-3.5 py-1.5 rounded-xl border border-outline-variant dark:border-slate-700 bg-surface dark:bg-slate-800 text-secondary dark:text-slate-300 text-[12px] font-bold active-scale transition-apple hover:text-on-surface dark:hover:text-white">
+                        Discard &amp; Exit
+                    </button>
+                    <button type="button" onclick="window.coSaveOrder()" class="px-4 py-1.5 rounded-xl bg-primary text-white text-[12px] font-extrabold shadow-sm active-scale transition-apple flex items-center gap-1.5 hover:bg-primary/90">
+                        <span class="material-symbols-outlined text-[16px]">save</span>
+                        <span>Update Order</span>
+                    </button>
+                </div>
+            </div>
+
             <!-- ================================================================= -->
             <!-- STEP 1: BUYER & ORDER PROFILE                                     -->
             <!-- ================================================================= -->

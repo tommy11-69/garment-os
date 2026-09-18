@@ -108,11 +108,158 @@ export const renderers = {
         `;
     },
 
+    orderTableRow(order, isSelected = false) {
+        const today = new Date();
+        const deliveryDate = order.deliveryDate ? new Date(order.deliveryDate) : null;
+        const daysLeft = deliveryDate ? Math.ceil((deliveryDate - today) / (1000 * 60 * 60 * 24)) : null;
+        const isFinished = ['Delivered', 'Dispatched', 'Closed', 'Archived'].includes(order.status);
+        
+        let deliveryBadge = `<span class="text-[12px] text-secondary dark:text-slate-400 font-medium">${order.deliveryDate || '—'}</span>`;
+        if (!isFinished && daysLeft !== null) {
+            if (daysLeft < 0) {
+                deliveryBadge = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-extrabold bg-error/10 text-error"><span class="w-1.5 h-1.5 rounded-full bg-error animate-pulse"></span>${Math.abs(daysLeft)}d overdue</span>`;
+            } else if (daysLeft <= 4) {
+                deliveryBadge = `<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-extrabold bg-orange-500/10 text-orange-600 dark:text-orange-400">${daysLeft}d left</span>`;
+            } else {
+                deliveryBadge = `<span class="text-[12px] font-medium text-on-surface dark:text-slate-300">${order.deliveryDate} (${daysLeft}d)</span>`;
+            }
+        }
+
+        const pmtStatus = order.paymentStatus || 'Unpaid';
+        const pmtDot = pmtStatus === 'Paid' ? 'bg-[#008A00]' : pmtStatus === 'Partial' ? 'bg-orange-400' : 'bg-error';
+
+        const rollup = calculateOrderRollup(order);
+        const displayPercentage = (order.progressPercentage !== undefined && order.progressPercentage !== null && order.progressPercentage > 0)
+            ? order.progressPercentage
+            : rollup.overallPercentage;
+
+        const stageDef = rollup.activeStageDef || STAGE_DEFINITIONS.procurement;
+
+        const orderProducts = Array.isArray(order.products) && order.products.length > 0 ? order.products : null;
+        let productSummaryHtml = '';
+        if (orderProducts && orderProducts.length > 0) {
+            const first = orderProducts[0];
+            const pWf = first.workflowType || order.workflowType || 'default';
+            const wfInfo = getWorkflowBadgeInfo(pWf);
+            productSummaryHtml = `
+                <div class="flex items-center gap-1.5 max-w-[240px]">
+                    <span class="font-bold text-[13px] text-on-surface dark:text-slate-100 truncate">${first.name || order.product || 'Apparel Item'}</span>
+                    ${orderProducts.length > 1 ? `<span class="px-1.5 py-0.2 rounded text-[10px] font-extrabold bg-surface-container dark:bg-slate-800 text-secondary dark:text-slate-300 shrink-0">+${orderProducts.length - 1}</span>` : ''}
+                    <span class="px-1.5 py-0.5 rounded text-[9px] font-extrabold ${wfInfo.bgColor} ${wfInfo.color} shrink-0 border ${wfInfo.borderColor}">
+                        ${wfInfo.shortLabel || wfInfo.label}
+                    </span>
+                </div>
+            `;
+        } else {
+            productSummaryHtml = `
+                <span class="font-bold text-[13px] text-on-surface dark:text-slate-100 truncate">${order.product || 'Apparel Item'}</span>
+            `;
+        }
+
+        return `
+            <tr class="border-b border-outline-variant/40 dark:border-slate-800/80 hover:bg-surface-container-lowest/80 dark:hover:bg-slate-800/50 transition-colors cursor-pointer group ${isSelected ? 'bg-primary/5 dark:bg-primary/10' : ''}"
+                onclick="window.openOrderInspector('${order.id}')">
+                
+                <!-- Checkbox -->
+                <td class="py-3 px-3 text-center" onclick="event.stopPropagation()">
+                    <input type="checkbox" ${isSelected ? 'checked' : ''} 
+                        onchange="window.toggleOrderSelection('${order.id}')"
+                        class="w-4 h-4 rounded text-primary focus:ring-primary border-outline-variant dark:border-slate-700 bg-surface dark:bg-slate-900 cursor-pointer">
+                </td>
+
+                <!-- Order ID & Buyer -->
+                <td class="py-3 px-3">
+                    <div class="flex items-center gap-2.5">
+                        <span class="px-2.5 py-1 rounded-lg bg-primary/10 text-primary font-mono text-[12px] font-extrabold uppercase shrink-0">
+                            ${order.id}
+                        </span>
+                        <div class="min-w-0">
+                            <span class="font-bold text-[13px] text-on-surface dark:text-white block truncate leading-tight">
+                                ${order.customerName || order.customerId || 'Customer'}
+                            </span>
+                            ${order.customerCompany ? `<span class="text-[11px] text-secondary dark:text-slate-400 block truncate mt-0.5">${order.customerCompany}</span>` : ''}
+                        </div>
+                    </div>
+                </td>
+
+                <!-- Products & Route -->
+                <td class="py-3 px-3">
+                    ${productSummaryHtml}
+                </td>
+
+                <!-- Quantity -->
+                <td class="py-3 px-3 whitespace-nowrap">
+                    <span class="font-extrabold text-[13px] text-on-surface dark:text-slate-100">
+                        ${(order.qty || 0).toLocaleString()}
+                    </span>
+                    <span class="text-[11px] text-secondary dark:text-slate-400 font-medium">pcs</span>
+                </td>
+
+                <!-- Order Value & Payment -->
+                <td class="py-3 px-3 whitespace-nowrap">
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full ${pmtDot} shrink-0" title="Payment: ${pmtStatus}"></span>
+                        <span class="font-bold text-[13px] text-on-surface dark:text-slate-100">
+                            ₹${(order.value || 0).toLocaleString()}
+                        </span>
+                    </div>
+                </td>
+
+                <!-- Delivery Urgency -->
+                <td class="py-3 px-3 whitespace-nowrap">
+                    ${deliveryBadge}
+                </td>
+
+                <!-- Factory Stage & Progress -->
+                <td class="py-3 px-3 min-w-[150px]">
+                    <div class="flex flex-col gap-1">
+                        <div class="flex items-center justify-between gap-1">
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-extrabold ${stageDef.bgColor} ${stageDef.color}">
+                                <span class="material-symbols-outlined text-[12px]">${stageDef.icon}</span>
+                                <span>${stageDef.shortLabel || stageDef.label}</span>
+                            </span>
+                            <span class="text-[11px] font-mono font-extrabold text-primary">${displayPercentage}%</span>
+                        </div>
+                        <div class="w-full h-1.5 bg-surface-variant dark:bg-slate-800 rounded-full overflow-hidden">
+                            <div class="h-full bg-primary rounded-full transition-all" style="width: ${displayPercentage}%"></div>
+                        </div>
+                    </div>
+                </td>
+
+                <!-- Actions -->
+                <td class="py-3 px-3 text-right" onclick="event.stopPropagation()">
+                    <div class="flex items-center justify-end gap-1.5">
+                        <button type="button" onclick="window.openOrderInspector('${order.id}')"
+                            title="Quick Inspect"
+                            class="w-8 h-8 rounded-xl bg-surface-container dark:bg-slate-800 hover:bg-primary hover:text-white text-secondary dark:text-slate-300 flex items-center justify-center active-scale transition-apple shadow-xs">
+                            <span class="material-symbols-outlined text-[17px]">visibility</span>
+                        </button>
+                        <button type="button" onclick="window.location.href='create-order.html?edit=${order.id}'"
+                            title="Edit Order"
+                            class="w-8 h-8 rounded-xl bg-surface-container dark:bg-slate-800 hover:bg-amber-500 hover:text-white text-secondary dark:text-slate-300 flex items-center justify-center active-scale transition-apple shadow-xs">
+                            <span class="material-symbols-outlined text-[17px]">edit</span>
+                        </button>
+                        <button type="button" onclick="window.location.href='production.html?orderId=${order.id}&stage=${rollup.activeStageKey}'"
+                            title="Open Floor Workspace"
+                            class="w-8 h-8 rounded-xl bg-primary/10 text-primary hover:bg-primary hover:text-white flex items-center justify-center active-scale transition-apple shadow-xs">
+                            <span class="material-symbols-outlined text-[17px]">precision_manufacturing</span>
+                        </button>
+                        <button type="button" onclick="window.printJobTraveler('${order.id}')"
+                            title="Print Traveler / Cut Ticket"
+                            class="w-8 h-8 rounded-xl bg-surface-container dark:bg-slate-800 hover:bg-surface-variant text-secondary dark:text-slate-300 flex items-center justify-center active-scale transition-apple shadow-xs">
+                            <span class="material-symbols-outlined text-[17px]">print</span>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    },
+
     orderCard(order, isBulkMode = false, isSelected = false) {
         const checkboxHtml = isBulkMode ? `
-            <div class="mr-3 flex items-center h-full">
-                <div class="w-6 h-6 rounded-md border-2 flex items-center justify-center transition-colors ${isSelected ? 'bg-primary border-primary' : 'border-outline-variant'}" onclick="event.stopPropagation(); window.toggleOrderSelection('${order.id}')">
-                    ${isSelected ? '<span class="material-symbols-outlined text-white text-[16px] font-bold">check</span>' : ''}
+            <div class="mr-2.5 flex items-center">
+                <div class="w-5 h-5 rounded-md border-2 flex items-center justify-center transition-colors ${isSelected ? 'bg-primary border-primary' : 'border-outline-variant'}" onclick="event.stopPropagation(); window.toggleOrderSelection('${order.id}')">
+                    ${isSelected ? '<span class="material-symbols-outlined text-white text-[14px] font-bold">check</span>' : ''}
                 </div>
             </div>
         ` : '';
@@ -124,9 +271,9 @@ export const renderers = {
         const isFinished = ['Delivered', 'Dispatched', 'Closed', 'Archived'].includes(order.status);
         let deliveryBadge = '';
         if (!isFinished && daysLeft !== null) {
-            if (daysLeft < 0) deliveryBadge = `<span class="text-[10px] font-bold text-error">${Math.abs(daysLeft)}d overdue</span>`;
-            else if (daysLeft <= 5) deliveryBadge = `<span class="text-[10px] font-bold text-orange-500">${daysLeft}d left</span>`;
-            else deliveryBadge = `<span class="text-[10px] text-secondary">${daysLeft}d left</span>`;
+            if (daysLeft < 0) deliveryBadge = `<span class="text-[11px] font-extrabold text-error px-2 py-0.5 rounded-md bg-error/10">${Math.abs(daysLeft)}d overdue</span>`;
+            else if (daysLeft <= 4) deliveryBadge = `<span class="text-[11px] font-extrabold text-orange-600 dark:text-orange-400 px-2 py-0.5 rounded-md bg-orange-500/10">${daysLeft}d left</span>`;
+            else deliveryBadge = `<span class="text-[11px] text-secondary font-medium">${daysLeft}d left</span>`;
         }
 
         // Payment status dot
@@ -141,10 +288,10 @@ export const renderers = {
 
         // Bottleneck warning badge
         const bottleneckBadge = rollup.isBottleneck ? `
-            <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-600 text-[11px] font-bold mt-2">
-                <span class="material-symbols-outlined text-[14px]">warning</span>
-                <span>Bottleneck: ${rollup.activeStageDef.label}</span>
-            </div>
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-error/10 text-error text-[10px] font-extrabold">
+                <span class="material-symbols-outlined text-[12px]">warning</span>
+                <span>Bottleneck</span>
+            </span>
         ` : '';
 
         // Product-level stage and workflow badges
@@ -152,103 +299,266 @@ export const renderers = {
         const orderProducts = Array.isArray(order.products) && order.products.length > 0 ? order.products : null;
         if (orderProducts && orderProducts.length > 0) {
             productChipsHtml = `
-                <div class="flex flex-wrap gap-1.5 mt-2.5">
+                <div class="flex flex-wrap gap-1.5 mt-2">
                     ${orderProducts.map(p => {
-                const pWf = p.workflowType || order.workflowType || 'default';
-                const wfInfo = getWorkflowBadgeInfo(pWf);
-                const pStatus = p.status || rollup.activeStageDef.shortLabel;
-                return `
-                            <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-surface-variant text-on-surface-variant border border-outline-variant/40">
+                        const pWf = p.workflowType || order.workflowType || 'default';
+                        const wfInfo = getWorkflowBadgeInfo(pWf);
+                        const pWorkflow = getProductWorkflowStages(p, order.workflowType);
+                        const pStageKey = normalizeStageKey(p.status || p.currentStage || pWorkflow[0]);
+                        const pStageDef = STAGE_DEFINITIONS[pStageKey] || { label: p.status || pStageKey, icon: 'bolt' };
+                        return `
+                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold bg-surface-container dark:bg-slate-800 border border-outline-variant/50 text-on-surface dark:text-slate-200">
                                 <span class="font-bold">${p.name || 'Item'}:</span>
-                                <span class="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded font-extrabold ${wfInfo.bgColor} ${wfInfo.color}">
-                                    <span class="material-symbols-outlined text-[10px]">${wfInfo.icon}</span>
+                                <span class="px-1.5 py-0.2 rounded text-[9px] font-extrabold ${wfInfo.bgColor} ${wfInfo.color}">
                                     ${wfInfo.shortLabel || wfInfo.label}
                                 </span>
-                                <span class="text-primary font-bold">• ${pStatus}</span>
+                                <span class="text-primary font-bold">• ${pStageDef.shortLabel || pStageDef.label}</span>
                             </span>
                         `;
-            }).join('')}
-                </div>
-            `;
-        }
-
-        // Inline size breakdown preview
-        let sizesPreviewHtml = '';
-        const primaryProduct = Array.isArray(order.products) && order.products.length > 0 ? order.products[0] : null;
-        const sizesObj = primaryProduct?.sizes || order.stageData?.cutting?.cutQuantitiesBySize || order.sizes;
-
-        if (typeof sizesObj === 'object' && sizesObj !== null && Object.keys(sizesObj).length > 0) {
-            sizesPreviewHtml = `
-                <div class="flex items-center gap-1 overflow-x-auto no-scrollbar py-1 mt-1 text-[11px]">
-                    <span class="text-[10px] font-bold text-secondary uppercase mr-1">Sizes:</span>
-                    ${Object.entries(sizesObj).map(([sz, q]) => `
-                        <span class="px-1.5 py-0.5 rounded-md bg-surface-container border border-outline-variant/60 font-medium">
-                            <strong class="text-on-surface">${sz}</strong>:<span class="text-primary font-bold">${q}</span>
-                        </span>
-                    `).join('')}
-                </div>
-            `;
-        } else if (typeof sizesObj === 'string' && sizesObj.trim()) {
-            sizesPreviewHtml = `
-                <div class="text-[11px] text-secondary mt-1">
-                    <span class="font-bold">Sizes:</span> ${sizesObj}
+                    }).join('')}
                 </div>
             `;
         }
 
         return `
-            <div role="button" tabindex="0" onclick="${isBulkMode ? `window.toggleOrderSelection('${order.id}')` : `window.openOrderDetails('${order.id}')`}" class="bg-surface-container-lowest rounded-[24px] border ${isSelected ? 'border-primary ring-2 ring-primary/30 bg-primary/5' : 'border-outline-variant'} p-lg shadow-sm active-bg transition-colors cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary flex items-center">
-                ${checkboxHtml}
-                <div class="flex-1 w-full min-w-0">
-                    <div class="flex items-start justify-between mb-3">
-                        <div>
-                            <span class="text-[13px] font-semibold text-primary mb-1 block font-mono">${order.id}</span>
-                            <h4 class="text-[18px] font-bold text-on-surface mb-0.5">${order.customerName || order.customerId}</h4>
-                            <div class="flex items-center gap-2">
-                                <span class="text-body text-secondary font-semibold">&#8377;${(order.value || 0).toLocaleString()}</span>
-                                <span class="w-1.5 h-1.5 rounded-full ${pmtDot} shrink-0" title="Payment: ${pmtStatus}"></span>
-                                ${deliveryBadge}
+            <div role="button" tabindex="0" onclick="${isBulkMode ? `window.toggleOrderSelection('${order.id}')` : `window.openOrderInspector('${order.id}')`}" 
+                class="bg-surface-container-lowest dark:bg-slate-900 rounded-2xl border ${isSelected ? 'border-primary ring-2 ring-primary/30 bg-primary/5' : 'border-outline-variant/60 dark:border-slate-800'} p-4 shadow-xs hover:border-primary transition-all cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-primary flex flex-col gap-3">
+                
+                <!-- Card Header -->
+                <div class="flex items-start justify-between gap-3">
+                    <div class="flex items-start gap-2.5 min-w-0">
+                        ${checkboxHtml}
+                        <div class="min-w-0">
+                            <div class="flex items-center gap-2 flex-wrap mb-1">
+                                <span class="px-2.5 py-0.5 rounded-lg bg-primary/10 text-primary font-mono text-[12px] font-extrabold uppercase">
+                                    ${order.id}
+                                </span>
+                                <span class="px-2 py-0.5 rounded-md text-[10px] font-extrabold ${order.statusColor || 'bg-surface-variant text-secondary'}">
+                                    ${order.status}
+                                </span>
+                                ${bottleneckBadge}
                             </div>
-                        </div>
-                        <div class="flex flex-col items-end gap-1 shrink-0 ml-2">
-                            <span class="px-2.5 py-1 rounded-full text-[11px] font-bold ${order.statusColor}">${order.status}</span>
-                            ${bottleneckBadge}
+                            <h4 class="text-[16px] font-extrabold text-on-surface dark:text-white leading-tight truncate">
+                                ${order.customerName || order.customerId || 'Customer'}
+                            </h4>
+                            ${order.customerCompany ? `<p class="text-[12px] text-secondary dark:text-slate-400 truncate">${order.customerCompany}</p>` : ''}
                         </div>
                     </div>
-                    ${productChipsHtml}
-                    ${sizesPreviewHtml}
-                    <div class="mt-3">
-                        ${ProgressBar({ label: `${displayPercentage}% Complete`, secondaryLabel: order.progressLabel || `${rollup.activeStageDef.shortLabel} phase`, percentage: displayPercentage, color: order.progressColor || 'bg-primary' })}
-                    </div>
-                    ${renderStagePipeline(order)}
-                    <div class="mt-3 pt-2.5 border-t border-outline-variant/40 flex items-center justify-between">
-                        <div class="flex items-center gap-1.5 text-[12px] text-secondary">
-                            <span class="material-symbols-outlined text-[16px] text-primary">inventory_2</span>
-                            <span><strong>${(order.qty || 0).toLocaleString()} pcs</strong>${(() => {
-                const primary = Array.isArray(order.products) && order.products.length > 0
-                    ? order.products[0] : null;
-                const name = primary?.name || order.product || '';
-                return name ? ` • ${name}` : '';
-            })()
-            }</span>
+
+                    <!-- Value & Payment -->
+                    <div class="flex flex-col items-end shrink-0">
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-2 h-2 rounded-full ${pmtDot} shrink-0" title="Payment: ${pmtStatus}"></span>
+                            <span class="text-[15px] font-extrabold text-on-surface dark:text-white">₹${(order.value || 0).toLocaleString()}</span>
                         </div>
-                        <div class="flex items-center gap-2">
-                            <button type="button" 
-                                onclick="event.stopPropagation(); window.printJobTraveler('${order.id}')" 
-                                title="Print Job Traveler / Cut Ticket"
-                                class="px-2.5 py-1.5 rounded-xl border border-outline-variant hover:border-primary text-secondary hover:text-primary text-[12px] font-bold active-scale transition-apple shadow-xs flex items-center gap-1">
-                                <span class="material-symbols-outlined text-[15px]">print</span>
-                                <span class="hidden sm:inline">Traveler</span>
-                            </button>
-                            <button type="button" 
-                                onclick="event.stopPropagation(); window.location.href='production.html?orderId=${order.id}&stage=${rollup.activeStageKey}'" 
-                                class="px-3.5 py-1.5 rounded-xl bg-primary text-white text-[12px] font-bold active-scale transition-apple shadow-xs flex items-center gap-1.5 hover:bg-primary-hover">
-                                <span>Open Floor</span>
-                                <span class="material-symbols-outlined text-[15px]">arrow_forward</span>
-                            </button>
-                        </div>
+                        <div class="mt-0.5">${deliveryBadge}</div>
                     </div>
                 </div>
+
+                <!-- Products route chips -->
+                ${productChipsHtml}
+
+                <!-- Progress Bar & Active Stage -->
+                <div class="mt-1">
+                    <div class="flex items-center justify-between text-[11px] mb-1 font-semibold">
+                        <span class="text-secondary dark:text-slate-400">
+                            <strong>${(order.qty || 0).toLocaleString()} pcs</strong> • Active: <strong class="text-primary">${rollup.activeStageDef.label}</strong>
+                        </span>
+                        <span class="text-primary font-mono font-extrabold">${displayPercentage}%</span>
+                    </div>
+                    <div class="w-full h-1.5 bg-surface-variant dark:bg-slate-800 rounded-full overflow-hidden">
+                        <div class="h-full bg-primary rounded-full transition-apple" style="width: ${displayPercentage}%"></div>
+                    </div>
+                </div>
+
+                <!-- Card Footer Actions -->
+                <div class="pt-2.5 border-t border-outline-variant/40 dark:border-slate-800 flex items-center justify-between gap-2" onclick="event.stopPropagation()">
+                    <button type="button" onclick="window.openOrderInspector('${order.id}')"
+                        class="px-3 py-1.5 rounded-xl bg-surface-container dark:bg-slate-800 hover:bg-surface-variant text-on-surface dark:text-slate-200 text-[12px] font-bold flex items-center gap-1 active-scale transition-apple shadow-xs">
+                        <span class="material-symbols-outlined text-[15px]">visibility</span>
+                        <span>Quick View</span>
+                    </button>
+
+                    <div class="flex items-center gap-1.5">
+                        <button type="button" onclick="window.location.href='create-order.html?edit=${order.id}'"
+                            title="Edit Order"
+                            class="w-8 h-8 rounded-xl border border-outline-variant dark:border-slate-800 hover:border-primary text-secondary hover:text-primary flex items-center justify-center active-scale transition-apple">
+                            <span class="material-symbols-outlined text-[16px]">edit</span>
+                        </button>
+                        <button type="button" onclick="window.printJobTraveler('${order.id}')"
+                            title="Print Traveler / Cut Ticket"
+                            class="w-8 h-8 rounded-xl border border-outline-variant dark:border-slate-800 hover:border-primary text-secondary hover:text-primary flex items-center justify-center active-scale transition-apple">
+                            <span class="material-symbols-outlined text-[16px]">print</span>
+                        </button>
+                        <button type="button" onclick="window.location.href='production.html?orderId=${order.id}&stage=${rollup.activeStageKey}'"
+                            class="px-3 py-1.5 rounded-xl bg-primary text-white text-[12px] font-bold active-scale transition-apple flex items-center gap-1 hover:bg-primary-hover shadow-xs">
+                            <span>Floor</span>
+                            <span class="material-symbols-outlined text-[15px]">arrow_forward</span>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        `;
+    },
+
+    orderInspectorContent(order) {
+        const rollup = calculateOrderRollup(order);
+        const displayPercentage = (order.progressPercentage !== undefined && order.progressPercentage !== null && order.progressPercentage > 0)
+            ? order.progressPercentage
+            : rollup.overallPercentage;
+
+        const pmtStatus = order.paymentStatus || 'Unpaid';
+        const pmtBadgeCls = pmtStatus === 'Paid' ? 'bg-[#34C759]/15 text-[#34C759]' : pmtStatus === 'Partial' ? 'bg-orange-500/15 text-orange-600' : 'bg-error/15 text-error';
+
+        const products = Array.isArray(order.products) && order.products.length > 0 
+            ? order.products 
+            : [{ name: order.product || 'Standard Garment', qty: order.qty || 0, workflowType: order.workflowType || 'default', sizes: order.sizes || {} }];
+
+        return `
+            <div class="flex flex-col gap-5 pb-8 animate-fade-in">
+                
+                <!-- Inspector Header -->
+                <div class="bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant/60 dark:border-slate-800 rounded-2xl p-5 shadow-xs">
+                    <div class="flex items-start justify-between gap-3">
+                        <div>
+                            <div class="flex items-center gap-2 flex-wrap mb-1">
+                                <span class="px-2.5 py-1 rounded-lg bg-primary/10 text-primary font-mono text-[13px] font-extrabold uppercase">
+                                    ${order.id}
+                                </span>
+                                <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold ${order.statusColor || 'bg-primary/10 text-primary'}">
+                                    ${order.status}
+                                </span>
+                                <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold ${pmtBadgeCls}">
+                                    ${pmtStatus}
+                                </span>
+                            </div>
+                            <h3 class="text-[20px] font-extrabold text-on-surface dark:text-white leading-tight">
+                                ${order.customerName || order.customerId || 'Customer'}
+                            </h3>
+                            ${order.customerCompany ? `<p class="text-[13px] text-secondary dark:text-slate-400 mt-0.5">${order.customerCompany}</p>` : ''}
+                        </div>
+
+                        <!-- Progress Circle / Gauge -->
+                        <div class="flex flex-col items-end">
+                            <span class="text-[24px] font-mono font-black text-primary">${displayPercentage}%</span>
+                            <span class="text-[11px] font-bold text-secondary dark:text-slate-400 uppercase tracking-wider">Floor Progress</span>
+                        </div>
+                    </div>
+
+                    <!-- Quick Action Buttons Row -->
+                    <div class="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-outline-variant/40 dark:border-slate-800">
+                        <button type="button" onclick="window.location.href='create-order.html?edit=${order.id}'"
+                            class="py-2.5 px-3 rounded-xl bg-surface-container dark:bg-slate-800 hover:bg-amber-500 hover:text-white text-on-surface dark:text-slate-200 text-[12px] font-bold flex items-center justify-center gap-1.5 active-scale transition-apple shadow-xs">
+                            <span class="material-symbols-outlined text-[16px]">edit</span>
+                            <span>Edit Order</span>
+                        </button>
+                        <button type="button" onclick="window.location.href='production.html?orderId=${order.id}&stage=${rollup.activeStageKey}'"
+                            class="py-2.5 px-3 rounded-xl bg-primary text-white text-[12px] font-bold flex items-center justify-center gap-1.5 active-scale transition-apple shadow-xs hover:bg-primary-hover">
+                            <span class="material-symbols-outlined text-[16px]">precision_manufacturing</span>
+                            <span>Floor Hub</span>
+                        </button>
+                        <button type="button" onclick="window.printJobTraveler('${order.id}')"
+                            class="py-2.5 px-3 rounded-xl border border-outline-variant dark:border-slate-700 hover:border-primary text-on-surface dark:text-slate-200 text-[12px] font-bold flex items-center justify-center gap-1.5 active-scale transition-apple shadow-xs">
+                            <span class="material-symbols-outlined text-[16px]">print</span>
+                            <span>Cut Ticket</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Commercial & Delivery Snapshot -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    <div class="bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant/50 dark:border-slate-800 rounded-xl p-3">
+                        <span class="text-[10px] font-bold text-secondary dark:text-slate-400 uppercase block">Total Pieces</span>
+                        <strong class="text-[16px] text-on-surface dark:text-white">${(order.qty || 0).toLocaleString()} pcs</strong>
+                    </div>
+                    <div class="bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant/50 dark:border-slate-800 rounded-xl p-3">
+                        <span class="text-[10px] font-bold text-secondary dark:text-slate-400 uppercase block">Total Value</span>
+                        <strong class="text-[16px] text-primary">₹${(order.value || 0).toLocaleString()}</strong>
+                    </div>
+                    <div class="bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant/50 dark:border-slate-800 rounded-xl p-3">
+                        <span class="text-[10px] font-bold text-secondary dark:text-slate-400 uppercase block">Promised Delivery</span>
+                        <strong class="text-[14px] text-on-surface dark:text-white">${order.deliveryDate || 'Not set'}</strong>
+                    </div>
+                    <div class="bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant/50 dark:border-slate-800 rounded-xl p-3">
+                        <span class="text-[10px] font-bold text-secondary dark:text-slate-400 uppercase block">Current Station</span>
+                        <strong class="text-[14px] text-primary truncate block">${rollup.activeStageDef.label}</strong>
+                    </div>
+                </div>
+
+                <!-- Product Lines & Size Matrix Accordion -->
+                <div class="bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant/60 dark:border-slate-800 rounded-2xl p-4 shadow-xs flex flex-col gap-4">
+                    <div class="flex items-center justify-between border-b border-outline-variant/40 dark:border-slate-800 pb-2.5">
+                        <h4 class="text-[13px] font-extrabold text-on-surface dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                            <span class="material-symbols-outlined text-[17px] text-primary">inventory_2</span>
+                            <span>Product Lines & Sizing (${products.length})</span>
+                        </h4>
+                    </div>
+
+                    <div class="flex flex-col gap-3">
+                        ${products.map((p, idx) => {
+                            const pWf = p.workflowType || order.workflowType || 'default';
+                            const wfInfo = getWorkflowBadgeInfo(pWf);
+                            const pWorkflow = getProductWorkflowStages(p, order.workflowType);
+                            const pStageKey = normalizeStageKey(p.status || p.currentStage || pWorkflow[0]);
+                            const pStageDef = STAGE_DEFINITIONS[pStageKey] || { label: pStageKey, icon: 'bolt' };
+                            const sizes = p.sizes || {};
+                            const sizeEntries = Object.entries(sizes).filter(([_, q]) => Number(q) > 0);
+
+                            return `
+                                <div class="p-3.5 rounded-xl bg-surface-container dark:bg-slate-800/60 border border-outline-variant/40 dark:border-slate-700/60 flex flex-col gap-2.5">
+                                    <div class="flex items-start justify-between gap-2">
+                                        <div>
+                                            <div class="flex items-center gap-2 mb-0.5">
+                                                <span class="font-bold text-[14px] text-on-surface dark:text-white">${p.name || `Product #${idx+1}`}</span>
+                                                <span class="px-2 py-0.2 rounded text-[10px] font-extrabold ${wfInfo.bgColor} ${wfInfo.color}">
+                                                    ${wfInfo.shortLabel || wfInfo.label}
+                                                </span>
+                                            </div>
+                                            <p class="text-[12px] text-secondary dark:text-slate-400">${p.category || 'Adults'} • ${(p.qty || 0).toLocaleString()} pcs</p>
+                                        </div>
+
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-extrabold ${pStageDef.bgColor || 'bg-primary/10'} ${pStageDef.color || 'text-primary'}">
+                                            <span class="material-symbols-outlined text-[12px]">${pStageDef.icon || 'bolt'}</span>
+                                            <span>${pStageDef.shortLabel || pStageDef.label}</span>
+                                        </span>
+                                    </div>
+
+                                    <!-- Sizing Matrix Pills -->
+                                    ${sizeEntries.length > 0 ? `
+                                        <div class="pt-2 border-t border-outline-variant/40 dark:border-slate-700/40">
+                                            <span class="text-[10px] font-bold text-secondary dark:text-slate-400 uppercase tracking-wider block mb-1">Size Breakdown:</span>
+                                            <div class="flex flex-wrap gap-1.5">
+                                                ${sizeEntries.map(([sz, q]) => `
+                                                    <span class="px-2 py-0.5 rounded-md bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant/60 dark:border-slate-700 text-[11px] font-semibold">
+                                                        <strong class="text-on-surface dark:text-slate-200">${sz}:</strong> <span class="text-primary font-bold">${q}</span>
+                                                    </span>
+                                                `).join('')}
+                                            </div>
+                                        </div>
+                                    ` : ''}
+
+                                    <!-- Fabric Specs Preview if available -->
+                                    ${p.fabric && (p.fabric.type || p.fabric.gsm) ? `
+                                        <div class="text-[11px] text-secondary dark:text-slate-400">
+                                            <strong>Fabric:</strong> ${p.fabric.type || ''} ${p.fabric.gsm ? `(${p.fabric.gsm} GSM)` : ''} ${p.fabric.dia ? `• Dia: ${p.fabric.dia}` : ''}
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+
+                <!-- Order Notes / Shipping -->
+                ${order.notes || order.customerPo ? `
+                    <div class="bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant/60 dark:border-slate-800 rounded-2xl p-4 shadow-xs">
+                        <span class="text-[11px] font-extrabold text-secondary dark:text-slate-400 uppercase tracking-wider block mb-1.5">Logistics & Buyer Notes</span>
+                        ${order.customerPo ? `<p class="text-[12px] text-secondary dark:text-slate-400 mb-1"><strong>Buyer PO #:</strong> ${order.customerPo}</p>` : ''}
+                        ${order.notes ? `<p class="text-[13px] text-on-surface dark:text-slate-200 bg-surface-container dark:bg-slate-800/60 p-2.5 rounded-xl border border-outline-variant/30">${order.notes}</p>` : ''}
+                    </div>
+                ` : ''}
+
             </div>
         `;
     },

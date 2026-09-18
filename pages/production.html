@@ -119,15 +119,18 @@
                     <p class="text-[13px] text-secondary dark:text-slate-400 mt-0.5">8 Dedicated Operational Workspaces with live floor tracking & data sync</p>
                 </div>
 
-                <!-- Order Selector Dropdown -->
+                <!-- Interactive Order Selector Trigger Pill -->
                 <div class="flex items-center gap-2">
-                    <label for="order-select-dropdown" class="text-[12px] font-bold text-secondary dark:text-slate-400 shrink-0">Select Order:</label>
-                    <div class="relative min-w-[220px] sm:min-w-[280px]">
-                        <select id="order-select-dropdown" onchange="window.productionRouter.switchOrder(this.value)" 
-                            class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl pl-3 pr-8 py-2 text-[13px] font-bold text-on-surface focus:border-primary focus:ring-1 focus:ring-primary outline-none shadow-xs">
-                            <option value="">Loading Active Orders...</option>
-                        </select>
-                    </div>
+                    <button type="button" onclick="window.productionRouter.openOrderPicker()" 
+                        id="order-picker-trigger-btn"
+                        class="px-4 py-2 rounded-xl bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant/80 dark:border-slate-800 text-on-surface dark:text-white text-[13px] font-bold active-scale transition-apple hover:border-primary shadow-xs flex items-center gap-2.5 max-w-[320px] sm:max-w-[420px]">
+                        <span class="material-symbols-outlined text-[20px] text-primary shrink-0" id="order-picker-trigger-icon">storefront</span>
+                        <div class="flex flex-col items-start text-left truncate min-w-0">
+                            <span class="text-[10px] font-bold text-secondary dark:text-slate-400 uppercase tracking-wider leading-none">Floor Target</span>
+                            <span class="truncate font-extrabold text-[13px] mt-0.5 text-on-surface dark:text-white" id="order-picker-trigger-label">🏢 Floor Overview (All Orders)</span>
+                        </div>
+                        <span class="material-symbols-outlined text-[18px] text-secondary shrink-0 ml-auto">unfold_more</span>
+                    </button>
                 </div>
             </div>
 
@@ -151,6 +154,47 @@
             
             <div class="h-10"></div>
         </main>
+    </div>
+
+    <!-- Searchable Order Command Modal -->
+    <div id="order-picker-modal" class="fixed inset-0 z-50 flex items-center justify-center p-4 opacity-0 pointer-events-none transition-all duration-200">
+        <!-- Backdrop -->
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-xs" onclick="window.productionRouter.closeOrderPicker()"></div>
+        
+        <!-- Modal Dialog -->
+        <div class="relative bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant/80 dark:border-slate-800 rounded-3xl shadow-2xl max-w-xl w-full max-h-[85vh] flex flex-col overflow-hidden transform scale-95 transition-transform duration-200" id="order-picker-modal-panel">
+            
+            <!-- Modal Header with Instant Search -->
+            <div class="p-4 border-b border-outline-variant/50 dark:border-slate-800 bg-surface/80 dark:bg-slate-900/80 backdrop-blur-md flex flex-col gap-3">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary text-[22px]">precision_manufacturing</span>
+                        <h3 class="text-[16px] font-extrabold text-on-surface dark:text-white">Switch Production Order</h3>
+                    </div>
+                    <button type="button" onclick="window.productionRouter.closeOrderPicker()" 
+                        class="w-8 h-8 rounded-lg bg-surface-variant dark:bg-slate-800 hover:bg-surface-container text-secondary dark:text-slate-300 flex items-center justify-center active-scale">
+                        <span class="material-symbols-outlined text-[18px]">close</span>
+                    </button>
+                </div>
+
+                <div class="relative">
+                    <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[18px]">search</span>
+                    <input type="text" id="order-picker-search-input" placeholder="Search order ID, buyer, product style..."
+                        class="w-full bg-surface-container dark:bg-slate-800 border border-outline-variant/60 dark:border-slate-700 rounded-xl pl-10 pr-4 py-2.5 text-[13px] text-on-surface dark:text-white outline-none focus:border-primary focus:ring-1 focus:ring-primary placeholder:text-secondary dark:placeholder:text-slate-500">
+                </div>
+            </div>
+
+            <!-- Modal List of Orders -->
+            <div id="order-picker-list" class="flex-1 overflow-y-auto p-3 flex flex-col gap-2 custom-scrollbar">
+                <!-- Injected dynamically -->
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="p-3 border-t border-outline-variant/40 dark:border-slate-800 bg-surface-container-low/50 dark:bg-slate-850/50 flex items-center justify-between text-[11px] text-secondary">
+                <span>Select an order to open its active department</span>
+                <span class="font-mono">ESC to close</span>
+            </div>
+        </div>
     </div>
     
     <!-- Bottom Nav -->

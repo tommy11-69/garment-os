@@ -30,6 +30,16 @@ import { StitchingWorkspace }     from './stages/StitchingWorkspace.js?v=5.5';
 import { PackingWorkspace }       from './stages/PackingWorkspace.js?v=5.5';
 import { DispatchWorkspace }      from './stages/DispatchWorkspace.js?v=5.5';
 
+function escapeHtml(str) {
+    return String(str || '').replace(/[&<>'"]/g, tag => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        "'": '&#39;',
+        '"': '&quot;'
+    }[tag] || tag));
+}
+
 class ProductionApp {
     constructor() {
         this.orders = [];
@@ -58,7 +68,7 @@ class ProductionApp {
         try {
             this.readQueryParams();
             await this.loadOrders();
-            this.renderOrderDropdown();
+            this.renderOrderTrigger();
             this.syncCurrentOrder();
             if (this.activeOrderId && (!new URLSearchParams(window.location.search).get('stage') || this.activeStage === 'overview')) {
                 const activeProd = this.getActiveProduct();
@@ -69,6 +79,21 @@ class ProductionApp {
                 }
             }
             this.render();
+
+            // Wire instant search input for order picker modal
+            const searchInput = document.getElementById('order-picker-search-input');
+            if (searchInput) {
+                searchInput.addEventListener('input', (e) => {
+                    this.renderOrderPickerList(e.target.value);
+                });
+            }
+
+            // Keyboard shortcut: ESC to close order picker modal
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    this.closeOrderPicker();
+                }
+            });
 
             window.addEventListener('popstate', () => {
                 this.readQueryParams();
@@ -134,23 +159,154 @@ class ProductionApp {
         }
     }
 
-    renderOrderDropdown() {
-        const select = document.getElementById('order-select-dropdown');
-        if (!select) return;
+    renderOrderTrigger() {
+        const label = document.getElementById('order-picker-trigger-label');
+        const icon = document.getElementById('order-picker-trigger-icon');
+        if (!label) return;
 
+        if (this.activeOrder) {
+            const ord = this.activeOrder;
+            const buyer = ord.customerName || ord.customerId || 'Customer';
+            const pcs = ord.qty || 0;
+            label.textContent = `#${ord.id} • ${buyer} (${pcs} pcs)`;
+            if (icon) icon.textContent = 'inventory_2';
+        } else {
+            label.textContent = '🏢 Floor Overview (All Orders)';
+            if (icon) icon.textContent = 'storefront';
+        }
+    }
+
+    openOrderPicker() {
+        const modal = document.getElementById('order-picker-modal');
+        const panel = document.getElementById('order-picker-modal-panel');
+        const input = document.getElementById('order-picker-search-input');
+        if (!modal) return;
+
+        modal.classList.remove('opacity-0', 'pointer-events-none');
+        if (panel) {
+            panel.classList.remove('scale-95');
+            panel.classList.add('scale-100');
+        }
+
+        if (input) {
+            input.value = '';
+            setTimeout(() => input.focus(), 50);
+        }
+
+        this.renderOrderPickerList('');
+    }
+
+    closeOrderPicker() {
+        const modal = document.getElementById('order-picker-modal');
+        const panel = document.getElementById('order-picker-modal-panel');
+        if (!modal) return;
+
+        modal.classList.add('opacity-0', 'pointer-events-none');
+        if (panel) {
+            panel.classList.remove('scale-100');
+            panel.classList.add('scale-95');
+        }
+    }
+
+    renderOrderPickerList(filterText = '') {
+        const list = document.getElementById('order-picker-list');
+        if (!list) return;
+
+        const q = (filterText || '').trim().toLowerCase();
         const activeOrders = this.orders.filter(o => !['Delivered', 'Closed', 'Archived'].includes(o.status));
 
-        let html = `<option value="" ${!this.activeOrderId ? 'selected' : ''}>🏢 Factory Floor Overview (All Orders)</option>`;
-        activeOrders.forEach(ord => {
-            const isSelected = String(ord.id) === String(this.activeOrderId);
-            html += `
-                <option value="${ord.id}" ${isSelected ? 'selected' : ''}>
-                    #${ord.id} - ${ord.customerName || ord.customerId} (${ord.qty || 0} pcs)
-                </option>
-            `;
+        const filtered = activeOrders.filter(o => {
+            if (!q) return true;
+            const idMatch = String(o.id || '').toLowerCase().includes(q);
+            const custMatch = String(o.customerName || o.customerId || '').toLowerCase().includes(q);
+            const prodMatch = String(o.product || '').toLowerCase().includes(q);
+            const wfMatch = String(o.workflowType || '').toLowerCase().includes(q);
+            return idMatch || custMatch || prodMatch || wfMatch;
         });
 
-        select.innerHTML = html;
+        const isOverviewSelected = !this.activeOrderId;
+
+        let html = `
+            <!-- Overview Default Option -->
+            <div onclick="window.productionRouter.switchOrder('', 'overview'); window.productionRouter.closeOrderPicker();"
+                class="p-3 rounded-2xl border ${isOverviewSelected ? 'border-primary bg-primary/10 text-primary' : 'border-outline-variant/60 dark:border-slate-800 hover:border-primary bg-surface dark:bg-slate-850'} flex items-center justify-between cursor-pointer active-scale transition-apple">
+                <div class="flex items-center gap-3">
+                    <div class="w-9 h-9 rounded-xl ${isOverviewSelected ? 'bg-primary text-white' : 'bg-surface-variant dark:bg-slate-700 text-secondary dark:text-slate-300'} flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-[20px]">storefront</span>
+                    </div>
+                    <div>
+                        <div class="text-[14px] font-extrabold text-on-surface dark:text-white">Factory Floor Overview</div>
+                        <div class="text-[12px] text-secondary dark:text-slate-400">All running orders, department loads & bottleneck radar</div>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="px-2 py-0.5 rounded-full text-[11px] font-bold bg-surface-variant dark:bg-slate-700 text-secondary dark:text-slate-300">${activeOrders.length} Active</span>
+                    <span class="material-symbols-outlined text-[18px] text-secondary">chevron_right</span>
+                </div>
+            </div>
+            
+            <div class="px-1 pt-2 pb-1 text-[11px] font-bold text-secondary dark:text-slate-400 uppercase tracking-wider flex items-center justify-between">
+                <span>Active Production Orders (${filtered.length})</span>
+            </div>
+        `;
+
+        if (filtered.length === 0) {
+            html += `
+                <div class="p-6 text-center text-secondary dark:text-slate-400">
+                    <span class="material-symbols-outlined text-[32px] opacity-40 mb-1">search_off</span>
+                    <p class="text-[13px] font-medium">No active orders match "${escapeHtml(filterText)}"</p>
+                </div>
+            `;
+        } else {
+            html += filtered.map(ord => {
+                const isSelected = String(ord.id) === String(this.activeOrderId);
+                const roll = calculateOrderRollup(ord);
+                const wfKey = ord.workflowType || 'default';
+                const wfInfo = getWorkflowBadgeInfo(wfKey);
+
+                return `
+                    <div onclick="window.productionRouter.switchOrder('${ord.id}', '${roll.activeStageKey}'); window.productionRouter.closeOrderPicker();"
+                        class="p-3 rounded-2xl border ${isSelected ? 'border-primary ring-2 ring-primary/20 bg-primary/5 dark:bg-primary/10' : 'border-outline-variant/60 dark:border-slate-800 hover:border-primary bg-surface dark:bg-slate-850'} flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 cursor-pointer active-scale transition-apple">
+                        
+                        <div class="min-w-0 flex-1">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="font-mono text-[12px] font-extrabold text-primary bg-primary/10 dark:bg-primary/20 px-2 py-0.5 rounded-md uppercase">
+                                    #${ord.id}
+                                </span>
+                                <span class="text-[13px] font-bold text-on-surface dark:text-white truncate">
+                                    ${ord.customerName || ord.customerId || 'Customer'}
+                                </span>
+                                <span class="inline-flex items-center gap-1 text-[10px] font-extrabold px-2 py-0.5 rounded-md ${wfInfo.bgColor} ${wfInfo.color} border ${wfInfo.borderColor}">
+                                    <span class="material-symbols-outlined text-[11px]">${wfInfo.icon}</span>
+                                    ${wfInfo.shortLabel || wfInfo.label}
+                                </span>
+                            </div>
+                            
+                            <div class="text-[12px] text-secondary dark:text-slate-400 mt-1 flex items-center gap-2 flex-wrap">
+                                <span>${ord.product || 'Garment Order'}</span>
+                                <span>•</span>
+                                <strong class="text-on-surface dark:text-slate-200">${(ord.qty || 0).toLocaleString()} pcs</strong>
+                                <span>•</span>
+                                <span>Due: ${ord.deliveryDate || 'Flexible'}</span>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end shrink-0 pt-1 sm:pt-0">
+                            <div class="flex flex-col items-start sm:items-end">
+                                <span class="text-[11px] font-bold text-primary flex items-center gap-1">
+                                    <span class="material-symbols-outlined text-[13px]">${roll.activeStageDef?.icon || 'bolt'}</span>
+                                    ${roll.activeStageDef?.label || 'In Progress'}
+                                </span>
+                                <span class="text-[10px] text-secondary dark:text-slate-400 font-mono font-bold">${roll.overallPercentage}% ready</span>
+                            </div>
+                            <span class="material-symbols-outlined text-[18px] text-secondary">arrow_forward</span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        list.innerHTML = html;
     }
 
     getActiveProduct() {
@@ -193,36 +349,36 @@ class ProductionApp {
         const activeWfInfo = getWorkflowBadgeInfo(activeWfKey);
 
         container.innerHTML = `
-            <div class="bg-surface-container-lowest border border-outline-variant rounded-2xl p-4 shadow-sm flex flex-col gap-3 animate-fade-in">
+            <div class="bg-surface-container-lowest dark:bg-slate-900 border border-outline-variant dark:border-slate-800 rounded-2xl p-3 sm:p-3.5 shadow-sm flex flex-col gap-2.5 animate-fade-in">
                 
                 <!-- Order Core Metadata Row -->
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                    <div class="flex items-center gap-3 flex-wrap">
-                        <span class="px-2.5 py-1 rounded-lg bg-primary/10 text-primary font-mono text-[13px] font-extrabold uppercase">
-                            ${ord.id}
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2.5">
+                    <div class="flex items-center gap-2.5 flex-wrap">
+                        <span class="px-2.5 py-0.5 rounded-lg bg-primary/10 dark:bg-primary/20 text-primary dark:text-blue-400 font-mono text-[12px] font-extrabold uppercase">
+                            #${ord.id}
                         </span>
-                        <span class="text-[16px] font-extrabold text-on-surface">
+                        <span class="text-[15px] font-extrabold text-on-surface dark:text-white">
                             ${ord.customerName || ord.customerId || 'Customer'}
                         </span>
-                        <span class="text-secondary text-[13px]">•</span>
-                        <span class="text-[13px] text-secondary font-medium">
-                            Total: <strong>${roll.totalOrderQty.toLocaleString()} pcs</strong>
+                        <span class="text-secondary dark:text-slate-500 text-[12px]">•</span>
+                        <span class="text-[12px] text-secondary dark:text-slate-400 font-medium">
+                            Total: <strong class="text-on-surface dark:text-white">${roll.totalOrderQty.toLocaleString()} pcs</strong>
                         </span>
-                        <span class="text-secondary text-[13px]">•</span>
-                        <span class="text-[13px] text-secondary font-medium">
-                            Promised Delivery: <strong>${ord.deliveryDate || 'Not set'}</strong>
+                        <span class="text-secondary dark:text-slate-500 text-[12px]">•</span>
+                        <span class="text-[12px] text-secondary dark:text-slate-400 font-medium">
+                            Due: <strong class="text-on-surface dark:text-white">${ord.deliveryDate || 'Not set'}</strong>
                         </span>
-                        ${roll.isBottleneck ? '<span class="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold bg-error/10 text-error">Bottleneck Risk</span>' : ''}
+                        ${roll.isBottleneck ? '<span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-error/10 text-error">Bottleneck Risk</span>' : ''}
                     </div>
 
                     <!-- Progress Rollup -->
                     <div class="flex items-center gap-3 shrink-0">
                         <div class="flex flex-col items-end">
                             <div class="flex items-center gap-1.5">
-                                <span class="text-[12px] font-bold text-secondary">Order Rollup:</span>
-                                <span class="text-[13px] font-extrabold text-primary">${roll.overallPercentage}%</span>
+                                <span class="text-[11px] font-bold text-secondary dark:text-slate-400">Order Rollup:</span>
+                                <span class="text-[12px] font-extrabold text-primary dark:text-blue-400">${roll.overallPercentage}%</span>
                             </div>
-                            <div class="w-28 h-1.5 bg-surface-variant rounded-full overflow-hidden mt-1">
+                            <div class="w-24 sm:w-28 h-1.5 bg-surface-variant dark:bg-slate-700 rounded-full overflow-hidden mt-0.5">
                                 <div class="h-full bg-primary rounded-full transition-apple" style="width: ${roll.overallPercentage}%"></div>
                             </div>
                         </div>
@@ -231,9 +387,9 @@ class ProductionApp {
 
                 <!-- Product Line Switcher (If Order has products) -->
                 ${products.length > 1 ? `
-                    <div class="pt-2 border-t border-outline-variant/40 flex items-center gap-2 flex-wrap">
-                        <span class="text-[12px] font-bold text-secondary shrink-0">Product Lines:</span>
-                        <div class="flex items-center gap-1.5 overflow-x-auto pb-1">
+                    <div class="pt-2 border-t border-outline-variant/40 dark:border-slate-800/80 flex items-center gap-2 flex-wrap">
+                        <span class="text-[11px] font-bold text-secondary dark:text-slate-400 shrink-0">Product Lines:</span>
+                        <div class="flex items-center gap-1.5 overflow-x-auto pb-0.5">
                             ${products.map((p, idx) => {
                                 const pWf = p.workflowType || ord.workflowType || 'default';
                                 const wfInfo = getWorkflowBadgeInfo(pWf);
@@ -243,14 +399,14 @@ class ProductionApp {
                                 const pStageDef = STAGE_DEFINITIONS[pStageKey] || { label: p.status || pStageKey, icon: 'bolt', shortLabel: pStageKey };
                                 return `
                                     <button type="button" onclick="window.productionRouter.switchProduct(${idx})" 
-                                        class="px-3 py-1.5 rounded-xl text-[12px] font-bold active-scale transition-apple flex items-center gap-2 ${isAct ? 'bg-primary text-white shadow-sm ring-2 ring-primary/30' : 'bg-surface-container text-on-surface hover:bg-surface-variant'}">
+                                        class="px-2.5 py-1 rounded-xl text-[11px] font-bold active-scale transition-apple flex items-center gap-1.5 ${isAct ? 'bg-primary text-white shadow-xs ring-2 ring-primary/30' : 'bg-surface-container dark:bg-slate-800 text-on-surface dark:text-slate-200 hover:bg-surface-variant dark:hover:bg-slate-700'}">
                                         <span>${p.name || `Product #${idx+1}`}</span>
                                         <span class="text-[10px] opacity-75">(${p.qty} pcs)</span>
-                                        <span class="px-1.5 py-0.5 rounded text-[9px] font-extrabold ${isAct ? 'bg-white/20 text-white' : `${wfInfo.bgColor} ${wfInfo.color}`}">
+                                        <span class="px-1.5 py-0.2 rounded text-[9px] font-extrabold ${isAct ? 'bg-white/20 text-white' : `${wfInfo.bgColor} ${wfInfo.color}`}">
                                             ${wfInfo.shortLabel || wfInfo.label}
                                         </span>
-                                        <span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-md text-[10px] font-black ${isAct ? 'bg-white text-primary' : 'bg-primary/10 text-primary'}">
-                                            <span class="material-symbols-outlined text-[11px]">${pStageDef.icon || 'bolt'}</span>
+                                        <span class="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded-md text-[9px] font-black ${isAct ? 'bg-white text-primary' : 'bg-primary/10 text-primary dark:bg-primary/20 dark:text-blue-400'}">
+                                            <span class="material-symbols-outlined text-[10px]">${pStageDef.icon || 'bolt'}</span>
                                             <span>${pStageDef.shortLabel || pStageDef.label}</span>
                                         </span>
                                     </button>
@@ -261,14 +417,14 @@ class ProductionApp {
                 ` : ''}
 
                 <!-- Active Workflow Route Pipeline Visualization -->
-                <div class="pt-2 border-t border-outline-variant/40 flex items-center gap-2 overflow-x-auto pb-1 text-[11px] font-semibold text-secondary">
-                    <span class="font-bold text-on-surface shrink-0">Workflow Route:</span>
-                    <span class="inline-flex items-center gap-1 text-[11px] font-extrabold ${activeWfInfo.color} ${activeWfInfo.bgColor} px-2.5 py-0.5 rounded-md border ${activeWfInfo.borderColor} shrink-0">
-                        <span class="material-symbols-outlined text-[13px]">${activeWfInfo.icon}</span>
+                <div class="pt-2 border-t border-outline-variant/40 dark:border-slate-800/80 flex items-center gap-2 overflow-x-auto pb-0.5 text-[11px] font-semibold text-secondary dark:text-slate-400">
+                    <span class="font-bold text-on-surface dark:text-slate-200 shrink-0">Workflow Route:</span>
+                    <span class="inline-flex items-center gap-1 text-[10px] font-extrabold ${activeWfInfo.color} ${activeWfInfo.bgColor} px-2 py-0.5 rounded-md border ${activeWfInfo.borderColor} shrink-0">
+                        <span class="material-symbols-outlined text-[12px]">${activeWfInfo.icon}</span>
                         ${activeWfInfo.label}
                     </span>
-                    <span class="text-secondary/50">|</span>
-                    <div class="flex items-center gap-1.5 shrink-0">
+                    <span class="text-secondary/50 dark:text-slate-600">|</span>
+                    <div class="flex items-center gap-1 shrink-0">
                         ${activeWorkflow.map((stKey, idx) => {
                             const def = STAGE_DEFINITIONS[stKey] || { label: stKey };
                             const isCurrent = stKey === this.activeStage;
@@ -276,10 +432,10 @@ class ProductionApp {
 
                             return `
                                 <div class="flex items-center gap-1">
-                                    <span class="px-2 py-0.5 rounded-md ${isCurrent ? 'bg-primary text-white font-bold ring-2 ring-primary/20' : isPast ? 'bg-[#34C759]/15 text-[#34C759] font-bold' : 'bg-surface-container text-secondary'}">
+                                    <span class="px-2 py-0.5 rounded-md text-[10px] ${isCurrent ? 'bg-primary text-white font-bold ring-2 ring-primary/20' : isPast ? 'bg-[#34C759]/15 text-[#34C759] font-bold' : 'bg-surface-container dark:bg-slate-800 text-secondary dark:text-slate-400'}">
                                         ${def.label}
                                     </span>
-                                    ${idx < activeWorkflow.length - 1 ? '<span class="material-symbols-outlined text-[12px] text-outline">chevron_right</span>' : ''}
+                                    ${idx < activeWorkflow.length - 1 ? '<span class="material-symbols-outlined text-[11px] text-outline dark:text-slate-600">chevron_right</span>' : ''}
                                 </div>
                             `;
                         }).join('')}
@@ -335,7 +491,7 @@ class ProductionApp {
     }
 
     render() {
-        this.renderOrderDropdown();
+        this.renderOrderTrigger();
         this.renderOrderContextStrip();
         this.renderStageNavBar();
 
@@ -377,6 +533,7 @@ class ProductionApp {
     }
 
     switchOrder(orderId, preferredStage = null) {
+        this.closeOrderPicker();
         if (!orderId) {
             this.activeOrderId = null;
             this.activeOrder = null;
@@ -589,6 +746,9 @@ document.addEventListener('DOMContentLoaded', () => {
         switchStage: (stg) => app.switchStage(stg),
         switchProduct: (idx) => app.switchProduct(idx),
         saveCurrentStage: (shouldAdvance, explicitStatus) => app.saveCurrentStage(shouldAdvance, explicitStatus),
+        openOrderPicker: () => app.openOrderPicker(),
+        closeOrderPicker: () => app.closeOrderPicker(),
+        renderOrderPickerList: (txt) => app.renderOrderPickerList(txt),
         get activeOrder() { return app.activeOrder; }
     };
 

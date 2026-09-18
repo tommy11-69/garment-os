@@ -283,6 +283,16 @@ async function loadExistingOrderForEdit(orderId) {
         saveHeaderBtn.innerHTML = `<span class="material-symbols-outlined text-[16px]">save</span> <span>Save Changes</span>`;
     }
 
+    // Reveal Prominent Edit Mode Banner
+    const editBanner = qs('co-edit-mode-banner');
+    if (editBanner) {
+        editBanner.classList.remove('hidden');
+        const badge = qs('co-edit-order-id-badge');
+        if (badge) badge.textContent = `#${orderId}`;
+        const desc = qs('co-edit-banner-desc');
+        if (desc) desc.textContent = `Modifying order for ${order.customerName || order.customerId || 'Customer'} • Current Status: ${order.status || 'Active'} • Target Delivery: ${order.deliveryDate || 'Not set'}`;
+    }
+
     // Set Priority
     coState.priority = order.priority || 'Normal';
     window.coSetPriority(coState.priority);
