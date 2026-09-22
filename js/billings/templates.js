@@ -983,13 +983,16 @@ export function getPrintHTML(doc, contactInfo = {}) {
                         <img src="${BILLING_LOGO_DATA_URI}" alt="Logo" class="company-logo" 
                             onerror="this.src='/assets/logo-billing.png'; this.onerror=null;">
                         <div>
-                            <div class="company-title">UDHAYAA TEXTILES</div>
-                            <div class="company-sub">Garment Manufacturing &amp; Processing Unit</div>
+                            <span class="font-display-lg text-base sm:text-lg md:text-xl font-extrabold tracking-tighter whitespace-nowrap">
+    <span class="text-primary">Udhayaa </span>
+    <span style="color:#FF6B00;">Textiles</span>
+  </span>
+                            <div class="company-sub">Crafting Your Identity In Every Thread</div>
                         </div>
                     </div>
                     <div class="company-info-text">
-                        <div style="font-weight:600;color:#0f172a">63/A Senthur Nagar, Ellapalayam Road</div>
-                        <div>Periyasemur, Erode, Tamil Nadu 638004</div>
+                        <div style="font-weight:600;color:#0f172a">13/3 B.S.S Street</div>
+                        <div>3rd Street,Palayakadu,Tirupur-641601</div>
                         <div>Phone: <strong>+91 77083 33813</strong> · info@udhayaatextiles.com</div>
                         <div>
                             <span class="gst-badge">GSTIN: 33ANGPU7147M1ZE</span>
