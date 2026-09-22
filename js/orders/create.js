@@ -33,12 +33,36 @@ const FABRIC_SUBTYPES = {
         'Single Jersey (100% Combed Cotton)',
         'Double Jersey / Interlock',
         'Pique Knit (Polo)',
+        'Loop Knit',
+        'Poly Cotton',
+        'Jacquard',
         'French Terry (Unbrushed)',
         'Fleece (Brushed Interior)',
         '2x2 / 1x1 Rib Knit',
         'Waffle / Thermal Knit'
     ],
     Polyester: [
+        'Salina',
+        'Dot Knit',
+        'HoneyComb',
+        'Super Honeycomb',
+        'Mars',
+        '2 Way Lycra',
+        '4 Way Lycra',
+        'Fleece',
+        'Super Poly',
+        'Sana Soft',
+        'Mesh',
+        'Adidas Salina',
+        'NS Lycra',
+        'Lacoste',
+        'PP 110',
+        'PP 140',
+        'NJS',
+        'Nirmal Knit',
+        'Tin Tin',
+        'Pop Corn',
+        'Mirror',
         'Dry-fit Micro Polyester',
         'Polyester Interlock',
         'Sports Mesh / Eyelet',
@@ -56,7 +80,8 @@ const FABRIC_SUBTYPES = {
         '2-Thread French Terry (260 GSM)',
         'Brushed Cotton Poly Fleece',
         'Sherpa / Polar Fleece'
-    ]
+    ],
+   
 };
 
 // ─── Workflow Presets (for picker card UI) ────────────────────────────────────
@@ -253,6 +278,171 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 });
 
+// ─── Robust Size Extraction & Normalization Helpers ───────────────────────────
+function parseRawSizesIntoMap(rawSizes) {
+    const result = {};
+    if (!rawSizes) return result;
+
+    if (Array.isArray(rawSizes)) {
+        rawSizes.forEach(item => {
+            if (item && typeof item === 'object') {
+                const lbl = String(item.label || item.size || item.name || '').trim();
+                const q = parseInt(item.qty || item.quantity || item.count, 10) || 0;
+                if (lbl && q > 0) result[lbl] = q;
+            }
+        });
+        return result;
+    }
+
+    if (typeof rawSizes === 'object') {
+        Object.entries(rawSizes).forEach(([k, v]) => {
+            const trimmed = String(k).trim();
+            const q = parseInt(v, 10) || 0;
+            if (trimmed && q > 0) result[trimmed] = q;
+        });
+        return result;
+    }
+
+    if (typeof rawSizes === 'string') {
+        const str = rawSizes.trim();
+        if (!str) return result;
+
+        // Try JSON parse first
+        if ((str.startsWith('{') && str.endsWith('}')) || (str.startsWith('[') && str.endsWith(']'))) {
+            try {
+                const parsed = JSON.parse(str);
+                return parseRawSizesIntoMap(parsed);
+            } catch (e) {}
+        }
+
+        // Split by commas, semicolons, pipes, or newlines
+        const parts = str.split(/[,;\n|]+/);
+        for (const part of parts) {
+            const p = part.trim();
+            if (!p) continue;
+            // Match "Size: Qty" or "Size - Qty" or "Size = Qty"
+            const matchColon = p.match(/^([a-zA-Z0-9"+.\s]+?)[:=-]\s*(\d+)$/);
+            if (matchColon) {
+                const label = matchColon[1].trim();
+                const qty = parseInt(matchColon[2], 10) || 0;
+                if (label && qty > 0) result[label] = qty;
+                continue;
+            }
+            // Match "Qty Size" e.g. "100 S" or "100 pcs M"
+            const matchQtyFirst = p.match(/^(\d+)\s*(?:pcs\s*)?([a-zA-Z0-9"+]+)$/i);
+            if (matchQtyFirst) {
+                const qty = parseInt(matchQtyFirst[1], 10) || 0;
+                const label = matchQtyFirst[2].trim();
+                if (label && qty > 0) result[label] = qty;
+                continue;
+            }
+            // Match "Size Qty" e.g. "S 100"
+            const matchSizeFirst = p.match(/^([a-zA-Z0-9"+]+)\s+(\d+)$/);
+            if (matchSizeFirst) {
+                const label = matchSizeFirst[1].trim();
+                const qty = parseInt(matchSizeFirst[2], 10) || 0;
+                if (label && qty > 0) result[label] = qty;
+                continue;
+            }
+            // If just a number e.g. "100"
+            if (/^\d+$/.test(p)) {
+                result['Free Size'] = parseInt(p, 10) || 0;
+            }
+        }
+    }
+    return result;
+}
+
+function resolveProductSizing(p, order, defaultIdx, globalWf) {
+    const pQty = Number(p?.qty) || Number(order?.qty) || 0;
+
+    // 1. Try to extract raw sizes from all potential sources in order
+    let rawSizesMap = parseRawSizesIntoMap(p?.sizes);
+    if (!Object.values(rawSizesMap).some(v => v > 0)) {
+        rawSizesMap = parseRawSizesIntoMap(p?.freeSizes);
+    }
+    if (!Object.values(rawSizesMap).some(v => v > 0)) {
+        rawSizesMap = parseRawSizesIntoMap(order?.stageData?.cutting?.sizes || order?.stageData?.cutting?.cutQuantitiesBySize);
+    }
+    if (!Object.values(rawSizesMap).some(v => v > 0)) {
+        rawSizesMap = parseRawSizesIntoMap(order?.sizes);
+    }
+
+    // Determine category
+    let category = p?.category;
+    if (!category || category === 'null' || category === 'undefined') {
+        const keys = Object.keys(rawSizesMap);
+        if (keys.includes('Free Size')) {
+            category = 'General';
+        } else if (keys.some(k => ['24', '26', '28', '30', '32', '34', '36', '38'].includes(k))) {
+            category = 'Kids';
+        } else {
+            category = 'Adults';
+        }
+    }
+
+    // Construct clean standard sizes object
+    let sizes = {};
+    if (category === 'Adults') {
+        sizes = { XS: 0, S: 0, M: 0, L: 0, XL: 0, XXL: 0, XXXL: 0, XXXXL: 0 };
+        Object.entries(rawSizesMap).forEach(([k, v]) => {
+            sizes[k] = parseInt(v, 10) || 0;
+        });
+    } else if (category === 'Kids') {
+        sizes = { '24': 0, '26': 0, '28': 0, '30': 0, '32': 0, '34': 0, '36': 0, '38': 0 };
+        Object.entries(rawSizesMap).forEach(([k, v]) => {
+            sizes[k] = parseInt(v, 10) || 0;
+        });
+    } else {
+        category = 'General';
+        sizes = { 'Free Size': pQty || rawSizesMap['Free Size'] || 0 };
+    }
+
+    // Check if sizes sum to something > 0
+    let sizeSum = Object.values(sizes).reduce((s, v) => s + (parseInt(v, 10) || 0), 0);
+
+    // If sizeSum is 0 but pQty > 0, auto-populate so the existing product is valid and ready
+    if (sizeSum === 0 && pQty > 0) {
+        if (category === 'General') {
+            sizes = { 'Free Size': pQty };
+            sizeSum = pQty;
+        } else if (category === 'Kids') {
+            const kidsKeys = ['24', '26', '28', '30', '32', '34', '36', '38'];
+            const perSize = Math.floor(pQty / kidsKeys.length);
+            const rem = pQty % kidsKeys.length;
+            kidsKeys.forEach((k, idx) => { sizes[k] = perSize + (idx === 0 ? rem : 0); });
+            sizeSum = pQty;
+        } else {
+            const adultKeys = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'XXXXL'];
+            const perSize = Math.floor(pQty / adultKeys.length);
+            const rem = pQty % adultKeys.length;
+            adultKeys.forEach((k, idx) => { sizes[k] = perSize + (idx === 0 ? rem : 0); });
+            sizeSum = pQty;
+        }
+    }
+
+    // Free sizes array
+    let freeSizes = [];
+    if (Array.isArray(p?.freeSizes) && p.freeSizes.length > 0 && p.freeSizes.some(r => (Number(r.qty) || 0) > 0)) {
+        freeSizes = p.freeSizes.map(r => ({ label: String(r.label || '').trim(), qty: parseInt(r.qty, 10) || 0 }));
+    } else if (Object.keys(rawSizesMap).length > 0) {
+        freeSizes = Object.entries(rawSizesMap)
+            .filter(([_, q]) => (Number(q) || 0) > 0)
+            .map(([label, qty]) => ({ label, qty: parseInt(qty, 10) || 0 }));
+    }
+    if (!freeSizes || freeSizes.length === 0) {
+        freeSizes = [
+            { label: 'S', qty: sizes['S'] || 0 },
+            { label: 'M', qty: sizes['M'] || (category === 'Adults' && pQty > 0 ? pQty : 0) },
+            { label: 'L', qty: sizes['L'] || 0 }
+        ];
+    }
+
+    const finalQty = sizeSum > 0 ? sizeSum : pQty;
+
+    return { category, sizes, freeSizes, qty: finalQty };
+}
+
 // ─── Load Existing Order for Editing ─────────────────────────────────────────
 async function loadExistingOrderForEdit(orderId) {
     let order = null;
@@ -304,27 +494,20 @@ async function loadExistingOrderForEdit(orderId) {
     // Reconstruct Products array
     if (Array.isArray(order.products) && order.products.length > 0) {
         coState.products = order.products.map((p, i) => {
-            const def = makeDefaultProduct(i + 1);
-            const sizes = (typeof p.sizes === 'object' && p.sizes !== null) ? { ...def.sizes, ...p.sizes } : def.sizes;
-            const freeSizes = Array.isArray(p.freeSizes) && p.freeSizes.length > 0
-                ? p.freeSizes
-                : (typeof p.sizes === 'object' && p.sizes !== null && Object.keys(p.sizes).length > 0
-                    ? Object.entries(p.sizes).map(([label, qty]) => ({ label, qty: Number(qty) || 0 }))
-                    : def.freeSizes);
-
-            const pQty = Number(p.qty) || 0;
+            const sizing = resolveProductSizing(p, order, i + 1, wf);
+            const pQty = sizing.qty;
             const pCp = p.cp !== undefined && p.cp !== null && p.cp !== '' ? p.cp : (order.qty ? Math.round((order.incurredCost || 0) / order.qty) : '');
             const pSp = p.unitPrice !== undefined && p.unitPrice !== null && p.unitPrice !== '' ? p.unitPrice : (order.qty ? Math.round((order.value || 0) / order.qty) : '');
 
             return {
                 id: p.id || `prod-${Date.now()}-${i + 1}`,
                 name: p.name || order.product || '',
-                category: p.category || 'Adults',
+                category: sizing.category,
                 workflowType: p.workflowType || wf,
                 customStages: Array.isArray(p.customStages) ? p.customStages : [],
                 qty: pQty,
-                sizes,
-                freeSizes,
+                sizes: sizing.sizes,
+                freeSizes: sizing.freeSizes,
                 fabric: {
                     type: p.fabric?.type || (typeof order.fabric === 'string' ? order.fabric.split(' ')[0] : '') || 'Cotton',
                     subtype: p.fabric?.subtype || p.fabric?.subType || '',
@@ -345,20 +528,8 @@ async function loadExistingOrderForEdit(orderId) {
             };
         });
     } else {
-        const def = makeDefaultProduct(1);
-        const sizes = (typeof order.sizes === 'object' && order.sizes !== null)
-            ? { ...def.sizes, ...order.sizes }
-            : def.sizes;
-        const freeSizes = (typeof order.sizes === 'object' && order.sizes !== null && Object.keys(order.sizes).length > 0)
-            ? Object.entries(order.sizes).map(([label, qty]) => ({ label, qty: Number(qty) || 0 }))
-            : (typeof order.sizes === 'string' && order.sizes.trim()
-                ? order.sizes.split(',').map(s => {
-                    const parts = s.trim().split(':');
-                    return { label: parts[0]?.trim() || 'S', qty: Number(parts[1]?.trim()) || 0 };
-                })
-                : def.freeSizes);
-
-        const oQty = Number(order.qty) || 0;
+        const sizing = resolveProductSizing({}, order, 1, wf);
+        const oQty = sizing.qty;
         const oVal = Number(order.value) || 0;
         const oCost = Number(order.incurredCost) || 0;
         const unitPrice = oQty > 0 ? Number((oVal / oQty).toFixed(2)) : '';
@@ -367,12 +538,12 @@ async function loadExistingOrderForEdit(orderId) {
         coState.products = [{
             id: `prod-${Date.now()}-1`,
             name: order.product || '',
-            category: 'Adults',
+            category: sizing.category,
             workflowType: order.workflowType || wf,
             customStages: Array.isArray(order.customStages) ? order.customStages : [],
             qty: oQty,
-            sizes,
-            freeSizes,
+            sizes: sizing.sizes,
+            freeSizes: sizing.freeSizes,
             fabric: {
                 type: (typeof order.fabric === 'string' ? order.fabric.split(' ')[0] : '') || 'Cotton',
                 subtype: '',
@@ -506,8 +677,103 @@ window.coSetPriority = function(prio) {
     qs('prio-urgent-btn') && (qs('prio-urgent-btn').className = prio === 'Urgent' ? active : inactive);
 };
 
+// ─── Sync form state from DOM into coState before re-render (prevents text loss) ─
+function syncProductFormState() {
+    coState.products.forEach((prod, idx) => {
+        const card = document.getElementById(`product-card-${idx}`);
+        if (!card) return;
+
+        // 1. Product name
+        const nameInput = card.querySelector('input[placeholder*="style name"]');
+        if (nameInput) prod.name = nameInput.value;
+
+        const prodWf = prod.workflowType || coState.orderWorkflowType || 'default';
+        const isProdDirect = workflowIsDirectFulfillment(prodWf);
+
+        if (isProdDirect) {
+            // 2. Free sizes for Direct Fulfillment
+            const freeRows = card.querySelectorAll(`[id^="free-row-${idx}-"]`);
+            if (freeRows && freeRows.length > 0) {
+                prod.freeSizes = [];
+                freeRows.forEach(rowEl => {
+                    const textInp = rowEl.querySelector('input[type="text"]');
+                    const numInp = rowEl.querySelector('input[type="number"]');
+                    const label = textInp ? textInp.value.trim() : '';
+                    const qty = numInp ? (parseInt(numInp.value, 10) || 0) : 0;
+                    prod.freeSizes.push({ label, qty });
+                });
+                prod.qty = prod.freeSizes.reduce((s, r) => s + (parseInt(r.qty, 10) || 0), 0);
+            }
+        } else if (prod.category === 'General') {
+            // 3. General category: sync target-qty input
+            const targetQtyInput = qs(`target-qty-${idx}`);
+            if (targetQtyInput && targetQtyInput.value !== '') {
+                prod.qty = parseInt(targetQtyInput.value, 10) || 0;
+            }
+            prod.sizes = { 'Free Size': prod.qty || 0 };
+        } else {
+            // 4. Standard size grid inputs (Adults / Kids)
+            const sizeInputs = card.querySelectorAll('.size-cell-input');
+            let hasAnySizeInput = false;
+            let currentGridSum = 0;
+            sizeInputs.forEach(inp => {
+                hasAnySizeInput = true;
+                const sz = inp.dataset.sizeKey;
+                if (sz) {
+                    const val = parseInt(inp.value, 10) || 0;
+                    prod.sizes[sz] = val;
+                    currentGridSum += val;
+                }
+            });
+
+            if (hasAnySizeInput) {
+                if (currentGridSum > 0) {
+                    prod.qty = currentGridSum;
+                    const tqInp = qs(`target-qty-${idx}`);
+                    if (tqInp && document.activeElement !== tqInp) {
+                        tqInp.value = currentGridSum;
+                    }
+                } else {
+                    const tqInp = qs(`target-qty-${idx}`);
+                    const tqVal = tqInp ? parseInt(tqInp.value, 10) || 0 : 0;
+                    if (tqVal > 0 && prod.qty === 0) {
+                        prod.qty = tqVal;
+                    }
+                }
+            }
+        }
+
+        // 5. Fabric fields
+        const gsmInput = card.querySelector('input[placeholder*="180"]');
+        if (gsmInput && gsmInput.value) prod.fabric.gsm = gsmInput.value;
+        const diaInput = card.querySelector('input[placeholder*="34"]');
+        if (diaInput && diaInput.value) prod.fabric.dia = diaInput.value;
+        const yarnCountInput = card.querySelector('input[placeholder*="30s"]');
+        if (yarnCountInput && yarnCountInput.value) prod.fabric.yarnCount = yarnCountInput.value;
+        const yarnBlendInput = card.querySelector('input[placeholder*="60/40"]');
+        if (yarnBlendInput && yarnBlendInput.value) prod.fabric.yarnBlend = yarnBlendInput.value;
+
+        // 6. Decoration fields
+        const decPlaceInput = card.querySelector('input[placeholder*="Center Chest"]');
+        if (decPlaceInput) prod.decorationPlacement = decPlaceInput.value;
+        const decColorsInput = card.querySelector('input[placeholder*="stitches"], input[placeholder*="Plastisol"]');
+        if (decColorsInput) prod.decorationColors = decColorsInput.value;
+
+        // 7. Sourcing fields
+        const suppInput = card.querySelector('input[placeholder*="Tiruppur"]');
+        if (suppInput) prod.sourceSupplier = suppInput.value;
+        const refInput = card.querySelector('input[placeholder*="CAT-2026"]');
+        if (refInput) prod.sourceRef = refInput.value;
+        const colorInput = card.querySelector('input[placeholder*="Navy Blue"]');
+        if (colorInput) prod.sourceColor = colorInput.value;
+        const notesInput = card.querySelector('input[placeholder*="hangtag"]');
+        if (notesInput) prod.sourceNotes = notesInput.value;
+    });
+}
+
 // ─── Workflow Type Picker ─────────────────────────────────────────────────────
 window.coSelectOrderWorkflow = function(wfKey) {
+    syncProductFormState();          // ← persist any in-progress text first
     const prevWf = coState.orderWorkflowType;
     coState.orderWorkflowType = wfKey;
 
@@ -529,6 +795,7 @@ window.coSelectOrderWorkflow = function(wfKey) {
 };
 
 window.coSetProductWorkflow = function(idx, wfKey) {
+    syncProductFormState();
     const prod = coState.products[idx];
     if (!prod) return;
     prod.workflowType = wfKey;
@@ -537,6 +804,7 @@ window.coSetProductWorkflow = function(idx, wfKey) {
     }
     if (workflowLocksPrint(wfKey)) prod.decorationType = 'Screen';
     if (workflowLocksEmbroidery(wfKey)) prod.decorationType = 'Embroidery';
+    renderWorkflowPicker();   // ← update global picker to reflect mixed state
     renderProducts();
     calculateFinancials();
     const wfInfo = WORKFLOW_PRESETS.find(w => w.key === wfKey);
@@ -562,7 +830,35 @@ window.coToggleProductCustomStage = function(idx, stageKey) {
         const ALL_ORDER = ['procurement', 'winding', 'knitting', 'dyeing', 'fabric', 'cutting', 'print_wash', 'stitching', 'packing', 'dispatch'];
         prod.customStages.sort((a, b) => ALL_ORDER.indexOf(a) - ALL_ORDER.indexOf(b));
     }
-    renderProducts();
+
+    // Targeted DOM update — no full re-render so toggle buttons keep focus
+    const togglesContainer = document.getElementById(`custom-stages-toggles-${idx}`);
+    const pipelinePreview  = document.getElementById(`custom-pipeline-preview-${idx}`);
+    const stageCount       = document.getElementById(`custom-stage-count-${idx}`);
+
+    if (togglesContainer) {
+        togglesContainer.querySelectorAll('[data-stage-key]').forEach(btn => {
+            const key = btn.dataset.stageKey;
+            const active = prod.customStages.includes(key);
+            const icon = btn.querySelector('.material-symbols-outlined');
+            if (active) {
+                btn.className = 'p-2 rounded-xl border text-left flex items-center gap-1.5 transition-all text-[11px] font-bold border-primary bg-primary/10 text-primary shadow-2xs';
+                if (icon) icon.textContent = 'check_box';
+            } else {
+                btn.className = 'p-2 rounded-xl border text-left flex items-center gap-1.5 transition-all text-[11px] font-bold border-outline-variant bg-surface text-secondary hover:border-outline';
+                if (icon) icon.textContent = 'check_box_outline_blank';
+            }
+        });
+    }
+    if (stageCount) stageCount.textContent = `${prod.customStages.length} stages active`;
+    if (pipelinePreview) {
+        pipelinePreview.innerHTML = prod.customStages.map((stKey, i, arr) => `
+            <span class="px-2 py-0.5 rounded bg-surface border border-outline-variant/60 text-on-surface text-[10px] font-bold shrink-0">
+                ${STAGE_DEFINITIONS[stKey]?.shortLabel || STAGE_DEFINITIONS[stKey]?.label || stKey}
+            </span>
+            ${i < arr.length - 1 ? '<span class="text-secondary/50 text-[10px]">→</span>' : ''}
+        `).join('');
+    }
 };
 
 function renderWorkflowPicker() {
@@ -571,13 +867,41 @@ function renderWorkflowPicker() {
 
     const selected = coState.orderWorkflowType;
 
+    // Check if any product has a different workflow than global (mixed state)
+    const hasMixed = selected && coState.products.some(p => p.workflowType && p.workflowType !== selected);
+
+    // Build selected workflow pipeline preview
+    const selectedPreset = WORKFLOW_PRESETS.find(w => w.key === selected);
+    const selectedRoute  = selected ? (WORKFLOW_ROUTES[selected] || WORKFLOW_ROUTES.default) : null;
+    const pipelinePreviewHtml = selectedRoute ? `
+        <div class="mt-4 pt-3 border-t border-outline-variant/40">
+            <div class="flex items-center gap-2 mb-2">
+                <span class="material-symbols-outlined text-[14px] text-secondary">account_tree</span>
+                <span class="text-[11px] font-bold text-secondary uppercase tracking-wider">Production Pipeline for this Order</span>
+                ${hasMixed ? '<span class="text-[10px] font-bold text-amber-500 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 ml-auto">⚠ Some products use custom routes</span>' : ''}
+            </div>
+            <div class="flex items-center gap-1.5 flex-wrap">
+                ${selectedRoute.map((stKey, i, arr) => {
+                    const def = STAGE_DEFINITIONS[stKey] || { shortLabel: stKey, color: 'text-primary', bgColor: 'bg-primary/10', borderColor: 'border-primary/20', icon: 'circle' };
+                    return `
+                        <div class="flex items-center gap-1.5">
+                            <span class="flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold ${def.bgColor} ${def.color} border ${def.borderColor}">
+                                <span class="material-symbols-outlined text-[12px]">${def.icon}</span>
+                                ${def.shortLabel || def.label}
+                            </span>
+                            ${i < arr.length - 1 ? '<span class="text-secondary/40 text-[11px] font-bold">→</span>' : ''}
+                        </div>`;
+                }).join('')}
+            </div>
+        </div>` : '';
+
     container.innerHTML = `
         <div class="bg-surface-container-lowest rounded-2xl p-4 border border-outline-variant shadow-sm">
             <div class="flex items-center gap-2 mb-1">
                 <span class="material-symbols-outlined text-[22px] text-primary">route</span>
                 <h2 class="text-[18px] font-extrabold text-on-surface">Select Production Workflow</h2>
             </div>
-            <p class="text-[13px] text-secondary mb-4">Choose how this order will be produced. This controls which fields appear for your products.</p>
+            <p class="text-[13px] text-secondary mb-4">Choose how this order will be produced. This controls which factory stages and fields appear below.</p>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 ${WORKFLOW_PRESETS.map(wf => {
                     const isSelected = selected === wf.key;
@@ -597,7 +921,6 @@ function renderWorkflowPicker() {
                                     <h5 class="text-[13px] font-extrabold ${isSelected ? 'text-primary' : 'text-on-surface'} leading-snug">${wf.label}</h5>
                                 </div>
                                 <p class="text-[11px] text-secondary mb-1.5">${wf.desc}</p>
-                                <p class="text-[10px] font-mono text-secondary/70 leading-snug">${wf.pipeline}</p>
                             </div>
                             <div class="shrink-0 mt-1">
                                 ${isSelected
@@ -609,7 +932,17 @@ function renderWorkflowPicker() {
                     </button>`;
                 }).join('')}
             </div>
+            ${pipelinePreviewHtml}
         </div>
+        ${selected ? `
+        <div class="flex items-center gap-2 px-2">
+            <div class="flex-1 h-px bg-outline-variant/40"></div>
+            <span class="text-[11px] font-bold text-secondary flex items-center gap-1">
+                <span class="material-symbols-outlined text-[14px]">arrow_downward</span>
+                Products below use this workflow
+            </span>
+            <div class="flex-1 h-px bg-outline-variant/40"></div>
+        </div>` : ''}
     `;
 }
 
@@ -654,6 +987,7 @@ window.coUpdateProductSourceField = function(idx, field, value) {
 
 // ─── Product list management ──────────────────────────────────────────────────
 window.coAddProduct = function() {
+    syncProductFormState();
     const newIdx = coState.products.length + 1;
     const p = makeDefaultProduct(newIdx);
     // Auto-lock decoration for certain workflows
@@ -664,6 +998,14 @@ window.coAddProduct = function() {
     coState.products.push(p);
     renderProducts();
     calculateFinancials();
+
+    // Smoothly scroll and focus the new product
+    requestAnimationFrame(() => {
+        const newCard = document.getElementById(`product-card-${coState.products.length - 1}`);
+        newCard?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const nameInput = newCard?.querySelector('input[placeholder*="style name"]');
+        nameInput?.focus();
+    });
 };
 
 window.coRemoveProduct = function(idx) {
@@ -671,6 +1013,7 @@ window.coRemoveProduct = function(idx) {
         showToast('Order must contain at least one product', 'error');
         return;
     }
+    syncProductFormState();
     coState.products.splice(idx, 1);
     renderProducts();
     calculateFinancials();
@@ -678,6 +1021,7 @@ window.coRemoveProduct = function(idx) {
 
 // ─── Standard Sizing ──────────────────────────────────────────────────────────
 window.coSetProductCategory = function(idx, category) {
+    syncProductFormState();
     const prod = coState.products[idx];
     if (!prod) return;
     prod.category = category;
@@ -698,35 +1042,43 @@ window.coSetProductCategory = function(idx, category) {
 window.coUpdateProductTargetQty = function(idx, targetVal) {
     const prod = coState.products[idx];
     if (!prod) return;
-    prod.qty = parseInt(targetVal) || 0;
+    syncProductFormState();
+    prod.qty = parseInt(targetVal, 10) || 0;
 
     if (prod.category === 'General') {
         prod.sizes = { 'Free Size': prod.qty };
-        const genDisplay = qs(`general-qty-display-${idx}`);
-        if (genDisplay) genDisplay.textContent = `${prod.qty} pcs`;
     } else {
         applyRatioPresetInternal(idx, 'even');
-        const isAdults = prod.category === 'Adults';
-        const sizeKeys = isAdults
-            ? ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'XXXXL']
-            : ['24', '26', '28', '30', '32', '34', '36', '38'];
-        sizeKeys.forEach(sz => {
-            const input = qs(`size-input-${idx}-${sz}`);
-            if (input) input.value = prod.sizes[sz] || '';
-        });
     }
 
-    updateProductSumBadge(idx);
+    // Full re-render so all size cell inputs reflect new values cleanly
+    // Re-focus the qty input after render to avoid UX jank
+    requestAnimationFrame(() => {
+        renderProducts();
+        requestAnimationFrame(() => {
+            const input = qs(`target-qty-${idx}`);
+            if (input) {
+                input.focus();
+                // Place cursor at end
+                const v = input.value;
+                input.value = '';
+                input.value = v;
+            }
+        });
+    });
+
     calculateFinancials();
 };
 
 window.coUpdateProductSizeCell = function(idx, sizeKey, cellVal) {
     const prod = coState.products[idx];
     if (!prod) return;
-    prod.sizes[sizeKey] = parseInt(cellVal) || 0;
-    prod.qty = Object.values(prod.sizes).reduce((s, v) => s + (v || 0), 0);
+    prod.sizes[sizeKey] = parseInt(cellVal, 10) || 0;
+    prod.qty = Object.values(prod.sizes).reduce((s, v) => s + (parseInt(v, 10) || 0), 0);
     const tqInput = qs(`target-qty-${idx}`);
-    if (tqInput) tqInput.value = prod.qty || '';
+    if (tqInput && document.activeElement !== tqInput) {
+        tqInput.value = prod.qty || '';
+    }
     updateProductSumBadge(idx);
     calculateFinancials();
 };
@@ -810,11 +1162,11 @@ function applyRatioPresetInternal(idx, presetType) {
     }
 
     if (presetType === 'even') {
-        const activeKeys = isAdults ? ['S', 'M', 'L', 'XL'] : ['28', '30', '32', '34'];
-        const perSize    = Math.floor(target / activeKeys.length);
-        const remainder  = target % activeKeys.length;
-        Object.keys(prod.sizes).forEach(k => { prod.sizes[k] = 0; });
-        activeKeys.forEach((k, i) => { prod.sizes[k] = perSize + (i === 0 ? remainder : 0); });
+        // Use ALL sizes currently in the grid, not a hardcoded subset
+        const allKeys  = Object.keys(prod.sizes);
+        const perSize  = Math.floor(target / allKeys.length);
+        const remainder = target % allKeys.length;
+        allKeys.forEach((k, i) => { prod.sizes[k] = perSize + (i === 0 ? remainder : 0); });
         return;
     }
 
@@ -836,6 +1188,7 @@ function applyRatioPresetInternal(idx, presetType) {
 }
 
 window.coApplyRatioPreset = function(idx, presetType) {
+    syncProductFormState();
     applyRatioPresetInternal(idx, presetType);
     renderProducts();
     calculateFinancials();
@@ -844,9 +1197,14 @@ window.coApplyRatioPreset = function(idx, presetType) {
 function updateProductSumBadge(idx) {
     const prod = coState.products[idx];
     if (!prod) return;
+    const prodWf     = prod.workflowType || coState.orderWorkflowType || 'default';
+    const isDirect   = workflowIsDirectFulfillment(prodWf);
     const isGeneral  = prod.category === 'General';
-    const currentSum = Object.values(prod.sizes).reduce((s, v) => s + (v || 0), 0);
-    const isMatch    = isGeneral ? (prod.qty > 0) : (currentSum === prod.qty);
+    const currentSum = Object.values(prod.sizes || {}).reduce((s, v) => s + (parseInt(v, 10) || 0), 0);
+    const totalForBadge = isDirect
+        ? (prod.freeSizes || []).reduce((s, r) => s + (parseInt(r.qty, 10) || 0), 0)
+        : (isGeneral ? (Number(prod.qty) || 0) : currentSum);
+    const isMatch    = isDirect ? (totalForBadge > 0) : (isGeneral ? (prod.qty > 0) : (currentSum > 0 && currentSum === prod.qty));
     const badge      = qs(`p-sum-badge-${idx}`);
     if (badge) {
         badge.className = `px-2.5 py-1 rounded-full text-[11px] font-bold ${
@@ -854,7 +1212,11 @@ function updateProductSumBadge(idx) {
                 ? 'bg-[#008A00]/10 text-[#008A00] border border-[#008A00]/20'
                 : 'bg-error/10 text-error border border-error/20'
         }`;
-        badge.textContent = isGeneral ? `${prod.qty || 0} pcs (General)` : `${currentSum} / ${prod.qty} pcs`;
+        badge.textContent = isDirect
+            ? `${totalForBadge} pcs total`
+            : isGeneral
+                ? `${prod.qty || 0} pcs (General)`
+                : `${currentSum} / ${prod.qty} pcs`;
     }
 }
 
@@ -950,15 +1312,19 @@ function renderProductCard(prod, idx) {
                     <span id="general-qty-display-${idx}" class="text-[15px] font-extrabold text-primary">${prod.qty || 0} pcs</span>
                 </div>
             </div>
-        ` : sizeKeys.map(sz => `
+        ` : sizeKeys.map(sz => {
+            // Kids sizes: display with inch mark for clarity
+            const displayLabel = (!isAdults && /^\d+$/.test(sz)) ? `${sz}"` : sz;
+            return `
             <div class="flex flex-col items-center gap-1 bg-surface-container/60 rounded-xl p-2 border border-outline-variant/40">
-                <span class="text-[10px] font-bold text-secondary uppercase">${sz}</span>
+                <span class="text-[10px] font-bold text-secondary uppercase">${displayLabel}</span>
                 <input type="number" min="0" placeholder="0" value="${prod.sizes[sz] || ''}"
                     id="size-input-${idx}-${sz}"
+                    data-size-key="${sz}"
                     oninput="window.coUpdateProductSizeCell(${idx}, '${sz}', this.value)"
-                    class="w-full text-center font-bold text-[14px] bg-transparent border-0 p-0 focus:ring-0 outline-none text-on-surface">
-            </div>
-        `).join('');
+                    class="size-cell-input w-full text-center font-bold text-[14px] bg-transparent border-0 p-0 focus:ring-0 outline-none text-on-surface">
+            </div>`;
+        }).join('');
 
         sizingHtml = `
         <div class="px-5 py-4 flex flex-col gap-3 border-b border-outline-variant/40 card-section-sizing pl-6">
@@ -1001,16 +1367,22 @@ function renderProductCard(prod, idx) {
             <div class="${isGeneral ? 'grid grid-cols-1' : 'grid grid-cols-4 sm:grid-cols-8 gap-2'}">
                 ${sizeInputsHtml}
             </div>
-            ${!isGeneral ? `
-            <div id="p-sum-badge-${idx}" class="self-start px-2.5 py-1 rounded-full text-[11px] font-bold ${isMatch ? 'bg-[#008A00]/10 text-[#008A00] border border-[#008A00]/20' : 'bg-error/10 text-error border border-error/20'}">
-                ${currentSum} / ${prod.qty} pcs
-            </div>` : ''}
         </div>`;
     }
 
     // ── Section B: Fabric & Material (optional, hidden for direct) ─────────────
     let fabricHtml = '';
     if (needsFab) {
+        const fabricRequiredNote = isFullVert
+            ? `<span class="text-[10px] font-bold text-[#8B5CF6] bg-[#8B5CF6]/10 px-2 py-0.5 rounded-full border border-[#8B5CF6]/20 flex items-center gap-1"><span class="material-symbols-outlined text-[11px]">bolt</span>Required for Vertical</span>`
+            : `<span class="text-[10px] font-bold text-secondary bg-surface-container px-2 py-0.5 rounded-full border border-outline-variant/60">Optional</span>`;
+
+        const fabricVertNote = isFullVert ? `
+            <div class="flex items-start gap-2 mt-2 p-2.5 rounded-xl bg-[#8B5CF6]/5 border border-[#8B5CF6]/20">
+                <span class="material-symbols-outlined text-[#8B5CF6] text-[14px] shrink-0 mt-0.5">info</span>
+                <p class="text-[11px] text-secondary leading-snug">Yarn Count and GSM are used by the <strong class="text-[#8B5CF6]">Winding</strong> and <strong class="text-[#8B5CF6]">Knitting</strong> workspaces on the production floor.</p>
+            </div>` : '';
+
         const fabricTypeBtns = ['Cotton', 'Polyester', 'Blended', 'Fleece'].map(ft => {
             const isActive = prod.fabric.type === ft;
             const label    = ft === 'Blended' ? 'Poly Blend' : ft === 'Fleece' ? 'Fleece/FT' : ft;
@@ -1048,8 +1420,9 @@ function renderProductCard(prod, idx) {
                     <span class="material-symbols-outlined text-[17px] text-[#007AFF]">texture</span>
                     <h4 class="text-[12px] font-extrabold text-[#007AFF] uppercase tracking-widest">Fabric & Material</h4>
                 </div>
-                <span class="text-[10px] font-bold text-secondary bg-surface-container px-2 py-0.5 rounded-full border border-outline-variant/60">Optional</span>
+                ${fabricRequiredNote}
             </div>
+            ${fabricVertNote}
             <div class="grid grid-cols-4 gap-2">${fabricTypeBtns}</div>
             ${prod.fabric.type ? `
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -1077,6 +1450,7 @@ function renderProductCard(prod, idx) {
             <p class="text-[12px] text-secondary italic">Select a fabric type above to enter specifications.</p>`}
         </div>`;
     }
+
 
     // ── Section C: Decoration / Embellishment ──────────────────────────────────
     let decorationHtml = '';
@@ -1108,6 +1482,17 @@ function renderProductCard(prod, idx) {
             }).join('');
         }
 
+        // Link decoration to its pipeline stage
+        const decPipelineNote = (prod.decorationType && prod.decorationType !== 'None') ? `
+            <div class="flex items-center gap-1.5 mt-1">
+                <span class="text-[10px] font-bold text-secondary">Maps to:</span>
+                <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-[#AF52DE]/10 text-[#AF52DE] border border-[#AF52DE]/20 flex items-center gap-1">
+                    <span class="material-symbols-outlined text-[11px]">palette</span>
+                    Print &amp; Wash Stage
+                </span>
+                <span class="text-[10px] text-secondary">in your production pipeline</span>
+            </div>` : '';
+
         const decDetailsHtml = (prod.decorationType && prod.decorationType !== 'None') ? `
             <div class="grid grid-cols-2 gap-3 mt-2">
                 <div class="flex flex-col gap-1">
@@ -1123,6 +1508,7 @@ function renderProductCard(prod, idx) {
                         class="w-full bg-surface border border-outline-variant rounded-xl px-3 py-2 text-[13px] text-on-surface outline-none focus:ring-2 focus:ring-primary/20">
                 </div>
             </div>
+            ${decPipelineNote}
         ` : (!prod.decorationType ? '<p class="text-[11px] text-secondary italic mt-2">Select decoration type above.</p>' : '<p class="text-[11px] text-secondary italic mt-2">Plain / solid — no decoration.</p>');
 
         const lockNote = lockPrint
@@ -1189,6 +1575,12 @@ function renderProductCard(prod, idx) {
     return `
     <div class="bg-surface-container-lowest border-2 border-outline-variant rounded-2xl shadow-sm overflow-hidden transition-all" id="product-card-${idx}">
 
+        <!-- ── Error Banner (hidden by default, shown on validation fail) ── -->
+        <div id="prod-error-banner-${idx}" class="hidden px-5 py-2.5 bg-error/10 border-b border-error/30 flex items-center gap-2">
+            <span class="material-symbols-outlined text-error text-[16px]">warning</span>
+            <p class="text-[12px] font-bold text-error" id="prod-error-text-${idx}"></p>
+        </div>
+
         <!-- ── Card Header ──────────────────────────────────────────────── -->
         <div class="flex justify-between items-center px-5 py-4 bg-surface-container border-b border-outline-variant/60">
             <div class="flex items-center gap-3 flex-1 min-w-0">
@@ -1198,10 +1590,9 @@ function renderProductCard(prod, idx) {
                     class="flex-1 bg-transparent border-0 p-0 text-[15px] font-bold text-on-surface outline-none focus:ring-0 placeholder:text-secondary/50 min-w-0">
             </div>
             <div class="flex items-center gap-2 shrink-0 ml-3">
-                ${!isDirect ? `
                 <span id="p-sum-badge-${idx}" class="px-2.5 py-1 rounded-full text-[11px] font-bold ${isMatch ? 'bg-[#008A00]/10 text-[#008A00] border border-[#008A00]/20' : 'bg-error/10 text-error border border-error/20'}">
-                    ${isGeneral ? `${prod.qty || 0} pcs (General)` : `${currentSum} / ${prod.qty} pcs`}
-                </span>` : ''}
+                    ${isDirect ? `${totalForBadge} pcs total` : isGeneral ? `${prod.qty || 0} pcs (General)` : `${currentSum} / ${prod.qty} pcs`}
+                </span>
                 ${coState.products.length > 1 ? `
                     <button type="button" onclick="window.coRemoveProduct(${idx})"
                         class="text-error hover:bg-error/10 p-1.5 rounded-lg active-scale transition-apple" title="Remove Product">
@@ -1259,13 +1650,14 @@ function renderProductCard(prod, idx) {
                 <div class="flex flex-col gap-2 pt-2 border-t border-outline-variant/30">
                     <div class="flex items-center justify-between">
                         <span class="text-[11px] font-bold text-secondary uppercase tracking-wider">Select Factory Stages For This Product:</span>
-                        <span class="text-[11px] font-bold text-primary">${(prod.customStages || []).length} stages active</span>
+                        <span class="text-[11px] font-bold text-primary" id="custom-stage-count-${idx}">${(prod.customStages || []).length} stages active</span>
                     </div>
-                    <div class="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
+                    <div class="grid grid-cols-2 sm:grid-cols-5 gap-1.5" id="custom-stages-toggles-${idx}">
                         ${AVAILABLE_FACTORY_STAGES.map(st => {
                             const isChecked = (prod.customStages || []).includes(st.key);
                             return `
                                 <button type="button" onclick="window.coToggleProductCustomStage(${idx}, '${st.key}')"
+                                    data-stage-key="${st.key}"
                                     class="p-2 rounded-xl border text-left flex items-center gap-1.5 transition-all text-[11px] font-bold ${
                                         isChecked
                                             ? 'border-primary bg-primary/10 text-primary shadow-2xs'
@@ -1276,6 +1668,14 @@ function renderProductCard(prod, idx) {
                                 </button>
                             `;
                         }).join('')}
+                    </div>
+                    <div class="flex items-center gap-1.5 flex-wrap mt-1" id="custom-pipeline-preview-${idx}">
+                        ${(prod.customStages || []).map((stKey, i, arr) => `
+                            <span class="px-2 py-0.5 rounded bg-surface border border-outline-variant/60 text-on-surface text-[10px] font-bold shrink-0">
+                                ${STAGE_DEFINITIONS[stKey]?.shortLabel || STAGE_DEFINITIONS[stKey]?.label || stKey}
+                            </span>
+                            ${i < arr.length - 1 ? '<span class="text-secondary/50 text-[10px]">→</span>' : ''}
+                        `).join('')}
                     </div>
                 </div>
             `}
@@ -1304,9 +1704,13 @@ function renderProducts() {
 
     container.innerHTML = coState.products.map((p, i) => renderProductCard(p, i)).join('');
 
-    const totalQty = coState.orderWorkflowType === 'direct_fulfillment'
-        ? coState.products.reduce((s, p) => s + p.freeSizes.reduce((ss, r) => ss + (r.qty || 0), 0), 0)
-        : coState.products.reduce((s, p) => s + (p.qty || 0), 0);
+    const totalQty = coState.products.reduce((s, p) => {
+        const prodWf = p.workflowType || coState.orderWorkflowType || 'default';
+        if (workflowIsDirectFulfillment(prodWf)) {
+            return s + (p.freeSizes || []).reduce((ss, r) => ss + (parseInt(r.qty, 10) || 0), 0);
+        }
+        return s + (Number(p.qty) || 0);
+    }, 0);
 
     const el = qs('co-header-total-pcs');
     if (el) el.textContent = `${totalQty.toLocaleString()} pcs total`;
@@ -1598,6 +2002,7 @@ function buildExecutiveSummary() {
 
 // ─── Wizard Navigation ─────────────────────────────────────────────────────────
 window.coJumpToStep = function(targetIdx) {
+    if (coState.currentIdx === 1) syncProductFormState();
     if (targetIdx > coState.currentIdx && !validateCurrentStep()) return;
     coState.currentIdx = targetIdx;
     renderStep();
@@ -1605,6 +2010,7 @@ window.coJumpToStep = function(targetIdx) {
 };
 
 window.coGoNext = function() {
+    if (coState.currentIdx === 1) syncProductFormState();
     if (!validateCurrentStep()) return;
     if (coState.currentIdx < WIZARD_STEPS.length - 1) {
         coState.currentIdx++;
@@ -1673,10 +2079,31 @@ function renderStep() {
 }
 
 // ─── Validation ────────────────────────────────────────────────────────────────
+
+// Clear all product error banners
+function clearProductErrorBanners() {
+    coState.products.forEach((_, i) => {
+        const banner = document.getElementById(`prod-error-banner-${i}`);
+        const card   = document.getElementById(`product-card-${i}`);
+        if (banner) banner.classList.add('hidden');
+        if (card)   card.classList.remove('border-error');
+    });
+}
+
+// Show error banner on a specific product card
+function showProductError(idx, message) {
+    const banner  = document.getElementById(`prod-error-banner-${idx}`);
+    const textEl  = document.getElementById(`prod-error-text-${idx}`);
+    const card    = document.getElementById(`product-card-${idx}`);
+    if (banner)  { banner.classList.remove('hidden'); }
+    if (textEl)  { textEl.textContent = message; }
+    if (card)    { card.classList.add('border-error'); }
+    // Scroll to the errored card
+    card?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
 function validateCurrentStep() {
     const idx = coState.currentIdx;
-    const wf  = coState.orderWorkflowType;
-    const isDirect = workflowIsDirectFulfillment(wf);
 
     // Step 1
     if (idx === 0) {
@@ -1686,42 +2113,88 @@ function validateCurrentStep() {
 
     // Step 2
     if (idx === 1) {
-        if (!coState.orderWorkflowType) { showToast('Please select a production workflow type', 'error'); return false; }
+        // Always sync latest DOM values into coState before validation
+        syncProductFormState();
+        clearProductErrorBanners();
+
+        if (!coState.orderWorkflowType) {
+            showToast('Please select a production workflow type above', 'error');
+            // Scroll to picker
+            document.getElementById('co-workflow-picker')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            return false;
+        }
+
+        let firstError = -1;
 
         for (let i = 0; i < coState.products.length; i++) {
             const p = coState.products[i];
-            if (!p.name.trim()) { showToast(`Please enter a name for Product #${i + 1}`, 'error'); return false; }
+            const pName = (p.name || '').trim();
 
-            if (isDirect) {
-                const totalFS = p.freeSizes.reduce((s, r) => s + (r.qty || 0), 0);
-                if (totalFS <= 0) { showToast(`Please enter size quantities for "${p.name || 'Product #' + (i+1)}"`, 'error'); return false; }
+            if (!pName) {
+                showProductError(i, `⚠ Enter a product / style name for Product #${i + 1}`);
+                if (firstError < 0) firstError = i;
+                continue;
+            }
+
+            const prodWf = p.workflowType || coState.orderWorkflowType || 'default';
+            const isProdDirect = workflowIsDirectFulfillment(prodWf);
+
+            if (isProdDirect) {
+                const totalFS = (p.freeSizes || []).reduce((s, r) => s + (parseInt(r.qty, 10) || 0), 0);
+                if (totalFS <= 0) {
+                    showProductError(i, `⚠ Enter size quantities for "${pName}" — total is currently 0 pcs`);
+                    if (firstError < 0) firstError = i;
+                } else {
+                    p.qty = totalFS;
+                }
+            } else if (p.category === 'General') {
+                const gQty = Number(p.qty) || Number(p.sizes?.['Free Size']) || 0;
+                if (gQty <= 0) {
+                    showProductError(i, `⚠ Enter a valid quantity for "${pName}" (currently 0 pcs)`);
+                    if (firstError < 0) firstError = i;
+                } else {
+                    p.qty = gQty;
+                    p.sizes = { 'Free Size': gQty };
+                }
             } else {
-                if (p.category === 'General') {
-                    if (!p.qty || p.qty <= 0) {
-                        showToast(`Please enter a valid quantity for Product #${i + 1} — "${p.name}"`, 'error');
-                        return false;
+                // Standard size breakdown
+                const sizeSum = Object.values(p.sizes || {}).reduce((s, v) => s + (parseInt(v, 10) || 0), 0);
+                if (sizeSum <= 0) {
+                    // If product has a target qty or order qty > 0, auto-distribute it so the user is never blocked
+                    if (p.qty > 0) {
+                        applyRatioPresetInternal(i, 'even');
+                        const newSum = Object.values(p.sizes || {}).reduce((s, v) => s + (parseInt(v, 10) || 0), 0);
+                        p.qty = newSum;
+                    } else {
+                        showProductError(i, `⚠ Size breakdown is empty for "${pName}" — enter quantities for sizes`);
+                        if (firstError < 0) firstError = i;
                     }
                 } else {
-                    const sizeSum = Object.values(p.sizes).reduce((s, v) => s + (v || 0), 0);
-                    if (sizeSum <= 0) {
-                        showToast(`Please enter size breakdown for "${p.name || 'Product #' + (i+1)}"`, 'error');
-                        return false;
-                    }
-                    if (sizeSum !== p.qty && p.qty > 0) {
-                        showToast(`Size breakdown sum (${sizeSum}) for "${p.name}" must equal target qty (${p.qty} pcs)`, 'error');
-                        return false;
-                    }
-                    // Sync qty from sizes if target was 0
-                    if (p.qty === 0) p.qty = sizeSum;
+                    // Size breakdown is the source of truth for quantity
+                    p.qty = sizeSum;
                 }
             }
         }
 
-        // Sync total
-        const totalQty = isDirect
-            ? coState.products.reduce((s, p) => s + p.freeSizes.reduce((ss, r) => ss + (r.qty || 0), 0), 0)
-            : coState.products.reduce((s, p) => s + (p.qty || 0), 0);
-        if (totalQty <= 0) { showToast('Order total quantity must be greater than zero', 'error'); return false; }
+        if (firstError >= 0) {
+            const errProdName = coState.products[firstError]?.name || `Product #${firstError + 1}`;
+            showToast(`Fix errors in "${errProdName}" before continuing`, 'error');
+            return false;
+        }
+
+        // Sync total across all products using each product's specific workflow
+        const totalQty = coState.products.reduce((s, p) => {
+            const pWf = p.workflowType || coState.orderWorkflowType || 'default';
+            if (workflowIsDirectFulfillment(pWf)) {
+                return s + (p.freeSizes || []).reduce((ss, r) => ss + (parseInt(r.qty, 10) || 0), 0);
+            }
+            return s + (Number(p.qty) || 0);
+        }, 0);
+
+        if (totalQty <= 0) {
+            showToast('Order total quantity must be greater than zero', 'error');
+            return false;
+        }
     }
 
     // Step 3
