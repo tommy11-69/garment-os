@@ -152,7 +152,7 @@ export function getCreateSheetHTML(type, contacts, inventoryItems, linkedBills =
     const showItems = !isPayment;
 
     const contactOptions = contacts.map(c => 
-        `<option value="${c.id}" data-gstin="${c.gst || c.gstin || ''}">${c.name}</option>`
+        `<option value="${c.id}" data-gstin="${c.gst || c.gstin || c.gstNumber || c.taxId || ''}">${c.name}</option>`
     ).join('');
 
     const linkedBillOptions = linkedBills.length > 0 ? 
@@ -535,15 +535,35 @@ const BILLING_LOGO_DATA_URI = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAXg
 export function getPrintHTML(doc, contactInfo = {}) {
     const meta = BILLING_TYPES[doc.transaction_type] || BILLING_TYPES.Quotation;
     const items = doc.items || [];
-    const subtotal = doc.subtotal || 0;
-    const taxTotal = doc.tax_total || 0;
-    const grandTotal = doc.grand_total || 0;
+    let subtotal = Number(doc.subtotal || 0);
+    let taxTotal = Number(doc.tax_total || 0);
+    let grandTotal = Number(doc.grand_total || 0);
+
+    // If subtotal is 0 but items exist, compute from items
+    if (subtotal === 0 && items.length > 0) {
+        subtotal = items.reduce((s, it) => s + (Number(it.unit_price || 0) * Number(it.quantity || 0)), 0);
+    }
+
+    // Recalculate taxTotal if 0 or inconsistent with item tax rows
+    const computedItemTax = items.reduce((sum, item) => {
+        const gstPct = item.tax_pct !== undefined ? Number(item.tax_pct) : 5;
+        const netBase = (Number(item.unit_price || 0) * Number(item.quantity || 0)) * (1 - ((Number(item.discount_pct) || 0) / 100));
+        return sum + (Number(item.tax_amount) || (netBase * (gstPct / 100)) || 0);
+    }, 0);
+
+    if ((taxTotal === 0 || isNaN(taxTotal)) && computedItemTax > 0) {
+        taxTotal = computedItemTax;
+    }
+
+    if (grandTotal === 0 && (subtotal > 0 || taxTotal > 0)) {
+        grandTotal = subtotal - (Number(doc.discount) || 0) + taxTotal;
+    }
 
     function numberToWords(num) {
-        if (num === 0) return 'Zero Rupees Only';
+        if (!num || num === 0) return 'Zero Rupees Only';
         const a = ['','One ','Two ','Three ','Four ','Five ','Six ','Seven ','Eight ','Nine ','Ten ','Eleven ','Twelve ','Thirteen ','Fourteen ','Fifteen ','Sixteen ','Seventeen ','Eighteen ','Nineteen '];
         const b = ['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
-        const numStr = Math.floor(num).toString();
+        const numStr = Math.floor(Math.abs(num)).toString();
         if (numStr.length > 9) return 'Amount too large';
         const n = ('000000000' + numStr).substr(-9).match(/^(\d{2})(\d{2})(\d{2})(\d{1})(\d{2})$/);
         if (!n) return '';
@@ -561,18 +581,20 @@ export function getPrintHTML(doc, contactInfo = {}) {
     const sgst = (taxTotal / 2).toFixed(2);
 
     const itemsHTML = items.map((item, i) => {
-        const gstPct = item.tax_pct || 5;
-        const taxAmt = item.tax_amount || (item.row_total * (gstPct / 100)) || 0;
+        const gstPct = item.tax_pct !== undefined ? Number(item.tax_pct) : 5;
+        const netBase = (Number(item.unit_price || 0) * Number(item.quantity || 0)) * (1 - ((Number(item.discount_pct) || 0) / 100));
+        const taxAmt = item.tax_amount !== undefined ? Number(item.tax_amount) : (netBase * (gstPct / 100));
+        const rowTot = item.row_total !== undefined ? Number(item.row_total) : (netBase + taxAmt);
         return `
         <tr>
             <td style="text-align:center;color:#64748b;font-weight:600">${i+1}</td>
-            <td style="font-weight:600;color:#0f172a">${item.item_name || 'Item'}${item.description ? `<div style="color:#64748b;font-size:9.5px;font-weight:normal;margin-top:1px">${item.description}</div>` : ''}</td>
+            <td style="font-weight:600;color:#0f172a">${item.item_name || 'Item'}${item.description ? `<div style="color:#64748b;font-size:9px;font-weight:normal;margin-top:1px">${item.description}</div>` : ''}</td>
             <td style="text-align:center;color:#64748b">6109</td>
-            <td style="text-align:center;font-weight:600">${item.quantity} <span style="font-size:9.5px;color:#64748b">${item.unit || 'pcs'}</span></td>
+            <td style="text-align:center;font-weight:600">${item.quantity} <span style="font-size:9px;color:#64748b">${item.unit || 'pcs'}</span></td>
             <td style="text-align:right">₹ ${Number(item.unit_price || 0).toFixed(2)}</td>
             ${item.discount_pct > 0 ? `<td style="text-align:right;color:#64748b">${item.discount_pct}%</td>` : '<td style="text-align:center;color:#94a3b8">—</td>'}
-            <td style="text-align:right;color:#475569">₹ ${Number(taxAmt).toFixed(2)} <span style="font-size:9.5px;color:#64748b">(${gstPct}%)</span></td>
-            <td style="text-align:right;font-weight:700;color:#0f172a">₹ ${Number(item.row_total || 0).toFixed(2)}</td>
+            <td style="text-align:right;color:#475569">₹ ${Number(taxAmt).toFixed(2)} <span style="font-size:9px;color:#64748b">(${gstPct}%)</span></td>
+            <td style="text-align:right;font-weight:700;color:#0f172a">₹ ${Number(rowTot).toFixed(2)}</td>
         </tr>`;
     }).join('');
 
@@ -585,16 +607,20 @@ export function getPrintHTML(doc, contactInfo = {}) {
                      doc.transaction_type === 'Payment_In' ? 'PAYMENT RECEIPT' : 
                      doc.transaction_type === 'Payment_Out' ? 'PAYMENT VOUCHER' : meta.label.toUpperCase();
 
+    const gstin = contactInfo.gstin || doc.contact_gstin || '';
+    const contactDisplayName = contactInfo.company ? `${contactInfo.name || doc.contact_name} <span style="font-weight:normal;color:#475569">(${contactInfo.company})</span>` : (contactInfo.name || doc.contact_name || 'Cash / Counter Customer');
+
     return `<!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="utf-8">
     <title>${docTitle} - ${doc.invoice_number}</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
     <style>
         @page {
             size: A4 portrait;
-            margin: 6mm 8mm;
+            margin: 8mm 10mm;
         }
         * {
             box-sizing: border-box;
@@ -602,66 +628,134 @@ export function getPrintHTML(doc, contactInfo = {}) {
             padding: 0;
         }
         html, body {
-            background: #ffffff;
+            background: #e2e8f0;
             color: #0f172a;
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            font-size: 10.5px;
+            font-size: 10px;
             line-height: 1.35;
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
         }
+
+        /* Screen Preview Toolbar */
+        .print-toolbar {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background: #0f172a;
+            color: #ffffff;
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        .toolbar-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 16px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 12px;
+            cursor: pointer;
+            border: none;
+            transition: all 0.15s ease;
+        }
+        .btn-primary {
+            background: #0071E3;
+            color: #ffffff;
+        }
+        .btn-primary:hover { background: #005bb5; }
+        .btn-secondary {
+            background: #334155;
+            color: #f1f5f9;
+        }
+        .btn-secondary:hover { background: #475569; }
+
+        /* Page Container - Centered A4 Sheet */
+        .page-wrapper {
+            padding: 20px 10px;
+            display: flex;
+            justify-content: center;
+        }
         .page-container {
-            width: 100%;
-            max-width: 100%;
-            margin: 0 auto;
+            width: 210mm;
+            max-width: 210mm;
+            min-height: 280mm;
+            background: #ffffff;
+            padding: 8mm 10mm;
+            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+            border-radius: 4px;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            min-height: 98vh;
         }
         
         /* Header Block */
         .top-header {
             display: flex;
             justify-content: space-between;
-            align-items: center;
+            align-items: flex-start;
             border-bottom: 2px solid #0f172a;
-            padding-bottom: 8px;
-            margin-bottom: 8px;
+            padding-top: 2px;
+            padding-bottom: 7px;
+            margin-bottom: 7px;
         }
         .company-brand {
             display: flex;
-            align-items: center;
-            gap: 12px;
+            align-items: flex-start;
+            gap: 10px;
         }
         .company-logo {
-            height: 48px;
-            width: auto;
-            max-width: 130px;
+            height: 46px;
+            width: 46px;
             object-fit: contain;
-        }
-        .company-info-text {
-            text-align: right;
-            font-size: 10px;
-            color: #475569;
-            line-height: 1.3;
+            border-radius: 6px;
+            flex-shrink: 0;
         }
         .company-title {
-            font-size: 17px;
+            font-size: 18px;
             font-weight: 800;
             color: #0f172a;
             letter-spacing: -0.3px;
+            line-height: 1.1;
+        }
+        .company-sub {
+            font-size: 9px;
+            font-weight: 600;
+            color: #475569;
+            margin-top: 2px;
+        }
+        .company-info-text {
+            text-align: right;
+            font-size: 9.5px;
+            color: #334155;
+            line-height: 1.35;
         }
         .gst-badge {
             display: inline-block;
             font-weight: 700;
             color: #0f172a;
             background: #f1f5f9;
-            padding: 1px 6px;
+            padding: 1.5px 6px;
             border-radius: 4px;
             border: 1px solid #cbd5e1;
             margin-top: 2px;
-            font-size: 10px;
+            font-size: 9.5px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .state-badge {
+            display: inline-block;
+            font-weight: 600;
+            color: #475569;
+            background: #f8fafc;
+            padding: 1.5px 5px;
+            border-radius: 4px;
+            border: 1px solid #e2e8f0;
+            margin-top: 2px;
+            margin-left: 3px;
+            font-size: 9px;
         }
 
         /* Document Banner */
@@ -672,18 +766,18 @@ export function getPrintHTML(doc, contactInfo = {}) {
             background: #f8fafc;
             border: 1px solid #cbd5e1;
             border-radius: 6px;
-            padding: 6px 10px;
-            margin-bottom: 8px;
+            padding: 5px 8px;
+            margin-bottom: 7px;
         }
         .doc-type-title {
-            font-size: 14px;
+            font-size: 13.5px;
             font-weight: 800;
             color: #0f172a;
             letter-spacing: 0.5px;
             text-transform: uppercase;
         }
         .doc-meta-item {
-            font-size: 10.5px;
+            font-size: 10px;
             color: #334155;
         }
         .doc-meta-item strong {
@@ -696,28 +790,28 @@ export function getPrintHTML(doc, contactInfo = {}) {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 8px;
-            margin-bottom: 8px;
+            margin-bottom: 7px;
         }
         .info-card {
             border: 1px solid #e2e8f0;
             background: #fafafa;
             border-radius: 6px;
-            padding: 7px 10px;
-            font-size: 10px;
+            padding: 6px 9px;
+            font-size: 9.5px;
             line-height: 1.35;
         }
         .card-label {
-            font-size: 9px;
+            font-size: 8.5px;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.5px;
             color: #64748b;
-            margin-bottom: 3px;
+            margin-bottom: 2px;
             border-bottom: 1px solid #e2e8f0;
             padding-bottom: 2px;
         }
         .card-name {
-            font-size: 12px;
+            font-size: 11.5px;
             font-weight: 700;
             color: #0f172a;
             margin-bottom: 2px;
@@ -728,26 +822,26 @@ export function getPrintHTML(doc, contactInfo = {}) {
             border: 1px solid #cbd5e1;
             border-radius: 6px;
             overflow: hidden;
-            margin-bottom: 8px;
+            margin-bottom: 7px;
         }
         table {
             width: 100%;
             border-collapse: collapse;
-            font-size: 10px;
+            font-size: 9.5px;
         }
         th {
             background: #f1f5f9;
             color: #334155;
             font-weight: 700;
             text-transform: uppercase;
-            font-size: 9px;
+            font-size: 8.5px;
             letter-spacing: 0.3px;
-            padding: 5px 6px;
+            padding: 4px 6px;
             border-bottom: 1px solid #cbd5e1;
             text-align: left;
         }
         td {
-            padding: 5px 6px;
+            padding: 4px 6px;
             border-bottom: 1px solid #e2e8f0;
             color: #1e293b;
             vertical-align: middle;
@@ -760,36 +854,36 @@ export function getPrintHTML(doc, contactInfo = {}) {
         .summary-grid {
             display: grid;
             grid-template-columns: 1.25fr 1fr;
-            gap: 10px;
+            gap: 8px;
             align-items: flex-start;
-            margin-bottom: 8px;
+            margin-bottom: 7px;
         }
         .amount-words-box {
             background: #f8fafc;
             border: 1px solid #e2e8f0;
             border-radius: 6px;
-            padding: 8px;
-            font-size: 10px;
+            padding: 6px 8px;
+            font-size: 9.5px;
         }
         .totals-card {
             background: #f8fafc;
             border: 1px solid #cbd5e1;
             border-radius: 6px;
-            padding: 6px 10px;
+            padding: 5px 8px;
         }
         .totals-row {
             display: flex;
             justify-content: space-between;
-            font-size: 10.5px;
-            margin-bottom: 3px;
+            font-size: 9.5px;
+            margin-bottom: 2px;
             color: #475569;
         }
         .totals-row.grand {
             border-top: 1.5px solid #0f172a;
-            margin-top: 4px;
-            padding-top: 4px;
+            margin-top: 3px;
+            padding-top: 3px;
             margin-bottom: 0;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 800;
             color: #0f172a;
         }
@@ -798,21 +892,21 @@ export function getPrintHTML(doc, contactInfo = {}) {
         .footer-section {
             display: grid;
             grid-template-columns: 1.4fr 1fr;
-            gap: 12px;
+            gap: 10px;
             border-top: 1px solid #cbd5e1;
-            padding-top: 6px;
-            margin-top: auto;
+            padding-top: 5px;
+            margin-top: 4px;
         }
         .terms-box h4 {
-            font-size: 10px;
+            font-size: 9px;
             font-weight: 700;
             color: #0f172a;
-            margin-bottom: 3px;
+            margin-bottom: 2px;
             text-transform: uppercase;
         }
         .terms-box ul {
             padding-left: 12px;
-            font-size: 9px;
+            font-size: 8.5px;
             color: #475569;
             line-height: 1.3;
         }
@@ -826,154 +920,199 @@ export function getPrintHTML(doc, contactInfo = {}) {
         .sign-line {
             width: 100%;
             border-bottom: 1px solid #0f172a;
-            margin-top: 24px;
-            margin-bottom: 3px;
+            margin-top: 20px;
+            margin-bottom: 2px;
         }
 
+        /* Exact 1-Page A4 Print Media */
         @media print {
-            body { padding: 0; }
-            .no-print { display: none !important; }
-            tr, .info-card, .totals-card, .footer-section {
+            html, body {
+                width: 210mm;
+                height: 100%;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #ffffff !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .page-wrapper {
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            .page-container {
+                width: 100% !important;
+                max-width: 100% !important;
+                height: 100% !important;
+                max-height: 280mm !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                box-shadow: none !important;
+                border-radius: 0 !important;
+                page-break-after: avoid;
+                page-break-inside: avoid;
+            }
+            tr, .info-card, .totals-card, .footer-section, .amount-words-box {
                 page-break-inside: avoid;
             }
         }
     </style>
 </head>
 <body>
-    <div class="page-container">
-        <!-- Top Header with Logo & Company GSTIN -->
-        <div>
-            <div class="top-header">
-                <div class="company-brand">
-                    <img src="${BILLING_LOGO_DATA_URI}" alt="Logo" class="company-logo" 
-                        onerror="this.src='/assets/logo-billing.png'; this.onerror=null;">
-                    <div>
-                        <div class="company-title">UDHAYAA TEXTILES</div>
-                        <div style="font-size:9.5px;color:#64748b;font-weight:600">Garment Manufacturing &amp; Processing Unit</div>
-                    </div>
-                </div>
-                <div class="company-info-text">
-                    <div style="font-weight:600;color:#0f172a">63/A Senthur Nagar, Ellapalayam Road</div>
-                    <div>Periyasemur, Erode, Tamil Nadu 638004</div>
-                    <div>Phone: +91 77083 33813 · Email: info@udhayaatextiles.com</div>
-                    <div><span class="gst-badge">GSTIN: 33ANGPU7147M1ZE</span></div>
-                </div>
-            </div>
-
-            <!-- Document Ribbon -->
-            <div class="doc-banner">
-                <div class="doc-type-title">${docTitle}</div>
-                <div class="doc-meta-item"><strong>Doc #:</strong> ${doc.invoice_number || 'N/A'}</div>
-                <div class="doc-meta-item"><strong>Date:</strong> ${doc.date || ''}</div>
-                ${doc.due_date ? `<div class="doc-meta-item"><strong>Due Date:</strong> ${doc.due_date}</div>` : ''}
-                <div class="doc-meta-item"><strong>Place of Supply:</strong> 33-Tamil Nadu</div>
-            </div>
-
-            <!-- Billed To & Bank Details Grid -->
-            <div class="info-grid">
-                <div class="info-card">
-                    <div class="card-label">${meta.contactType === 'vendor' ? (isPayment ? 'Paid To Vendor' : 'Vendor Details') : (isPayment ? 'Received From Customer' : 'Bill To (Buyer)')}</div>
-                    <div class="card-name">${doc.contact_name || 'Cash / Counter Customer'}</div>
-                    ${doc.contact_gstin ? `<div style="font-weight:600;color:#0f172a">GSTIN: <span style="font-family:monospace">${doc.contact_gstin}</span></div>` : ''}
-                    ${contactInfo.address ? `<div>${contactInfo.address}</div>` : ''}
-                    ${contactInfo.city ? `<div>${contactInfo.city}</div>` : ''}
-                    ${contactInfo.phone ? `<div>Phone: ${contactInfo.phone}</div>` : ''}
-                    ${contactInfo.email ? `<div>Email: ${contactInfo.email}</div>` : ''}
-                </div>
-                <div class="info-card">
-                    <div class="card-label">Bank &amp; Remittance Details</div>
-                    <div style="font-weight:700;color:#0f172a;margin-bottom:1px">Indian Overseas Bank</div>
-                    <div>Branch: Erode Periasemur | A/C Name: Udhayaa Textiles</div>
-                    <div style="font-weight:700;color:#0f172a;margin-top:2px">A/C No: <span style="font-family:monospace">134601000036234</span></div>
-                    <div style="font-weight:700;color:#0f172a">IFSC: <span style="font-family:monospace">IOBA0001346</span></div>
-                    <div style="font-weight:600;color:#2563eb">UPI ID: info.udhayaatextiles-2@okhdfcbank</div>
-                </div>
-            </div>
-
-            ${isPayment ? `
-            <!-- Payment Document Block -->
-            <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:6px; padding:12px; margin-bottom:8px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:8px; margin-bottom:8px;">
-                    <div>
-                        <div style="font-size:9.5px; text-transform:uppercase; color:#64748b; font-weight:700;">Voucher Type</div>
-                        <div style="font-size:14px; font-weight:800; color:#0f172a;">${doc.transaction_type === 'Payment_In' ? 'Payment Received' : 'Payment Outflow'}</div>
-                    </div>
-                    <div style="text-align:right;">
-                        <div style="font-size:9.5px; text-transform:uppercase; color:#64748b; font-weight:700;">Voucher Amount</div>
-                        <div style="font-size:20px; font-weight:800; color:${doc.transaction_type === 'Payment_In' ? '#008A00' : '#dc2626'};">₹ ${grandTotal.toFixed(2)}</div>
-                    </div>
-                </div>
-                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
-                    <div>
-                        <div style="font-size:9px; text-transform:uppercase; color:#64748b; font-weight:700;">Amount in Words</div>
-                        <div style="font-weight:600; color:#1e293b; margin-top:2px;">${amountWords}</div>
-                    </div>
-                    <div>
-                        <div style="font-size:9px; text-transform:uppercase; color:#64748b; font-weight:700;">Linked Document / Ref</div>
-                        <div style="font-weight:600; color:#1e293b; margin-top:2px;">${doc.linked_bill_id || 'Direct Payment Voucher'}</div>
-                    </div>
-                    ${doc.notes ? `
-                    <div style="grid-column: span 2; border-top:1px dashed #cbd5e1; padding-top:6px;">
-                        <div style="font-size:9px; text-transform:uppercase; color:#64748b; font-weight:700;">Notes &amp; Particulars</div>
-                        <div style="font-weight:500; color:#334155; margin-top:2px;">${doc.notes}</div>
-                    </div>` : ''}
-                </div>
-            </div>
-            ` : `
-            <!-- Items Table -->
-            <div class="table-wrap">
-                <table>
-                    <thead>
-                        <tr>
-                            <th style="width:28px;text-align:center">#</th>
-                            <th>Description</th>
-                            <th style="width:55px;text-align:center">HSN</th>
-                            <th style="width:65px;text-align:center">Qty</th>
-                            <th style="width:75px;text-align:right">Rate</th>
-                            <th style="width:50px;text-align:center">Disc</th>
-                            <th style="width:85px;text-align:right">Tax</th>
-                            <th style="width:90px;text-align:right">Total Amount</th>
-                        </tr>
-                    </thead>
-                    <tbody>${itemsHTML}</tbody>
-                </table>
-            </div>
-
-            <!-- Summary & Totals -->
-            <div class="summary-grid">
-                <div class="amount-words-box">
-                    <div style="font-size:9px;text-transform:uppercase;color:#64748b;font-weight:700;margin-bottom:2px">Amount in Words:</div>
-                    <div style="font-weight:700;color:#0f172a;font-style:italic">${amountWords}</div>
-                    <div style="font-size:9px;color:#64748b;margin-top:6px;border-top:1px dashed #cbd5e1;padding-top:4px">
-                        Tax Summary: CGST (2.5%): ₹${cgst} | SGST (2.5%): ₹${sgst} | Total Tax: ₹${Number(taxTotal).toFixed(2)}
-                    </div>
-                </div>
-                <div class="totals-card">
-                    <div class="totals-row"><span>Subtotal (Taxable Value):</span><span style="font-weight:600">₹ ${subtotal.toFixed(2)}</span></div>
-                    ${doc.discount > 0 ? `<div class="totals-row"><span>Discount:</span><span style="color:#dc2626">−₹ ${Number(doc.discount).toFixed(2)}</span></div>` : ''}
-                    <div class="totals-row"><span>CGST (2.5%):</span><span>₹ ${cgst}</span></div>
-                    <div class="totals-row"><span>SGST (2.5%):</span><span>₹ ${sgst}</span></div>
-                    <div class="totals-row grand"><span>Total Amount:</span><span>₹ ${grandTotal.toFixed(2)}</span></div>
-                </div>
-            </div>
-            `}
+    <!-- Screen View Action Bar -->
+    <div class="print-toolbar no-print">
+        <div style="display:flex;align-items:center;gap:8px;">
+            <span style="font-weight:700;font-size:13px;letter-spacing:0.3px;">Garment OS Document Preview</span>
+            <span style="background:#334155;color:#94a3b8;font-size:11px;padding:2px 6px;border-radius:4px;font-family:monospace;">${doc.invoice_number || 'DOC'}</span>
         </div>
+        <div style="display:flex;gap:8px;">
+            <button type="button" onclick="window.print()" class="toolbar-btn btn-primary">
+                🖨️ Print / Save PDF
+            </button>
+            <button type="button" onclick="window.close()" class="toolbar-btn btn-secondary">
+                ✕ Close
+            </button>
+        </div>
+    </div>
 
-        <!-- Terms & Conditions + Authorized Signatory Footer -->
-        <div class="footer-section">
-            <div class="terms-box">
-                <h4>Terms &amp; Conditions</h4>
-                <ul>
-                    <li>Payment: 50% advance to confirm order; 20% on dyeing; 30% prior to dispatch.</li>
-                    <li>Goods once sold will not be taken back or exchanged without prior approval.</li>
-                    <li>Disputes if any are subject to Erode jurisdiction only.</li>
-                    <li>All rates valid for 7 days from document generation date.</li>
-                </ul>
+    <div class="page-wrapper">
+        <div class="page-container">
+            <!-- Top Header with Logo & Company GSTIN -->
+            <div>
+                <div class="top-header">
+                    <div class="company-brand">
+                        <img src="${BILLING_LOGO_DATA_URI}" alt="Logo" class="company-logo" 
+                            onerror="this.src='/assets/logo-billing.png'; this.onerror=null;">
+                        <div>
+                            <div class="company-title">UDHAYAA TEXTILES</div>
+                            <div class="company-sub">Garment Manufacturing &amp; Processing Unit</div>
+                        </div>
+                    </div>
+                    <div class="company-info-text">
+                        <div style="font-weight:600;color:#0f172a">63/A Senthur Nagar, Ellapalayam Road</div>
+                        <div>Periyasemur, Erode, Tamil Nadu 638004</div>
+                        <div>Phone: <strong>+91 77083 33813</strong> · info@udhayaatextiles.com</div>
+                        <div>
+                            <span class="gst-badge">GSTIN: 33ANGPU7147M1ZE</span>
+                            <span class="state-badge">State: 33-Tamil Nadu</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Document Ribbon -->
+                <div class="doc-banner">
+                    <div class="doc-type-title">${docTitle}</div>
+                    <div class="doc-meta-item"><strong>Doc #:</strong> ${doc.invoice_number || 'N/A'}</div>
+                    <div class="doc-meta-item"><strong>Date:</strong> ${doc.date || ''}</div>
+                    ${doc.due_date ? `<div class="doc-meta-item"><strong>Due Date:</strong> ${doc.due_date}</div>` : ''}
+                    <div class="doc-meta-item"><strong>Place of Supply:</strong> 33-Tamil Nadu</div>
+                </div>
+
+                <!-- Billed To & Bank Details Grid -->
+                <div class="info-grid">
+                    <div class="info-card">
+                        <div class="card-label">${meta.contactType === 'vendor' ? (isPayment ? 'Paid To Vendor' : 'Vendor Details') : (isPayment ? 'Received From Customer' : 'Bill To (Buyer)')}</div>
+                        <div class="card-name">${contactDisplayName}</div>
+                        ${gstin ? `<div style="font-weight:700;color:#0f172a;margin-top:1px;">GSTIN: <span style="font-family:'JetBrains Mono',monospace;letter-spacing:0.3px;">${gstin}</span></div>` : ''}
+                        ${contactInfo.address ? `<div style="color:#334155;margin-top:1px;">${contactInfo.address}</div>` : (contactInfo.city ? `<div>${contactInfo.city}</div>` : '')}
+                        ${contactInfo.phone ? `<div style="color:#334155;margin-top:1px;">Phone: <strong>${contactInfo.phone}</strong></div>` : ''}
+                        ${contactInfo.email ? `<div style="color:#475569;">Email: ${contactInfo.email}</div>` : ''}
+                    </div>
+                    <div class="info-card">
+                        <div class="card-label">Bank &amp; Remittance Details</div>
+                        <div style="font-weight:700;color:#0f172a;margin-bottom:1px">Indian Overseas Bank</div>
+                        <div>Branch: Erode Periasemur | A/C Name: Udhayaa Textiles</div>
+                        <div style="font-weight:700;color:#0f172a;margin-top:1px">A/C No: <span style="font-family:'JetBrains Mono',monospace">134601000036234</span></div>
+                        <div style="font-weight:700;color:#0f172a">IFSC: <span style="font-family:'JetBrains Mono',monospace">IOBA0001346</span></div>
+                        <div style="font-weight:600;color:#0071E3">UPI ID: info.udhayaatextiles-2@okhdfcbank</div>
+                    </div>
+                </div>
+
+                ${isPayment ? `
+                <!-- Payment Document Block -->
+                <div style="background:#f8fafc; border:1px solid #cbd5e1; border-radius:6px; padding:10px; margin-bottom:7px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #e2e8f0; padding-bottom:6px; margin-bottom:6px;">
+                        <div>
+                            <div style="font-size:9px; text-transform:uppercase; color:#64748b; font-weight:700;">Voucher Type</div>
+                            <div style="font-size:13px; font-weight:800; color:#0f172a;">${doc.transaction_type === 'Payment_In' ? 'Payment Received' : 'Payment Outflow'}</div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div style="font-size:9px; text-transform:uppercase; color:#64748b; font-weight:700;">Voucher Amount</div>
+                            <div style="font-size:18px; font-weight:800; color:${doc.transaction_type === 'Payment_In' ? '#008A00' : '#dc2626'};">₹ ${grandTotal.toFixed(2)}</div>
+                        </div>
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                        <div>
+                            <div style="font-size:8.5px; text-transform:uppercase; color:#64748b; font-weight:700;">Amount in Words</div>
+                            <div style="font-weight:600; color:#1e293b; margin-top:2px;">${amountWords}</div>
+                        </div>
+                        <div>
+                            <div style="font-size:8.5px; text-transform:uppercase; color:#64748b; font-weight:700;">Linked Document / Ref</div>
+                            <div style="font-weight:600; color:#1e293b; margin-top:2px;">${doc.linked_bill_id || 'Direct Payment Voucher'}</div>
+                        </div>
+                        ${doc.notes ? `
+                        <div style="grid-column: span 2; border-top:1px dashed #cbd5e1; padding-top:4px;">
+                            <div style="font-size:8.5px; text-transform:uppercase; color:#64748b; font-weight:700;">Notes &amp; Particulars</div>
+                            <div style="font-weight:500; color:#334155; margin-top:2px;">${doc.notes}</div>
+                        </div>` : ''}
+                    </div>
+                </div>
+                ` : `
+                <!-- Items Table -->
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th style="width:26px;text-align:center">#</th>
+                                <th>Description</th>
+                                <th style="width:50px;text-align:center">HSN</th>
+                                <th style="width:60px;text-align:center">Qty</th>
+                                <th style="width:70px;text-align:right">Rate</th>
+                                <th style="width:45px;text-align:center">Disc</th>
+                                <th style="width:80px;text-align:right">Tax</th>
+                                <th style="width:85px;text-align:right">Total Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody>${itemsHTML}</tbody>
+                    </table>
+                </div>
+
+                <!-- Summary & Totals -->
+                <div class="summary-grid">
+                    <div class="amount-words-box">
+                        <div style="font-size:8.5px;text-transform:uppercase;color:#64748b;font-weight:700;margin-bottom:2px">Amount in Words:</div>
+                        <div style="font-weight:700;color:#0f172a;font-style:italic">${amountWords}</div>
+                        <div style="font-size:8.5px;color:#64748b;margin-top:4px;border-top:1px dashed #cbd5e1;padding-top:3px">
+                            Tax Summary: CGST (2.5%): ₹${cgst} | SGST (2.5%): ₹${sgst} | Total Tax: ₹${Number(taxTotal).toFixed(2)}
+                        </div>
+                    </div>
+                    <div class="totals-card">
+                        <div class="totals-row"><span>Subtotal (Taxable Value):</span><span style="font-weight:600">₹ ${subtotal.toFixed(2)}</span></div>
+                        ${doc.discount > 0 ? `<div class="totals-row"><span>Discount:</span><span style="color:#dc2626">−₹ ${Number(doc.discount).toFixed(2)}</span></div>` : ''}
+                        <div class="totals-row"><span>CGST (2.5%):</span><span>₹ ${cgst}</span></div>
+                        <div class="totals-row"><span>SGST (2.5%):</span><span>₹ ${sgst}</span></div>
+                        <div class="totals-row grand"><span>Total Amount:</span><span>₹ ${grandTotal.toFixed(2)}</span></div>
+                    </div>
+                </div>
+                `}
             </div>
-            <div class="sign-card">
-                <div class="sign-line"></div>
-                <div style="font-size:10px;font-weight:700;color:#0f172a">For UDHAYAA TEXTILES</div>
-                <div style="font-size:8.5px;color:#64748b">Authorized Signatory</div>
+
+            <!-- Terms & Conditions + Authorized Signatory Footer -->
+            <div class="footer-section">
+                <div class="terms-box">
+                    <h4>Terms &amp; Conditions</h4>
+                    <ul>
+                        <li>Payment: 50% advance to confirm order; 20% on dyeing; 30% prior to dispatch.</li>
+                        <li>Goods once sold will not be taken back or exchanged without prior approval.</li>
+                        <li>Disputes if any are subject to Erode jurisdiction only.</li>
+                        <li>All rates valid for 7 days from document generation date.</li>
+                    </ul>
+                </div>
+                <div class="sign-card">
+                    <div class="sign-line"></div>
+                    <div style="font-size:9.5px;font-weight:700;color:#0f172a">For UDHAYAA TEXTILES</div>
+                    <div style="font-size:8px;color:#64748b">Authorized Signatory</div>
+                </div>
             </div>
         </div>
     </div>

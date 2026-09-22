@@ -892,14 +892,70 @@ window.printBillingDoc = async function (id) {
 
         let contactInfo = {};
         try {
-            if (doc.contact_type === 'customer') {
-                const c = await api.getCustomer(doc.contact_id);
-                if (c) contactInfo = { address: c.address, city: c.city, email: c.email };
+            if (doc.contact_type === 'customer' || !doc.contact_type) {
+                let c = doc.contact_id ? await api.getCustomer(doc.contact_id) : null;
+                if (!c && doc.contact_name) {
+                    const allCustomers = await api.getCustomers();
+                    c = (allCustomers || []).find(item => 
+                        item.id === doc.contact_id ||
+                        item.name?.toLowerCase().trim() === doc.contact_name?.toLowerCase().trim()
+                    );
+                }
+                if (c) {
+                    const addrParts = [
+                        c.addressLine1 || c.address || '',
+                        c.addressLine2 || '',
+                        c.city || '',
+                        c.state ? (c.pincode ? `${c.state} - ${c.pincode}` : c.state) : (c.pincode || '')
+                    ].filter(Boolean);
+
+                    contactInfo = {
+                        name: c.name || doc.contact_name || '',
+                        company: c.company || '',
+                        contactPerson: c.contactPerson || '',
+                        address: addrParts.join(', '),
+                        city: c.city || '',
+                        state: c.state || '',
+                        pincode: c.pincode || '',
+                        phone: c.phone || c.mobile || c.whatsapp || '',
+                        email: c.email || '',
+                        gstin: c.gst || c.gstin || c.gstNumber || c.taxId || doc.contact_gstin || ''
+                    };
+                }
             } else {
-                const v = await api.getVendor(doc.contact_id);
-                if (v) contactInfo = { address: v.address, city: v.city, email: v.email };
+                let v = doc.contact_id ? await api.getVendor(doc.contact_id) : null;
+                if (!v && doc.contact_name) {
+                    const allVendors = await api.getVendors();
+                    v = (allVendors || []).find(item => 
+                        item.id === doc.contact_id ||
+                        item.name?.toLowerCase().trim() === doc.contact_name?.toLowerCase().trim()
+                    );
+                }
+                if (v) {
+                    const addrParts = [
+                        v.addressLine1 || v.address || '',
+                        v.addressLine2 || '',
+                        v.city || '',
+                        v.state ? (v.pincode ? `${v.state} - ${v.pincode}` : v.state) : (v.pincode || '')
+                    ].filter(Boolean);
+
+                    contactInfo = {
+                        name: v.name || doc.contact_name || '',
+                        company: '',
+                        contactPerson: v.contactPerson || '',
+                        address: addrParts.join(', '),
+                        city: v.city || '',
+                        state: v.state || '',
+                        pincode: v.pincode || '',
+                        phone: v.phone || '',
+                        email: v.email || '',
+                        gstin: v.gstin || v.gst || doc.contact_gstin || ''
+                    };
+                }
             }
-        } catch (_) { /* ignore */ }
+        } catch (err) {
+            console.warn('Could not fetch detailed contact info:', err);
+        }
 
         const printWindow = window.open('', '_blank');
         if (printWindow) {

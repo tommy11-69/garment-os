@@ -426,21 +426,38 @@ window.printQuotation = async function (id) {
 
         // Fetch full customer details if available
         let customerInfo = {
-            name: q.customerName,
+            name: q.customerName || 'Valued Customer',
             gst: "N/A",
             address: "",
-            city: ""
+            phone: "",
+            email: ""
         };
         
-        if (q.customerId) {
-            const cust = await api.getCustomer(q.customerId);
-            if (cust) {
-                customerInfo.name = cust.name || q.customerName;
-                customerInfo.gst = cust.gst || "N/A";
-                customerInfo.address = cust.address || "";
-                customerInfo.city = cust.city || "";
+        try {
+            let cust = q.customerId ? await api.getCustomer(q.customerId) : null;
+            if (!cust && q.customerName) {
+                const allCustomers = await api.getCustomers();
+                cust = (allCustomers || []).find(item => 
+                    item.id === q.customerId || 
+                    item.name?.toLowerCase().trim() === q.customerName?.toLowerCase().trim()
+                );
             }
-        }
+            if (cust) {
+                const addrParts = [
+                    cust.addressLine1 || cust.address || '',
+                    cust.addressLine2 || '',
+                    cust.city || '',
+                    cust.state ? (cust.pincode ? `${cust.state} - ${cust.pincode}` : cust.state) : (cust.pincode || '')
+                ].filter(Boolean);
+
+                customerInfo.name = cust.name || q.customerName || 'Valued Customer';
+                customerInfo.company = cust.company || '';
+                customerInfo.gst = cust.gst || cust.gstin || cust.gstNumber || cust.taxId || "N/A";
+                customerInfo.address = addrParts.join(', ');
+                customerInfo.phone = cust.phone || cust.mobile || cust.whatsapp || '';
+                customerInfo.email = cust.email || '';
+            }
+        } catch (_) {}
 
         // Calculate totals
         const totalQty = q.items.reduce((sum, item) => sum + item.qty, 0);
@@ -475,15 +492,16 @@ window.printQuotation = async function (id) {
         const printWindow = window.open('', '_blank');
         printWindow.document.write(`
         <!DOCTYPE html>
-        <html>
+        <html lang="en">
         <head>
             <meta charset="utf-8">
             <title>Quotation_${q.id}</title>
-            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+            <link rel="preconnect" href="https://fonts.googleapis.com">
+            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
             <style>
                 @page {
                     size: A4 portrait;
-                    margin: 6mm 8mm;
+                    margin: 8mm 10mm;
                 }
                 * {
                     box-sizing: border-box;
@@ -491,69 +509,124 @@ window.printQuotation = async function (id) {
                     padding: 0;
                 }
                 html, body {
-                    background: #ffffff;
+                    background: #e2e8f0;
                     color: #0f172a;
                     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-                    font-size: 10.5px;
+                    font-size: 10px;
                     line-height: 1.35;
                     -webkit-print-color-adjust: exact;
                     print-color-adjust: exact;
                 }
+
+                .print-toolbar {
+                    position: sticky;
+                    top: 0;
+                    z-index: 50;
+                    background: #0f172a;
+                    color: #ffffff;
+                    padding: 10px 20px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                }
+                .toolbar-btn {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 6px;
+                    padding: 6px 16px;
+                    border-radius: 6px;
+                    font-weight: 600;
+                    font-size: 12px;
+                    cursor: pointer;
+                    border: none;
+                }
+                .btn-primary { background: #0071E3; color: #ffffff; }
+                .btn-secondary { background: #334155; color: #f1f5f9; }
+
+                .page-wrapper {
+                    padding: 20px 10px;
+                    display: flex;
+                    justify-content: center;
+                }
                 .page-container {
-                    width: 100%;
-                    max-width: 100%;
-                    margin: 0 auto;
+                    width: 210mm;
+                    max-width: 210mm;
+                    min-height: 280mm;
+                    background: #ffffff;
+                    padding: 8mm 10mm;
+                    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.12);
+                    border-radius: 4px;
                     display: flex;
                     flex-direction: column;
                     justify-content: space-between;
-                    min-height: 98vh;
                 }
                 
-                /* Header Block */
                 .top-header {
                     display: flex;
                     justify-content: space-between;
-                    align-items: center;
+                    align-items: flex-start;
                     border-bottom: 2px solid #0f172a;
-                    padding-bottom: 8px;
-                    margin-bottom: 8px;
+                    padding-top: 2px;
+                    padding-bottom: 7px;
+                    margin-bottom: 7px;
                 }
                 .company-brand {
                     display: flex;
-                    align-items: center;
-                    gap: 12px;
+                    align-items: flex-start;
+                    gap: 10px;
                 }
                 .company-logo {
-                    height: 48px;
-                    width: auto;
-                    max-width: 130px;
+                    height: 46px;
+                    width: 46px;
                     object-fit: contain;
-                }
-                .company-info-text {
-                    text-align: right;
-                    font-size: 10px;
-                    color: #475569;
-                    line-height: 1.3;
+                    border-radius: 6px;
+                    flex-shrink: 0;
                 }
                 .company-title {
-                    font-size: 17px;
+                    font-size: 18px;
                     font-weight: 800;
                     color: #0f172a;
                     letter-spacing: -0.3px;
+                    line-height: 1.1;
+                }
+                .company-sub {
+                    font-size: 9px;
+                    font-weight: 600;
+                    color: #475569;
+                    margin-top: 2px;
+                }
+                .company-info-text {
+                    text-align: right;
+                    font-size: 9.5px;
+                    color: #334155;
+                    line-height: 1.35;
                 }
                 .gst-badge {
                     display: inline-block;
                     font-weight: 700;
                     color: #0f172a;
                     background: #f1f5f9;
-                    padding: 1px 6px;
+                    padding: 1.5px 6px;
                     border-radius: 4px;
                     border: 1px solid #cbd5e1;
                     margin-top: 2px;
-                    font-size: 10px;
+                    font-size: 9.5px;
+                    font-family: 'JetBrains Mono', monospace;
+                }
+                .state-badge {
+                    display: inline-block;
+                    font-weight: 600;
+                    color: #475569;
+                    background: #f8fafc;
+                    padding: 1.5px 5px;
+                    border-radius: 4px;
+                    border: 1px solid #e2e8f0;
+                    margin-top: 2px;
+                    margin-left: 3px;
+                    font-size: 9px;
                 }
 
-                /* Document Banner */
                 .doc-banner {
                     display: flex;
                     justify-content: space-between;
@@ -561,18 +634,18 @@ window.printQuotation = async function (id) {
                     background: #f8fafc;
                     border: 1px solid #cbd5e1;
                     border-radius: 6px;
-                    padding: 6px 10px;
-                    margin-bottom: 8px;
+                    padding: 5px 8px;
+                    margin-bottom: 7px;
                 }
                 .doc-type-title {
-                    font-size: 14px;
+                    font-size: 13.5px;
                     font-weight: 800;
                     color: #0f172a;
                     letter-spacing: 0.5px;
                     text-transform: uppercase;
                 }
                 .doc-meta-item {
-                    font-size: 10.5px;
+                    font-size: 10px;
                     color: #334155;
                 }
                 .doc-meta-item strong {
@@ -580,63 +653,61 @@ window.printQuotation = async function (id) {
                     font-weight: 700;
                 }
 
-                /* 2-Column Info Cards */
                 .info-grid {
                     display: grid;
                     grid-template-columns: 1fr 1fr;
                     gap: 8px;
-                    margin-bottom: 8px;
+                    margin-bottom: 7px;
                 }
                 .info-card {
                     border: 1px solid #e2e8f0;
                     background: #fafafa;
                     border-radius: 6px;
-                    padding: 7px 10px;
-                    font-size: 10px;
+                    padding: 6px 9px;
+                    font-size: 9.5px;
                     line-height: 1.35;
                 }
                 .card-label {
-                    font-size: 9px;
+                    font-size: 8.5px;
                     font-weight: 700;
                     text-transform: uppercase;
                     letter-spacing: 0.5px;
                     color: #64748b;
-                    margin-bottom: 3px;
+                    margin-bottom: 2px;
                     border-bottom: 1px solid #e2e8f0;
                     padding-bottom: 2px;
                 }
                 .card-name {
-                    font-size: 12px;
+                    font-size: 11.5px;
                     font-weight: 700;
                     color: #0f172a;
                     margin-bottom: 2px;
                 }
 
-                /* Table */
                 .table-wrap {
                     border: 1px solid #cbd5e1;
                     border-radius: 6px;
                     overflow: hidden;
-                    margin-bottom: 8px;
+                    margin-bottom: 7px;
                 }
                 table {
                     width: 100%;
                     border-collapse: collapse;
-                    font-size: 10px;
+                    font-size: 9.5px;
                 }
                 th {
                     background: #f1f5f9;
                     color: #334155;
                     font-weight: 700;
                     text-transform: uppercase;
-                    font-size: 9px;
+                    font-size: 8.5px;
                     letter-spacing: 0.3px;
-                    padding: 5px 6px;
+                    padding: 4px 6px;
                     border-bottom: 1px solid #cbd5e1;
                     text-align: left;
                 }
                 td {
-                    padding: 5px 6px;
+                    padding: 4px 6px;
                     border-bottom: 1px solid #e2e8f0;
                     color: #1e293b;
                     vertical-align: middle;
@@ -645,63 +716,61 @@ window.printQuotation = async function (id) {
                     border-bottom: none;
                 }
 
-                /* Summary & Totals */
                 .summary-grid {
                     display: grid;
                     grid-template-columns: 1.25fr 1fr;
-                    gap: 10px;
+                    gap: 8px;
                     align-items: flex-start;
-                    margin-bottom: 8px;
+                    margin-bottom: 7px;
                 }
                 .amount-words-box {
                     background: #f8fafc;
                     border: 1px solid #e2e8f0;
                     border-radius: 6px;
-                    padding: 8px;
-                    font-size: 10px;
+                    padding: 6px 8px;
+                    font-size: 9.5px;
                 }
                 .totals-card {
                     background: #f8fafc;
                     border: 1px solid #cbd5e1;
                     border-radius: 6px;
-                    padding: 6px 10px;
+                    padding: 5px 8px;
                 }
                 .totals-row {
                     display: flex;
                     justify-content: space-between;
-                    font-size: 10.5px;
-                    margin-bottom: 3px;
+                    font-size: 9.5px;
+                    margin-bottom: 2px;
                     color: #475569;
                 }
                 .totals-row.grand {
                     border-top: 1.5px solid #0f172a;
-                    margin-top: 4px;
-                    padding-top: 4px;
+                    margin-top: 3px;
+                    padding-top: 3px;
                     margin-bottom: 0;
-                    font-size: 13px;
+                    font-size: 12px;
                     font-weight: 800;
                     color: #0f172a;
                 }
 
-                /* Footer & Signatures */
                 .footer-section {
                     display: grid;
                     grid-template-columns: 1.4fr 1fr;
-                    gap: 12px;
+                    gap: 10px;
                     border-top: 1px solid #cbd5e1;
-                    padding-top: 6px;
-                    margin-top: auto;
+                    padding-top: 5px;
+                    margin-top: 4px;
                 }
                 .terms-box h4 {
-                    font-size: 10px;
+                    font-size: 9px;
                     font-weight: 700;
                     color: #0f172a;
-                    margin-bottom: 3px;
+                    margin-bottom: 2px;
                     text-transform: uppercase;
                 }
                 .terms-box ul {
                     padding-left: 12px;
-                    font-size: 9px;
+                    font-size: 8.5px;
                     color: #475569;
                     line-height: 1.3;
                 }
@@ -715,121 +784,161 @@ window.printQuotation = async function (id) {
                 .sign-line {
                     width: 100%;
                     border-bottom: 1px solid #0f172a;
-                    margin-top: 24px;
-                    margin-bottom: 3px;
+                    margin-top: 20px;
+                    margin-bottom: 2px;
                 }
 
                 @media print {
-                    body { padding: 0; }
+                    html, body {
+                        width: 210mm;
+                        height: 100%;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        background: #ffffff !important;
+                    }
                     .no-print { display: none !important; }
-                    tr, .info-card, .totals-card, .footer-section {
+                    .page-wrapper { padding: 0 !important; margin: 0 !important; }
+                    .page-container {
+                        width: 100% !important;
+                        max-width: 100% !important;
+                        height: 100% !important;
+                        max-height: 280mm !important;
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        box-shadow: none !important;
+                        border-radius: 0 !important;
+                        page-break-after: avoid;
+                        page-break-inside: avoid;
+                    }
+                    tr, .info-card, .totals-card, .footer-section, .amount-words-box {
                         page-break-inside: avoid;
                     }
                 }
             </style>
         </head>
         <body>
-            <div class="page-container">
-                <div>
-                    <!-- Top Header with Logo & Company GSTIN -->
-                    <div class="top-header">
-                        <div class="company-brand">
-                            <img src="${QUOTE_LOGO_DATA_URI}" alt="Logo" class="company-logo" 
-                                onerror="this.src='/assets/logo-billing.png'; this.onerror=null;">
-                            <div>
-                                <div class="company-title">UDHAYAA TEXTILES</div>
-                                <div style="font-size:9.5px;color:#64748b;font-weight:600">Garment Manufacturing &amp; Processing Unit</div>
-                            </div>
-                        </div>
-                        <div class="company-info-text">
-                            <div style="font-weight:600;color:#0f172a">63/A Senthur Nagar, Ellapalayam Road</div>
-                            <div>Periyasemur, Erode, Tamil Nadu 638004</div>
-                            <div>Phone: +91 77083 33813 · Email: info@udhayaatextiles.com</div>
-                            <div><span class="gst-badge">GSTIN: 33ANGPU7147M1ZE</span></div>
-                        </div>
-                    </div>
-
-                    <!-- Document Ribbon -->
-                    <div class="doc-banner">
-                        <div class="doc-type-title">PROFORMA INVOICE / ESTIMATE</div>
-                        <div class="doc-meta-item"><strong>Quote #:</strong> ${q.id}</div>
-                        <div class="doc-meta-item"><strong>Date:</strong> ${q.date || ''}</div>
-                        <div class="doc-meta-item"><strong>Validity:</strong> 7 Days</div>
-                        <div class="doc-meta-item"><strong>Place of Supply:</strong> 33-Tamil Nadu</div>
-                    </div>
-
-                    <!-- Estimate For & Bank Details Grid -->
-                    <div class="info-grid">
-                        <div class="info-card">
-                            <div class="card-label">Estimate For (Buyer / Customer)</div>
-                            <div class="card-name">${customerInfo.name || 'Valued Customer'}</div>
-                            ${customerInfo.gst && customerInfo.gst !== 'N/A' ? `<div style="font-weight:600;color:#0f172a">GSTIN: <span style="font-family:monospace">${customerInfo.gst}</span></div>` : ''}
-                            ${customerInfo.address ? `<div>${customerInfo.address}</div>` : ''}
-                            ${customerInfo.city ? `<div>${customerInfo.city}</div>` : ''}
-                        </div>
-                        <div class="info-card">
-                            <div class="card-label">Bank &amp; Remittance Details</div>
-                            <div style="font-weight:700;color:#0f172a;margin-bottom:1px">Indian Overseas Bank</div>
-                            <div>Branch: Erode Periasemur | A/C Name: Udhayaa Textiles</div>
-                            <div style="font-weight:700;color:#0f172a;margin-top:2px">A/C No: <span style="font-family:monospace">134601000036234</span></div>
-                            <div style="font-weight:700;color:#0f172a">IFSC: <span style="font-family:monospace">IOBA0001346</span></div>
-                            <div style="font-weight:600;color:#2563eb">UPI ID: info.udhayaatextiles-2@okhdfcbank</div>
-                        </div>
-                    </div>
-
-                    <!-- Items Table -->
-                    <div class="table-wrap">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th style="width:28px;text-align:center">#</th>
-                                    <th>Item Description</th>
-                                    <th style="width:55px;text-align:center">HSN</th>
-                                    <th style="width:65px;text-align:center">Qty</th>
-                                    <th style="width:75px;text-align:right">Price</th>
-                                    <th style="width:85px;text-align:right">GST</th>
-                                    <th style="width:90px;text-align:right">Total</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${itemsHtml}
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <!-- Summary & Totals -->
-                    <div class="summary-grid">
-                        <div class="amount-words-box">
-                            <div style="font-size:9px;text-transform:uppercase;color:#64748b;font-weight:700;margin-bottom:2px">Amount in Words:</div>
-                            <div style="font-weight:700;color:#0f172a;font-style:italic">${amountInWords}</div>
-                            <div style="font-size:9px;color:#64748b;margin-top:6px;border-top:1px dashed #cbd5e1;padding-top:4px">
-                                Total Items: ${q.items?.length || 0} | Total Quantity: ${totalQty} pcs
-                            </div>
-                        </div>
-                        <div class="totals-card">
-                            <div class="totals-row"><span>Subtotal:</span><span style="font-weight:600">₹ ${subtotal.toFixed(2)}</span></div>
-                            <div class="totals-row"><span>CGST (2.5%):</span><span>₹ ${cgst}</span></div>
-                            <div class="totals-row"><span>SGST (2.5%):</span><span>₹ ${sgst}</span></div>
-                            <div class="totals-row grand"><span>Grand Total:</span><span>₹ ${grandTotal.toFixed(2)}</span></div>
-                        </div>
-                    </div>
+            <div class="print-toolbar no-print">
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <span style="font-weight:700;font-size:13px;letter-spacing:0.3px;">Garment OS Quotation Preview</span>
+                    <span style="background:#334155;color:#94a3b8;font-size:11px;padding:2px 6px;border-radius:4px;font-family:monospace;">${q.id}</span>
                 </div>
+                <div style="display:flex;gap:8px;">
+                    <button type="button" onclick="window.print()" class="toolbar-btn btn-primary">
+                        🖨️ Print / Save PDF
+                    </button>
+                    <button type="button" onclick="window.close()" class="toolbar-btn btn-secondary">
+                        ✕ Close
+                    </button>
+                </div>
+            </div>
 
-                <!-- Footer -->
-                <div class="footer-section">
-                    <div class="terms-box">
-                        <h4>Terms &amp; Conditions</h4>
-                        <ul>
-                            <li><strong>Advance Payment:</strong> 50% advance to confirm order.</li>
-                            <li><strong>Fabric In House:</strong> 20% on completion of dyeing stage.</li>
-                            <li><strong>On Completion:</strong> 30% balance prior to delivery/dispatch.</li>
-                            <li>Quoted rates valid for 7 days from date of document.</li>
-                        </ul>
+            <div class="page-wrapper">
+                <div class="page-container">
+                    <div>
+                        <!-- Top Header with Logo & Company GSTIN -->
+                        <div class="top-header">
+                            <div class="company-brand">
+                                <img src="${QUOTE_LOGO_DATA_URI}" alt="Logo" class="company-logo" 
+                                    onerror="this.src='/assets/logo-billing.png'; this.onerror=null;">
+                                <div>
+                                    <div class="company-title">UDHAYAA TEXTILES</div>
+                                    <div class="company-sub">Garment Manufacturing &amp; Processing Unit</div>
+                                </div>
+                            </div>
+                            <div class="company-info-text">
+                                <div style="font-weight:600;color:#0f172a">63/A Senthur Nagar, Ellapalayam Road</div>
+                                <div>Periyasemur, Erode, Tamil Nadu 638004</div>
+                                <div>Phone: <strong>+91 77083 33813</strong> · info@udhayaatextiles.com</div>
+                                <div>
+                                    <span class="gst-badge">GSTIN: 33ANGPU7147M1ZE</span>
+                                    <span class="state-badge">State: 33-Tamil Nadu</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Document Ribbon -->
+                        <div class="doc-banner">
+                            <div class="doc-type-title">PROFORMA INVOICE / ESTIMATE</div>
+                            <div class="doc-meta-item"><strong>Quote #:</strong> ${q.id}</div>
+                            <div class="doc-meta-item"><strong>Date:</strong> ${q.date || ''}</div>
+                            <div class="doc-meta-item"><strong>Validity:</strong> 7 Days</div>
+                            <div class="doc-meta-item"><strong>Place of Supply:</strong> 33-Tamil Nadu</div>
+                        </div>
+
+                        <!-- Estimate For & Bank Details Grid -->
+                        <div class="info-grid">
+                            <div class="info-card">
+                                <div class="card-label">Estimate For (Buyer / Customer)</div>
+                                <div class="card-name">${customerInfo.company ? `${customerInfo.name} <span style="font-weight:normal;color:#475569">(${customerInfo.company})</span>` : (customerInfo.name || 'Valued Customer')}</div>
+                                ${customerInfo.gst && customerInfo.gst !== 'N/A' ? `<div style="font-weight:700;color:#0f172a;margin-top:1px;">GSTIN: <span style="font-family:'JetBrains Mono',monospace;letter-spacing:0.3px;">${customerInfo.gst}</span></div>` : ''}
+                                ${customerInfo.address ? `<div style="color:#334155;margin-top:1px;">${customerInfo.address}</div>` : ''}
+                                ${customerInfo.phone ? `<div style="color:#334155;margin-top:1px;">Phone: <strong>${customerInfo.phone}</strong></div>` : ''}
+                                ${customerInfo.email ? `<div style="color:#475569;">Email: ${customerInfo.email}</div>` : ''}
+                            </div>
+                            <div class="info-card">
+                                <div class="card-label">Bank &amp; Remittance Details</div>
+                                <div style="font-weight:700;color:#0f172a;margin-bottom:1px">Indian Overseas Bank</div>
+                                <div>Branch: Erode Periasemur | A/C Name: Udhayaa Textiles</div>
+                                <div style="font-weight:700;color:#0f172a;margin-top:1px">A/C No: <span style="font-family:'JetBrains Mono',monospace">134601000036234</span></div>
+                                <div style="font-weight:700;color:#0f172a">IFSC: <span style="font-family:'JetBrains Mono',monospace">IOBA0001346</span></div>
+                                <div style="font-weight:600;color:#0071E3">UPI ID: info.udhayaatextiles-2@okhdfcbank</div>
+                            </div>
+                        </div>
+
+                        <!-- Items Table -->
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th style="width:26px;text-align:center">#</th>
+                                        <th>Item Description</th>
+                                        <th style="width:50px;text-align:center">HSN</th>
+                                        <th style="width:60px;text-align:center">Qty</th>
+                                        <th style="width:70px;text-align:right">Price</th>
+                                        <th style="width:80px;text-align:right">GST</th>
+                                        <th style="width:85px;text-align:right">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${itemsHtml}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Summary & Totals -->
+                        <div class="summary-grid">
+                            <div class="amount-words-box">
+                                <div style="font-size:8.5px;text-transform:uppercase;color:#64748b;font-weight:700;margin-bottom:2px">Amount in Words:</div>
+                                <div style="font-weight:700;color:#0f172a;font-style:italic">${amountInWords}</div>
+                                <div style="font-size:8.5px;color:#64748b;margin-top:4px;border-top:1px dashed #cbd5e1;padding-top:3px">
+                                    Total Items: ${q.items?.length || 0} | Total Quantity: ${totalQty} pcs
+                                </div>
+                            </div>
+                            <div class="totals-card">
+                                <div class="totals-row"><span>Subtotal:</span><span style="font-weight:600">₹ ${subtotal.toFixed(2)}</span></div>
+                                <div class="totals-row"><span>CGST (2.5%):</span><span>₹ ${cgst}</span></div>
+                                <div class="totals-row"><span>SGST (2.5%):</span><span>₹ ${sgst}</span></div>
+                                <div class="totals-row grand"><span>Grand Total:</span><span>₹ ${grandTotal.toFixed(2)}</span></div>
+                            </div>
+                        </div>
                     </div>
-                    <div class="sign-card">
-                        <div class="sign-line"></div>
-                        <div style="font-size:10px;font-weight:700;color:#0f172a">For UDHAYAA TEXTILES</div>
-                        <div style="font-size:8.5px;color:#64748b">Authorized Signatory</div>
+
+                    <!-- Footer -->
+                    <div class="footer-section">
+                        <div class="terms-box">
+                            <h4>Terms &amp; Conditions</h4>
+                            <ul>
+                                <li><strong>Advance Payment:</strong> 50% advance to confirm order.</li>
+                                <li><strong>Fabric In House:</strong> 20% on completion of dyeing stage.</li>
+                                <li><strong>On Completion:</strong> 30% balance prior to delivery/dispatch.</li>
+                                <li>Quoted rates valid for 7 days from date of document.</li>
+                            </ul>
+                        </div>
+                        <div class="sign-card">
+                            <div class="sign-line"></div>
+                            <div style="font-size:9.5px;font-weight:700;color:#0f172a">For UDHAYAA TEXTILES</div>
+                            <div style="font-size:8px;color:#64748b">Authorized Signatory</div>
+                        </div>
                     </div>
                 </div>
             </div>

@@ -1255,10 +1255,17 @@ function generateJobTravelerHTML(order) {
 
 function generateProformaInvoiceHTML(order) {
     const customer = api.getCustomerSync?.(order.customerId) || {};
-    const customerName = customer.name || order.customerName || order.customerId;
-    const customerCompany = customer.company || 'Buyer Organization';
-    const customerGst = customer.gstNumber || customer.taxId || '33AAAAA0000A1Z5';
-    const customerAddress = customer.shippingAddress || customer.address || 'Tamil Nadu, India';
+    const customerName = customer.name || order.customerName || order.customerId || 'Valued Customer';
+    const customerCompany = customer.company || '';
+    const customerGst = customer.gst || customer.gstin || customer.gstNumber || customer.taxId || 'URP (Unregistered)';
+    const addressParts = [
+        customer.addressLine1 || customer.address || customer.street,
+        customer.addressLine2,
+        customer.city,
+        (customer.state || customer.pincode) ? `${customer.state || ''} ${customer.pincode ? '- ' + customer.pincode : ''}`.trim() : ''
+    ].filter(Boolean);
+    const customerAddress = addressParts.join(', ') || 'Tamil Nadu, India';
+    const customerPhone = customer.phone || customer.mobile || customer.whatsapp || '';
 
     const orderValue = order.value || 0;
     const unitPrice = order.qty > 0 ? (orderValue / order.qty) : 0;
