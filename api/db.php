@@ -5,9 +5,9 @@
  */
 
 class Database {
-    private static ?PDO $pdo = null;
+    private static $pdo = null;
 
-    public static function getConnection(): PDO {
+    public static function getConnection() {
         if (self::$pdo !== null) {
             return self::$pdo;
         }
@@ -42,7 +42,7 @@ class Database {
         return self::$pdo;
     }
 
-    public static function setConnection(PDO $pdo): void {
+    public static function setConnection($pdo) {
         self::$pdo = $pdo;
     }
 
