@@ -401,17 +401,23 @@ function ensureAllTablesExist($pdo) {
             `createdAt` DATETIME DEFAULT CURRENT_TIMESTAMP
         )");
 
-        // Auto-migrate any missing columns on billing_items
-        $biCols = $pdo->query("SHOW COLUMNS FROM `billing_items`")->fetchAll(PDO::FETCH_COLUMN);
-        $biNeeded = [
-            'hsn_code'   => "VARCHAR(30) DEFAULT '6109'",
-            'sort_order' => "INT DEFAULT 0"
-        ];
-        foreach ($biNeeded as $col => $def) {
-            if (!in_array($col, $biCols, true)) {
-                $pdo->exec("ALTER TABLE `billing_items` ADD COLUMN `{$col}` {$def}");
-            }
-        }
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `sessions` (
+            `token` VARCHAR(191) PRIMARY KEY,
+            `userId` VARCHAR(191) NOT NULL,
+            `expiresAt` BIGINT NOT NULL,
+            `createdAt` DATETIME DEFAULT CURRENT_TIMESTAMP
+        )");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `users` (
+            `_rowid` INT AUTO_INCREMENT PRIMARY KEY,
+            `id` VARCHAR(191) UNIQUE NOT NULL,
+            `username` VARCHAR(100) UNIQUE NOT NULL,
+            `password_hash` VARCHAR(255) NOT NULL,
+            `name` VARCHAR(255) DEFAULT '',
+            `role` VARCHAR(50) DEFAULT 'User',
+            `isActive` INT DEFAULT 1,
+            `createdAt` DATETIME DEFAULT CURRENT_TIMESTAMP
+        )");
     } catch (Exception $e) { /* ignore */ }
 }
 
