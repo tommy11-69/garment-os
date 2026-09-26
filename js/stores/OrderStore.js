@@ -85,6 +85,59 @@ class OrderStore extends BaseStore {
         if (payload.phases && Array.isArray(payload.phases)) {
             payload.phases = JSON.stringify(payload.phases);
         }
+
+        // Dual-write to V2 Normalized Relational Endpoint for complete schema synchronization
+        try {
+            const v2Payload = {
+                id: payload.id,
+                orderNumber: payload.id || payload.orderNumber,
+                customerId: payload.customerId || 'c_default',
+                customerName: payload.customerName || 'Customer',
+                orderDate: payload.orderDate || new Date().toISOString().split('T')[0],
+                deliveryDate: payload.deliveryDate || payload.targetDeliveryDate || new Date(Date.now() + 30*86400000).toISOString().split('T')[0],
+                priority: payload.priority || 'Medium',
+                season: payload.season || '',
+                notes: payload.notes || '',
+                commercials: {
+                    currency: payload.currency || 'USD',
+                    unitPrice: parseFloat(payload.unitPrice || 0),
+                    discountAmount: parseFloat(payload.discount || 0),
+                    taxPercent: parseFloat(payload.tax || 0),
+                    paymentTerms: payload.paymentTerms || 'Net 30'
+                },
+                items: Array.isArray(payload.products) && payload.products.length > 0 ? payload.products.map(p => ({
+                    styleCode: p.name || p.style || 'STYLE-01',
+                    styleName: p.name || 'Apparel Item',
+                    workflowPresetId: p.workflowType || payload.workflowType || 'wp_standard_cmt',
+                    fabricComposition: p.fabric?.type || payload.fabric || 'Cotton Jersey',
+                    targetGsm: parseInt(p.fabric?.gsm || 180),
+                    fabricDia: p.fabric?.dia || 'Open Width',
+                    totalQuantity: parseInt(p.qty || payload.qty || 0),
+                    variants: [{
+                        colorName: p.color || 'Standard Color',
+                        colorCode: '#000000',
+                        sizes: Object.entries(p.sizes || {}).map(([sizeCode, qty]) => ({
+                            sizeCode,
+                            orderedQuantity: parseInt(qty) || 0
+                        }))
+                    }]
+                })) : [{
+                    styleCode: payload.styleName || payload.product || 'STYLE-01',
+                    styleName: payload.styleName || payload.product || 'Apparel Item',
+                    workflowPresetId: payload.workflowType || 'wp_standard_cmt',
+                    fabricComposition: payload.fabric || 'Cotton Jersey',
+                    targetGsm: 180,
+                    fabricDia: 'Open Width',
+                    totalQuantity: parseInt(payload.qty || 0),
+                    variants: []
+                }]
+            };
+
+            await db.createOrderV2(v2Payload);
+        } catch (v2Err) {
+            console.warn("V2 normalized creation sync note:", v2Err.message || v2Err);
+        }
+
         const newOrder = await orderRepository.create(payload);
         await this.loadOrders();
         return newOrder;

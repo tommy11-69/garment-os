@@ -450,6 +450,15 @@ export const api = {
             case "Cutting": generateTask("Approve Cut Plan", "Floor Spv"); break;
             case "Stitching": generateTask("First Piece Approval (FPA)", "QC Team"); break;
         }
+
+        // Auto-sync confirmation to V2 Relational Engine
+        if (['Approved', 'Material Reserved', 'Production Assigned', 'Cutting', 'Stitching', 'Dispatched'].includes(newStatus)) {
+            try {
+                await db.confirmOrderV2(orderId);
+            } catch (v2Err) {
+                console.warn("V2 confirmOrder sync note:", v2Err.message || v2Err);
+            }
+        }
         
         return await db.update('orders', orderId, { status: newStatus, timeline: order.timeline, tasks: order.tasks });
     },
@@ -530,11 +539,50 @@ export const api = {
             user: 'Finance',
             type: 'action'
         });
+
+        // Dual-post to V2 Double-Entry General Ledger
+        try {
+            await db.logPaymentV2({
+                orderId: orderId,
+                amountPaid: amount,
+                paymentMethod: 'Bank Wire'
+            });
+        } catch (glErr) {
+            console.warn("V2 General Ledger payment sync note:", glErr.message || glErr);
+        }
+
         return await db.update('orders', orderId, { 
             paymentReceived: order.paymentReceived, 
             paymentStatus: order.paymentStatus,
             timeline: order.timeline
         });
+    },
+
+    async confirmOrder(orderId) {
+        try {
+            await db.confirmOrderV2(orderId);
+        } catch (e) {
+            console.warn("V2 confirmOrder sync note:", e.message || e);
+        }
+        return await this.updateOrderStatus(orderId, 'Approved');
+    },
+
+    async recordStageOutput(stageExecutionId, payload) {
+        try {
+            return await db.recordStageOutputV2(stageExecutionId, payload);
+        } catch (e) {
+            console.warn("V2 recordStageOutput sync note:", e.message || e);
+            return { success: false, error: e.message };
+        }
+    },
+
+    async createShipment(payload) {
+        try {
+            return await db.createShipmentV2(payload);
+        } catch (e) {
+            console.warn("V2 createShipment sync note:", e.message || e);
+            return { success: false, error: e.message };
+        }
     },
 
     async addOrderExpense(orderId, expense) {

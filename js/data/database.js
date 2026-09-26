@@ -98,6 +98,49 @@ class Database {
 
         return this._fetchAPI(`/${collectionName}?${queryParams.toString()}`);
     }
+
+    // ── V2 Normalized Domain Methods ─────────────────────────────────
+    async createOrderV2(orderPayload) {
+        return this._fetchAPI('/v2/orders', {
+            method: 'POST',
+            body: JSON.stringify(orderPayload)
+        });
+    }
+
+    async confirmOrderV2(orderId) {
+        return this._fetchAPI(`/v2/orders/${orderId}/confirm`, {
+            method: 'POST'
+        });
+    }
+
+    async getOrderV2(orderId) {
+        return this._fetchAPI(`/v2/orders/${orderId}`);
+    }
+
+    async getWorkflowPresetsV2() {
+        return this._fetchAPI('/v2/workflows/presets');
+    }
+
+    async recordStageOutputV2(stageExecutionId, outputPayload) {
+        return this._fetchAPI(`/v2/stage-executions/${stageExecutionId}/output`, {
+            method: 'POST',
+            body: JSON.stringify(outputPayload)
+        });
+    }
+
+    async createShipmentV2(shipmentPayload) {
+        return this._fetchAPI('/v2/shipments', {
+            method: 'POST',
+            body: JSON.stringify(shipmentPayload)
+        });
+    }
+
+    async logPaymentV2(paymentPayload) {
+        return this._fetchAPI('/v2/payments', {
+            method: 'POST',
+            body: JSON.stringify(paymentPayload)
+        });
+    }
 }
 
 export const db = new Database();

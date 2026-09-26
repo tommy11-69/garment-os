@@ -552,6 +552,143 @@ if (!file_exists($migrationMarker)) {
 
 try {
 
+// ── V2 Normalized Domain Endpoints ─────────────────────────────────
+if (isset($segments[0]) && $segments[0] === 'v2') {
+    require_once __DIR__ . '/db.php';
+    require_once __DIR__ . '/services/WorkflowService.php';
+    require_once __DIR__ . '/services/OrderService.php';
+    require_once __DIR__ . '/services/ProductionService.php';
+    require_once __DIR__ . '/services/InventoryService.php';
+    require_once __DIR__ . '/services/DispatchService.php';
+    require_once __DIR__ . '/services/FinanceService.php';
+
+    $resource = $segments[1] ?? '';
+    $id = $segments[2] ?? '';
+    $action = $segments[3] ?? '';
+
+    // Workflows
+    if ($resource === 'workflows') {
+        if ($id === 'presets' || $id === '') {
+            jsonResponse(['success' => true, 'presets' => WorkflowService::getAllPresets()]);
+        }
+        $preset = WorkflowService::getPresetById($id);
+        if (!$preset) jsonResponse(['error' => 'Preset not found'], 404);
+        jsonResponse(['success' => true, 'preset' => $preset]);
+    }
+
+    // Orders
+    if ($resource === 'orders') {
+        if ($method === 'POST' && $action === 'confirm' && $id !== '') {
+            try {
+                $res = OrderService::confirmOrder($id);
+                jsonResponse($res);
+            } catch (Exception $e) {
+                jsonResponse(['error' => $e->getMessage()], 400);
+            }
+        }
+        if ($method === 'POST') {
+            try {
+                $res = OrderService::createOrder($body);
+                jsonResponse($res, 201);
+            } catch (Exception $e) {
+                jsonResponse(['error' => $e->getMessage()], 400);
+            }
+        }
+        if ($method === 'GET' && $id !== '') {
+            $order = OrderService::getOrderDetails($id);
+            if (!$order) jsonResponse(['error' => 'Order not found'], 404);
+            jsonResponse(['success' => true, 'order' => $order]);
+        }
+    }
+
+    // Work Orders
+    if ($resource === 'work-orders') {
+        if ($method === 'GET' && $id !== '') {
+            $wo = Database::queryOne("SELECT * FROM work_orders WHERE id = ? OR work_order_number = ?", [$id, $id]);
+            if (!$wo) jsonResponse(['error' => 'Work order not found'], 404);
+            $wo['stages'] = Database::query("SELECT * FROM stage_executions WHERE work_order_id = ? ORDER BY sequence_order ASC", [$wo['id']]);
+            $wo['bundles'] = Database::query("SELECT * FROM production_bundles WHERE work_order_id = ?", [$wo['id']]);
+            jsonResponse(['success' => true, 'workOrder' => $wo]);
+        }
+    }
+
+    // Stage Executions
+    if ($resource === 'stage-executions') {
+        if ($method === 'POST' && $action === 'output') {
+            try {
+                $res = ProductionService::recordStageOutput(
+                    $id,
+                    $body['entryType'] ?? 'OUTPUT_GOOD',
+                    (float)($body['quantity'] ?? 0),
+                    $body['unit'] ?? 'Pcs',
+                    $body
+                );
+                jsonResponse($res);
+            } catch (Exception $e) {
+                jsonResponse(['error' => $e->getMessage()], 400);
+            }
+        }
+        if ($method === 'POST' && $action === 'qc') {
+            try {
+                $res = ProductionService::logStageQC($id, $body);
+                jsonResponse($res);
+            } catch (Exception $e) {
+                jsonResponse(['error' => $e->getMessage()], 400);
+            }
+        }
+    }
+
+    // Inventory
+    if ($resource === 'inventory') {
+        if ($method === 'POST' && $id === 'issues') {
+            try {
+                $res = InventoryService::issueMaterial(
+                    $body['reservationId'],
+                    (float)$body['quantity'],
+                    $body['issuedBy'] ?? 'STORE_CLERK',
+                    $body['receivedBy'] ?? 'CUTTING_MASTER'
+                );
+                jsonResponse($res, 201);
+            } catch (Exception $e) {
+                jsonResponse(['error' => $e->getMessage()], 400);
+            }
+        }
+    }
+
+    // Shipments
+    if ($resource === 'shipments') {
+        if ($method === 'POST') {
+            try {
+                $res = DispatchService::createShipment(
+                    $body['orderId'],
+                    $body['transporterName'] ?? 'Standard Transport',
+                    $body['cartonIds'] ?? [],
+                    $body
+                );
+                jsonResponse($res, 201);
+            } catch (Exception $e) {
+                jsonResponse(['error' => $e->getMessage()], 400);
+            }
+        }
+    }
+
+    // Payments
+    if ($resource === 'payments') {
+        if ($method === 'POST') {
+            try {
+                $res = FinanceService::logPayment(
+                    $body['orderId'],
+                    (float)$body['amountPaid'],
+                    $body['paymentMethod'] ?? 'Bank Wire'
+                );
+                jsonResponse($res);
+            } catch (Exception $e) {
+                jsonResponse(['error' => $e->getMessage()], 400);
+            }
+        }
+    }
+}
+
 // ── Route: /api/telemetry/dashboard ─────────────────────────────────
 if ($relPath === 'telemetry/dashboard' || $relPath === 'telemetry') {
     $statusCounts = [

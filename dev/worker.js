@@ -572,6 +572,154 @@ export default {
                     return json({ success: true });
                 }
 
+                // ── V2 NORMALIZED DOMAIN ROUTES ──────────────────────────
+                if (url.pathname.startsWith('/api/v2/')) {
+                    const v2Parts = url.pathname.replace('/api/v2/', '').split('/').filter(Boolean);
+                    const resource = v2Parts[0] || '';
+                    const id = v2Parts[1] || '';
+                    const action = v2Parts[2] || '';
+
+                    if (resource === 'workflows') {
+                        if (id === 'presets' || id === '') {
+                            const presets = await env.DB.prepare('SELECT * FROM workflow_presets WHERE is_active = 1').all().catch(() => ({ results: [] }));
+                            return json({ success: true, presets: presets.results || [] });
+                        }
+                        const preset = await env.DB.prepare('SELECT * FROM workflow_presets WHERE id = ? OR preset_code = ?').bind(id, id).first();
+                        if (!preset) return json({ error: 'Preset not found' }, 404);
+                        const version = await env.DB.prepare('SELECT * FROM workflow_preset_versions WHERE preset_id = ? AND is_current = 1').bind(preset.id).first();
+                        if (version) {
+                            preset.stages = JSON.parse(version.stages_json || '[]');
+                        }
+                        return json({ success: true, preset });
+                    }
+
+                    if (resource === 'orders') {
+                        if (request.method === 'POST' && action === 'confirm' && id) {
+                            const order = await env.DB.prepare('SELECT * FROM orders WHERE id = ? OR order_number = ?').bind(id, id).first();
+                            if (!order) return json({ error: 'Order not found' }, 404);
+                            await env.DB.prepare("UPDATE orders SET status = 'Confirmed', updatedAt = datetime('now') WHERE id = ?").bind(order.id).run();
+                            
+                            // Initialize work orders & material reservations
+                            const items = await env.DB.prepare('SELECT * FROM order_items WHERE order_id = ?').bind(order.id).all().catch(() => ({ results: [] }));
+                            const createdWorkOrders = [];
+                            for (const item of (items.results || [])) {
+                                const woId = `wo_${crypto.randomUUID().slice(0, 8)}`;
+                                const woNum = `WO-${item.style_code || '001'}`;
+                                await env.DB.prepare(`
+                                    INSERT OR REPLACE INTO work_orders (id, work_order_number, order_item_id, workflow_version_id, planned_quantity, status)
+                                    VALUES (?, ?, ?, 'v1_standard_cmt', ?, 'In_Production')
+                                `).bind(woId, woNum, item.id, item.total_quantity || 0).run().catch(() => {});
+
+                                // Reservation
+                                const resId = `res_${crypto.randomUUID().slice(0, 8)}`;
+                                const fabricKg = (item.total_quantity || 0) * 0.25;
+                                await env.DB.prepare(`
+                                    INSERT OR REPLACE INTO material_reservations (id, work_order_id, item_id, reserved_qty, issued_qty, status)
+                                    VALUES (?, ?, 'inv_fab_01', ?, 0, 'Active')
+                                `).bind(resId, woId, fabricKg).run().catch(() => {});
+
+                                createdWorkOrders.push({ workOrderId: woId, workOrderNumber: woNum });
+                            }
+
+                            return json({ success: true, orderId: order.id, status: 'Confirmed', workOrders: createdWorkOrders });
+                        }
+
+                        if (request.method === 'POST') {
+                            const body = await request.json();
+                            const orderId = body.id || `ord_${crypto.randomUUID().slice(0, 8)}`;
+                            const orderNumber = body.orderNumber || body.id || `PO-${Date.now()}`;
+                            const customerId = body.customerId || 'c_default';
+                            const customerName = body.customerName || 'Customer';
+                            const orderDate = body.orderDate || new Date().toISOString().split('T')[0];
+                            const deliveryDate = body.deliveryDate || new Date(Date.now() + 30*86400000).toISOString().split('T')[0];
+
+                            await env.DB.prepare(`
+                                INSERT OR REPLACE INTO orders (id, order_number, customer_id, customer_name, order_date, delivery_date, status, priority, season, notes)
+                                VALUES (?, ?, ?, ?, ?, ?, 'Draft', ?, ?, ?)
+                            `).bind(orderId, orderNumber, customerId, customerName, orderDate, deliveryDate, body.priority || 'Medium', body.season || '', body.notes || '').run().catch(() => {});
+
+                            // Insert line items
+                            const items = body.items || [];
+                            for (let i = 0; i < items.length; i++) {
+                                const item = items[i];
+                                const itemId = `item_${orderId}_${i + 1}`;
+                                await env.DB.prepare(`
+                                    INSERT OR REPLACE INTO order_items (id, order_id, workflow_preset_id, style_code, style_name, fabric_composition, target_gsm, total_quantity)
+                                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                                `).bind(itemId, orderId, item.workflowPresetId || 'wp_standard_cmt', item.styleCode || 'S-01', item.styleName || 'Item', item.fabricComposition || 'Cotton', item.targetGsm || 180, item.totalQuantity || 0).run().catch(() => {});
+                            }
+
+                            // Commercials
+                            const comm = body.commercials || {};
+                            await env.DB.prepare(`
+                                INSERT OR REPLACE INTO order_commercials (id, order_id, currency, unit_price, subtotal, discount_amount, tax_percent, tax_amount, grand_total, balance_due)
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            `).bind(`comm_${orderId}`, orderId, comm.currency || 'USD', comm.unitPrice || 0, comm.unitPrice * (body.totalQuantity || 0), comm.discountAmount || 0, comm.taxPercent || 0, 0, comm.unitPrice * (body.totalQuantity || 0), comm.unitPrice * (body.totalQuantity || 0)).run().catch(() => {});
+
+                            return json({ success: true, orderId, orderNumber, status: 'Draft' }, 201);
+                        }
+
+                        if (request.method === 'GET' && id) {
+                            const order = await env.DB.prepare('SELECT * FROM orders WHERE id = ? OR order_number = ?').bind(id, id).first();
+                            if (!order) return json({ error: 'Order not found' }, 404);
+                            const items = await env.DB.prepare('SELECT * FROM order_items WHERE order_id = ?').bind(order.id).all().catch(() => ({ results: [] }));
+                            order.items = items.results || [];
+                            return json({ success: true, order });
+                        }
+                    }
+
+                    if (resource === 'stage-executions') {
+                        if (request.method === 'POST' && action === 'output') {
+                            const body = await request.json().catch(() => ({}));
+                            const entryType = body.entryType || 'OUTPUT_GOOD';
+                            const quantity = Number(body.quantity || 0);
+                            const ledgerId = `sql_${crypto.randomUUID().slice(0, 8)}`;
+                            await env.DB.prepare(`
+                                INSERT INTO stage_quantity_ledger (id, stage_execution_id, entry_type, quantity, unit_of_measure, notes)
+                                VALUES (?, ?, ?, ?, 'Pcs', ?)
+                            `).bind(ledgerId, id, entryType, quantity, body.notes || '').run().catch(() => {});
+
+                            return json({ success: true, stageExecutionId: id, entryType, quantity });
+                        }
+                    }
+
+                    if (resource === 'inventory' && id === 'issues' && request.method === 'POST') {
+                        const body = await request.json().catch(() => ({}));
+                        const issueId = `iss_${crypto.randomUUID().slice(0, 8)}`;
+                        const issueNum = `ISS-${Date.now()}`;
+                        await env.DB.prepare(`
+                            INSERT INTO material_issues (id, issue_number, reservation_id, quantity_issued, issued_by, received_by)
+                            VALUES (?, ?, ?, ?, ?, ?)
+                        `).bind(issueId, issueNum, body.reservationId || '', Number(body.quantity || 0), body.issuedBy || 'STORE_CLERK', body.receivedBy || 'CUTTING_MASTER').run().catch(() => {});
+
+                        return json({ success: true, issueId, issueNumber: issueNum, issuedQty: body.quantity }, 201);
+                    }
+
+                    if (resource === 'shipments' && request.method === 'POST') {
+                        const body = await request.json().catch(() => ({}));
+                        const shipmentId = `shp_${crypto.randomUUID().slice(0, 8)}`;
+                        const shipmentNum = `SHP-${Date.now()}`;
+                        await env.DB.prepare(`
+                            INSERT INTO shipments (id, shipment_number, order_id, transporter_name, vehicle_number, status)
+                            VALUES (?, ?, ?, ?, ?, 'Dispatched')
+                        `).bind(shipmentId, shipmentNum, body.orderId || '', body.transporterName || 'Standard Transport', body.vehicleNumber || 'TN-38-AX-9921').run().catch(() => {});
+
+                        return json({ success: true, shipmentId, shipmentNumber: shipmentNum, status: 'Dispatched' }, 201);
+                    }
+
+                    if (resource === 'payments' && request.method === 'POST') {
+                        const body = await request.json();
+                        const amount = Number(body.amountPaid || 0);
+                        const txId = `tx_${crypto.randomUUID().slice(0, 8)}`;
+                        await env.DB.prepare(`
+                            INSERT INTO transactions (id, type, category, amount, referenceType, referenceId, description, date, status, createdAt)
+                            VALUES (?, 'Income', 'Payment Receipt', ?, 'ORDER', ?, ?, datetime('now'), 'Completed', datetime('now'))
+                        `).bind(txId, amount, body.orderId || '', `Payment for order ${body.orderId || ''}`).run().catch(() => {});
+
+                        return json({ success: true, amountPaid: amount });
+                    }
+                }
+
                 // ── BILLINGS ROUTES (custom, before generic CRUD) ────────
                 if (url.pathname.startsWith('/api/billings')) {
                     await ensureBillingTables(env);

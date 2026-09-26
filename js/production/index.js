@@ -710,6 +710,21 @@ class ProductionApp {
 
             await api.updateOrder(this.activeOrder.id, payload);
 
+            // Dual-post output to V2 Relational Continuous-Flow Quantity Ledger
+            const outputQty = Number(extractedData.actualCutPieces || extractedData.completedPieces || extractedData.packedPieces || extractedData.outputQty || extractedData.goodQty || 0);
+            if (outputQty > 0) {
+                try {
+                    await api.recordStageOutput(`${this.activeOrder.id}:${currentStageKey}`, {
+                        entryType: 'OUTPUT_GOOD',
+                        quantity: outputQty,
+                        unit: 'Pcs',
+                        notes: `Logged via ${STAGE_DEFINITIONS[currentStageKey]?.label || currentStageKey} workspace`
+                    });
+                } catch (v2Err) {
+                    console.warn('[ProductionApp] V2 stage output sync note:', v2Err.message || v2Err);
+                }
+            }
+
             // Update in local cache
             const idx = this.orders.findIndex(o => String(o.id) === String(this.activeOrder.id));
             if (idx !== -1) {
