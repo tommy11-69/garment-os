@@ -4,6 +4,7 @@
  * Supports MySQL, MariaDB, and SQLite (local/testing) with strict ACID transactions.
  */
 
+if (!class_exists('Database')) {
 class Database {
     private static $pdo = null;
 
@@ -48,6 +49,7 @@ class Database {
 
     public static function transaction(callable $callback) {
         $db = self::getConnection();
+        if (!$db) return $callback(null);
         $db->beginTransaction();
         try {
             $result = $callback($db);
@@ -62,20 +64,26 @@ class Database {
     }
 
     public static function query(string $sql, array $params = []): array {
-        $stmt = self::getConnection()->prepare($sql);
+        $db = self::getConnection();
+        if (!$db) return [];
+        $stmt = $db->prepare($sql);
         $stmt->execute($params);
         return $stmt->fetchAll();
     }
 
     public static function queryOne(string $sql, array $params = []): ?array {
-        $stmt = self::getConnection()->prepare($sql);
+        $db = self::getConnection();
+        if (!$db) return null;
+        $stmt = $db->prepare($sql);
         $stmt->execute($params);
         $res = $stmt->fetch();
         return $res ?: null;
     }
 
     public static function execute(string $sql, array $params = []): int {
-        $stmt = self::getConnection()->prepare($sql);
+        $db = self::getConnection();
+        if (!$db) return 0;
+        $stmt = $db->prepare($sql);
         $stmt->execute($params);
         return $stmt->rowCount();
     }
@@ -91,4 +99,5 @@ class Database {
         );
         return $prefix ? $prefix . '_' . substr($uuid, 0, 8) : $uuid;
     }
+}
 }

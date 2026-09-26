@@ -69,6 +69,80 @@ function getOrCreatePDO($config) {
 
 $pdo = getOrCreatePDO($dbConfig);
 
+if (!class_exists('Database')) {
+    class Database {
+        private static $pdo = null;
+
+        public static function getConnection() {
+            global $pdo;
+            if (self::$pdo !== null) return self::$pdo;
+            if ($pdo !== null) { self::$pdo = $pdo; return self::$pdo; }
+            return null;
+        }
+
+        public static function setConnection($pdo) {
+            self::$pdo = $pdo;
+        }
+
+        public static function transaction(callable $callback) {
+            $db = self::getConnection();
+            if (!$db) return $callback(null);
+            $db->beginTransaction();
+            try {
+                $result = $callback($db);
+                $db->commit();
+                return $result;
+            } catch (Throwable $e) {
+                if ($db->inTransaction()) {
+                    $db->rollBack();
+                }
+                throw $e;
+            }
+        }
+
+        public static function query(string $sql, array $params = []): array {
+            $db = self::getConnection();
+            if (!$db) return [];
+            $stmt = $db->prepare($sql);
+            $stmt->execute($params);
+            return $stmt->fetchAll();
+        }
+
+        public static function queryOne(string $sql, array $params = []): ?array {
+            $db = self::getConnection();
+            if (!$db) return null;
+            $stmt = $db->prepare($sql);
+            $stmt->execute($params);
+            $res = $stmt->fetch();
+            return $res ?: null;
+        }
+
+        public static function execute(string $sql, array $params = []): int {
+            $db = self::getConnection();
+            if (!$db) return 0;
+            $stmt = $db->prepare($sql);
+            $stmt->execute($params);
+            return $stmt->rowCount();
+        }
+
+        public static function generateUuid(string $prefix = ''): string {
+            $uuid = sprintf(
+                '%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
+                mt_rand(0, 0xffff), mt_rand(0, 0xffff),
+                mt_rand(0, 0xffff),
+                mt_rand(0, 0x0fff) | 0x4000,
+                mt_rand(0, 0x3fff) | 0x8000,
+                mt_rand(0, 0xffff), mt_rand(0, 0xffff), mt_rand(0, 0xffff)
+            );
+            return $prefix ? $prefix . '_' . substr($uuid, 0, 8) : $uuid;
+        }
+    }
+}
+
+if ($pdo) {
+    Database::setConnection($pdo);
+}
+
 // ── Helpers ──────────────────────────────────────────────────────────
 const ALLOWED_TABLES = [
     'customers', 'orders', 'inventory', 'batches',
