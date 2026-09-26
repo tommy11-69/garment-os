@@ -426,7 +426,7 @@ ensureAllTablesExist($pdo);
 
 if (!file_exists($migrationMarker)) {
     try {
-        ensureBillingTablesExist($pdo);
+        ensureAllTablesExist($pdo);
         $colInfo = $pdo->query("SHOW COLUMNS FROM `sessions` LIKE 'expiresAt'")->fetch();
         if ($colInfo && strpos(strtolower($colInfo['Type']), 'bigint') === false) {
             $pdo->exec("ALTER TABLE `sessions` MODIFY `expiresAt` BIGINT NOT NULL");
@@ -968,7 +968,7 @@ if ($relPath === 'auth/login') {
         // Connect to Demo DB and store session there
         try {
             $demoPdo = connectDatabase($dbConfig, true);
-            ensureBillingTablesExist($demoPdo);
+            ensureAllTablesExist($demoPdo);
             // Ensure sessions table exists in demo db
             $demoPdo->exec("CREATE TABLE IF NOT EXISTS `sessions` (`token` VARCHAR(191) PRIMARY KEY, `userId` VARCHAR(191) NOT NULL, `expiresAt` BIGINT NOT NULL, `createdAt` DATETIME DEFAULT CURRENT_TIMESTAMP)");
             $stmt = $demoPdo->prepare('INSERT INTO sessions (`token`, `userId`, `expiresAt`) VALUES (?, ?, ?)');
