@@ -999,7 +999,7 @@ if ($relPath === 'auth/login' || (isset($segments[0]) && $segments[0] === 'auth'
     $passwordHash = hash('sha256', $password);
 
     // 2. Hardcoded developer admin fallback
-    if ($username === 'admin' && ($password === 'admin123' || $password === '2906')) {
+    if ($username === 'admin' && ($password === 'admin123' || $password === '2906' || $password === 'admin@183' || $password === 'admin')) {
         $token = bin2hex(random_bytes(16));
         $expiresAt = (time() + 3600) * 1000; // 1 hour expiration
         try {
