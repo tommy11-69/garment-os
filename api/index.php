@@ -1842,15 +1842,6 @@ if ($segments[0] === 'billings') {
 
     jsonResponse(['error' => 'Invalid billing endpoint'], 404);
 }
-            jsonResponse(['success' => true, 'message' => 'Document permanently deleted']);
-        }
-
-        $pdo->prepare("UPDATE `billing_master` SET `status` = 'Void', `updatedAt` = NOW() WHERE `id` = ?")->execute([$billingId]);
-        jsonResponse(['success' => true, 'message' => 'Document voided']);
-    }
-
-    jsonResponse(['error' => 'Invalid billing endpoint'], 404);
-}
 
 // ── REST Collections ─────────────────────────────────────────────────
 $table = $segments[0] ?? '';
