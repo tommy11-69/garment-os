@@ -102,7 +102,7 @@ export function renderInvoicePageMarkup(doc = {}, contactInfo = {}, company = DE
                         ${COMPANY_LOGO_HTML}
                         <div>
                             <div class="invoice-company-name">
-                                <span style="color:#0071E3;">Udhayaa </span><span style="color:#FF6B00;">Textiles</span>
+                                <span style="color:#00000;">Udhayaa </span><span style="color:#FF6B00;">Textiles</span>
                             </div>
                             <div class="invoice-company-tagline">${company.tagline}</div>
                         </div>
