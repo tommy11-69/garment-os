@@ -483,6 +483,16 @@ function ensureAllTablesExist($pdo) {
             `createdAt` DATETIME DEFAULT CURRENT_TIMESTAMP
         )");
 
+        try {
+            $biCols = array_column($pdo->query("SHOW COLUMNS FROM `billing_items`")->fetchAll(), 'Field');
+            if (!in_array('sort_order', $biCols, true)) {
+                $pdo->exec("ALTER TABLE `billing_items` ADD COLUMN `sort_order` INT DEFAULT 0");
+            }
+            if (!in_array('hsn_code', $biCols, true)) {
+                $pdo->exec("ALTER TABLE `billing_items` ADD COLUMN `hsn_code` VARCHAR(30) DEFAULT '6109'");
+            }
+        } catch (Exception $e) {}
+
         $pdo->exec("CREATE TABLE IF NOT EXISTS `sessions` (
             `token` VARCHAR(191) PRIMARY KEY,
             `userId` VARCHAR(191) NOT NULL,
@@ -1590,9 +1600,15 @@ function getBillingWithItems($pdo, $billingId) {
         $master[$f] = (float)($master[$f] ?? 0);
     }
 
-    $iStmt = $pdo->prepare("SELECT * FROM `billing_items` WHERE `billing_master_id` = ? ORDER BY sort_order ASC, createdAt ASC");
-    $iStmt->execute([$billingId]);
-    $items = $iStmt->fetchAll();
+    try {
+        $iStmt = $pdo->prepare("SELECT * FROM `billing_items` WHERE `billing_master_id` = ? ORDER BY sort_order ASC, createdAt ASC");
+        $iStmt->execute([$billingId]);
+        $items = $iStmt->fetchAll();
+    } catch (PDOException $e) {
+        $iStmt = $pdo->prepare("SELECT * FROM `billing_items` WHERE `billing_master_id` = ? ORDER BY createdAt ASC");
+        $iStmt->execute([$billingId]);
+        $items = $iStmt->fetchAll();
+    }
     foreach ($items as &$item) {
         foreach (['quantity','unit_price','discount_pct','tax_pct','tax_amount','row_total'] as $f) {
             $item[$f] = (float)($item[$f] ?? 0);
