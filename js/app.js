@@ -1,30 +1,10 @@
-// Core App logic
-
 /**
- * Theme Engine — Instant init, OS listener & manual override
+ * Theme Engine — Instant init, OS listener, UI icon sync & manual override
  */
-function initTheme() {
-    const theme = localStorage.getItem('theme');
-    const isDark = theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    if (isDark) {
-        document.documentElement.classList.add('dark');
-    } else {
-        document.documentElement.classList.remove('dark');
-    }
-    updateThemeToggleUI(isDark);
-}
-
-function toggleTheme() {
-    const isDark = document.documentElement.classList.toggle('dark');
-    localStorage.setItem('theme', isDark ? 'dark' : 'light');
-    updateThemeToggleUI(isDark);
-    window.dispatchEvent(new CustomEvent('gos-theme-changed', { detail: { isDark } }));
-}
-
 function updateThemeToggleUI(isDark) {
-    const toggleBtns = document.querySelectorAll('.theme-toggle-btn');
+    const toggleBtns = document.querySelectorAll('.theme-toggle-btn, [id*="theme-toggle"], [onclick*="toggleTheme"]');
     toggleBtns.forEach(btn => {
-        const icon = btn.querySelector('.material-symbols-outlined') || btn.querySelector('.theme-icon');
+        const icon = btn.querySelector('.material-symbols-outlined') || btn.querySelector('.theme-icon') || btn.querySelector('span');
         const label = btn.querySelector('.theme-label');
         if (icon) {
             icon.textContent = isDark ? 'light_mode' : 'dark_mode';
@@ -37,19 +17,33 @@ function updateThemeToggleUI(isDark) {
     });
 }
 
-// OS theme change listener
-if (window.matchMedia) {
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-        if (!localStorage.getItem('theme')) {
-            if (e.matches) {
-                document.documentElement.classList.add('dark');
-            } else {
-                document.documentElement.classList.remove('dark');
-            }
-            updateThemeToggleUI(e.matches);
-            window.dispatchEvent(new CustomEvent('gos-theme-changed', { detail: { isDark: e.matches } }));
-        }
-    });
+function initTheme() {
+    const savedTheme = localStorage.getItem('theme');
+    const isDark = savedTheme === 'dark' || (!savedTheme && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    if (isDark) {
+        document.documentElement.classList.add('dark');
+        document.documentElement.classList.remove('light');
+    } else {
+        document.documentElement.classList.remove('dark');
+        document.documentElement.classList.add('light');
+    }
+    updateThemeToggleUI(isDark);
+}
+
+function toggleTheme() {
+    const currentlyDark = document.documentElement.classList.contains('dark');
+    const isDark = !currentlyDark;
+    if (isDark) {
+        document.documentElement.classList.add('dark');
+        document.documentElement.classList.remove('light');
+    } else {
+        document.documentElement.classList.remove('dark');
+        document.documentElement.classList.add('light');
+    }
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    updateThemeToggleUI(isDark);
+    window.dispatchEvent(new CustomEvent('gos-theme-changed', { detail: { isDark } }));
+    return isDark;
 }
 
 window.initTheme = initTheme;
@@ -58,6 +52,27 @@ window.updateThemeToggleUI = updateThemeToggleUI;
 
 // Execute instantly to ensure UI sync
 initTheme();
+
+// Global click event listener for theme toggle buttons (handles dynamic & static buttons)
+document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.theme-toggle-btn, [id*="theme-toggle"], [onclick*="toggleTheme"]');
+    if (btn) {
+        // Prevent double toggle if button has inline onclick
+        if (!btn.getAttribute('onclick')) {
+            e.preventDefault();
+            toggleTheme();
+        }
+    }
+});
+
+// Re-sync UI icons on DOMContentLoaded
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+        updateThemeToggleUI(document.documentElement.classList.contains('dark'));
+    });
+} else {
+    updateThemeToggleUI(document.documentElement.classList.contains('dark'));
+}
 
 /**
  * Loads a component HTML into a target element

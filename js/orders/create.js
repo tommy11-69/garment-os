@@ -129,10 +129,18 @@ const WORKFLOW_PRESETS = [
     {
         key:     'direct_fulfillment',
         label:   'Direct Sourcing / Trading',
-        icon:    'local_shipping',
+        icon:    'storefront',
         color:   '#34C759',
         pipeline:'Procurement → Quality Audit → Dispatch',
-        desc:    'Ready-made goods procurement — no in-house cutting or sewing'
+        desc:    'Ready goods trading & sourcing — skips floor cutting and sewing'
+    },
+    {
+        key:     'trading_print',
+        label:   'Trading & Direct Print',
+        icon:    'format_paint',
+        color:   '#EC4899',
+        pipeline:'Sourcing (Blanks) → Print & Wash → Finishing & Packing → Dispatch',
+        desc:    'Procure ready blank garments, embellish, pack & dispatch'
     },
     {
         key:     'custom',
@@ -140,21 +148,21 @@ const WORKFLOW_PRESETS = [
         icon:    'alt_route',
         color:   '#FF2D55',
         pipeline:'Custom Stage-by-Stage Selection',
-        desc:    'Build an exact sequence of factory stages for this specific item'
+        desc:    'Build an exact sequence of factory stages (including sourcing & trading) for this item'
     }
 ];
 
 const AVAILABLE_FACTORY_STAGES = [
-    { key: 'procurement', label: 'Procurement & Yarn', icon: 'shopping_cart' },
-    { key: 'winding',     label: 'Yarn Winding',       icon: 'rotate_right' },
-    { key: 'knitting',    label: 'Knitting',           icon: 'grid_on' },
-    { key: 'dyeing',      label: 'Dyeing & Compacting',icon: 'water_drop' },
-    { key: 'fabric',      label: 'Fabric Inward & QC', icon: 'texture' },
-    { key: 'cutting',     label: 'Cutting & Bundles',  icon: 'content_cut' },
-    { key: 'print_wash',  label: 'Print & Embroidery', icon: 'palette' },
-    { key: 'stitching',   label: 'Stitching Assembly', icon: 'precision_manufacturing' },
-    { key: 'packing',     label: 'Finishing & Packing',icon: 'inventory_2' },
-    { key: 'dispatch',    label: 'Dispatch & Gate Pass',icon: 'local_shipping' }
+    { key: 'procurement', label: 'Procurement & Sourcing', icon: 'shopping_cart', badge: 'Material / Trading' },
+    { key: 'winding',     label: 'Yarn Winding',          icon: 'rotate_right',   badge: 'Vertical' },
+    { key: 'knitting',    label: 'Knitting',              icon: 'grid_on',        badge: 'Vertical' },
+    { key: 'dyeing',      label: 'Dyeing & Compacting',   icon: 'water_drop',     badge: 'Vertical' },
+    { key: 'fabric',      label: 'Fabric Inward & QC',    icon: 'texture',        badge: 'In-House' },
+    { key: 'cutting',     label: 'Cutting & Bundles',     icon: 'content_cut',    badge: 'In-House' },
+    { key: 'print_wash',  label: 'Print & Embroidery',    icon: 'palette',        badge: 'Decoration' },
+    { key: 'stitching',   label: 'Stitching Assembly',    icon: 'precision_manufacturing', badge: 'In-House' },
+    { key: 'packing',     label: 'Finishing & Packing',   icon: 'inventory_2',    badge: 'Finishing' },
+    { key: 'dispatch',    label: 'Dispatch & Gate Pass',  icon: 'local_shipping', badge: 'Logistics' }
 ];
 
 // ─── Wizard Steps ─────────────────────────────────────────────────────────────
@@ -177,7 +185,7 @@ function makeDefaultProduct(n = 1) {
         workflowType:         (coState?.orderWorkflowType) ? coState.orderWorkflowType : 'default',
         customStages:         [],
         qty:                  0,
-        sizes:                { XS: 0, S: 0, M: 0, L: 0, XL: 0, XXL: 0, XXXL: 0, XXXXL: 0 },
+        sizes:                { XS: 0, S: 0, M: 0, L: 0, XL: 0, XXL: 0, XXXXL: 0 },
         freeSizes:            [{ label: 'S', qty: 0 }, { label: 'M', qty: 0 }, { label: 'L', qty: 0 }],
         fabric: {
             type:    '',
@@ -214,7 +222,7 @@ const num = id  => parseFloat(qs(id)?.value) || 0;
 
 // ─── Helper: is workflow that needs fabric? ───────────────────────────────────
 function workflowNeedsFabric(wf) {
-    return wf !== 'direct_fulfillment';
+    return wf !== 'direct_fulfillment' && wf !== 'trading_print';
 }
 function workflowNeedsDecoration(wf) {
     return wf !== 'direct_fulfillment';
@@ -688,10 +696,10 @@ function syncProductFormState() {
         if (nameInput) prod.name = nameInput.value;
 
         const prodWf = prod.workflowType || coState.orderWorkflowType || 'default';
-        const isProdDirect = workflowIsDirectFulfillment(prodWf);
+        const isProdDirect = workflowIsDirectFulfillment(prodWf) || prod.category === 'FreeSizes';
 
         if (isProdDirect) {
-            // 2. Free sizes for Direct Fulfillment
+            // 2. Free sizes for Direct Fulfillment or FreeSizes mode
             const freeRows = card.querySelectorAll(`[id^="free-row-${idx}-"]`);
             if (freeRows && freeRows.length > 0) {
                 prod.freeSizes = [];
@@ -759,14 +767,14 @@ function syncProductFormState() {
         const decColorsInput = card.querySelector('input[placeholder*="stitches"], input[placeholder*="Plastisol"]');
         if (decColorsInput) prod.decorationColors = decColorsInput.value;
 
-        // 7. Sourcing fields
-        const suppInput = card.querySelector('input[placeholder*="Tiruppur"]');
+        // 7. Sourcing & Trading fields
+        const suppInput = card.querySelector('input[data-field="sourceSupplier"], input[placeholder*="Tiruppur"], input[placeholder*="Supplier"]');
         if (suppInput) prod.sourceSupplier = suppInput.value;
-        const refInput = card.querySelector('input[placeholder*="CAT-2026"]');
+        const refInput = card.querySelector('input[data-field="sourceRef"], input[placeholder*="CAT-2026"], input[placeholder*="Catalog"]');
         if (refInput) prod.sourceRef = refInput.value;
-        const colorInput = card.querySelector('input[placeholder*="Navy Blue"]');
+        const colorInput = card.querySelector('input[data-field="sourceColor"], input[placeholder*="Navy Blue"], input[placeholder*="Color"]');
         if (colorInput) prod.sourceColor = colorInput.value;
-        const notesInput = card.querySelector('input[placeholder*="hangtag"]');
+        const notesInput = card.querySelector('input[data-field="sourceNotes"], input[placeholder*="hangtag"], input[placeholder*="notes"], input[placeholder*="Instructions"]');
         if (notesInput) prod.sourceNotes = notesInput.value;
     });
 }
@@ -801,6 +809,10 @@ window.coSetProductWorkflow = function(idx, wfKey) {
     prod.workflowType = wfKey;
     if (wfKey === 'custom' && (!prod.customStages || prod.customStages.length === 0)) {
         prod.customStages = ['procurement', 'fabric', 'cutting', 'stitching', 'packing', 'dispatch'];
+    } else if (wfKey === 'trading_print' && (!prod.customStages || prod.customStages.length === 0)) {
+        prod.customStages = ['procurement', 'print_wash', 'packing', 'dispatch'];
+    } else if (wfKey === 'direct_fulfillment' && (!prod.customStages || prod.customStages.length === 0)) {
+        prod.customStages = ['procurement', 'dispatch'];
     }
     if (workflowLocksPrint(wfKey)) prod.decorationType = 'Screen';
     if (workflowLocksEmbroidery(wfKey)) prod.decorationType = 'Embroidery';
@@ -810,6 +822,27 @@ window.coSetProductWorkflow = function(idx, wfKey) {
     const wfInfo = WORKFLOW_PRESETS.find(w => w.key === wfKey);
     if (window.showToast) {
         window.showToast(`Updated "${prod.name || `Product #${idx + 1}`}" workflow to ${wfInfo?.label || wfKey}`, 'info');
+    }
+};
+
+window.coApplyCustomRoutePreset = function(idx, presetKey) {
+    syncProductFormState();
+    const prod = coState.products[idx];
+    if (!prod) return;
+    prod.workflowType = 'custom';
+    if (presetKey === 'direct_trading') {
+        prod.customStages = ['procurement', 'dispatch'];
+    } else if (presetKey === 'trading_print') {
+        prod.customStages = ['procurement', 'print_wash', 'packing', 'dispatch'];
+    } else if (presetKey === 'cmt') {
+        prod.customStages = ['procurement', 'fabric', 'cutting', 'stitching', 'packing', 'dispatch'];
+    } else if (presetKey === 'vertical') {
+        prod.customStages = ['procurement', 'winding', 'knitting', 'dyeing', 'cutting', 'stitching', 'packing', 'dispatch'];
+    }
+    renderProducts();
+    calculateFinancials();
+    if (window.showToast) {
+        window.showToast(`Applied preset stages to "${prod.name || `Product #${idx + 1}`}"`, 'info');
     }
 };
 
@@ -831,34 +864,10 @@ window.coToggleProductCustomStage = function(idx, stageKey) {
         prod.customStages.sort((a, b) => ALL_ORDER.indexOf(a) - ALL_ORDER.indexOf(b));
     }
 
-    // Targeted DOM update — no full re-render so toggle buttons keep focus
-    const togglesContainer = document.getElementById(`custom-stages-toggles-${idx}`);
-    const pipelinePreview  = document.getElementById(`custom-pipeline-preview-${idx}`);
-    const stageCount       = document.getElementById(`custom-stage-count-${idx}`);
-
-    if (togglesContainer) {
-        togglesContainer.querySelectorAll('[data-stage-key]').forEach(btn => {
-            const key = btn.dataset.stageKey;
-            const active = prod.customStages.includes(key);
-            const icon = btn.querySelector('.material-symbols-outlined');
-            if (active) {
-                btn.className = 'p-2 rounded-xl border text-left flex items-center gap-1.5 transition-all text-[11px] font-bold border-primary bg-primary/10 text-primary shadow-2xs';
-                if (icon) icon.textContent = 'check_box';
-            } else {
-                btn.className = 'p-2 rounded-xl border text-left flex items-center gap-1.5 transition-all text-[11px] font-bold border-outline-variant bg-surface text-secondary hover:border-outline';
-                if (icon) icon.textContent = 'check_box_outline_blank';
-            }
-        });
-    }
-    if (stageCount) stageCount.textContent = `${prod.customStages.length} stages active`;
-    if (pipelinePreview) {
-        pipelinePreview.innerHTML = prod.customStages.map((stKey, i, arr) => `
-            <span class="px-2 py-0.5 rounded bg-surface border border-outline-variant/60 text-on-surface text-[10px] font-bold shrink-0">
-                ${STAGE_DEFINITIONS[stKey]?.shortLabel || STAGE_DEFINITIONS[stKey]?.label || stKey}
-            </span>
-            ${i < arr.length - 1 ? '<span class="text-secondary/50 text-[10px]">→</span>' : ''}
-        `).join('');
-    }
+    // Full render so section visibility (Fabric, Decoration, Sourcing) automatically syncs with selected stages
+    syncProductFormState();
+    renderProducts();
+    calculateFinancials();
 };
 
 function renderWorkflowPicker() {
@@ -1224,12 +1233,13 @@ function updateProductSumBadge(idx) {
 function renderProductCard(prod, idx) {
     const prodWf     = prod.workflowType || coState.orderWorkflowType || 'default';
     const isDirect   = workflowIsDirectFulfillment(prodWf);
+    const isTradingPrint = prodWf === 'trading_print';
     const isFullVert = workflowIsFullVertical(prodWf);
     const isCustom   = prodWf === 'custom';
-    const needsFab   = isCustom ? (prod.customStages?.includes('fabric') || prod.customStages?.includes('cutting') || prod.customStages?.includes('knitting')) : workflowNeedsFabric(prodWf);
-    const needsDec   = isCustom ? (prod.customStages?.includes('print_wash')) : workflowNeedsDecoration(prodWf);
-    const lockPrint  = workflowLocksPrint(prodWf);
-    const lockEmb    = workflowLocksEmbroidery(prodWf);
+    const needsFab   = isCustom ? (prod.customStages?.includes('fabric') || prod.customStages?.includes('cutting') || prod.customStages?.includes('knitting') || prod.customStages?.includes('dyeing')) : workflowNeedsFabric(prodWf);
+    const needsDec   = isCustom ? (prod.customStages?.includes('print_wash') || prod.customStages?.includes('printing') || prod.customStages?.includes('embroidery')) : workflowNeedsDecoration(prodWf);
+    const lockPrint  = workflowLocksPrint(prodWf) || (isCustom && prod.customStages?.includes('printing'));
+    const lockEmb    = workflowLocksEmbroidery(prodWf) || (isCustom && prod.customStages?.includes('embroidery'));
 
     const activeWfPreset = WORKFLOW_PRESETS.find(w => w.key === prodWf) || {
         key: prodWf,
@@ -1239,24 +1249,25 @@ function renderProductCard(prod, idx) {
         pipeline: 'Custom Route'
     };
 
-    const isGeneral = prod.category === 'General';
-    const isAdults  = prod.category === 'Adults';
-    const sizeKeys  = isAdults
+    const isFreeSizes = isDirect || prod.category === 'FreeSizes';
+    const isGeneral   = !isFreeSizes && prod.category === 'General';
+    const isAdults    = !isFreeSizes && !isGeneral && prod.category !== 'Kids';
+    const sizeKeys    = isAdults
         ? ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'XXXXL']
         : ['24', '26', '28', '30', '32', '34', '36', '38'];
 
-    const currentSum = Object.values(prod.sizes).reduce((s, v) => s + (v || 0), 0);
-    const totalForBadge = isDirect
-        ? prod.freeSizes.reduce((s, r) => s + (r.qty || 0), 0)
+    const currentSum = Object.values(prod.sizes || {}).reduce((s, v) => s + (v || 0), 0);
+    const totalForBadge = isFreeSizes
+        ? (prod.freeSizes || []).reduce((s, r) => s + (r.qty || 0), 0)
         : (isGeneral ? prod.qty : currentSum);
-    const isMatch = isDirect ? true : (isGeneral ? prod.qty > 0 : currentSum === prod.qty);
+    const isMatch = isFreeSizes ? totalForBadge > 0 : (isGeneral ? prod.qty > 0 : currentSum === prod.qty && currentSum > 0);
 
     // ── Section A: Sizing ──────────────────────────────────────────────────────
     let sizingHtml = '';
 
-    if (isDirect) {
+    if (isFreeSizes) {
         // Free-form size rows
-        const rowsHtml = prod.freeSizes.map((row, rowIdx) => `
+        const rowsHtml = (prod.freeSizes || []).map((row, rowIdx) => `
             <div class="flex items-center gap-2" id="free-row-${idx}-${rowIdx}">
                 <input type="text" value="${row.label || ''}" placeholder="Size label (e.g. M, 40, Free Size)"
                     oninput="window.coUpdateFreeSizeLabel(${idx}, ${rowIdx}, this.value)"
@@ -1274,16 +1285,23 @@ function renderProductCard(prod, idx) {
 
         sizingHtml = `
         <div class="px-5 py-4 flex flex-col gap-3 border-b border-outline-variant/40" style="border-left: 3px solid #34C759; padding-left: 1.5rem;">
-            <div class="flex items-center justify-between">
+            <div class="flex items-center justify-between flex-wrap gap-2">
                 <div class="flex items-center gap-2">
                     <span class="material-symbols-outlined text-[17px] text-[#34C759]">straighten</span>
-                    <h4 class="text-[12px] font-extrabold text-[#34C759] uppercase tracking-widest">Sizes & Quantity</h4>
+                    <h4 class="text-[12px] font-extrabold text-[#34C759] uppercase tracking-widest">Sizes & Quantity (Free-form / Trading)</h4>
                 </div>
-                <span id="p-sum-badge-${idx}" class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-primary/10 text-primary border border-primary/20">
-                    ${totalForBadge} pcs total
-                </span>
+                <div class="flex items-center gap-2">
+                    ${isCustom ? `
+                    <button type="button" onclick="window.coSetProductCategory(${idx}, 'Adults')"
+                        class="text-[11px] font-bold text-secondary bg-surface px-2.5 py-1 rounded-lg border border-outline-variant hover:text-primary transition-colors">
+                        Switch to Standard Grid
+                    </button>` : ''}
+                    <span id="p-sum-badge-${idx}" class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-primary/10 text-primary border border-primary/20">
+                        ${totalForBadge} pcs total
+                    </span>
+                </div>
             </div>
-            <p class="text-[11px] text-secondary -mt-1">Enter each size and its quantity. Add as many size rows as needed.</p>
+            <p class="text-[11px] text-secondary -mt-1">Enter custom size labels and item quantities for direct trading/sourcing.</p>
             <div class="flex flex-col gap-2" id="free-size-rows-${idx}">
                 ${rowsHtml}
             </div>
@@ -1347,6 +1365,11 @@ function renderProductCard(prod, idx) {
                             class="${isGeneral ? 'bg-primary text-white' : 'bg-surface text-secondary hover:bg-surface-variant'} px-3 py-1.5 transition-all border-l border-outline-variant">
                             General
                         </button>
+                        ${isCustom ? `
+                        <button type="button" onclick="window.coSetProductCategory(${idx}, 'FreeSizes')"
+                            class="bg-surface text-secondary hover:bg-surface-variant px-3 py-1.5 transition-all border-l border-outline-variant flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[13px] text-emerald-600">storefront</span> Free Sizes
+                        </button>` : ''}
                     </div>
                     <div class="flex items-center gap-2">
                         <label class="text-[10px] font-bold text-secondary uppercase whitespace-nowrap">Target Qty</label>
@@ -1533,38 +1556,55 @@ function renderProductCard(prod, idx) {
         </div>`;
     }
 
-    // ── Section D: Sourcing Spec (Direct Fulfillment only) ─────────────────────
+    // ── Section D: Sourcing Spec (Direct Fulfillment & Custom Workflow with Sourcing) ──
     let sourcingHtml = '';
-    if (isDirect) {
+    const showSourcing = isDirect || isTradingPrint || isCustom || (prod.customStages && prod.customStages.includes('procurement'));
+    if (showSourcing) {
+        const isTradingOnly = isDirect || isTradingPrint || (isCustom && !prod.customStages?.includes('cutting') && !prod.customStages?.includes('stitching'));
         sourcingHtml = `
-        <div class="px-5 py-4 flex flex-col gap-3" style="border-left: 3px solid #34C759; padding-left: 1.5rem;">
-            <div class="flex items-center gap-2">
-                <span class="material-symbols-outlined text-[17px] text-[#34C759]">storefront</span>
-                <h4 class="text-[12px] font-extrabold text-[#34C759] uppercase tracking-widest">Sourcing Details</h4>
-                <span class="text-[10px] font-bold text-secondary bg-surface-container px-2 py-0.5 rounded-full border border-outline-variant/60 ml-auto">Optional</span>
+        <div class="px-5 py-4 flex flex-col gap-3 border-t border-outline-variant/40" style="border-left: 3px solid #34C759; padding-left: 1.5rem; background: rgba(52, 199, 89, 0.03);">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[18px] text-[#34C759]">storefront</span>
+                    <div>
+                        <h4 class="text-[12px] font-extrabold text-[#34C759] uppercase tracking-widest">
+                            ${isTradingOnly ? 'Direct Sourcing & Trading Details' : 'Procurement & Material Sourcing'}
+                        </h4>
+                        <p class="text-[11px] text-secondary">
+                            ${isTradingOnly ? 'Ready goods vendor, catalog reference & lot details' : 'Fabric/yarn vendor & trim procurement specifications'}
+                        </p>
+                    </div>
+                </div>
+                <span class="text-[10px] font-bold text-[#34C759] bg-[#34C759]/10 px-2.5 py-0.5 rounded-full border border-[#34C759]/20">
+                    ${isTradingOnly ? 'Ready Goods' : 'Material Sourcing'}
+                </span>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div class="flex flex-col gap-1">
-                    <label class="text-[10px] font-bold text-secondary uppercase tracking-wider">Supplier / Source Name</label>
-                    <input type="text" value="${prod.sourceSupplier || ''}" placeholder="e.g. Tiruppur Exports Pvt Ltd"
+                    <label class="text-[10px] font-bold text-secondary uppercase tracking-wider">Supplier / Source / Trader Name</label>
+                    <input type="text" value="${prod.sourceSupplier || ''}" placeholder="e.g. Tiruppur Exports / Apex Apparel"
+                        data-field="sourceSupplier"
                         oninput="window.coUpdateProductSourceField(${idx}, 'sourceSupplier', this.value)"
                         class="w-full bg-surface border border-outline-variant rounded-xl px-3 py-2 text-[13px] text-on-surface outline-none focus:ring-2 focus:ring-primary/20">
                 </div>
                 <div class="flex flex-col gap-1">
                     <label class="text-[10px] font-bold text-secondary uppercase tracking-wider">Product Ref # / Catalog Code</label>
-                    <input type="text" value="${prod.sourceRef || ''}" placeholder="e.g. CAT-2026-001"
+                    <input type="text" value="${prod.sourceRef || ''}" placeholder="e.g. CAT-2026-001 / BLK-TEE-400"
+                        data-field="sourceRef"
                         oninput="window.coUpdateProductSourceField(${idx}, 'sourceRef', this.value)"
                         class="w-full bg-surface border border-outline-variant rounded-xl px-3 py-2 text-[13px] text-on-surface outline-none focus:ring-2 focus:ring-primary/20">
                 </div>
                 <div class="flex flex-col gap-1">
-                    <label class="text-[10px] font-bold text-secondary uppercase tracking-wider">Color / Finish</label>
-                    <input type="text" value="${prod.sourceColor || ''}" placeholder="e.g. Navy Blue, S.No 420"
+                    <label class="text-[10px] font-bold text-secondary uppercase tracking-wider">Color / Shade / Lot #</label>
+                    <input type="text" value="${prod.sourceColor || ''}" placeholder="e.g. Navy Blue / Shade Lot #42"
+                        data-field="sourceColor"
                         oninput="window.coUpdateProductSourceField(${idx}, 'sourceColor', this.value)"
                         class="w-full bg-surface border border-outline-variant rounded-xl px-3 py-2 text-[13px] text-on-surface outline-none focus:ring-2 focus:ring-primary/20">
                 </div>
                 <div class="flex flex-col gap-1">
-                    <label class="text-[10px] font-bold text-secondary uppercase tracking-wider">Notes</label>
-                    <input type="text" value="${prod.sourceNotes || ''}" placeholder="e.g. Pre-packed, hangtag required"
+                    <label class="text-[10px] font-bold text-secondary uppercase tracking-wider">Sourcing Notes & Instructions</label>
+                    <input type="text" value="${prod.sourceNotes || ''}" placeholder="e.g. Pre-ironed, barcoded hangtags attached"
+                        data-field="sourceNotes"
                         oninput="window.coUpdateProductSourceField(${idx}, 'sourceNotes', this.value)"
                         class="w-full bg-surface border border-outline-variant rounded-xl px-3 py-2 text-[13px] text-on-surface outline-none focus:ring-2 focus:ring-primary/20">
                 </div>
@@ -1591,7 +1631,7 @@ function renderProductCard(prod, idx) {
             </div>
             <div class="flex items-center gap-2 shrink-0 ml-3">
                 <span id="p-sum-badge-${idx}" class="px-2.5 py-1 rounded-full text-[11px] font-bold ${isMatch ? 'bg-[#008A00]/10 text-[#008A00] border border-[#008A00]/20' : 'bg-error/10 text-error border border-error/20'}">
-                    ${isDirect ? `${totalForBadge} pcs total` : isGeneral ? `${prod.qty || 0} pcs (General)` : `${currentSum} / ${prod.qty} pcs`}
+                    ${isFreeSizes ? `${totalForBadge} pcs total` : isGeneral ? `${prod.qty || 0} pcs (General)` : `${currentSum} / ${prod.qty} pcs`}
                 </span>
                 ${coState.products.length > 1 ? `
                     <button type="button" onclick="window.coRemoveProduct(${idx})"
@@ -1648,6 +1688,23 @@ function renderProductCard(prod, idx) {
                 </div>
             ` : `
                 <div class="flex flex-col gap-2 pt-2 border-t border-outline-variant/30">
+                    <!-- Quick Route Presets in Custom Mode -->
+                    <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
+                        <span class="text-[10px] font-bold text-secondary uppercase whitespace-nowrap">Route Presets:</span>
+                        <button type="button" onclick="window.coApplyCustomRoutePreset(${idx}, 'direct_trading')" class="px-2.5 py-1 rounded-lg border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[11px] font-bold hover:bg-emerald-500/20 active-scale transition-all whitespace-nowrap flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[13px]">storefront</span> Direct Trading
+                        </button>
+                        <button type="button" onclick="window.coApplyCustomRoutePreset(${idx}, 'trading_print')" class="px-2.5 py-1 rounded-lg border border-pink-500/30 bg-pink-500/10 text-pink-600 dark:text-pink-400 text-[11px] font-bold hover:bg-pink-500/20 active-scale transition-all whitespace-nowrap flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[13px]">format_paint</span> Trading + Print
+                        </button>
+                        <button type="button" onclick="window.coApplyCustomRoutePreset(${idx}, 'cmt')" class="px-2.5 py-1 rounded-lg border border-blue-500/30 bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[11px] font-bold hover:bg-blue-500/20 active-scale transition-all whitespace-nowrap flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[13px]">precision_manufacturing</span> Standard CMT
+                        </button>
+                        <button type="button" onclick="window.coApplyCustomRoutePreset(${idx}, 'vertical')" class="px-2.5 py-1 rounded-lg border border-purple-500/30 bg-purple-500/10 text-purple-600 dark:text-purple-400 text-[11px] font-bold hover:bg-purple-500/20 active-scale transition-all whitespace-nowrap flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[13px]">water_drop</span> Full Vertical
+                        </button>
+                    </div>
+
                     <div class="flex items-center justify-between">
                         <span class="text-[11px] font-bold text-secondary uppercase tracking-wider">Select Factory Stages For This Product:</span>
                         <span class="text-[11px] font-bold text-primary" id="custom-stage-count-${idx}">${(prod.customStages || []).length} stages active</span>
@@ -2246,7 +2303,16 @@ window.coSaveOrder = async function(launchOption = 'orders_tower') {
             customStages:   Array.isArray(prod.customStages) ? prod.customStages : [],
             workflowStages: stages,
             stageData: {
-                procurement: { status: 'Allotted' },
+                procurement: {
+                    status: 'Allotted',
+                    ...(prod.sourceSupplier || prod.sourceRef || prod.sourceColor || prod.sourceNotes ? {
+                        supplier: prod.sourceSupplier || '',
+                        sourceRef: prod.sourceRef || '',
+                        sourceColor: prod.sourceColor || '',
+                        sourceNotes: prod.sourceNotes || '',
+                        isTrading: isProdDirect || (prod.customStages && prod.customStages.includes('procurement') && !prod.customStages.includes('cutting'))
+                    } : {})
+                },
                 ...(!isProdDirect && prod.fabric.type ? {
                     fabric: {
                         type:      prod.fabric.type,
