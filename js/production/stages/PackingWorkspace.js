@@ -137,8 +137,46 @@ export const PackingWorkspace = {
                         </div>
 
                         <!-- Right Column: Finishing Checklist -->
+                        <!-- Right Column: Finishing & Needle Detector Checklist -->
                         <div class="flex flex-col gap-5">
                             
+                            <!-- 9-Point Needle Detector Calibration QC -->
+                            <div class="bg-surface-container-lowest border border-outline-variant rounded-2xl p-5 shadow-sm">
+                                <div class="flex items-center justify-between mb-3">
+                                    <h4 class="text-[14px] font-bold text-on-surface uppercase tracking-wider flex items-center gap-1.5">
+                                        <span class="material-symbols-outlined text-[#FF2D55] text-[18px]">gavel</span>
+                                        9-Point Needle Detector QC
+                                    </h4>
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-black ${pck.needleDetectorPassed !== false ? 'bg-[#34C759]/15 text-[#34C759]' : 'bg-error/15 text-error'}">
+                                        ${pck.needleDetectorPassed !== false ? 'PASS (1.0mm Fe)' : 'RE-CALIBRATE'}
+                                    </span>
+                                </div>
+                                <p class="text-[11px] text-secondary mb-3">Hourly conveyor calibration with 1.0mm Fe / 1.2mm Non-Fe test wand across all 9 grid zones.</p>
+
+                                <div class="flex flex-col gap-2.5">
+                                    <label class="flex items-center justify-between p-2.5 rounded-xl bg-surface-container border border-outline-variant/60 cursor-pointer hover:bg-surface-variant transition-apple">
+                                        <div>
+                                            <p class="text-[12px] font-bold text-on-surface">9-Point Grid Calibration</p>
+                                            <p class="text-[10px] text-secondary">Hourly test wand pass verified</p>
+                                        </div>
+                                        <input type="checkbox" name="needleDetectorPassed" ${pck.needleDetectorPassed !== false ? 'checked' : ''} class="w-4 h-4 rounded text-primary focus:ring-primary">
+                                    </label>
+
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <div>
+                                            <label class="block text-[10px] font-bold text-secondary uppercase mb-0.5">Sensitivity (mm)</label>
+                                            <input type="text" name="detectorSensitivityMm" value="${pck.detectorSensitivityMm || '1.0mm Fe'}" 
+                                                class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-2.5 py-1 text-[12px] font-bold text-on-surface focus:border-primary outline-none">
+                                        </div>
+                                        <div>
+                                            <label class="block text-[10px] font-bold text-secondary uppercase mb-0.5">Calibration Time</label>
+                                            <input type="time" name="detectorCalibratedAt" value="${pck.detectorCalibratedAt || '09:00'}" 
+                                                class="w-full bg-surface-container-lowest border border-outline-variant rounded-lg px-2.5 py-1 text-[12px] font-medium text-on-surface focus:border-primary outline-none">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                             <!-- Finishing Checklist -->
                             <div class="bg-surface-container-lowest border border-outline-variant rounded-2xl p-5 shadow-sm">
                                 <h4 class="text-[14px] font-bold text-on-surface uppercase tracking-wider mb-4 flex items-center gap-1.5">
@@ -197,14 +235,17 @@ export const PackingWorkspace = {
         const totalGross = cartons.reduce((sum, c) => sum + (Number(c.grossWeightKg) || 0), 0);
 
         return {
-            trimmingChecked: Boolean(fd.get('trimmingChecked')),
-            steamIronedCount: Number(fd.get('steamIronedCount')) || 0,
-            polybaggedCount: Number(fd.get('polybaggedCount')) || 0,
+            needleDetectorPassed:    Boolean(fd.get('needleDetectorPassed')),
+            detectorSensitivityMm:   fd.get('detectorSensitivityMm') || '1.0mm Fe',
+            detectorCalibratedAt:    fd.get('detectorCalibratedAt') || '09:00',
+            trimmingChecked:         Boolean(fd.get('trimmingChecked')),
+            steamIronedCount:        Number(fd.get('steamIronedCount')) || 0,
+            polybaggedCount:         Number(fd.get('polybaggedCount'))  || 0,
             cartons,
-            totalCartons: cartons.length,
-            totalGrossWeightKg: Number(totalGross.toFixed(1)),
-            labelsPrinted: true,
-            status: fd.get('status') || 'Cartons Ready'
+            totalCartons:            cartons.length,
+            totalGrossWeightKg:      Number(totalGross.toFixed(1)),
+            labelsPrinted:           true,
+            status:                  fd.get('status') || 'Cartons Ready'
         };
     }
 };

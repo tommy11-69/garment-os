@@ -8,17 +8,21 @@
  */
 
 export const STAGE_KEYS = {
-    OVERVIEW:    'overview',
-    PROCUREMENT: 'procurement',
-    WINDING:     'winding',
-    KNITTING:    'knitting',
-    DYEING:      'dyeing',
-    FABRIC:      'fabric',
-    CUTTING:     'cutting',
-    PRINT_WASH:  'print_wash',
-    STITCHING:   'stitching',
-    PACKING:     'packing',
-    DISPATCH:    'dispatch'
+    OVERVIEW:     'overview',
+    PROCUREMENT:  'procurement',
+    WINDING:      'winding',
+    KNITTING:     'knitting',
+    DYEING:       'dyeing',
+    FABRIC:       'fabric',
+    CUTTING:      'cutting',
+    PRINTING:     'printing',
+    EMBROIDERY:   'embroidery',
+    GARMENT_WASH: 'garment_wash',
+    WASHING:      'washing',
+    PRINT_WASH:   'print_wash',
+    STITCHING:    'stitching',
+    PACKING:      'packing',
+    DISPATCH:     'dispatch'
 };
 
 export const STAGE_DEFINITIONS = {
@@ -67,7 +71,55 @@ export const STAGE_DEFINITIONS = {
         bgColor: 'bg-[#FF9500]/10',
         borderColor: 'border-[#FF9500]/30',
         weight: 35,
-        description: 'Marker layout, planned vs cut sizes, bundle tickets, and scrap %'
+        description: 'Marker layout, planned vs cut sizes, bundle tickets, relaxation resting timer, and scrap %'
+    },
+    printing: {
+        id: 'printing',
+        key: 'printing',
+        label: 'Screen & Rotary Printing',
+        shortLabel: 'Printing',
+        icon: 'format_paint',
+        color: 'text-[#EC4899]',
+        bgColor: 'bg-[#EC4899]/10',
+        borderColor: 'border-[#EC4899]/30',
+        weight: 50,
+        description: 'Strike-off approvals, screen/DTG ink curing temps, and printed panel defect logs'
+    },
+    embroidery: {
+        id: 'embroidery',
+        key: 'embroidery',
+        label: 'Multi-Head Embroidery',
+        shortLabel: 'Embroidery',
+        icon: 'auto_fix_high',
+        color: 'text-[#8B5CF6]',
+        bgColor: 'bg-[#8B5CF6]/10',
+        borderColor: 'border-[#8B5CF6]/30',
+        weight: 52,
+        description: 'DST stitch file allocation, multi-head Tajima runs, backing tear-away & needle breaks'
+    },
+    garment_wash: {
+        id: 'garment_wash',
+        key: 'garment_wash',
+        label: 'Garment & Enzyme Wash',
+        shortLabel: 'Washing',
+        icon: 'waves',
+        color: 'text-[#06B6D4]',
+        bgColor: 'bg-[#06B6D4]/10',
+        borderColor: 'border-[#06B6D4]/30',
+        weight: 65,
+        description: 'Wet enzyme/stone wash recipes, liquor ratios (1:10), hydro-tumbler drying & shrinkage QC'
+    },
+    washing: {
+        id: 'washing',
+        key: 'washing',
+        label: 'Garment & Enzyme Wash',
+        shortLabel: 'Washing',
+        icon: 'waves',
+        color: 'text-[#06B6D4]',
+        bgColor: 'bg-[#06B6D4]/10',
+        borderColor: 'border-[#06B6D4]/30',
+        weight: 65,
+        description: 'Wet enzyme/stone wash recipes, liquor ratios (1:10), hydro-tumbler drying & shrinkage QC'
     },
     print_wash: {
         id: 'print_wash',
@@ -91,7 +143,7 @@ export const STAGE_DEFINITIONS = {
         bgColor: 'bg-[#34C759]/10',
         borderColor: 'border-[#34C759]/30',
         weight: 75,
-        description: 'Sewing line allocation, hourly output logging, and inline QC defects'
+        description: 'Sewing line allocation, hourly output logging, SAM line pacing, and inline QC defects'
     },
     packing: {
         id: 'packing',
@@ -103,7 +155,7 @@ export const STAGE_DEFINITIONS = {
         bgColor: 'bg-[#FF2D55]/10',
         borderColor: 'border-[#FF2D55]/30',
         weight: 90,
-        description: 'Trimming, steam ironing, size-wise master carton matrix, and box labels'
+        description: 'Trimming, steam ironing, size-wise master carton matrix, 9-point needle detector QC, and box labels'
     },
     dispatch: {
         id: 'dispatch',
@@ -170,7 +222,6 @@ export const WORKFLOW_ROUTES = {
         'fabric',
         'cutting',
         'stitching',
-        'print_wash',
         'packing',
         'dispatch'
     ],
@@ -179,7 +230,7 @@ export const WORKFLOW_ROUTES = {
         'procurement',
         'fabric',
         'cutting',
-        'print_wash',
+        'printing',
         'stitching',
         'packing',
         'dispatch'
@@ -189,8 +240,8 @@ export const WORKFLOW_ROUTES = {
         'procurement',
         'fabric',
         'cutting',
-        'print_wash',
         'stitching',
+        'garment_wash',
         'packing',
         'dispatch'
     ],
@@ -200,7 +251,7 @@ export const WORKFLOW_ROUTES = {
         'fabric',
         'cutting',
         'stitching',
-        'print_wash',
+        'embroidery',
         'packing',
         'dispatch'
     ],
@@ -218,7 +269,6 @@ export const WORKFLOW_ROUTES = {
         'dyeing',        // Dyeing + compacting (shade approval & shrinkage test)
         'cutting',       // Fabric cutting (same as all standard routes)
         'stitching',     // Sewing assembly
-        'print_wash',    // Print / embroidery / wash if any
         'packing',       // Finishing, ironing & packing
         'dispatch'       // Gate pass & dispatch
     ]
@@ -236,7 +286,7 @@ export const WORKFLOW_CONFIG = {
         color: 'text-[#007AFF]',
         bgColor: 'bg-[#007AFF]/10',
         borderColor: 'border-[#007AFF]/30',
-        pipeline: 'Sourcing → Fabric → Cutting → Stitching → Print/Wash → Packing → Dispatch',
+        pipeline: 'Sourcing → Fabric → Cutting → Stitching → Packing → Dispatch',
         description: 'Standard cut, make & trim garment manufacturing'
     },
     full_vertical: {
@@ -255,10 +305,10 @@ export const WORKFLOW_CONFIG = {
         label: 'Print-First (Panels)',
         shortLabel: 'Print-First',
         icon: 'palette',
-        color: 'text-[#AF52DE]',
-        bgColor: 'bg-[#AF52DE]/10',
-        borderColor: 'border-[#AF52DE]/30',
-        pipeline: 'Sourcing → Fabric → Cutting → Print/Embroidery → Stitching → Packing → Dispatch',
+        color: 'text-[#EC4899]',
+        bgColor: 'bg-[#EC4899]/10',
+        borderColor: 'border-[#EC4899]/30',
+        pipeline: 'Sourcing → Fabric → Cutting → Screen Printing → Stitching → Packing → Dispatch',
         description: 'Panels printed or sublimated before sewing assembly'
     },
     wash_before_stitch: {
@@ -266,9 +316,9 @@ export const WORKFLOW_CONFIG = {
         label: 'Enzyme / Garment Wash',
         shortLabel: 'Wash Finish',
         icon: 'waves',
-        color: 'text-[#30B0C7]',
-        bgColor: 'bg-[#30B0C7]/10',
-        borderColor: 'border-[#30B0C7]/30',
+        color: 'text-[#06B6D4]',
+        bgColor: 'bg-[#06B6D4]/10',
+        borderColor: 'border-[#06B6D4]/30',
         pipeline: 'Cutting → Stitching → Garment Wash → Pack → Dispatch',
         description: 'Garments washed after sewing for vintage/enzyme feel'
     },
@@ -277,9 +327,9 @@ export const WORKFLOW_CONFIG = {
         label: 'Finished Garment Embellishment',
         shortLabel: 'Stitch First',
         icon: 'auto_fix_high',
-        color: 'text-[#FF9500]',
-        bgColor: 'bg-[#FF9500]/10',
-        borderColor: 'border-[#FF9500]/30',
+        color: 'text-[#8B5CF6]',
+        bgColor: 'bg-[#8B5CF6]/10',
+        borderColor: 'border-[#8B5CF6]/30',
         pipeline: 'Cutting → Stitching → Assembled Embroidery → Packing → Dispatch',
         description: 'Embroidery or transfers applied on fully assembled garments'
     },
@@ -338,11 +388,17 @@ export function normalizeStageKey(rawStage) {
     if (s === 'knitting' || s.includes('knitting') || s.includes('circular knit'))                          return 'knitting';
     if (s === 'dyeing' || s.includes('dyeing') || s.includes('compacting') || s.includes('colour') || s.includes('color dye')) return 'dyeing';
 
+    // Specialized embellishment & wet processing stages
+    if (s === 'printing' || s.includes('screen print') || s.includes('rotary') || s.includes('dtg') || s.includes('dtf')) return 'printing';
+    if (s === 'embroidery' || s.includes('embroid') || s.includes('tajima')) return 'embroidery';
+    if (s === 'washing' || s === 'garment_wash' || s === 'wash' || s.includes('enzyme') || s.includes('stone wash')) return 'garment_wash';
+    if (s === 'print_wash' || s.includes('print/wash')) return 'print_wash';
+
     // Standard stage mappings
     if (s.includes('procure') || s.includes('sourc'))                         return 'procurement';
     if (s.includes('fabric') || s.includes('inward') || s.includes('grey'))   return 'fabric';
     if (s.includes('cut'))                                                     return 'cutting';
-    if (s.includes('print') || s.includes('embroid') || s.includes('wash'))   return 'print_wash';
+    if (s.includes('print'))                                                   return 'printing';
     if (s.includes('stitch') || s.includes('sew'))                            return 'stitching';
     if (s.includes('iron') || s.includes('pack') || s.includes('finish'))     return 'packing';
     if (s.includes('dispatch') || s.includes('deliver') || s.includes('ship')) return 'dispatch';

@@ -243,79 +243,48 @@ export const CuttingWorkspace = {
                         </div>
 
                     <!-- ───────────────────────────────────────────────────────── -->
-                    <!-- POST-CUTTING: PVA PANEL WASHING (Optional)              -->
+                    <!-- FABRIC RELAXATION & SPREADING QC (24-Hour Resting Gate) -->
                     <!-- ───────────────────────────────────────────────────────── -->
                     <div class="lg:col-span-3">
-                        <div class="bg-surface-container-lowest border-2 ${cut.pvaWashEnabled ? 'border-[#0EA5E9]' : 'border-dashed border-outline-variant'} rounded-2xl overflow-hidden transition-all" id="pva-wash-card">
-
-                            <!-- Toggle Header -->
-                            <div class="flex items-center justify-between px-5 py-4 ${cut.pvaWashEnabled ? 'bg-[#0EA5E9]/5 border-b border-[#0EA5E9]/20' : 'bg-surface-container/30'}">
+                        <div class="bg-surface-container-lowest border border-outline-variant rounded-2xl p-5 shadow-sm">
+                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
                                 <div class="flex items-center gap-3">
-                                    <div class="w-9 h-9 rounded-xl ${cut.pvaWashEnabled ? 'bg-[#0EA5E9] text-white' : 'bg-surface-container text-secondary'} flex items-center justify-center transition-all">
-                                        <span class="material-symbols-outlined text-[18px]">water</span>
+                                    <div class="w-10 h-10 rounded-xl bg-[#007AFF]/10 text-[#007AFF] flex items-center justify-center font-bold">
+                                        <span class="material-symbols-outlined text-[22px]">timer</span>
                                     </div>
                                     <div>
-                                        <h4 class="text-[14px] font-extrabold ${cut.pvaWashEnabled ? 'text-[#0EA5E9]' : 'text-on-surface'}">Post-Cutting: PVA Panel Washing</h4>
-                                        <p class="text-[11px] text-secondary">Optional — PVA starch / pre-wash treatment on cut panels before stitching</p>
+                                        <h4 class="text-[14px] font-bold text-on-surface uppercase tracking-wider">Fabric Relaxation & Spreading QC</h4>
+                                        <p class="text-[12px] text-secondary">Mandatory 24-hour tension release resting prior to lay cutting to eliminate shrinkage distortion</p>
                                     </div>
                                 </div>
-                                <button type="button" id="pva-toggle-btn"
-                                    onclick="window.cuttingTogglePVA()"
-                                    class="${cut.pvaWashEnabled
-                                        ? 'bg-[#0EA5E9] border-[#0EA5E9] text-white'
-                                        : 'bg-surface border-outline-variant text-secondary'
-                                    } px-4 py-2 rounded-xl border-2 text-[12px] font-bold flex items-center gap-1.5 transition-all active-scale shrink-0">
-                                    <span class="material-symbols-outlined text-[15px]" id="pva-toggle-icon">${cut.pvaWashEnabled ? 'toggle_on' : 'toggle_off'}</span>
-                                    <span id="pva-toggle-label">${cut.pvaWashEnabled ? 'Enabled' : 'Add Wash Step'}</span>
-                                </button>
-                                <input type="hidden" name="pvaWashEnabled" id="pva-wash-enabled" value="${Boolean(cut.pvaWashEnabled)}">
+                                <div class="flex items-center gap-2">
+                                    <span class="px-2.5 py-1 rounded-lg text-[11px] font-extrabold ${cut.relaxationComplete !== false ? 'bg-[#34C759]/15 text-[#34C759]' : 'bg-orange-500/15 text-orange-500'}">
+                                        ${cut.relaxationComplete !== false ? '✓ 24h Relaxation Complete' : '⏳ Resting In Progress'}
+                                    </span>
+                                </div>
                             </div>
 
-                            <!-- Collapsible Body -->
-                            <div id="pva-wash-body" class="${cut.pvaWashEnabled ? '' : 'hidden'} px-5 py-4">
-                                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-outline-variant/40">
+                                <label class="flex items-center justify-between p-3 rounded-xl bg-surface-container border border-outline-variant/60 cursor-pointer hover:bg-surface-variant transition-apple">
                                     <div>
-                                        <label class="block text-[11px] font-bold text-secondary uppercase tracking-wider mb-1">Panels Dispatched for Wash</label>
-                                        <input type="number" name="pvaPanelsDispatched" id="pva-panels-dispatched"
-                                            value="${cut.pvaPanelsDispatched || ''}"
-                                            min="0" placeholder="e.g. 500"
-                                            class="w-full bg-surface border border-outline-variant rounded-xl px-3 py-2.5 text-[14px] font-bold text-on-surface focus:border-[#0EA5E9] outline-none">
+                                        <p class="text-[13px] font-bold text-on-surface">24h Resting Completed</p>
+                                        <p class="text-[11px] text-secondary">Rolls unrolled & relaxed</p>
                                     </div>
+                                    <input type="checkbox" name="relaxationComplete" ${cut.relaxationComplete !== false ? 'checked' : ''} class="w-5 h-5 rounded text-primary focus:ring-primary">
+                                </label>
 
+                                <label class="flex items-center justify-between p-3 rounded-xl bg-surface-container border border-outline-variant/60 cursor-pointer hover:bg-surface-variant transition-apple">
                                     <div>
-                                        <label class="block text-[11px] font-bold text-secondary uppercase tracking-wider mb-1">Wash Vendor / In-House</label>
-                                        <input type="text" name="pvaVendorName" id="pva-vendor"
-                                            value="${cut.pvaVendorName || ''}"
-                                            placeholder="e.g. In-House or Vendor Name"
-                                            class="w-full bg-surface border border-outline-variant rounded-xl px-3 py-2.5 text-[13px] text-on-surface focus:border-[#0EA5E9] outline-none">
+                                        <p class="text-[13px] font-bold text-on-surface">Lay Tension Verified</p>
+                                        <p class="text-[11px] text-secondary">Zero stretch during spreading</p>
                                     </div>
+                                    <input type="checkbox" name="layTensionVerified" ${cut.layTensionVerified !== false ? 'checked' : ''} class="w-5 h-5 rounded text-primary focus:ring-primary">
+                                </label>
 
-                                    <div>
-                                        <label class="block text-[11px] font-bold text-secondary uppercase tracking-wider mb-1">Expected Return Date</label>
-                                        <input type="date" name="pvaExpectedReturn" id="pva-return-date"
-                                            value="${cut.pvaExpectedReturn || ''}"
-                                            class="w-full bg-surface border border-outline-variant rounded-xl px-3 py-2.5 text-[13px] text-on-surface focus:border-[#0EA5E9] outline-none">
-                                    </div>
-
-                                    <div>
-                                        <label class="block text-[11px] font-bold text-secondary uppercase tracking-wider mb-1">Wash Status</label>
-                                        <select name="pvaStatus" id="pva-status"
-                                            class="w-full bg-surface border border-outline-variant rounded-xl px-3 py-2.5 text-[13px] font-bold text-on-surface focus:border-[#0EA5E9] outline-none">
-                                            <option value="Pending"   ${(cut.pvaStatus || 'Pending') === 'Pending'   ? 'selected' : ''}>Pending — Not Yet Dispatched</option>
-                                            <option value="Sent"      ${cut.pvaStatus === 'Sent'      ? 'selected' : ''}>Sent for Wash</option>
-                                            <option value="Received"  ${cut.pvaStatus === 'Received'  ? 'selected' : ''}>Received Back</option>
-                                            <option value="Completed" ${cut.pvaStatus === 'Completed' ? 'selected' : ''}>Wash Completed — Ready for Sewing</option>
-                                        </select>
-                                    </div>
-                                </div>
-
-                                <div class="mt-3">
-                                    <label class="block text-[11px] font-bold text-secondary uppercase tracking-wider mb-1">Wash Notes / Instructions</label>
-                                    <input type="text" name="pvaNotes" id="pva-notes"
-                                        value="${cut.pvaNotes || ''}"
-                                        placeholder="e.g. Single wash cycle, no spin-dry, air-dry only — then proceed to stitching"
-                                        class="w-full bg-surface border border-outline-variant rounded-xl px-3 py-2.5 text-[13px] text-on-surface focus:border-[#0EA5E9] outline-none">
+                                <div>
+                                    <label class="block text-[11px] font-bold text-secondary uppercase mb-1">Resting Duration (Hours)</label>
+                                    <input type="number" name="relaxationHours" value="${cut.relaxationHours || 24}" min="0"
+                                        class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-3 py-2 text-[14px] font-bold text-on-surface focus:border-primary outline-none">
                                 </div>
                             </div>
                         </div>
@@ -348,22 +317,18 @@ export const CuttingWorkspace = {
         const bundles = window._cuttingBundlesCache || [];
 
         return {
-            markerLengthMeters: Number(fd.get('markerLengthMeters')) || 0,
-            plyCount:           Number(fd.get('plyCount'))            || 0,
-            fabricIssuedKg:     Number(fd.get('fabricIssuedKg'))      || 0,
-            scrapFabricKg:      Number(fd.get('scrapFabricKg'))       || 0,
+            markerLengthMeters:  Number(fd.get('markerLengthMeters')) || 0,
+            plyCount:            Number(fd.get('plyCount'))            || 0,
+            fabricIssuedKg:      Number(fd.get('fabricIssuedKg'))      || 0,
+            scrapFabricKg:       Number(fd.get('scrapFabricKg'))       || 0,
             cutQuantitiesBySize,
             actualCutPieces,
             bundles,
-            cuttingSupervisor:  fd.get('cuttingSupervisor') || '',
-            status:             fd.get('status')            || 'In Progress',
-            // Post-Cutting PVA Panel Washing (optional)
-            pvaWashEnabled:      fd.get('pvaWashEnabled') === 'true',
-            pvaPanelsDispatched: Number(fd.get('pvaPanelsDispatched'))  || 0,
-            pvaVendorName:       fd.get('pvaVendorName')?.trim()        || '',
-            pvaExpectedReturn:   fd.get('pvaExpectedReturn')            || '',
-            pvaStatus:           fd.get('pvaStatus')                    || 'Pending',
-            pvaNotes:            fd.get('pvaNotes')?.trim()             || ''
+            relaxationComplete:  Boolean(fd.get('relaxationComplete')),
+            layTensionVerified:  Boolean(fd.get('layTensionVerified')),
+            relaxationHours:     Number(fd.get('relaxationHours'))     || 24,
+            cuttingSupervisor:   fd.get('cuttingSupervisor') || '',
+            status:              fd.get('status')            || 'In Progress'
         };
     }
 };
@@ -449,42 +414,6 @@ if (typeof window !== 'undefined') {
                 </html>
             `);
             win.document.close();
-        }
-    };
-
-    // PVA Panel Wash toggle — attached globally for inline onclick
-    window.cuttingTogglePVA = function() {
-        const hidden   = document.getElementById('pva-wash-enabled');
-        const body     = document.getElementById('pva-wash-body');
-        const btn      = document.getElementById('pva-toggle-btn');
-        const icon     = document.getElementById('pva-toggle-icon');
-        const label    = document.getElementById('pva-toggle-label');
-        const card     = document.getElementById('pva-wash-card');
-        const header   = btn?.closest('[class*="flex items-center justify-between"]');
-        if (!hidden) return;
-
-        const isOn = hidden.value === 'true';
-        const newOn = !isOn;
-        hidden.value = String(newOn);
-
-        // Show / hide body
-        body?.classList.toggle('hidden', !newOn);
-
-        // Update button appearance
-        if (btn) {
-            btn.className = btn.className
-                .replace(/bg-\[#0EA5E9\]|bg-surface/g, newOn ? 'bg-[#0EA5E9]' : 'bg-surface')
-                .replace(/border-\[#0EA5E9\]|border-outline-variant/g, newOn ? 'border-[#0EA5E9]' : 'border-outline-variant')
-                .replace(/text-white|text-secondary/g, newOn ? 'text-white' : 'text-secondary');
-        }
-        if (icon)  icon.textContent  = newOn ? 'toggle_on' : 'toggle_off';
-        if (label) label.textContent = newOn ? 'Enabled' : 'Add Wash Step';
-
-        // Update card border
-        if (card) {
-            card.className = card.className
-                .replace(/border-2 border-\[#0EA5E9\]|border-dashed border-outline-variant/g,
-                    newOn ? 'border-2 border-[#0EA5E9]' : 'border-dashed border-outline-variant');
         }
     };
 }

@@ -223,4 +223,51 @@ class ProductionService {
 
         return ['success' => true, 'qcId' => $qcId, 'result' => $qcData['result'] ?? 'PASS'];
     }
+
+    public static function getWorkOrderContext(string $identifier): ?array {
+        // Find work order by WO id, WO number, Order id, or Order number
+        $wo = Database::queryOne(
+            "SELECT wo.*, oi.style_code, oi.style_name, oi.fabric_composition, oi.target_gsm, oi.fabric_dia,
+                    oi.total_quantity as item_total_qty, oi.order_id,
+                    o.order_number, o.customer_name, o.delivery_date, o.priority, o.season
+             FROM work_orders wo
+             JOIN order_items oi ON wo.order_item_id = oi.id
+             JOIN orders o ON oi.order_id = o.id
+             WHERE wo.id = ? OR wo.work_order_number = ? OR o.id = ? OR o.order_number = ?
+             LIMIT 1",
+            [$identifier, $identifier, $identifier, $identifier]
+        );
+
+        if (!$wo) return null;
+
+        // Fetch workflow version snapshot
+        $version = Database::queryOne("SELECT * FROM workflow_preset_versions WHERE id = ?", [$wo['workflow_version_id']]);
+        $wo['workflow_version'] = $version;
+        $wo['snapshot_stages'] = $version ? (json_decode($version['stages_json'], true) ?: []) : [];
+
+        // Fetch instantiated stage executions in order
+        $stages = Database::query(
+            "SELECT se.*, v.name as vendor_name 
+             FROM stage_executions se
+             LEFT JOIN vendors v ON se.vendor_id = v.id
+             WHERE se.work_order_id = ?
+             ORDER BY se.sequence_order ASC",
+            [$wo['id']]
+        );
+        $wo['stages'] = $stages;
+
+        // Fetch production bundles
+        $wo['bundles'] = Database::query("SELECT * FROM production_bundles WHERE work_order_id = ?", [$wo['id']]);
+
+        // Fetch material reservations
+        $wo['material_reservations'] = Database::query(
+            "SELECT mr.*, ii.item_code, ii.item_name, ii.unit_of_measure, ii.current_stock, ii.available_stock
+             FROM material_reservations mr
+             JOIN inventory_items ii ON mr.item_id = ii.id
+             WHERE mr.work_order_id = ?",
+            [$wo['id']]
+        );
+
+        return $wo;
+    }
 }

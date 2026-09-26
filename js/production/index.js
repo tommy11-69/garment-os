@@ -17,6 +17,8 @@ import {
     getWorkflowBadgeInfo
 } from './domain/workflowEngine.js?v=6.0';
 import { hydrateStageData } from './domain/stageSchemas.js?v=5.5';
+import { workspaceRegistry } from './domain/WorkspaceRegistry.js?v=6.0';
+import { StageContractResolver } from './domain/StageContractResolver.js?v=6.0';
 
 import { OverviewWorkspace }      from './stages/OverviewWorkspace.js?v=5.5';
 import { ProcurementWorkspace }   from './stages/ProcurementWorkspace.js?v=5.5';
@@ -25,10 +27,36 @@ import { KnittingWorkspace }      from './stages/KnittingWorkspace.js?v=6.0';
 import { DyeingWorkspace }        from './stages/DyeingWorkspace.js?v=6.0';
 import { FabricWorkspace }        from './stages/FabricWorkspace.js?v=5.5';
 import { CuttingWorkspace }       from './stages/CuttingWorkspace.js?v=5.5';
+import { PrintingWorkspace }      from './stages/PrintingWorkspace.js?v=6.0';
+import { EmbroideryWorkspace }    from './stages/EmbroideryWorkspace.js?v=6.0';
+import { WashingWorkspace }       from './stages/WashingWorkspace.js?v=6.0';
 import { PrintWashWorkspace }     from './stages/PrintWashWorkspace.js?v=5.5';
 import { StitchingWorkspace }     from './stages/StitchingWorkspace.js?v=5.5';
 import { PackingWorkspace }       from './stages/PackingWorkspace.js?v=5.5';
 import { DispatchWorkspace }      from './stages/DispatchWorkspace.js?v=5.5';
+
+// Register all decoupled stage workspace controllers
+workspaceRegistry.register('overview', OverviewWorkspace);
+workspaceRegistry.register('procurement', ProcurementWorkspace);
+workspaceRegistry.register('winding', WindingWorkspace);
+workspaceRegistry.register('knitting', KnittingWorkspace);
+workspaceRegistry.register('dyeing', DyeingWorkspace);
+workspaceRegistry.register('fabric', FabricWorkspace);
+workspaceRegistry.register('cutting', CuttingWorkspace);
+workspaceRegistry.register('printing', PrintingWorkspace);
+workspaceRegistry.register('embroidery', EmbroideryWorkspace);
+workspaceRegistry.register('washing', WashingWorkspace);
+workspaceRegistry.register('garment_wash', WashingWorkspace);
+workspaceRegistry.register('print_wash', PrintWashWorkspace);
+workspaceRegistry.register('stitching', StitchingWorkspace);
+workspaceRegistry.register('packing', PackingWorkspace);
+workspaceRegistry.register('dispatch', DispatchWorkspace);
+
+// Register aliases
+workspaceRegistry.registerAlias('wash', 'washing');
+workspaceRegistry.registerAlias('screen_print', 'printing');
+workspaceRegistry.registerAlias('dtg_print', 'printing');
+workspaceRegistry.registerAlias('embroidery_apparel', 'embroidery');
 
 function escapeHtml(str) {
     return String(str || '').replace(/[&<>'"]/g, tag => ({
@@ -48,20 +76,7 @@ class ProductionApp {
         this.activeStage = 'overview';
         this.activeProductIndex = 0;
         this.isLoading = false;
-
-        this.workspaces = {
-            overview:     OverviewWorkspace,
-            procurement:  ProcurementWorkspace,
-            winding:      WindingWorkspace,
-            knitting:     KnittingWorkspace,
-            dyeing:       DyeingWorkspace,
-            fabric:       FabricWorkspace,
-            cutting:      CuttingWorkspace,
-            print_wash:   PrintWashWorkspace,
-            stitching:    StitchingWorkspace,
-            packing:      PackingWorkspace,
-            dispatch:     DispatchWorkspace
-        };
+        this.workspaceRegistry = workspaceRegistry;
     }
 
     async init() {
@@ -508,11 +523,11 @@ class ProductionApp {
             return;
         }
 
-        const workspace = this.workspaces[this.activeStage];
+        const workspace = workspaceRegistry.resolve(this.activeStage);
         if (!workspace) {
             container.innerHTML = `
                 <div class="p-8 text-center text-secondary">
-                    <p class="text-[14px]">Workspace for <strong>${this.activeStage}</strong> not found.</p>
+                    <p class="text-[14px]">Workspace for <strong>${this.activeStage}</strong> not found in Registry.</p>
                 </div>
             `;
             return;
@@ -601,7 +616,7 @@ class ProductionApp {
         if (!this.activeOrder) return;
 
         const currentStageKey = this.activeStage;
-        const workspace = this.workspaces[currentStageKey];
+        const workspace = workspaceRegistry.resolve(currentStageKey);
         if (!workspace || typeof workspace.extractFormData !== 'function') {
             return;
         }

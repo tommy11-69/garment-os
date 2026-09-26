@@ -567,6 +567,16 @@ export const api = {
         return await this.updateOrderStatus(orderId, 'Approved');
     },
 
+    async getWorkOrder(workOrderId) {
+        try {
+            const res = await db.getWorkOrderV2(workOrderId);
+            return res?.workOrder || null;
+        } catch (e) {
+            console.warn("V2 getWorkOrder error:", e.message || e);
+            return null;
+        }
+    },
+
     async recordStageOutput(stageExecutionId, payload) {
         try {
             return await db.recordStageOutputV2(stageExecutionId, payload);

@@ -604,10 +604,8 @@ if (isset($segments[0]) && $segments[0] === 'v2') {
     // Work Orders
     if ($resource === 'work-orders') {
         if ($method === 'GET' && $id !== '') {
-            $wo = Database::queryOne("SELECT * FROM work_orders WHERE id = ? OR work_order_number = ?", [$id, $id]);
+            $wo = ProductionService::getWorkOrderContext($id);
             if (!$wo) jsonResponse(['error' => 'Work order not found'], 404);
-            $wo['stages'] = Database::query("SELECT * FROM stage_executions WHERE work_order_id = ? ORDER BY sequence_order ASC", [$wo['id']]);
-            $wo['bundles'] = Database::query("SELECT * FROM production_bundles WHERE work_order_id = ?", [$wo['id']]);
             jsonResponse(['success' => true, 'workOrder' => $wo]);
         }
     }

@@ -335,57 +335,59 @@ export const DyeingWorkspace = {
 
 // ─── Toggle helpers (called inline by buttons) ────────────────────────────────
 
-window.dyeingWorkspace_toggleShade = function() {
-    const hidden = document.getElementById('dyeing-shade-approved');
-    const btn    = document.getElementById('dyeing-shade-toggle');
-    if (!hidden || !btn) return;
-    const newVal = hidden.value !== 'true';
-    hidden.value = String(newVal);
-    btn.className = `${newVal
-        ? 'bg-[#34C759] border-[#34C759] text-white'
-        : 'bg-surface border-outline-variant text-secondary'
-    } w-full py-2.5 rounded-xl border-2 font-bold text-[13px] flex items-center justify-center gap-2 transition-all active-scale`;
-    btn.innerHTML = `<span class="material-symbols-outlined text-[18px]">${newVal ? 'check_circle' : 'radio_button_unchecked'}</span>${newVal ? 'Shade Approved ✓' : 'Mark as Approved'}`;
-    _dyeingUpdateGate();
-};
+if (typeof window !== 'undefined') {
+    window.dyeingWorkspace_toggleShade = function() {
+        const hidden = document.getElementById('dyeing-shade-approved');
+        const btn    = document.getElementById('dyeing-shade-toggle');
+        if (!hidden || !btn) return;
+        const newVal = hidden.value !== 'true';
+        hidden.value = String(newVal);
+        btn.className = `${newVal
+            ? 'bg-[#34C759] border-[#34C759] text-white'
+            : 'bg-surface border-outline-variant text-secondary'
+        } w-full py-2.5 rounded-xl border-2 font-bold text-[13px] flex items-center justify-center gap-2 transition-all active-scale`;
+        btn.innerHTML = `<span class="material-symbols-outlined text-[18px]">${newVal ? 'check_circle' : 'radio_button_unchecked'}</span>${newVal ? 'Shade Approved ✓' : 'Mark as Approved'}`;
+        _dyeingUpdateGate();
+    };
 
-window.dyeingWorkspace_toggleCompacting = function() {
-    const hidden = document.getElementById('dyeing-compacting-done');
-    const btn    = document.getElementById('dyeing-compact-toggle');
-    if (!hidden || !btn) return;
-    const newVal = hidden.value !== 'true';
-    hidden.value = String(newVal);
-    btn.className = `${newVal
-        ? 'bg-[#8B5CF6] border-[#8B5CF6] text-white'
-        : 'bg-surface border-outline-variant text-secondary'
-    } px-5 py-2.5 rounded-xl border-2 font-bold text-[13px] flex items-center gap-2 transition-all active-scale`;
-    btn.innerHTML = `<span class="material-symbols-outlined text-[18px]">${newVal ? 'check_circle' : 'radio_button_unchecked'}</span>${newVal ? 'Compacting Done ✓' : 'Mark Compacting Done'}`;
-    _dyeingUpdateGate();
-};
+    window.dyeingWorkspace_toggleCompacting = function() {
+        const hidden = document.getElementById('dyeing-compacting-done');
+        const btn    = document.getElementById('dyeing-compact-toggle');
+        if (!hidden || !btn) return;
+        const newVal = hidden.value !== 'true';
+        hidden.value = String(newVal);
+        btn.className = `${newVal
+            ? 'bg-[#8B5CF6] border-[#8B5CF6] text-white'
+            : 'bg-surface border-outline-variant text-secondary'
+        } px-5 py-2.5 rounded-xl border-2 font-bold text-[13px] flex items-center gap-2 transition-all active-scale`;
+        btn.innerHTML = `<span class="material-symbols-outlined text-[18px]">${newVal ? 'check_circle' : 'radio_button_unchecked'}</span>${newVal ? 'Compacting Done ✓' : 'Mark Compacting Done'}`;
+        _dyeingUpdateGate();
+    };
 
-function _dyeingUpdateGate() {
-    const shadeOk    = document.getElementById('dyeing-shade-approved')?.value === 'true';
-    const compactOk  = document.getElementById('dyeing-compacting-done')?.value === 'true';
-    const canRelease = shadeOk && compactOk;
-    const releaseBtn = document.querySelector('[onclick="window.dyeingWorkspace_releaseGate()"]');
-    if (!releaseBtn) return;
-    if (canRelease) {
-        releaseBtn.className = releaseBtn.className.replace('bg-surface-container-high text-secondary cursor-not-allowed', 'bg-[#8B5CF6] hover:opacity-90 text-white');
-        releaseBtn.innerHTML = '<span>Release to Cutting</span><span class="material-symbols-outlined text-[16px]">arrow_forward</span>';
-        releaseBtn.removeAttribute('title');
-    } else {
-        releaseBtn.className = releaseBtn.className.replace('bg-[#8B5CF6] hover:opacity-90 text-white', 'bg-surface-container-high text-secondary cursor-not-allowed');
-        releaseBtn.innerHTML = '<span>Release (Pending Gate)</span><span class="material-symbols-outlined text-[16px]">lock</span>';
-        releaseBtn.title = 'Shade approval and compacting must both be marked complete';
+    function _dyeingUpdateGate() {
+        const shadeOk    = document.getElementById('dyeing-shade-approved')?.value === 'true';
+        const compactOk  = document.getElementById('dyeing-compacting-done')?.value === 'true';
+        const canRelease = shadeOk && compactOk;
+        const releaseBtn = document.querySelector('[onclick="window.dyeingWorkspace_releaseGate()"]');
+        if (!releaseBtn) return;
+        if (canRelease) {
+            releaseBtn.className = releaseBtn.className.replace('bg-surface-container-high text-secondary cursor-not-allowed', 'bg-[#8B5CF6] hover:opacity-90 text-white');
+            releaseBtn.innerHTML = '<span>Release to Cutting</span><span class="material-symbols-outlined text-[16px]">arrow_forward</span>';
+            releaseBtn.removeAttribute('title');
+        } else {
+            releaseBtn.className = releaseBtn.className.replace('bg-[#8B5CF6] hover:opacity-90 text-white', 'bg-surface-container-high text-secondary cursor-not-allowed');
+            releaseBtn.innerHTML = '<span>Release (Pending Gate)</span><span class="material-symbols-outlined text-[16px]">lock</span>';
+            releaseBtn.title = 'Shade approval and compacting must both be marked complete';
+        }
     }
+
+    window.dyeingWorkspace_releaseGate = function() {
+        const shadeOk   = document.getElementById('dyeing-shade-approved')?.value === 'true';
+        const compactOk = document.getElementById('dyeing-compacting-done')?.value === 'true';
+        if (!shadeOk || !compactOk) {
+            if (window.showToast) window.showToast('Complete shade approval and compacting before releasing to Cutting', 'warning');
+            return;
+        }
+        window.productionRouter.saveCurrentStage(true);
+    };
 }
-
-window.dyeingWorkspace_releaseGate = function() {
-    const shadeOk   = document.getElementById('dyeing-shade-approved')?.value === 'true';
-    const compactOk = document.getElementById('dyeing-compacting-done')?.value === 'true';
-    if (!shadeOk || !compactOk) {
-        if (window.showToast) window.showToast('Complete shade approval and compacting before releasing to Cutting', 'warning');
-        return;
-    }
-    window.productionRouter.saveCurrentStage(true);
-};

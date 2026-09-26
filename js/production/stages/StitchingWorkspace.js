@@ -10,6 +10,15 @@ export const StitchingWorkspace = {
         const st = stageData?.stitching || {};
         const targetQty = Number(activeProduct?.qty) || Number(order?.qty) || 0;
 
+        // Dynamic SAM (Standard Allowed Minutes) Calculation
+        const isFleeceOrHoodie = String(activeProduct?.name || order?.product || '').toLowerCase().includes('hood') || String(order?.fabric || '').toLowerCase().includes('fleece');
+        const sam = Number(activeProduct?.sam || (isFleeceOrHoodie ? 38.0 : 12.5));
+        const operatorsCount = Number(st.operatorsCount || 30);
+        const efficiencyPct = Number(st.efficiencyPct || 85);
+        // Hourly target = (Operators * 60 / SAM) * (Efficiency / 100)
+        const computedHourlyTarget = Math.max(10, Math.round((operatorsCount * 60 / sam) * (efficiencyPct / 100)));
+        const dailyTarget = Number(st.dailyTarget) || (computedHourlyTarget * 8);
+
         // Resolve dynamic next stage in this product's workflow
         const stages = getProductWorkflowStages(activeProduct, order?.workflowType);
         const currentIdx = stages.indexOf('stitching');
@@ -18,7 +27,6 @@ export const StitchingWorkspace = {
         const nextLabel = nextDef.shortLabel || nextDef.label;
 
         const lineId = st.lineId || 'Sewing Line 1';
-        const dailyTarget = Number(st.dailyTarget) || Math.min(targetQty, 400);
         const completed = Number(st.completedPieces) || 0;
         const progressPct = targetQty > 0 ? Math.min(100, Math.round((completed / targetQty) * 100)) : 0;
 
@@ -35,10 +43,10 @@ export const StitchingWorkspace = {
         const hourlyLogs = Array.isArray(st.hourlyLogs) && st.hourlyLogs.length > 0 
             ? st.hourlyLogs 
             : [
-                { hour: '09:00 - 10:00', target: 50, output: 45 },
-                { hour: '10:00 - 11:00', target: 50, output: 52 },
-                { hour: '11:00 - 12:00', target: 50, output: 48 },
-                { hour: '12:00 - 01:00', target: 50, output: 50 }
+                { hour: '09:00 - 10:00', target: computedHourlyTarget, output: Math.round(computedHourlyTarget * 0.9) },
+                { hour: '10:00 - 11:00', target: computedHourlyTarget, output: Math.round(computedHourlyTarget * 1.05) },
+                { hour: '11:00 - 12:00', target: computedHourlyTarget, output: Math.round(computedHourlyTarget * 0.95) },
+                { hour: '12:00 - 01:00', target: computedHourlyTarget, output: computedHourlyTarget }
             ];
 
         return `
@@ -233,14 +241,32 @@ export const StitchingWorkspace = {
                                 </div>
                             </div>
 
-                            <!-- Stage Status -->
-                            <div class="bg-surface-container-lowest border border-outline-variant rounded-2xl p-5 shadow-sm">
-                                <label class="block text-[12px] font-bold text-secondary mb-1">Sewing Status</label>
-                                <select name="status" class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-3 py-2 text-[13px] font-bold text-on-surface focus:border-primary outline-none">
-                                    <option value="In Progress" ${st.status === 'In Progress' ? 'selected' : ''}>In Progress (Running)</option>
-                                    <option value="Allocated" ${st.status === 'Allocated' ? 'selected' : ''}>Allocated to Line</option>
-                                    <option value="Completed" ${st.status === 'Completed' ? 'selected' : ''}>Assembly Completed</option>
-                                </select>
+                            <!-- Stage Status & SAM Benchmark -->
+                            <div class="bg-surface-container-lowest border border-outline-variant rounded-2xl p-5 shadow-sm flex flex-col gap-3">
+                                <h4 class="text-[14px] font-bold text-on-surface uppercase tracking-wider flex items-center gap-1.5">
+                                    <span class="material-symbols-outlined text-primary text-[18px]">speed</span>
+                                    SAM & Line Benchmark
+                                </h4>
+
+                                <div class="grid grid-cols-2 gap-2 text-center">
+                                    <div class="p-2 rounded-xl bg-surface-container border border-outline-variant/60">
+                                        <p class="text-[10px] font-bold text-secondary uppercase">Product SAM</p>
+                                        <p class="text-[15px] font-extrabold text-primary">${sam} min</p>
+                                    </div>
+                                    <div class="p-2 rounded-xl bg-surface-container border border-outline-variant/60">
+                                        <p class="text-[10px] font-bold text-secondary uppercase">Hourly Pace</p>
+                                        <p class="text-[15px] font-extrabold text-[#34C759]">${computedHourlyTarget} pcs/hr</p>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-[11px] font-bold text-secondary uppercase mb-1">Sewing Status</label>
+                                    <select name="status" class="w-full bg-surface-container-lowest border border-outline-variant rounded-xl px-3 py-2 text-[13px] font-bold text-on-surface focus:border-primary outline-none">
+                                        <option value="In Progress" ${st.status === 'In Progress' ? 'selected' : ''}>In Progress (Running)</option>
+                                        <option value="Allocated" ${st.status === 'Allocated' ? 'selected' : ''}>Allocated to Line</option>
+                                        <option value="Completed" ${st.status === 'Completed' ? 'selected' : ''}>Assembly Completed</option>
+                                    </select>
+                                </div>
                             </div>
 
                         </div>

@@ -121,6 +121,10 @@ class Database {
         return this._fetchAPI('/v2/workflows/presets');
     }
 
+    async getWorkOrderV2(workOrderId) {
+        return this._fetchAPI(`/v2/work-orders/${workOrderId}`);
+    }
+
     async recordStageOutputV2(stageExecutionId, outputPayload) {
         return this._fetchAPI(`/v2/stage-executions/${stageExecutionId}/output`, {
             method: 'POST',
