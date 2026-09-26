@@ -226,17 +226,37 @@ function ensureBillingTablesExist($pdo) {
             `contact_gstin` VARCHAR(20) DEFAULT '',
             `date` DATE NOT NULL,
             `due_date` DATE DEFAULT NULL,
+            `place_of_supply` VARCHAR(100) DEFAULT '33-Tamil Nadu',
+            `tax_type` VARCHAR(20) DEFAULT 'INTRA_STATE',
+            `order_id` VARCHAR(191) DEFAULT NULL,
             `subtotal` DOUBLE DEFAULT 0,
             `discount` DOUBLE DEFAULT 0,
             `tax_total` DOUBLE DEFAULT 0,
+            `round_off` DOUBLE DEFAULT 0,
             `grand_total` DOUBLE DEFAULT 0,
             `amount_paid` DOUBLE DEFAULT 0,
             `status` VARCHAR(30) DEFAULT 'Draft',
             `notes` LONGTEXT DEFAULT '',
             `linked_bill_id` VARCHAR(191) DEFAULT '',
+            `version` INT NOT NULL DEFAULT 1,
             `createdAt` DATETIME DEFAULT CURRENT_TIMESTAMP,
             `updatedAt` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
         )");
+
+        // Auto-migrate any missing columns on billing_master
+        $bmCols = $pdo->query("SHOW COLUMNS FROM `billing_master`")->fetchAll(PDO::FETCH_COLUMN);
+        $bmNeeded = [
+            'place_of_supply' => "VARCHAR(100) DEFAULT '33-Tamil Nadu'",
+            'tax_type'        => "VARCHAR(20) DEFAULT 'INTRA_STATE'",
+            'order_id'        => "VARCHAR(191) DEFAULT NULL",
+            'round_off'       => "DOUBLE DEFAULT 0",
+            'version'         => "INT NOT NULL DEFAULT 1"
+        ];
+        foreach ($bmNeeded as $col => $def) {
+            if (!in_array($col, $bmCols, true)) {
+                $pdo->exec("ALTER TABLE `billing_master` ADD COLUMN `{$col}` {$def}");
+            }
+        }
 
         $pdo->exec("CREATE TABLE IF NOT EXISTS `billing_items` (
             `id` VARCHAR(191) PRIMARY KEY,
@@ -244,6 +264,7 @@ function ensureBillingTablesExist($pdo) {
             `item_name` VARCHAR(255) DEFAULT '',
             `item_id` VARCHAR(191) DEFAULT '',
             `description` LONGTEXT DEFAULT '',
+            `hsn_code` VARCHAR(30) DEFAULT '6109',
             `quantity` DOUBLE DEFAULT 1,
             `unit` VARCHAR(20) DEFAULT 'pcs',
             `unit_price` DOUBLE DEFAULT 0,
@@ -251,29 +272,20 @@ function ensureBillingTablesExist($pdo) {
             `tax_pct` DOUBLE DEFAULT 0,
             `tax_amount` DOUBLE DEFAULT 0,
             `row_total` DOUBLE DEFAULT 0,
+            `sort_order` INT DEFAULT 0,
             `createdAt` DATETIME DEFAULT CURRENT_TIMESTAMP
         )");
 
-        // Seed legacy quotations if missing
-        $checkLegacy = $pdo->query("SELECT COUNT(*) FROM `billing_master` WHERE `id` IN ('bill-qt-33531', 'bill-qt-77195')")->fetchColumn();
-        if ((int)$checkLegacy < 2) {
-            $pdo->exec("INSERT IGNORE INTO `billing_counters` (`type_key`, `last_seq`) VALUES ('AG-QTY-2026', 2) ON DUPLICATE KEY UPDATE `last_seq` = GREATEST(`last_seq`, 2)");
-            
-            $pdo->exec("INSERT IGNORE INTO `billing_master` 
-                (`id`, `invoice_number`, `transaction_type`, `contact_id`, `contact_type`, `contact_name`, `contact_gstin`, `date`, `due_date`, `subtotal`, `discount`, `tax_total`, `grand_total`, `amount_paid`, `status`, `notes`, `linked_bill_id`, `createdAt`, `updatedAt`)
-                VALUES
-                ('bill-qt-33531', 'AG-QTY-2026-0001', 'Quotation', 'c-sai-sharvesh', 'customer', 'Sai Sharvesh', '', '2026-08-19', '2026-09-18', 45250, 0, 0, 45250, 0, 'Expired', 'Migrated from legacy quotations', '', '2026-08-19 10:00:00', '2026-08-19 10:00:00'),
-                ('bill-qt-77195', 'AG-QTY-2026-0002', 'Quotation', 'c-milton-school', 'customer', 'Milton School', '', '2026-08-19', '2026-09-18', 42560, 0, 0, 42560, 0, 'Converted', 'Honeycomb tshirts - 2 colours', '', '2026-08-19 10:00:00', '2026-08-19 10:00:00')
-            ");
-
-            $pdo->exec("INSERT IGNORE INTO `billing_items`
-                (`id`, `billing_master_id`, `item_name`, `item_id`, `description`, `quantity`, `unit`, `unit_price`, `discount_pct`, `tax_pct`, `tax_amount`, `row_total`, `createdAt`)
-                VALUES
-                ('bitem-33531-1', 'bill-qt-33531', 'Polo Tshirt', '', 'Polo Tshirt', 25, 'pcs', 250, 0, 0, 0, 6250, '2026-08-19 10:00:00'),
-                ('bitem-33531-2', 'bill-qt-33531', 'Jersey', '', 'Jersey', 260, 'pcs', 150, 0, 0, 0, 39000, '2026-08-19 10:00:00'),
-                ('bitem-77195-1', 'bill-qt-77195', 'Polyester round neck tshirt', '', 'Polyester round neck tshirt - Honeycomb tshirts - 2 colours', 133, 'pcs', 190, 0, 0, 0, 25270, '2026-08-19 10:00:00'),
-                ('bitem-77195-2', 'bill-qt-77195', 'Caps', '', 'Caps', 133, 'pcs', 130, 0, 0, 0, 17290, '2026-08-19 10:00:00')
-            ");
+        // Auto-migrate any missing columns on billing_items
+        $biCols = $pdo->query("SHOW COLUMNS FROM `billing_items`")->fetchAll(PDO::FETCH_COLUMN);
+        $biNeeded = [
+            'hsn_code'   => "VARCHAR(30) DEFAULT '6109'",
+            'sort_order' => "INT DEFAULT 0"
+        ];
+        foreach ($biNeeded as $col => $def) {
+            if (!in_array($col, $biCols, true)) {
+                $pdo->exec("ALTER TABLE `billing_items` ADD COLUMN `{$col}` {$def}");
+            }
         }
     } catch (Exception $e) { /* ignore */ }
 }
@@ -1335,15 +1347,18 @@ function generateBillingSerial($pdo, $transactionType) {
 function getBillingWithItems($pdo, $billingId) {
     $stmt = $pdo->prepare("SELECT * FROM `billing_master` WHERE `id` = ?");
     $stmt->execute([$billingId]);
+function getBillingWithItems($pdo, $billingId) {
+    $stmt = $pdo->prepare("SELECT * FROM `billing_master` WHERE `id` = ?");
+    $stmt->execute([$billingId]);
     $master = $stmt->fetch();
     if (!$master) return null;
     unset($master['_rowid']);
     // cast numerics
-    foreach (['subtotal','discount','tax_total','grand_total','amount_paid'] as $f) {
+    foreach (['subtotal','discount','tax_total','round_off','grand_total','amount_paid'] as $f) {
         $master[$f] = (float)($master[$f] ?? 0);
     }
 
-    $iStmt = $pdo->prepare("SELECT * FROM `billing_items` WHERE `billing_master_id` = ? ORDER BY createdAt ASC");
+    $iStmt = $pdo->prepare("SELECT * FROM `billing_items` WHERE `billing_master_id` = ? ORDER BY sort_order ASC, createdAt ASC");
     $iStmt->execute([$billingId]);
     $items = $iStmt->fetchAll();
     foreach ($items as &$item) {
@@ -1353,6 +1368,75 @@ function getBillingWithItems($pdo, $billingId) {
     }
     $master['items'] = $items;
     return $master;
+}
+
+// ── Helper: Authoritative calculation for billing documents ──────────
+function calculateBillingDocumentTotals($body) {
+    $rawItems = is_array($body['items'] ?? null) ? $body['items'] : [];
+    $isPayment = in_array($body['transaction_type'] ?? '', ['Payment_In', 'Payment_Out'], true);
+
+    if ($isPayment) {
+        $amount = max(0, (float)($body['grand_total'] ?? $body['subtotal'] ?? 0));
+        return [
+            'subtotal'    => $amount,
+            'discount'    => 0,
+            'tax_total'   => 0,
+            'round_off'   => 0,
+            'grand_total' => $amount,
+            'items'       => []
+        ];
+    }
+
+    $subtotal = 0;
+    $itemDiscountTotal = 0;
+    $taxTotal = 0;
+    $calculatedItems = [];
+
+    foreach ($rawItems as $idx => $it) {
+        $qty = max(0, (float)($it['quantity'] ?? 1));
+        $price = max(0, (float)($it['unit_price'] ?? 0));
+        $discPct = min(100, max(0, (float)($it['discount_pct'] ?? 0)));
+        $taxPct = max(0, (float)($it['tax_pct'] ?? 0));
+
+        $lineGross = $qty * $price;
+        $lineDisc = $lineGross * ($discPct / 100.0);
+        $lineTaxable = $lineGross - $lineDisc;
+        $lineTax = $lineTaxable * ($taxPct / 100.0);
+        $lineTotal = $lineTaxable + $lineTax;
+
+        $subtotal += $lineGross;
+        $itemDiscountTotal += $lineDisc;
+        $taxTotal += $lineTax;
+
+        $calculatedItems[] = [
+            'item_name'    => $it['item_name'] ?? 'Item',
+            'item_id'      => $it['item_id'] ?? '',
+            'description'  => $it['description'] ?? '',
+            'hsn_code'     => $it['hsn_code'] ?? '6109',
+            'quantity'     => $qty,
+            'unit'         => $it['unit'] ?? 'pcs',
+            'unit_price'   => $price,
+            'discount_pct' => $discPct,
+            'tax_pct'      => $taxPct,
+            'tax_amount'   => round($lineTax, 2),
+            'row_total'    => round($lineTotal, 2),
+            'sort_order'   => $idx + 1
+        ];
+    }
+
+    $netTaxable = max(0, $subtotal - $itemDiscountTotal);
+    $rawGrandTotal = $netTaxable + $taxTotal;
+    $grandTotal = round($rawGrandTotal);
+    $roundOff = $grandTotal - $rawGrandTotal;
+
+    return [
+        'subtotal'    => round($subtotal, 2),
+        'discount'    => round($itemDiscountTotal, 2),
+        'tax_total'   => round($taxTotal, 2),
+        'round_off'   => round($roundOff, 2),
+        'grand_total' => $grandTotal,
+        'items'       => $calculatedItems
+    ];
 }
 
 // ── Route: /api/billings ─────────────────────────────────────────────
@@ -1375,12 +1459,13 @@ if ($segments[0] === 'billings') {
         jsonResponse(['byType' => $byType, 'totalReceivable' => (float)$rec['total'], 'totalPayable' => (float)$pay['total']]);
     }
 
-    // GET /api/billings  (list, with optional ?type=&status=&contactId=&q=)
+    // GET /api/billings  (list, with optional ?type=&status=&contactId=&orderId=&q=)
     if ($method === 'GET' && !$billingId) {
         $where = []; $binds = [];
         if (!empty($_GET['type']))      { $where[] = '`transaction_type` = ?'; $binds[] = $_GET['type']; }
         if (!empty($_GET['status']))    { $where[] = '`status` = ?';           $binds[] = $_GET['status']; }
         if (!empty($_GET['contactId'])) { $where[] = '`contact_id` = ?';      $binds[] = $_GET['contactId']; }
+        if (!empty($_GET['orderId']))   { $where[] = '`order_id` = ?';        $binds[] = $_GET['orderId']; }
         if (!empty($_GET['q'])) {
             $where[] = '(`invoice_number` LIKE ? OR `contact_name` LIKE ? OR `notes` LIKE ?)';
             $binds[] = '%'.$_GET['q'].'%'; $binds[] = '%'.$_GET['q'].'%'; $binds[] = '%'.$_GET['q'].'%';
@@ -1389,7 +1474,15 @@ if ($segments[0] === 'billings') {
         $st  = $pdo->prepare("SELECT * FROM `billing_master` {$wc} ORDER BY `date` DESC, `invoice_number` DESC");
         $st->execute($binds);
         $docs = $st->fetchAll();
-        foreach ($docs as &$d) { unset($d['_rowid']); $d['subtotal']=(float)$d['subtotal']; $d['grand_total']=(float)$d['grand_total']; $d['amount_paid']=(float)$d['amount_paid']; }
+        foreach ($docs as &$d) {
+            unset($d['_rowid']);
+            $d['subtotal'] = (float)$d['subtotal'];
+            $d['discount'] = (float)$d['discount'];
+            $d['tax_total'] = (float)$d['tax_total'];
+            $d['round_off'] = (float)($d['round_off'] ?? 0);
+            $d['grand_total'] = (float)$d['grand_total'];
+            $d['amount_paid'] = (float)$d['amount_paid'];
+        }
         jsonResponse($docs);
     }
 
@@ -1406,6 +1499,7 @@ if ($segments[0] === 'billings') {
         if (empty($body['contact_id']))       jsonResponse(['error' => 'contact_id is required'], 400);
         if (empty($body['date']))             jsonResponse(['error' => 'date is required'], 400);
 
+        $calc = calculateBillingDocumentTotals($body);
         $invoiceNumber = generateBillingSerial($pdo, $body['transaction_type']);
         $newId = 'bill-' . round(microtime(true)*1000) . '-' . bin2hex(random_bytes(3));
         $now   = date('Y-m-d H:i:s');
@@ -1413,88 +1507,133 @@ if ($segments[0] === 'billings') {
         $pdo->prepare("
             INSERT INTO `billing_master`
                 (`id`,`invoice_number`,`transaction_type`,`contact_id`,`contact_type`,
-                 `contact_name`,`contact_gstin`,`date`,`due_date`,
-                 `subtotal`,`discount`,`tax_total`,`grand_total`,`amount_paid`,
-                 `status`,`notes`,`linked_bill_id`,`createdAt`,`updatedAt`)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                 `contact_name`,`contact_gstin`,`date`,`due_date`,`place_of_supply`,`tax_type`,`order_id`,
+                 `subtotal`,`discount`,`tax_total`,`round_off`,`grand_total`,`amount_paid`,
+                 `status`,`notes`,`linked_bill_id`,`version`,`createdAt`,`updatedAt`)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,1,?,?)
         ")->execute([
             $newId, $invoiceNumber, $body['transaction_type'], $body['contact_id'],
             $body['contact_type'] ?? 'customer', $body['contact_name'] ?? '',
             $body['contact_gstin'] ?? '', $body['date'], $body['due_date'] ?? null,
-            $body['subtotal'] ?? 0, $body['discount'] ?? 0, $body['tax_total'] ?? 0,
-            $body['grand_total'] ?? 0, 0,
+            $body['place_of_supply'] ?? '33-Tamil Nadu', $body['tax_type'] ?? 'INTRA_STATE',
+            $body['order_id'] ?? null,
+            $calc['subtotal'], $calc['discount'], $calc['tax_total'], $calc['round_off'],
+            $calc['grand_total'], 0,
             $body['status'] ?? 'Draft', $body['notes'] ?? '', $body['linked_bill_id'] ?? '',
             $now, $now
         ]);
 
-        foreach (($body['items'] ?? []) as $item) {
+        foreach ($calc['items'] as $item) {
             $itemId = 'bitem-' . round(microtime(true)*1000) . '-' . bin2hex(random_bytes(3));
             $pdo->prepare("
                 INSERT INTO `billing_items`
-                    (`id`,`billing_master_id`,`item_name`,`item_id`,`description`,
-                     `quantity`,`unit`,`unit_price`,`discount_pct`,`tax_pct`,`tax_amount`,`row_total`,`createdAt`)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+                    (`id`,`billing_master_id`,`item_name`,`item_id`,`description`,`hsn_code`,
+                     `quantity`,`unit`,`unit_price`,`discount_pct`,`tax_pct`,`tax_amount`,`row_total`,`sort_order`,`createdAt`)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             ")->execute([
-                $itemId, $newId, $item['item_name'] ?? '', $item['item_id'] ?? '',
-                $item['description'] ?? '', $item['quantity'] ?? 1,
-                $item['unit'] ?? 'pcs', $item['unit_price'] ?? 0,
-                $item['discount_pct'] ?? 0, $item['tax_pct'] ?? 0,
-                $item['tax_amount'] ?? 0, $item['row_total'] ?? 0, $now
+                $itemId, $newId, $item['item_name'], $item['item_id'],
+                $item['description'], $item['hsn_code'], $item['quantity'],
+                $item['unit'], $item['unit_price'], $item['discount_pct'],
+                $item['tax_pct'], $item['tax_amount'], $item['row_total'],
+                $item['sort_order'], $now
             ]);
         }
 
         jsonResponse(getBillingWithItems($pdo, $newId), 201);
     }
 
-    // PUT /api/billings/:id  (update master + optional items replace)
+    // PUT /api/billings/:id  (update master + items replace)
     if ($method === 'PUT' && $billingId && !$action) {
-        $existing = $pdo->prepare("SELECT `id` FROM `billing_master` WHERE `id` = ?");
+        $existing = $pdo->prepare("SELECT `id`, `status` FROM `billing_master` WHERE `id` = ?");
         $existing->execute([$billingId]);
-        if (!$existing->fetch()) jsonResponse(['error' => 'Billing document not found'], 404);
+        $currDoc = $existing->fetch();
+        if (!$currDoc) jsonResponse(['error' => 'Billing document not found'], 404);
+
+        $calc = calculateBillingDocumentTotals($body);
 
         $allowed = ['contact_id','contact_type','contact_name','contact_gstin','date','due_date',
-                    'subtotal','discount','tax_total','grand_total','status','notes','linked_bill_id'];
+                    'place_of_supply','tax_type','order_id','status','notes','linked_bill_id'];
         $sets = []; $vals = [];
         foreach ($allowed as $k) {
             if (array_key_exists($k, $body)) { $sets[] = "`{$k}` = ?"; $vals[] = $body[$k]; }
         }
-        if ($sets) {
-            $vals[] = date('Y-m-d H:i:s'); $sets[] = '`updatedAt` = ?';
-            $vals[] = $billingId;
-            $pdo->prepare("UPDATE `billing_master` SET " . implode(', ', $sets) . " WHERE `id` = ?")->execute($vals);
-        }
+
+        // Apply authoritative calculated totals
+        $sets[] = "`subtotal` = ?";    $vals[] = $calc['subtotal'];
+        $sets[] = "`discount` = ?";    $vals[] = $calc['discount'];
+        $sets[] = "`tax_total` = ?";   $vals[] = $calc['tax_total'];
+        $sets[] = "`round_off` = ?";   $vals[] = $calc['round_off'];
+        $sets[] = "`grand_total` = ?"; $vals[] = $calc['grand_total'];
+        $sets[] = "`version` = `version` + 1";
+        $sets[] = "`updatedAt` = ?";   $vals[] = date('Y-m-d H:i:s');
+        $vals[] = $billingId;
+
+        $pdo->prepare("UPDATE `billing_master` SET " . implode(', ', $sets) . " WHERE `id` = ?")->execute($vals);
 
         if (isset($body['items']) && is_array($body['items'])) {
             $pdo->prepare("DELETE FROM `billing_items` WHERE `billing_master_id` = ?")->execute([$billingId]);
             $now = date('Y-m-d H:i:s');
-            foreach ($body['items'] as $item) {
+            foreach ($calc['items'] as $item) {
                 $itemId = 'bitem-' . round(microtime(true)*1000) . '-' . bin2hex(random_bytes(3));
                 $pdo->prepare("
                     INSERT INTO `billing_items`
-                        (`id`,`billing_master_id`,`item_name`,`item_id`,`description`,
-                         `quantity`,`unit`,`unit_price`,`discount_pct`,`tax_pct`,`tax_amount`,`row_total`,`createdAt`)
-                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+                        (`id`,`billing_master_id`,`item_name`,`item_id`,`description`,`hsn_code`,
+                         `quantity`,`unit`,`unit_price`,`discount_pct`,`tax_pct`,`tax_amount`,`row_total`,`sort_order`,`createdAt`)
+                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                 ")->execute([
-                    $itemId, $billingId, $item['item_name'] ?? '', $item['item_id'] ?? '',
-                    $item['description'] ?? '', $item['quantity'] ?? 1,
-                    $item['unit'] ?? 'pcs', $item['unit_price'] ?? 0,
-                    $item['discount_pct'] ?? 0, $item['tax_pct'] ?? 0,
-                    $item['tax_amount'] ?? 0, $item['row_total'] ?? 0, $now
+                    $itemId, $billingId, $item['item_name'], $item['item_id'],
+                    $item['description'], $item['hsn_code'], $item['quantity'],
+                    $item['unit'], $item['unit_price'], $item['discount_pct'],
+                    $item['tax_pct'], $item['tax_amount'], $item['row_total'],
+                    $item['sort_order'], $now
                 ]);
             }
         }
         jsonResponse(getBillingWithItems($pdo, $billingId));
     }
 
-    // POST /api/billings/:id/finalize
+    // POST /api/billings/:id/finalize  (Finalize + execute inventory & payment triggers)
     if ($method === 'POST' && $billingId && $action === 'finalize') {
-        $st = $pdo->prepare("SELECT `status` FROM `billing_master` WHERE `id` = ?");
-        $st->execute([$billingId]);
-        $existing = $st->fetch();
-        if (!$existing) jsonResponse(['error' => 'Billing document not found'], 404);
-        if ($existing['status'] === 'Finalized') jsonResponse(['error' => 'Already finalized'], 400);
-        if ($existing['status'] === 'Void')      jsonResponse(['error' => 'Cannot finalize a voided document'], 400);
+        $doc = getBillingWithItems($pdo, $billingId);
+        if (!$doc) jsonResponse(['error' => 'Billing document not found'], 404);
+        if ($doc['status'] === 'Finalized') jsonResponse(['error' => 'Already finalized'], 400);
+        if ($doc['status'] === 'Void')      jsonResponse(['error' => 'Cannot finalize a voided document'], 400);
+
+        // 1. Mark status Finalized
         $pdo->prepare("UPDATE `billing_master` SET `status` = 'Finalized', `updatedAt` = NOW() WHERE `id` = ?")->execute([$billingId]);
+
+        // 2. Inventory triggers for Sales Bill
+        if ($doc['transaction_type'] === 'Sales_Bill') {
+            foreach (($doc['items'] ?? []) as $it) {
+                if (!empty($it['item_id']) && $it['quantity'] > 0) {
+                    $pdo->prepare("UPDATE `inventory` SET `quantity` = GREATEST(0, `quantity` - ?), `updatedAt` = NOW() WHERE `id` = ?")
+                        ->execute([(float)$it['quantity'], $it['item_id']]);
+                }
+            }
+        }
+
+        // 3. Inventory triggers for Purchase Bill
+        if ($doc['transaction_type'] === 'Purchase_Bill') {
+            foreach (($doc['items'] ?? []) as $it) {
+                if (!empty($it['item_id']) && $it['quantity'] > 0) {
+                    $pdo->prepare("UPDATE `inventory` SET `quantity` = `quantity` + ?, `updatedAt` = NOW() WHERE `id` = ?")
+                        ->execute([(float)$it['quantity'], $it['item_id']]);
+                }
+            }
+        }
+
+        // 4. Payment Triggers (apply payment against linked bill)
+        if (($doc['transaction_type'] === 'Payment_In' || $doc['transaction_type'] === 'Payment_Out') && !empty($doc['linked_bill_id'])) {
+            $linked = getBillingWithItems($pdo, $doc['linked_bill_id']);
+            if ($linked) {
+                $newPaid = (float)$linked['amount_paid'] + (float)$doc['grand_total'];
+                $remain = (float)$linked['grand_total'] - $newPaid;
+                $newStatus = ($remain <= 0.01) ? 'Paid' : 'Partially_Paid';
+                $pdo->prepare("UPDATE `billing_master` SET `amount_paid` = ?, `status` = ?, `updatedAt` = NOW() WHERE `id` = ?")
+                    ->execute([$newPaid, $newStatus, $doc['linked_bill_id']]);
+            }
+        }
+
         jsonResponse(getBillingWithItems($pdo, $billingId));
     }
 
@@ -1512,14 +1651,17 @@ if ($segments[0] === 'billings') {
         $pdo->prepare("
             INSERT INTO `billing_master`
                 (`id`,`invoice_number`,`transaction_type`,`contact_id`,`contact_type`,
-                 `contact_name`,`contact_gstin`,`date`,`due_date`,
-                 `subtotal`,`discount`,`tax_total`,`grand_total`,`amount_paid`,
-                 `status`,`notes`,`linked_bill_id`,`createdAt`,`updatedAt`)
-            VALUES (?,?,'Sales_Bill',?,?,?,?,?,?,?,?,?,?,0,'Draft',?,?,?,?)
+                 `contact_name`,`contact_gstin`,`date`,`due_date`,`place_of_supply`,`tax_type`,`order_id`,
+                 `subtotal`,`discount`,`tax_total`,`round_off`,`grand_total`,`amount_paid`,
+                 `status`,`notes`,`linked_bill_id`,`version`,`createdAt`,`updatedAt`)
+            VALUES (?,?,'Sales_Bill',?,?,?,?,?,?,?,?,?,?,?,?,?,?,0,'Draft',?,?,1,?,?)
         ")->execute([
             $newId, $invoiceNumber, $original['contact_id'], $original['contact_type'],
             $original['contact_name'], $original['contact_gstin'], $today, $original['due_date'] ?? null,
-            $original['subtotal'], $original['discount'], $original['tax_total'], $original['grand_total'],
+            $original['place_of_supply'] ?? '33-Tamil Nadu', $original['tax_type'] ?? 'INTRA_STATE',
+            $original['order_id'] ?? null,
+            $original['subtotal'], $original['discount'], $original['tax_total'], $original['round_off'] ?? 0,
+            $original['grand_total'],
             $original['notes'] ?? '', $billingId, $now, $now
         ]);
 
@@ -1527,14 +1669,15 @@ if ($segments[0] === 'billings') {
             $itemId = 'bitem-' . round(microtime(true)*1000) . '-' . bin2hex(random_bytes(3));
             $pdo->prepare("
                 INSERT INTO `billing_items`
-                    (`id`,`billing_master_id`,`item_name`,`item_id`,`description`,
-                     `quantity`,`unit`,`unit_price`,`discount_pct`,`tax_pct`,`tax_amount`,`row_total`,`createdAt`)
-                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+                    (`id`,`billing_master_id`,`item_name`,`item_id`,`description`,`hsn_code`,
+                     `quantity`,`unit`,`unit_price`,`discount_pct`,`tax_pct`,`tax_amount`,`row_total`,`sort_order`,`createdAt`)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             ")->execute([
                 $itemId, $newId, $item['item_name'], $item['item_id'] ?? '',
-                $item['description'] ?? '', $item['quantity'], $item['unit'] ?? 'pcs',
-                $item['unit_price'], $item['discount_pct'] ?? 0, $item['tax_pct'] ?? 0,
-                $item['tax_amount'] ?? 0, $item['row_total'], $now
+                $item['description'] ?? '', $item['hsn_code'] ?? '6109', $item['quantity'],
+                $item['unit'] ?? 'pcs', $item['unit_price'], $item['discount_pct'] ?? 0,
+                $item['tax_pct'] ?? 0, $item['tax_amount'] ?? 0, $item['row_total'],
+                $item['sort_order'] ?? 1, $now
             ]);
         }
 
@@ -1556,6 +1699,15 @@ if ($segments[0] === 'billings') {
             }
             $pdo->prepare("DELETE FROM `billing_items` WHERE `billing_master_id` = ?")->execute([$billingId]);
             $pdo->prepare("DELETE FROM `billing_master` WHERE `id` = ?")->execute([$billingId]);
+            jsonResponse(['success' => true, 'message' => 'Document permanently deleted']);
+        }
+
+        $pdo->prepare("UPDATE `billing_master` SET `status` = 'Void', `updatedAt` = NOW() WHERE `id` = ?")->execute([$billingId]);
+        jsonResponse(['success' => true, 'message' => 'Document voided']);
+    }
+
+    jsonResponse(['error' => 'Invalid billing endpoint'], 404);
+}
             jsonResponse(['success' => true, 'message' => 'Document permanently deleted']);
         }
 

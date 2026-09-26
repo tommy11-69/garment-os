@@ -147,14 +147,19 @@ async function ensureBillingTables(env) {
                 contact_gstin TEXT DEFAULT '',
                 date TEXT NOT NULL,
                 due_date TEXT DEFAULT '',
+                place_of_supply TEXT DEFAULT '33-Tamil Nadu',
+                tax_type TEXT DEFAULT 'INTRA_STATE',
+                order_id TEXT DEFAULT NULL,
                 subtotal REAL DEFAULT 0,
                 discount REAL DEFAULT 0,
                 tax_total REAL DEFAULT 0,
+                round_off REAL DEFAULT 0,
                 grand_total REAL DEFAULT 0,
                 amount_paid REAL DEFAULT 0,
                 status TEXT DEFAULT 'Draft',
                 notes TEXT DEFAULT '',
                 linked_bill_id TEXT DEFAULT '',
+                version INTEGER NOT NULL DEFAULT 1,
                 createdAt TEXT DEFAULT (datetime('now')),
                 updatedAt TEXT DEFAULT (datetime('now'))
             )
@@ -167,6 +172,7 @@ async function ensureBillingTables(env) {
                 item_name TEXT NOT NULL DEFAULT '',
                 item_id TEXT DEFAULT '',
                 description TEXT DEFAULT '',
+                hsn_code TEXT DEFAULT '6109',
                 quantity REAL DEFAULT 1,
                 unit TEXT DEFAULT 'pcs',
                 unit_price REAL DEFAULT 0,
@@ -174,10 +180,41 @@ async function ensureBillingTables(env) {
                 tax_pct REAL DEFAULT 0,
                 tax_amount REAL DEFAULT 0,
                 row_total REAL DEFAULT 0,
+                sort_order INTEGER DEFAULT 0,
                 createdAt TEXT DEFAULT (datetime('now'))
             )
         `)
     ]);
+
+    // Alter table migrations for existing D1 tables
+    try {
+        const mInfo = await env.DB.prepare(`PRAGMA table_info(billing_master)`).all();
+        const mCols = new Set((mInfo.results || []).map(c => c.name));
+        const neededM = [
+            ['place_of_supply', "TEXT DEFAULT '33-Tamil Nadu'"],
+            ['tax_type', "TEXT DEFAULT 'INTRA_STATE'"],
+            ['order_id', "TEXT DEFAULT NULL"],
+            ['round_off', "REAL DEFAULT 0"],
+            ['version', "INTEGER NOT NULL DEFAULT 1"]
+        ];
+        for (const [col, def] of neededM) {
+            if (!mCols.has(col)) {
+                await env.DB.prepare(`ALTER TABLE billing_master ADD COLUMN ${col} ${def}`).run().catch(() => {});
+            }
+        }
+
+        const iInfo = await env.DB.prepare(`PRAGMA table_info(billing_items)`).all();
+        const iCols = new Set((iInfo.results || []).map(c => c.name));
+        const neededI = [
+            ['hsn_code', "TEXT DEFAULT '6109'"],
+            ['sort_order', "INTEGER DEFAULT 0"]
+        ];
+        for (const [col, def] of neededI) {
+            if (!iCols.has(col)) {
+                await env.DB.prepare(`ALTER TABLE billing_items ADD COLUMN ${col} ${def}`).run().catch(() => {});
+            }
+        }
+    } catch (e) { /* ignore */ }
 }
 
 /** Fetch a billing document by id with all its line items */
@@ -782,6 +819,65 @@ export default {
                         return json(doc);
                     }
 
+                    // Helper: Authoritative calculation for D1
+                    function calculateDocTotals(body) {
+                        const rawItems = Array.isArray(body.items) ? body.items : [];
+                        const isPayment = body.transaction_type === 'Payment_In' || body.transaction_type === 'Payment_Out';
+                        if (isPayment) {
+                            const amt = Math.max(0, parseFloat(body.grand_total || body.subtotal || 0));
+                            return { subtotal: amt, discount: 0, tax_total: 0, round_off: 0, grand_total: amt, items: [] };
+                        }
+
+                        let subtotal = 0;
+                        let itemDiscTotal = 0;
+                        let taxTotal = 0;
+                        const calcItems = rawItems.map((it, idx) => {
+                            const qty = Math.max(0, parseFloat(it.quantity) || 1);
+                            const price = Math.max(0, parseFloat(it.unit_price) || 0);
+                            const discPct = Math.min(100, Math.max(0, parseFloat(it.discount_pct) || 0));
+                            const taxPct = Math.max(0, parseFloat(it.tax_pct) || 0);
+
+                            const lineGross = qty * price;
+                            const lineDisc = lineGross * (discPct / 100);
+                            const lineTaxable = lineGross - lineDisc;
+                            const lineTax = lineTaxable * (taxPct / 100);
+                            const lineTot = lineTaxable + lineTax;
+
+                            subtotal += lineGross;
+                            itemDiscTotal += lineDisc;
+                            taxTotal += lineTax;
+
+                            return {
+                                item_name: it.item_name || 'Item',
+                                item_id: it.item_id || '',
+                                description: it.description || '',
+                                hsn_code: it.hsn_code || '6109',
+                                quantity: qty,
+                                unit: it.unit || 'pcs',
+                                unit_price: price,
+                                discount_pct: discPct,
+                                tax_pct: taxPct,
+                                tax_amount: Math.round(lineTax * 100) / 100,
+                                row_total: Math.round(lineTot * 100) / 100,
+                                sort_order: idx + 1
+                            };
+                        });
+
+                        const netTaxable = Math.max(0, subtotal - itemDiscTotal);
+                        const rawGrand = netTaxable + taxTotal;
+                        const grandTotal = Math.round(rawGrand);
+                        const roundOff = grandTotal - rawGrand;
+
+                        return {
+                            subtotal: Math.round(subtotal * 100) / 100,
+                            discount: Math.round(itemDiscTotal * 100) / 100,
+                            tax_total: Math.round(taxTotal * 100) / 100,
+                            round_off: Math.round(roundOff * 100) / 100,
+                            grand_total: grandTotal,
+                            items: calcItems
+                        };
+                    }
+
                     // POST /api/billings — create new billing document
                     if (request.method === 'POST' && !billingId) {
                         const body = await request.json().catch(() => ({}));
@@ -790,6 +886,7 @@ export default {
                         if (!body.contact_id) return json({ error: 'contact_id is required' }, 400);
                         if (!body.date) return json({ error: 'date is required' }, 400);
 
+                        const calc = calculateDocTotals(body);
                         const invoiceNumber = await generateSerialNumber(env, body.transaction_type);
                         const id = `bill-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
                         const now = new Date().toISOString();
@@ -798,34 +895,34 @@ export default {
                         await env.DB.prepare(`
                             INSERT INTO billing_master (
                                 id, invoice_number, transaction_type, contact_id, contact_type,
-                                contact_name, contact_gstin, date, due_date,
-                                subtotal, discount, tax_total, grand_total, amount_paid,
-                                status, notes, linked_bill_id, createdAt, updatedAt
-                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                contact_name, contact_gstin, date, due_date, place_of_supply, tax_type, order_id,
+                                subtotal, discount, tax_total, round_off, grand_total, amount_paid,
+                                status, notes, linked_bill_id, version, createdAt, updatedAt
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?, 1, ?, ?)
                         `).bind(
                             id, invoiceNumber, body.transaction_type, body.contact_id,
                             body.contact_type || 'customer', body.contact_name || '',
                             body.contact_gstin || '', body.date, body.due_date || '',
-                            body.subtotal || 0, body.discount || 0, body.tax_total || 0,
-                            body.grand_total || 0, 0, body.status || 'Draft',
+                            body.place_of_supply || '33-Tamil Nadu', body.tax_type || 'INTRA_STATE', body.order_id || null,
+                            calc.subtotal, calc.discount, calc.tax_total, calc.round_off,
+                            calc.grand_total, body.status || 'Draft',
                             body.notes || '', body.linked_bill_id || '', now, now
                         ).run();
 
                         // Insert line items
-                        const items = Array.isArray(body.items) ? body.items : [];
-                        for (const item of items) {
+                        for (const item of calc.items) {
                             const itemId = `bitem-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
                             await env.DB.prepare(`
                                 INSERT INTO billing_items (
-                                    id, billing_master_id, item_name, item_id, description,
-                                    quantity, unit, unit_price, discount_pct, tax_pct, tax_amount, row_total, createdAt
-                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                    id, billing_master_id, item_name, item_id, description, hsn_code,
+                                    quantity, unit, unit_price, discount_pct, tax_pct, tax_amount, row_total, sort_order, createdAt
+                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                             `).bind(
-                                itemId, id, item.item_name || '', item.item_id || '',
-                                item.description || '', item.quantity || 1,
-                                item.unit || 'pcs', item.unit_price || 0,
-                                item.discount_pct || 0, item.tax_pct || 0,
-                                item.tax_amount || 0, item.row_total || 0, now
+                                itemId, id, item.item_name, item.item_id,
+                                item.description, item.hsn_code, item.quantity,
+                                item.unit, item.unit_price, item.discount_pct,
+                                item.tax_pct, item.tax_amount, item.row_total,
+                                item.sort_order, now
                             ).run();
                         }
 
@@ -839,43 +936,50 @@ export default {
                         return json(created, 201);
                     }
 
-                    // PUT /api/billings/:id — update master (not items)
+                    // PUT /api/billings/:id — update master + items replace
                     if (request.method === 'PUT' && billingId && !action) {
                         const existing = await env.DB.prepare(`SELECT * FROM billing_master WHERE id = ?`).bind(billingId).first();
                         if (!existing) return json({ error: 'Billing document not found' }, 404);
 
                         const body = await request.json().catch(() => ({}));
+                        const calc = calculateDocTotals(body);
                         const now = new Date().toISOString();
 
                         const allowed = ['contact_id','contact_type','contact_name','contact_gstin','date','due_date',
-                            'subtotal','discount','tax_total','grand_total','status','notes','linked_bill_id'];
+                            'place_of_supply','tax_type','order_id','status','notes','linked_bill_id'];
                         const updates = [];
                         const vals = [];
                         for (const key of allowed) {
                             if (key in body) { updates.push(`${key} = ?`); vals.push(body[key]); }
                         }
-                        if (updates.length === 0) return json({ error: 'No valid fields to update' }, 400);
+
+                        updates.push('subtotal = ?'); vals.push(calc.subtotal);
+                        updates.push('discount = ?'); vals.push(calc.discount);
+                        updates.push('tax_total = ?'); vals.push(calc.tax_total);
+                        updates.push('round_off = ?'); vals.push(calc.round_off);
+                        updates.push('grand_total = ?'); vals.push(calc.grand_total);
+                        updates.push('version = version + 1');
                         updates.push('updatedAt = ?'); vals.push(now);
                         vals.push(billingId);
 
                         await env.DB.prepare(`UPDATE billing_master SET ${updates.join(', ')} WHERE id = ?`).bind(...vals).run();
 
-                        // If items array provided, replace all items
+                        // Replace items
                         if (Array.isArray(body.items)) {
                             await env.DB.prepare(`DELETE FROM billing_items WHERE billing_master_id = ?`).bind(billingId).run();
-                            for (const item of body.items) {
+                            for (const item of calc.items) {
                                 const itemId = `bitem-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
                                 await env.DB.prepare(`
                                     INSERT INTO billing_items (
-                                        id, billing_master_id, item_name, item_id, description,
-                                        quantity, unit, unit_price, discount_pct, tax_pct, tax_amount, row_total, createdAt
-                                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                        id, billing_master_id, item_name, item_id, description, hsn_code,
+                                        quantity, unit, unit_price, discount_pct, tax_pct, tax_amount, row_total, sort_order, createdAt
+                                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                                 `).bind(
-                                    itemId, billingId, item.item_name || '', item.item_id || '',
-                                    item.description || '', item.quantity || 1,
-                                    item.unit || 'pcs', item.unit_price || 0,
-                                    item.discount_pct || 0, item.tax_pct || 0,
-                                    item.tax_amount || 0, item.row_total || 0, now
+                                    itemId, billingId, item.item_name, item.item_id,
+                                    item.description, item.hsn_code, item.quantity,
+                                    item.unit, item.unit_price, item.discount_pct,
+                                    item.tax_pct, item.tax_amount, item.row_total,
+                                    item.sort_order, now
                                 ).run();
                             }
                         }

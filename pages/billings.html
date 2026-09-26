@@ -6,7 +6,7 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="description" content="Garment OS — Unified Billings: Quotations, Sales Bills, Invoices, Payments, Purchase Orders">
-    <title>Garment OS — Billings</title>
+    <title>Garment OS — Billings Workbench</title>
     
     <!-- Zero-Flicker Dark Mode Theme Resolver & Global Handler -->
     <script>
@@ -33,12 +33,11 @@
     <link rel="apple-touch-icon" sizes="180x180" href="../assets/apple-touch-icon.png?v=2">
     <link rel="manifest" href="../manifest.json?v=2">
     <meta name="theme-color" content="#0059b5">
-    <meta name="mobile-web-app-capable" content="yes">
     
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com" rel="preconnect"/>
     <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet"/>
     
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <script src="../js/tailwind.config.js"></script>
@@ -46,34 +45,25 @@
     <link rel="stylesheet" href="../css/layout.css">
     <link rel="stylesheet" href="../css/typography.css">
     <link rel="stylesheet" href="../css/utilities.css">
+    <link rel="stylesheet" href="../css/invoice-document.css?v=6.0">
 
     <style>
-        /* Horizontal scroll snap for tabs */
-        .billing-tabs-scroll {
+        .billing-tabs-scroll, .status-chips-scroll, .hide-scrollbar {
             -webkit-overflow-scrolling: touch;
             scrollbar-width: none;
         }
-        .billing-tabs-scroll::-webkit-scrollbar { display: none; }
-        
-        /* Status chip scroll */
-        .status-chips-scroll {
-            -webkit-overflow-scrolling: touch;
-            scrollbar-width: none;
-        }
-        .status-chips-scroll::-webkit-scrollbar { display: none; }
-
-        /* Stats bar scroll */
-        .hide-scrollbar { scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+        .billing-tabs-scroll::-webkit-scrollbar,
+        .status-chips-scroll::-webkit-scrollbar,
         .hide-scrollbar::-webkit-scrollbar { display: none; }
-
-        /* Tab button active animation */
+        
         .billing-tab-btn {
             transition: background-color 0.2s ease, color 0.2s ease;
             white-space: nowrap;
         }
 
-        /* Card hover/active on mobile */
-        .billing-card { transition: transform 0.15s ease, box-shadow 0.15s ease; }
+        .billing-card {
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
         .billing-card:active { transform: scale(0.98); }
     </style>
     <link rel="stylesheet" href="../css/responsive.css?v=5.6">
@@ -86,18 +76,26 @@
     <div id="topbar-container"></div>
 
     <div class="mobile-wrapper">
-        <main id="main-content-area" class="flex-1 flex flex-col gap-4 pb-[110px]">
+        <main id="main-content-area" class="flex-1 flex flex-col gap-4 pb-[110px] px-md pt-md">
 
-            <!-- ── Page Header ─────────────────────────────────── -->
-            <div class="px-md pt-md pb-1">
-                <h1 class="text-[28px] leading-tight font-bold tracking-tight text-on-surface dark:text-white mb-0.5">Billings</h1>
-                <p class="text-[14px] text-secondary dark:text-slate-400">Quotes, Invoices, Payments & Purchase Orders</p>
+            <!-- ── Page Header & Desktop Actions ─────────────────── -->
+            <div class="flex flex-wrap justify-between items-center gap-4 pb-1">
+                <div>
+                    <h1 class="text-[28px] leading-tight font-bold tracking-tight text-on-surface dark:text-white mb-0.5">Billings &amp; Invoices</h1>
+                    <p class="text-[14px] text-secondary dark:text-slate-400">Quotations, Tax Invoices, Purchase Bills &amp; Payment Vouchers</p>
+                </div>
+                <div class="hidden sm:flex items-center gap-2">
+                    <button type="button" onclick="window.openCreateBillingSheet()"
+                        class="bg-primary text-white font-semibold px-4 py-2.5 rounded-xl shadow-sm hover:bg-primary/90 active-scale flex items-center gap-2 text-[14px]">
+                        <span class="material-symbols-outlined text-[20px]">add_circle</span>
+                        <span>New Document</span>
+                    </button>
+                </div>
             </div>
 
             <!-- ── Stats Bar ──────────────────────────────────── -->
             <div id="billings-stats-bar" class="px-0 overflow-x-auto hide-scrollbar">
-                <!-- Loaded dynamically -->
-                <div class="flex gap-3 px-md">
+                <div class="flex gap-3">
                     <div class="flex-shrink-0 bg-surface-container-lowest border border-outline-variant rounded-2xl px-4 py-3 min-w-[150px] animate-pulse">
                         <div class="h-3 w-20 bg-surface-variant rounded mb-2"></div>
                         <div class="h-5 w-24 bg-surface-variant rounded"></div>
@@ -110,14 +108,13 @@
             </div>
 
             <!-- ── Search & Filter / Export Controls ──────────────────────── -->
-            <div class="px-md flex flex-col gap-2">
-                <div class="flex gap-2 items-center">
-                    <div class="relative flex-1">
-                        <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[20px]">search</span>
-                        <input id="billings-search-input" type="text" placeholder="Search by number, name, notes..."
-                            class="w-full bg-surface-container-lowest border border-outline-variant rounded-2xl pl-11 pr-4 py-2.5 text-[14px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all placeholder:text-secondary">
-                    </div>
-                    <!-- Sort Dropdown -->
+            <div class="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
+                <div class="relative flex-1">
+                    <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-secondary text-[20px]">search</span>
+                    <input id="billings-search-input" type="text" placeholder="Search by invoice #, customer name, notes..."
+                        class="w-full bg-surface-container-lowest border border-outline-variant rounded-2xl pl-11 pr-4 py-2.5 text-[14px] text-on-surface focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all placeholder:text-secondary">
+                </div>
+                <div class="flex items-center gap-2">
                     <select id="billings-sort-select" onchange="window.setBillingSort(this.value)"
                         class="bg-surface-container-lowest border border-outline-variant rounded-2xl px-3 py-2.5 text-[13px] font-semibold text-on-surface focus:ring-2 focus:ring-primary/20 outline-none">
                         <option value="date-desc">Newest First</option>
@@ -125,7 +122,6 @@
                         <option value="amount-desc">Highest Amount</option>
                         <option value="amount-asc">Lowest Amount</option>
                     </select>
-                    <!-- Export CSV Button -->
                     <button type="button" onclick="window.exportBillingsCSV()" title="Export CSV"
                         class="p-2.5 bg-surface-container-lowest border border-outline-variant rounded-2xl text-secondary hover:text-on-surface active-scale flex items-center justify-center">
                         <span class="material-symbols-outlined text-[20px]">download</span>
@@ -134,28 +130,25 @@
             </div>
 
             <!-- ── Document Type Tabs (2-row grouped layout) ─── -->
-            <div class="px-md flex flex-col gap-2">
-
+            <div class="flex flex-col gap-2">
                 <!-- ROW 1: Sales / Customer side -->
                 <div class="flex items-center gap-2">
-                    <!-- Label pill -->
                     <div class="flex-shrink-0 flex items-center gap-1 bg-[#00B386]/10 border border-[#00B386]/25 rounded-xl px-2.5 py-1.5">
                         <span class="material-symbols-outlined text-[14px] text-[#00B386]">trending_up</span>
                         <span class="text-[11px] font-bold text-[#00B386] uppercase tracking-wide">Sales</span>
                     </div>
-                    <!-- Tab buttons -->
                     <div class="flex gap-2 overflow-x-auto billing-tabs-scroll pb-0.5">
-                        <button type="button" data-type="Quotation"
-                            onclick="window.switchBillingTab('Quotation')"
-                            class="billing-tab-btn flex-shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[13px] font-semibold border border-outline-variant/50 bg-surface-variant text-on-surface">
-                            <span class="material-symbols-outlined text-[15px]">request_quote</span>
-                            Quotations
-                        </button>
                         <button type="button" data-type="Sales_Bill"
                             onclick="window.switchBillingTab('Sales_Bill')"
-                            class="billing-tab-btn flex-shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[13px] font-semibold border border-outline-variant/50 text-secondary">
+                            class="billing-tab-btn flex-shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[13px] font-semibold border border-outline-variant/50 bg-surface-variant text-on-surface">
                             <span class="material-symbols-outlined text-[15px]">receipt_long</span>
                             Sales Bills
+                        </button>
+                        <button type="button" data-type="Quotation"
+                            onclick="window.switchBillingTab('Quotation')"
+                            class="billing-tab-btn flex-shrink-0 flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[13px] font-semibold border border-outline-variant/50 text-secondary">
+                            <span class="material-symbols-outlined text-[15px]">request_quote</span>
+                            Quotations
                         </button>
                         <button type="button" data-type="Payment_In"
                             onclick="window.switchBillingTab('Payment_In')"
@@ -168,12 +161,10 @@
 
                 <!-- ROW 2: Purchase / Vendor side -->
                 <div class="flex items-center gap-2">
-                    <!-- Label pill -->
                     <div class="flex-shrink-0 flex items-center gap-1 bg-[#FF9F0A]/10 border border-[#FF9F0A]/25 rounded-xl px-2.5 py-1.5">
                         <span class="material-symbols-outlined text-[14px] text-[#FF9F0A]">trending_down</span>
                         <span class="text-[11px] font-bold text-[#FF9F0A] uppercase tracking-wide">Purchase</span>
                     </div>
-                    <!-- Tab buttons -->
                     <div class="flex gap-2 overflow-x-auto billing-tabs-scroll pb-0.5">
                         <button type="button" data-type="Purchase_Bill"
                             onclick="window.switchBillingTab('Purchase_Bill')"
@@ -195,39 +186,42 @@
                         </button>
                     </div>
                 </div>
-
             </div>
 
             <!-- ── Status Filter Chips ───────────────────────── -->
-            <div class="px-md">
+            <div>
                 <div id="billings-status-chips" class="status-chips-scroll flex gap-2 overflow-x-auto pb-1">
-                    <!-- Rendered dynamically by JS -->
+                    <!-- Rendered dynamically -->
                 </div>
             </div>
 
-            <!-- ── Documents List ────────────────────────────── -->
-            <div id="billings-list" class="flex flex-col gap-3 px-md">
-                <!-- Loading skeleton -->
-                <div class="bg-surface-container-lowest border border-outline-variant/50 rounded-2xl p-4 animate-pulse">
-                    <div class="flex items-start gap-3">
-                        <div class="w-10 h-10 rounded-xl bg-surface-variant flex-shrink-0"></div>
-                        <div class="flex-1">
-                            <div class="h-3 w-32 bg-surface-variant rounded mb-2"></div>
-                            <div class="h-4 w-48 bg-surface-variant rounded mb-2"></div>
-                            <div class="h-3 w-24 bg-surface-variant rounded"></div>
+            <!-- ── Dual-Pane Workbench Grid (List + Live Desktop Preview) ─── -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start mt-1">
+                <!-- Left Pane: Document List -->
+                <div class="lg:col-span-5 flex flex-col gap-3">
+                    <div id="billings-list" class="flex flex-col gap-3">
+                        <!-- Loading skeleton -->
+                        <div class="bg-surface-container-lowest border border-outline-variant/50 rounded-2xl p-4 animate-pulse">
+                            <div class="flex items-start gap-3">
+                                <div class="w-10 h-10 rounded-xl bg-surface-variant flex-shrink-0"></div>
+                                <div class="flex-1">
+                                    <div class="h-3 w-32 bg-surface-variant rounded mb-2"></div>
+                                    <div class="h-4 w-48 bg-surface-variant rounded mb-2"></div>
+                                    <div class="h-3 w-24 bg-surface-variant rounded"></div>
+                                </div>
+                                <div class="h-5 w-20 bg-surface-variant rounded"></div>
+                            </div>
                         </div>
-                        <div class="h-5 w-20 bg-surface-variant rounded"></div>
                     </div>
                 </div>
-                <div class="bg-surface-container-lowest border border-outline-variant/50 rounded-2xl p-4 animate-pulse">
-                    <div class="flex items-start gap-3">
-                        <div class="w-10 h-10 rounded-xl bg-surface-variant flex-shrink-0"></div>
-                        <div class="flex-1">
-                            <div class="h-3 w-28 bg-surface-variant rounded mb-2"></div>
-                            <div class="h-4 w-40 bg-surface-variant rounded mb-2"></div>
-                            <div class="h-3 w-20 bg-surface-variant rounded"></div>
+
+                <!-- Right Pane: Desktop Live Document Preview Canvas -->
+                <div class="hidden lg:block lg:col-span-7 sticky top-4">
+                    <div id="billing-desktop-preview-pane" class="bg-surface-container-lowest border border-outline-variant/50 rounded-3xl p-4 min-h-[600px] flex flex-col justify-start">
+                        <div class="flex flex-col items-center justify-center py-32 text-center text-secondary">
+                            <span class="material-symbols-outlined text-[48px] opacity-30 mb-2">receipt_long</span>
+                            <p class="text-[14px]">Select any document from the list to preview</p>
                         </div>
-                        <div class="h-5 w-16 bg-surface-variant rounded"></div>
                     </div>
                 </div>
             </div>
@@ -235,21 +229,21 @@
         </main>
     </div>
 
-    <!-- Bottom Nav -->
+    <!-- Bottom Nav (Mobile) -->
     <div id="bottom-nav-container"></div>
 
-    <!-- FAB — context-aware create button -->
+    <!-- FAB — Mobile Action -->
     <div id="fab-container" data-icon="add" data-action="window.openCreateBillingSheet()"></div>
 
     <!-- Sheets Portal Container -->
     <div id="sheets-container"></div>
 
-    <!-- Global confirmation modal container (used by showConfirmation) -->
+    <!-- Global confirmation modal container -->
     <div id="global-modal-container"></div>
 
     <!-- Scripts -->
     <script src="../js/app.js?v=5.6"></script>
-    <script type="module" src="../js/billings/index.js?v=5.4"></script>
+    <script type="module" src="../js/billings/index.js?v=6.0"></script>
     <script src="../js/utils/sheet.js"></script>
 </body>
 </html>

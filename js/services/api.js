@@ -770,6 +770,7 @@ export const api = {
         if (filters.type) params.append('type', filters.type);
         if (filters.status) params.append('status', filters.status);
         if (filters.contactId) params.append('contactId', filters.contactId);
+        if (filters.orderId) params.append('orderId', filters.orderId);
         if (filters.q) params.append('q', filters.q);
         const qs = params.toString();
         return db._fetchAPI(`/billings${qs ? '?' + qs : ''}`);
