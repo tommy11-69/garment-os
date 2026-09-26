@@ -1582,9 +1582,6 @@ function generateBillingSerial($pdo, $transactionType) {
 function getBillingWithItems($pdo, $billingId) {
     $stmt = $pdo->prepare("SELECT * FROM `billing_master` WHERE `id` = ?");
     $stmt->execute([$billingId]);
-function getBillingWithItems($pdo, $billingId) {
-    $stmt = $pdo->prepare("SELECT * FROM `billing_master` WHERE `id` = ?");
-    $stmt->execute([$billingId]);
     $master = $stmt->fetch();
     if (!$master) return null;
     unset($master['_rowid']);
