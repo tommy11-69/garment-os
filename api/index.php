@@ -50,8 +50,11 @@ function connectDatabase($config, $isDemo = false) {
     ]);
 }
 
+require_once __DIR__ . '/db.php';
+
 try {
     $pdo = connectDatabase($dbConfig, false);
+    Database::setConnection($pdo);
 } catch (PDOException $e) {
     http_response_code(500);
     echo json_encode(['error' => 'Main database connection failed: ' . $e->getMessage()]);
