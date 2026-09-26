@@ -23,39 +23,73 @@
     display: flex;
 }
 
-html,
+html {
+    min-height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y pinch-zoom;
+}
+
 body {
     min-height: 100%;
-    overflow-y: auto;
+    overflow-x: hidden;
+    overflow-y: visible;
+    overscroll-behavior-y: auto !important;
+    touch-action: pan-y pinch-zoom;
+    -webkit-overflow-scrolling: touch;
 }
 
 .mobile-wrapper,
 #main-content-area {
-    height: auto;
-    overflow: visible;
+    min-height: 100%;
+    height: auto !important;
+    overflow: visible !important;
+    touch-action: pan-y pinch-zoom;
+}
+
+#order-inspector-drawer.hidden,
+#order-inspector-drawer:not(.active) {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+}
+
+#order-inspector-drawer.hidden *,
+#order-inspector-drawer:not(.active) * {
+    pointer-events: none !important;
 }
 
 #sheets-container .bottom-sheet-overlay:not(.active),
 #sheets-container .bottom-sheet-content:not(.active) {
     pointer-events: none;
-}
-
-#sheets-container .bottom-sheet-content:not(.active) {
+    display: none !important;
     visibility: hidden;
 }
 
 #sheets-container .bottom-sheet-overlay.active,
 #sheets-container .bottom-sheet-content.active {
     pointer-events: auto;
+    display: block !important;
     visibility: visible;
 }
 
 @media (max-width: 767px) {
-    html,
-    body {
+    html {
         max-width: 100%;
         overflow-x: hidden;
         overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        touch-action: pan-y pinch-zoom;
+    }
+
+    body {
+        max-width: 100%;
+        overflow-x: hidden;
+        overflow-y: visible;
+        overscroll-behavior-y: auto !important;
+        touch-action: pan-y pinch-zoom;
+        -webkit-overflow-scrolling: touch;
     }
 
     .mobile-wrapper,
@@ -66,6 +100,7 @@ body {
         box-sizing: border-box;
         height: auto;
         overflow: visible;
+        touch-action: pan-y pinch-zoom;
     }
 
     #main-content-area {
@@ -156,12 +191,14 @@ body {
         max-width: 100%;
         flex-wrap: nowrap;
         overflow-x: auto;
-        overscroll-behavior-x: contain;
+        touch-action: pan-x pan-y;
+        -webkit-overflow-scrolling: touch;
     }
 
     .stage-chip,
     .urgency-chip {
         flex: 0 0 auto;
+        touch-action: manipulation;
     }
 
     #orders-bulk-bar > div {
@@ -179,13 +216,14 @@ body {
         white-space: normal;
     }
 
-    #orders-list {
+    #orders-list:not(.hidden) {
         display: flex !important;
         flex-direction: column;
         gap: 12px;
         padding-left: 0;
         padding-right: 0;
         overflow: visible;
+        touch-action: pan-y pinch-zoom;
     }
 
     #orders-list > [role="button"] {
@@ -196,6 +234,7 @@ body {
         border-radius: 18px;
         overflow: hidden;
         align-items: stretch;
+        touch-action: pan-y pinch-zoom;
     }
 
     #orders-list > [role="button"] > div {
@@ -236,7 +275,8 @@ body {
 
     #orders-list > [role="button"] .overflow-x-auto {
         max-width: 100%;
-        overscroll-behavior-x: contain;
+        touch-action: pan-x pan-y;
+        -webkit-overflow-scrolling: touch;
     }
 
     #orders-list > [role="button"] > div > div:last-child {
@@ -267,7 +307,8 @@ body {
         padding-right: 0;
         gap: 10px;
         overflow-x: auto;
-        overscroll-behavior-x: contain;
+        touch-action: pan-x pan-y;
+        -webkit-overflow-scrolling: touch;
     }
 
     #orders-kanban > div {

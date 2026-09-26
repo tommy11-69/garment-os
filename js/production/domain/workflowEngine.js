@@ -261,6 +261,14 @@ export const WORKFLOW_ROUTES = {
         'dispatch'
     ],
 
+    // Trading & Direct Print: Ready-made T-Shirts procured directly, printed, packed & dispatched
+    trading_print: [
+        'procurement',
+        'print_wash',
+        'packing',
+        'dispatch'
+    ],
+
     // Full Vertical Integration — Yarn-to-Garment (factory knits its own fabric)
     full_vertical: [
         'procurement',   // Yarn & trims procurement
@@ -332,6 +340,17 @@ export const WORKFLOW_CONFIG = {
         borderColor: 'border-[#8B5CF6]/30',
         pipeline: 'Cutting → Stitching → Assembled Embroidery → Packing → Dispatch',
         description: 'Embroidery or transfers applied on fully assembled garments'
+    },
+    trading_print: {
+        key: 'trading_print',
+        label: 'Trading & Direct Print',
+        shortLabel: 'Trading + Print',
+        icon: 'format_paint',
+        color: 'text-[#EC4899]',
+        bgColor: 'bg-[#EC4899]/10',
+        borderColor: 'border-[#EC4899]/30',
+        pipeline: 'Sourcing (Blanks) → Print & Wash → Finishing & Packing → Dispatch',
+        description: 'Procure ready-made blank T-shirts, print/embellish, pack & dispatch'
     },
     direct_fulfillment: {
         key: 'direct_fulfillment',

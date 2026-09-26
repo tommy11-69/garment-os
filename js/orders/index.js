@@ -438,7 +438,8 @@ window.openOrderInspector = function(orderId) {
 
     body.innerHTML = renderers.orderInspectorContent(order);
 
-    drawer.classList.remove('pointer-events-none');
+    drawer.classList.remove('hidden', 'pointer-events-none');
+    drawer.classList.add('active');
     if (backdrop) {
         backdrop.classList.remove('pointer-events-none', 'opacity-0');
         backdrop.classList.add('pointer-events-auto', 'opacity-100');
@@ -462,8 +463,9 @@ window.closeOrderInspector = function() {
         backdrop.classList.add('pointer-events-none', 'opacity-0');
     }
     if (drawer) {
+        drawer.classList.remove('active');
         setTimeout(() => {
-            drawer.classList.add('pointer-events-none');
+            drawer.classList.add('hidden', 'pointer-events-none');
         }, 300);
     }
     document.body.style.overflow = '';
