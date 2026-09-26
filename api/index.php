@@ -204,11 +204,133 @@ $method = $_SERVER['REQUEST_METHOD'];
 $rawInput = file_get_contents('php://input');
 $body = json_decode($rawInput, true) ?: [];
 
-// Auto-migrate schema fixes (only runs once or when marker is missing)
-$migrationMarker = __DIR__ . '/.migrated_v57';
+// Auto-migrate schema fixes
+$migrationMarker = __DIR__ . '/.migrated_v58';
 
-function ensureBillingTablesExist($pdo) {
+function ensureAllTablesExist($pdo) {
     try {
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `customers` (
+            `_rowid` INT AUTO_INCREMENT PRIMARY KEY,
+            `id` VARCHAR(191) UNIQUE NOT NULL,
+            `name` LONGTEXT NOT NULL,
+            `company` LONGTEXT DEFAULT '',
+            `email` LONGTEXT DEFAULT '',
+            `phone` LONGTEXT DEFAULT '',
+            `address` LONGTEXT DEFAULT '',
+            `city` LONGTEXT DEFAULT '',
+            `state` LONGTEXT DEFAULT '',
+            `pincode` LONGTEXT DEFAULT '',
+            `gstin` LONGTEXT DEFAULT '',
+            `creditLimit` DOUBLE DEFAULT 0,
+            `isActive` INT DEFAULT 1,
+            `createdAt` DATETIME DEFAULT CURRENT_TIMESTAMP,
+            `updatedAt` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `orders` (
+            `_rowid` INT AUTO_INCREMENT PRIMARY KEY,
+            `id` VARCHAR(191) UNIQUE NOT NULL,
+            `orderId` VARCHAR(191) DEFAULT '',
+            `customerName` LONGTEXT DEFAULT '',
+            `customerId` VARCHAR(191) DEFAULT '',
+            `styleRef` LONGTEXT DEFAULT '',
+            `garmentType` LONGTEXT DEFAULT '',
+            `quantity` DOUBLE DEFAULT 0,
+            `unitPrice` DOUBLE DEFAULT 0,
+            `totalAmount` DOUBLE DEFAULT 0,
+            `status` VARCHAR(50) DEFAULT 'Draft',
+            `orderDate` VARCHAR(50) DEFAULT '',
+            `deliveryDate` VARCHAR(50) DEFAULT '',
+            `sizes` LONGTEXT DEFAULT '[]',
+            `colours` LONGTEXT DEFAULT '[]',
+            `timeline` LONGTEXT DEFAULT '[]',
+            `tasks` LONGTEXT DEFAULT '[]',
+            `expenses` LONGTEXT DEFAULT '[]',
+            `activityLog` LONGTEXT DEFAULT '[]',
+            `stageData` LONGTEXT DEFAULT '{}',
+            `products` LONGTEXT DEFAULT '[]',
+            `incurredCost` DOUBLE DEFAULT 0,
+            `quotedCost` DOUBLE DEFAULT 0,
+            `progressPercentage` DOUBLE DEFAULT 0,
+            `paymentReceived` DOUBLE DEFAULT 0,
+            `isActive` INT DEFAULT 1,
+            `createdAt` DATETIME DEFAULT CURRENT_TIMESTAMP,
+            `updatedAt` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `inventory` (
+            `_rowid` INT AUTO_INCREMENT PRIMARY KEY,
+            `id` VARCHAR(191) UNIQUE NOT NULL,
+            `itemName` LONGTEXT NOT NULL,
+            `itemCode` VARCHAR(100) DEFAULT '',
+            `category` LONGTEXT DEFAULT 'Fabric',
+            `subCategory` LONGTEXT DEFAULT '',
+            `quantity` DOUBLE DEFAULT 0,
+            `unit` VARCHAR(20) DEFAULT 'pcs',
+            `costPrice` DOUBLE DEFAULT 0,
+            `totalValue` DOUBLE DEFAULT 0,
+            `minStock` DOUBLE DEFAULT 0,
+            `location` LONGTEXT DEFAULT '',
+            `supplier` LONGTEXT DEFAULT '',
+            `supplierId` LONGTEXT DEFAULT '',
+            `color` LONGTEXT DEFAULT '',
+            `specifications` LONGTEXT DEFAULT '{}',
+            `notes` LONGTEXT DEFAULT '',
+            `movementHistory` LONGTEXT DEFAULT '[]',
+            `isActive` INT DEFAULT 1,
+            `createdAt` DATETIME DEFAULT CURRENT_TIMESTAMP,
+            `updatedAt` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `batches` (
+            `_rowid` INT AUTO_INCREMENT PRIMARY KEY,
+            `id` VARCHAR(191) UNIQUE NOT NULL,
+            `batchNumber` VARCHAR(100) DEFAULT '',
+            `orderId` VARCHAR(191) DEFAULT '',
+            `customerName` LONGTEXT DEFAULT '',
+            `garmentType` LONGTEXT DEFAULT '',
+            `quantity` DOUBLE DEFAULT 0,
+            `status` VARCHAR(50) DEFAULT 'In Progress',
+            `stage` VARCHAR(50) DEFAULT 'Cutting',
+            `startDate` VARCHAR(50) DEFAULT '',
+            `dueDate` VARCHAR(50) DEFAULT '',
+            `expenses` LONGTEXT DEFAULT '[]',
+            `consumptions` LONGTEXT DEFAULT '[]',
+            `isActive` INT DEFAULT 1,
+            `createdAt` DATETIME DEFAULT CURRENT_TIMESTAMP,
+            `updatedAt` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `shipments` (
+            `_rowid` INT AUTO_INCREMENT PRIMARY KEY,
+            `id` VARCHAR(191) UNIQUE NOT NULL,
+            `orderId` VARCHAR(191) DEFAULT '',
+            `customerName` LONGTEXT DEFAULT '',
+            `trackingNumber` VARCHAR(100) DEFAULT '',
+            `transporterName` LONGTEXT DEFAULT '',
+            `status` VARCHAR(50) DEFAULT 'Pending',
+            `dispatchDate` VARCHAR(50) DEFAULT '',
+            `boxes` DOUBLE DEFAULT 0,
+            `isActive` INT DEFAULT 1,
+            `createdAt` DATETIME DEFAULT CURRENT_TIMESTAMP,
+            `updatedAt` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )");
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS `quotations` (
+            `_rowid` INT AUTO_INCREMENT PRIMARY KEY,
+            `id` VARCHAR(191) UNIQUE NOT NULL,
+            `quotationNumber` VARCHAR(100) DEFAULT '',
+            `customerName` LONGTEXT DEFAULT '',
+            `customerId` VARCHAR(191) DEFAULT '',
+            `date` VARCHAR(50) DEFAULT '',
+            `totalAmount` DOUBLE DEFAULT 0,
+            `status` VARCHAR(50) DEFAULT 'Draft',
+            `items` LONGTEXT DEFAULT '[]',
+            `isActive` INT DEFAULT 1,
+            `createdAt` DATETIME DEFAULT CURRENT_TIMESTAMP,
+            `updatedAt` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        )");
+
         $pdo->exec("CREATE TABLE IF NOT EXISTS `billing_counters` (
             `id` INT AUTO_INCREMENT PRIMARY KEY,
             `type_key` VARCHAR(50) UNIQUE NOT NULL,
@@ -289,6 +411,9 @@ function ensureBillingTablesExist($pdo) {
         }
     } catch (Exception $e) { /* ignore */ }
 }
+
+// Always ensure core DDL is executed cleanly on startup
+ensureAllTablesExist($pdo);
 
 if (!file_exists($migrationMarker)) {
     try {
@@ -1762,13 +1887,16 @@ if ($method === 'GET') {
         }
     }
 
+    // Determine sort column safely to prevent Unknown column errors
+    $orderCol = in_array('createdAt', $tableCols, true) ? '`createdAt` DESC' : (in_array('date', $tableCols, true) ? '`date` DESC' : '`_rowid` DESC');
+
     if ($limit > 0) {
         $offset = ($page - 1) * $limit;
         $countStmt = $pdo->prepare("SELECT COUNT(*) as total FROM `{$table}` {$whereClause}");
         $countStmt->execute($params);
         $total = (int)$countStmt->fetch()['total'];
 
-        $dataStmt = $pdo->prepare("SELECT * FROM `{$table}` {$whereClause} ORDER BY createdAt DESC LIMIT ? OFFSET ?");
+        $dataStmt = $pdo->prepare("SELECT * FROM `{$table}` {$whereClause} ORDER BY {$orderCol} LIMIT ? OFFSET ?");
         $paramIdx = 1;
         foreach ($params as $p) {
             $dataStmt->bindValue($paramIdx++, $p, PDO::PARAM_STR);
@@ -1786,7 +1914,7 @@ if ($method === 'GET') {
         ]);
     }
 
-    $stmt = $pdo->prepare("SELECT * FROM `{$table}` {$whereClause} ORDER BY createdAt DESC");
+    $stmt = $pdo->prepare("SELECT * FROM `{$table}` {$whereClause} ORDER BY {$orderCol}");
     $stmt->execute($params);
     $rows = $stmt->fetchAll();
     jsonResponse(array_map(fn($r) => hydrateRow($table, $r), $rows));

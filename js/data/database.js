@@ -43,7 +43,12 @@ class Database {
         if (options.limit) {
             endpoint += `?limit=${options.limit}&page=${options.page || 1}`;
         }
-        return this._fetchAPI(endpoint);
+        try {
+            return await this._fetchAPI(endpoint);
+        } catch (err) {
+            console.warn(`Failed to fetch collection '${collectionName}':`, err.message || err);
+            return [];
+        }
     }
 
     async getById(collectionName, id) {

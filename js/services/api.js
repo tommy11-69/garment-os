@@ -773,7 +773,12 @@ export const api = {
         if (filters.orderId) params.append('orderId', filters.orderId);
         if (filters.q) params.append('q', filters.q);
         const qs = params.toString();
-        return db._fetchAPI(`/billings${qs ? '?' + qs : ''}`);
+        try {
+            return await db._fetchAPI(`/billings${qs ? '?' + qs : ''}`);
+        } catch (err) {
+            console.warn("Failed to fetch billings:", err.message || err);
+            return [];
+        }
     },
 
     async getBilling(id) {
