@@ -478,7 +478,7 @@ function renderProductsMatrixTab(order) {
                 <h3 class="text-[13px] font-bold text-secondary uppercase tracking-wider">Itemized Products &amp; Size Breakdown</h3>
                 <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-surface-variant text-on-surface-variant">${order.qty} pcs total</span>
             </div>
-
+            ${products.map((p, pIdx) => {
                 const isGeneral = p.category === 'General' || p.category === 'Free Size';
                 const isKids = p.category === 'Kids';
                 const isFreeSizes = p.category === 'FreeSizes';
