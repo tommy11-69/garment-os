@@ -483,31 +483,40 @@ function renderProductsMatrixTab(order) {
                 const isGeneral = p.category === 'General' || p.category === 'Free Size';
                 const isKids = p.category === 'Kids';
                 const sizeKeys = isKids
-                    ? ['24', '26', '28', '30', '32', '34', '36', '38']
-                    : ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'XXXXL'];
+                    ? ['22', '24', '26', '28', '30', '32']
+                    : ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL'];
 
                 const sizesObj = (p.sizes && typeof p.sizes === 'object') ? p.sizes : {};
 
                 const sizesContentHtml = isGeneral ? `
-                    <div class="flex items-center justify-between bg-surface-container/60 rounded-xl p-3 border border-outline-variant/40">
-                        <div class="flex items-center gap-2">
-                            <span class="material-symbols-outlined text-[18px] text-primary">layers</span>
+                    <div class="flex items-center justify-between bg-surface-container/60 rounded-xl p-3.5 border border-outline-variant/40">
+                        <div class="flex items-center gap-2.5">
+                            <span class="material-symbols-outlined text-[20px] text-primary">layers</span>
                             <div>
-                                <p class="text-[12px] font-bold text-on-surface">General / Free Size Quantity</p>
-                                <p class="text-[10px] text-secondary">Single batch volume without size distribution matrix</p>
+                                <p class="text-[13px] font-bold text-on-surface">General Volume (No Size Breakdown)</p>
+                                <p class="text-[11px] text-secondary">Single batch volume without size distribution matrix</p>
                             </div>
                         </div>
                         <span class="px-3 py-1 rounded-full text-[12px] font-extrabold bg-primary/10 text-primary border border-primary/20">${p.qty || 0} pcs</span>
                     </div>
                 ` : `
-                    <p class="text-[11px] font-bold text-secondary uppercase mb-2">Size Ratio Matrix (pcs)</p>
-                    <div class="grid grid-cols-4 sm:grid-cols-8 gap-1.5">
-                        ${sizeKeys.map(sz => `
-                            <div class="text-center bg-surface-container/70 rounded-xl py-1.5 px-1 border border-outline-variant/40">
-                                <p class="text-[9px] font-bold text-secondary uppercase">${sz}</p>
-                                <p class="text-[13px] font-extrabold text-on-surface mt-0.5">${sizesObj[sz] || 0}</p>
-                            </div>
-                        `).join('')}
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-[11px] font-bold text-secondary uppercase tracking-wider">${isKids ? 'Kids Size Matrix (22"–32")' : 'Normal Size Matrix (XS–4XL)'}</p>
+                    </div>
+                    <div class="${isKids ? 'grid grid-cols-3 sm:grid-cols-6 gap-2' : 'grid grid-cols-4 sm:grid-cols-8 gap-1.5'}">
+                        ${sizeKeys.map(sz => {
+                            const val = sizesObj[sz] || 0;
+                            const isKid = isKids || /^\d+$/.test(sz);
+                            return `
+                            <div class="text-center rounded-xl py-1.5 px-1 border transition-all ${
+                                val > 0 
+                                    ? (isKids ? 'bg-amber-500/10 border-amber-500/40 text-amber-600 dark:text-amber-400 font-extrabold' : 'bg-primary/10 border-primary/40 text-primary font-extrabold') 
+                                    : 'bg-surface-container/70 border-outline-variant/40 text-on-surface'
+                            }">
+                                <p class="text-[9px] font-bold ${val > 0 ? (isKids ? 'text-amber-600 dark:text-amber-400' : 'text-primary') : 'text-secondary'} uppercase">${isKid ? sz + '"' : sz}</p>
+                                <p class="text-[13px] font-extrabold mt-0.5">${val}</p>
+                            </div>`;
+                        }).join('')}
                     </div>
                 `;
 

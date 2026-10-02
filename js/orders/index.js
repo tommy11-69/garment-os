@@ -313,15 +313,19 @@ function renderKanban(filteredOrders) {
             const sizesObj = primaryProduct?.sizes || o.stageData?.cutting?.cutQuantitiesBySize || o.sizes;
             let sizesBadges = '';
             if (typeof sizesObj === 'object' && sizesObj !== null && Object.keys(sizesObj).length > 0) {
-                sizesBadges = `
-                    <div class="flex items-center gap-1 overflow-x-auto no-scrollbar py-1 text-[10px]">
-                        ${Object.entries(sizesObj).slice(0, 4).map(([sz, q]) => `
-                            <span class="px-1 py-0.5 rounded bg-surface-container border border-outline-variant/40">
-                                <strong>${sz}</strong>:${q}
-                            </span>
-                        `).join('')}
-                    </div>
-                `;
+                const activeSizes = Object.entries(sizesObj).filter(([_, q]) => Number(q) > 0);
+                if (activeSizes.length > 0) {
+                    sizesBadges = `
+                        <div class="flex items-center gap-1 overflow-x-auto no-scrollbar py-1 text-[10px]">
+                            ${activeSizes.slice(0, 5).map(([sz, q]) => `
+                                <span class="px-1.5 py-0.5 rounded bg-surface-container border border-outline-variant/40">
+                                    <strong>${/^\d+$/.test(sz) ? sz + '"' : sz}</strong>:${q}
+                                </span>
+                            `).join('')}
+                            ${activeSizes.length > 5 ? `<span class="text-[9px] text-secondary font-bold">+${activeSizes.length - 5} more</span>` : ''}
+                        </div>
+                    `;
+                }
             }
 
             return `
@@ -1115,10 +1119,12 @@ function generateJobTravelerHTML(order) {
     const rollup = calculateOrderRollup(order);
 
     const primaryProduct = (Array.isArray(order.products) && order.products.length > 0) ? order.products[0] : {};
-    const sizeKeys = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'XXXXL'];
+    const isKids = primaryProduct.category === 'Kids';
+    const isGeneral = primaryProduct.category === 'General';
+    const sizeKeys = isGeneral ? ['Free Size'] : (isKids ? ['22', '24', '26', '28', '30', '32'] : ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL']);
     const sizesObj = primaryProduct.sizes || order.stageData?.cutting?.sizes || {};
 
-    const sizesHeader = sizeKeys.map(k => `<th style="text-align:center;">${k}</th>`).join('');
+    const sizesHeader = sizeKeys.map(k => `<th style="text-align:center;">${/^\d+$/.test(k) ? k + '"' : k}</th>`).join('');
     const sizesRow = sizeKeys.map(k => `<td style="text-align:center; font-weight:bold;">${sizesObj[k] || 0}</td>`).join('');
 
     return `

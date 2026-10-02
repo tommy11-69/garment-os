@@ -181,11 +181,11 @@ function makeDefaultProduct(n = 1) {
     return {
         id:                   `prod-${Date.now()}-${n}`,
         name:                 '',
-        category:             'Adults',
+        category:             'Normal',
         workflowType:         (coState?.orderWorkflowType) ? coState.orderWorkflowType : 'default',
         customStages:         [],
         qty:                  0,
-        sizes:                { XS: 0, S: 0, M: 0, L: 0, XL: 0, XXL: 0, XXXXL: 0 },
+        sizes:                { XS: 0, S: 0, M: 0, L: 0, XL: 0, XXL: 0, '3XL': 0, '4XL': 0 },
         freeSizes:            [{ label: 'S', qty: 0 }, { label: 'M', qty: 0 }, { label: 'L', qty: 0 }],
         fabric: {
             type:    '',
@@ -380,30 +380,36 @@ function resolveProductSizing(p, order, defaultIdx, globalWf) {
     let category = p?.category;
     if (!category || category === 'null' || category === 'undefined') {
         const keys = Object.keys(rawSizesMap);
-        if (keys.includes('Free Size')) {
+        if (keys.includes('Free Size') || (keys.length === 1 && keys[0] === 'Free Size')) {
             category = 'General';
-        } else if (keys.some(k => ['24', '26', '28', '30', '32', '34', '36', '38'].includes(k))) {
+        } else if (keys.some(k => ['22', '24', '26', '28', '30', '32'].includes(k))) {
             category = 'Kids';
         } else {
-            category = 'Adults';
+            category = 'Normal';
         }
+    } else if (category === 'Adults') {
+        category = 'Normal';
     }
 
     // Construct clean standard sizes object
     let sizes = {};
-    if (category === 'Adults') {
-        sizes = { XS: 0, S: 0, M: 0, L: 0, XL: 0, XXL: 0, XXXL: 0, XXXXL: 0 };
+    if (category === 'Kids') {
+        sizes = { '22': 0, '24': 0, '26': 0, '28': 0, '30': 0, '32': 0 };
         Object.entries(rawSizesMap).forEach(([k, v]) => {
-            sizes[k] = parseInt(v, 10) || 0;
+            if (sizes[k] !== undefined) sizes[k] = parseInt(v, 10) || 0;
         });
-    } else if (category === 'Kids') {
-        sizes = { '24': 0, '26': 0, '28': 0, '30': 0, '32': 0, '34': 0, '36': 0, '38': 0 };
-        Object.entries(rawSizesMap).forEach(([k, v]) => {
-            sizes[k] = parseInt(v, 10) || 0;
-        });
-    } else {
-        category = 'General';
+    } else if (category === 'General') {
         sizes = { 'Free Size': pQty || rawSizesMap['Free Size'] || 0 };
+    } else {
+        category = 'Normal';
+        sizes = { XS: 0, S: 0, M: 0, L: 0, XL: 0, XXL: 0, '3XL': 0, '4XL': 0 };
+        Object.entries(rawSizesMap).forEach(([k, v]) => {
+            let normKey = k;
+            if (k === 'XXXL') normKey = '3XL';
+            if (k === 'XXXXL') normKey = '4XL';
+            if (sizes[normKey] !== undefined) sizes[normKey] = parseInt(v, 10) || 0;
+            else if (sizes[k] !== undefined) sizes[k] = parseInt(v, 10) || 0;
+        });
     }
 
     // Check if sizes sum to something > 0
@@ -415,16 +421,16 @@ function resolveProductSizing(p, order, defaultIdx, globalWf) {
             sizes = { 'Free Size': pQty };
             sizeSum = pQty;
         } else if (category === 'Kids') {
-            const kidsKeys = ['24', '26', '28', '30', '32', '34', '36', '38'];
+            const kidsKeys = ['22', '24', '26', '28', '30', '32'];
             const perSize = Math.floor(pQty / kidsKeys.length);
             const rem = pQty % kidsKeys.length;
             kidsKeys.forEach((k, idx) => { sizes[k] = perSize + (idx === 0 ? rem : 0); });
             sizeSum = pQty;
         } else {
-            const adultKeys = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'XXXXL'];
-            const perSize = Math.floor(pQty / adultKeys.length);
-            const rem = pQty % adultKeys.length;
-            adultKeys.forEach((k, idx) => { sizes[k] = perSize + (idx === 0 ? rem : 0); });
+            const normalKeys = ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL'];
+            const perSize = Math.floor(pQty / normalKeys.length);
+            const rem = pQty % normalKeys.length;
+            normalKeys.forEach((k, idx) => { sizes[k] = perSize + (idx === 0 ? rem : 0); });
             sizeSum = pQty;
         }
     }
@@ -441,7 +447,7 @@ function resolveProductSizing(p, order, defaultIdx, globalWf) {
     if (!freeSizes || freeSizes.length === 0) {
         freeSizes = [
             { label: 'S', qty: sizes['S'] || 0 },
-            { label: 'M', qty: sizes['M'] || (category === 'Adults' && pQty > 0 ? pQty : 0) },
+            { label: 'M', qty: sizes['M'] || ((category === 'Normal' || category === 'Adults') && pQty > 0 ? pQty : 0) },
             { label: 'L', qty: sizes['L'] || 0 }
         ];
     }
@@ -1034,15 +1040,18 @@ window.coSetProductCategory = function(idx, category) {
     const prod = coState.products[idx];
     if (!prod) return;
     prod.category = category;
-    if (category === 'Adults') {
-        prod.sizes = { XS: 0, S: 0, M: 0, L: 0, XL: 0, XXL: 0, XXXL: 0, XXXXL: 0 };
+    if (category === 'Kids') {
+        prod.sizes = { '22': 0, '24': 0, '26': 0, '28': 0, '30': 0, '32': 0 };
         applyRatioPresetInternal(idx, 'even');
-    } else if (category === 'Kids') {
-        prod.sizes = { '24': 0, '26': 0, '28': 0, '30': 0, '32': 0, '34': 0, '36': 0, '38': 0 };
-        applyRatioPresetInternal(idx, 'even');
-    } else {
+    } else if (category === 'General') {
         prod.category = 'General';
         prod.sizes = { 'Free Size': prod.qty || 0 };
+    } else if (category === 'FreeSizes') {
+        prod.category = 'FreeSizes';
+    } else {
+        prod.category = 'Normal';
+        prod.sizes = { XS: 0, S: 0, M: 0, L: 0, XL: 0, XXL: 0, '3XL': 0, '4XL': 0 };
+        applyRatioPresetInternal(idx, 'even');
     }
     renderProducts();
     calculateFinancials();
@@ -1163,7 +1172,7 @@ function applyRatioPresetInternal(idx, presetType) {
         prod.sizes = { 'Free Size': target };
         return;
     }
-    const isAdults = prod.category === 'Adults';
+    const isKids = prod.category === 'Kids';
 
     if (presetType === 'clear') {
         Object.keys(prod.sizes).forEach(k => { prod.sizes[k] = 0; });
@@ -1171,28 +1180,32 @@ function applyRatioPresetInternal(idx, presetType) {
     }
 
     if (presetType === 'even') {
-        // Use ALL sizes currently in the grid, not a hardcoded subset
-        const allKeys  = Object.keys(prod.sizes);
-        const perSize  = Math.floor(target / allKeys.length);
+        const allKeys = Object.keys(prod.sizes);
+        if (allKeys.length === 0) return;
+        const perSize = Math.floor(target / allKeys.length);
         const remainder = target % allKeys.length;
         allKeys.forEach((k, i) => { prod.sizes[k] = perSize + (i === 0 ? remainder : 0); });
         return;
     }
 
     if (presetType === 'bell') {
-        const weights = isAdults
-            ? { S: 1, M: 2, L: 2, XL: 1 }
-            : { '28': 1, '30': 2, '32': 2, '34': 1 };
-        const totalWeight = 6;
-        const unit        = Math.floor(target / totalWeight);
+        const weights = isKids
+            ? { '22': 1, '24': 2, '26': 4, '28': 4, '30': 2, '32': 1 }
+            : { XS: 1, S: 2, M: 4, L: 4, XL: 2, XXL: 1, '3XL': 1, '4XL': 1 };
+        const totalWeight = Object.values(weights).reduce((a, b) => a + b, 0);
+        const unit = Math.floor(target / totalWeight);
         Object.keys(prod.sizes).forEach(k => { prod.sizes[k] = 0; });
         let allocated = 0;
         Object.entries(weights).forEach(([k, w]) => {
-            prod.sizes[k] = unit * w;
-            allocated += unit * w;
+            if (prod.sizes[k] !== undefined) {
+                prod.sizes[k] = unit * w;
+                allocated += unit * w;
+            }
         });
-        const centerKey = isAdults ? 'M' : '30';
-        prod.sizes[centerKey] += (target - allocated);
+        const centerKey = isKids ? '26' : 'M';
+        if (prod.sizes[centerKey] !== undefined) {
+            prod.sizes[centerKey] += (target - allocated);
+        }
     }
 }
 
@@ -1251,10 +1264,11 @@ function renderProductCard(prod, idx) {
 
     const isFreeSizes = isDirect || prod.category === 'FreeSizes';
     const isGeneral   = !isFreeSizes && prod.category === 'General';
-    const isAdults    = !isFreeSizes && !isGeneral && prod.category !== 'Kids';
-    const sizeKeys    = isAdults
-        ? ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', 'XXXXL']
-        : ['24', '26', '28', '30', '32', '34', '36', '38'];
+    const isKids      = !isFreeSizes && !isGeneral && prod.category === 'Kids';
+    const isNormal    = !isFreeSizes && !isGeneral && !isKids;
+    const sizeKeys    = isKids
+        ? ['22', '24', '26', '28', '30', '32']
+        : ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL'];
 
     const currentSum = Object.values(prod.sizes || {}).reduce((s, v) => s + (v || 0), 0);
     const totalForBadge = isFreeSizes
@@ -1292,7 +1306,7 @@ function renderProductCard(prod, idx) {
                 </div>
                 <div class="flex items-center gap-2">
                     ${isCustom ? `
-                    <button type="button" onclick="window.coSetProductCategory(${idx}, 'Adults')"
+                    <button type="button" onclick="window.coSetProductCategory(${idx}, 'Normal')"
                         class="text-[11px] font-bold text-secondary bg-surface px-2.5 py-1 rounded-lg border border-outline-variant hover:text-primary transition-colors">
                         Switch to Standard Grid
                     </button>` : ''}
@@ -1315,32 +1329,37 @@ function renderProductCard(prod, idx) {
     } else {
         // Standard size grid
         const sizeInputsHtml = isGeneral ? `
-            <div class="col-span-full bg-surface-container/50 border border-outline-variant/60 rounded-xl p-3.5 flex items-center justify-between">
-                <div class="flex items-center gap-2.5">
-                    <div class="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                        <span class="material-symbols-outlined text-[20px]">layers</span>
+            <div class="col-span-full bg-surface-container/50 border border-outline-variant/60 rounded-xl p-4 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-[22px]">layers</span>
                     </div>
                     <div>
-                        <p class="text-[13px] font-bold text-on-surface">General / Free Size Quantity</p>
-                        <p class="text-[11px] text-secondary">Single batch without size distribution.</p>
+                        <p class="text-[14px] font-bold text-on-surface">General Volume (No Size Breakdown)</p>
+                        <p class="text-[11px] text-secondary">Single production batch without individual size distribution.</p>
                     </div>
                 </div>
                 <div class="text-right">
                     <span class="text-[10px] font-bold text-secondary uppercase block">Batch Total</span>
-                    <span id="general-qty-display-${idx}" class="text-[15px] font-extrabold text-primary">${prod.qty || 0} pcs</span>
+                    <span id="general-qty-display-${idx}" class="text-[16px] font-extrabold text-primary">${prod.qty || 0} pcs</span>
                 </div>
             </div>
         ` : sizeKeys.map(sz => {
-            // Kids sizes: display with inch mark for clarity
-            const displayLabel = (!isAdults && /^\d+$/.test(sz)) ? `${sz}"` : sz;
+            const displayLabel = isKids ? `${sz}"` : sz;
+            const currentVal = prod.sizes[sz] || 0;
+            const hasVal = currentVal > 0;
             return `
-            <div class="flex flex-col items-center gap-1 bg-surface-container/60 rounded-xl p-2 border border-outline-variant/40">
-                <span class="text-[10px] font-bold text-secondary uppercase">${displayLabel}</span>
-                <input type="number" min="0" placeholder="0" value="${prod.sizes[sz] || ''}"
+            <div class="flex flex-col items-center gap-1 rounded-xl p-2 border transition-all ${
+                hasVal 
+                    ? (isKids ? 'bg-amber-500/10 border-amber-500/50 shadow-2xs' : 'bg-primary/10 border-primary/50 shadow-2xs')
+                    : 'bg-surface-container/60 hover:bg-surface-container border-outline-variant/40'
+            }">
+                <span class="text-[10px] font-extrabold ${hasVal ? (isKids ? 'text-amber-600 dark:text-amber-400' : 'text-primary') : 'text-secondary'} uppercase">${displayLabel}</span>
+                <input type="number" min="0" placeholder="0" value="${currentVal || ''}"
                     id="size-input-${idx}-${sz}"
                     data-size-key="${sz}"
                     oninput="window.coUpdateProductSizeCell(${idx}, '${sz}', this.value)"
-                    class="size-cell-input w-full text-center font-bold text-[14px] bg-transparent border-0 p-0 focus:ring-0 outline-none text-on-surface">
+                    class="size-cell-input w-full text-center font-extrabold text-[15px] bg-transparent border-0 p-0 focus:ring-0 outline-none ${hasVal ? (isKids ? 'text-amber-600 dark:text-amber-400' : 'text-primary') : 'text-on-surface'}">
             </div>`;
         }).join('');
 
@@ -1353,21 +1372,21 @@ function renderProductCard(prod, idx) {
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
                 <div class="flex items-center gap-3 flex-wrap">
                     <div class="flex rounded-xl border border-outline-variant overflow-hidden text-[12px] font-bold">
-                        <button type="button" onclick="window.coSetProductCategory(${idx}, 'Adults')"
-                            class="${isAdults ? 'bg-primary text-white' : 'bg-surface text-secondary hover:bg-surface-variant'} px-3 py-1.5 transition-all">
-                            Adults
+                        <button type="button" onclick="window.coSetProductCategory(${idx}, 'Normal')"
+                            class="${isNormal ? 'bg-primary text-white shadow-xs' : 'bg-surface text-secondary hover:bg-surface-variant'} px-3 py-1.5 transition-all">
+                            Normal (XS–4XL)
                         </button>
                         <button type="button" onclick="window.coSetProductCategory(${idx}, 'Kids')"
-                            class="${prod.category === 'Kids' ? 'bg-primary text-white' : 'bg-surface text-secondary hover:bg-surface-variant'} px-3 py-1.5 transition-all border-l border-outline-variant">
-                            Kids
+                            class="${isKids ? 'bg-amber-500 text-white shadow-xs' : 'bg-surface text-secondary hover:bg-surface-variant'} px-3 py-1.5 transition-all border-l border-outline-variant">
+                            Kids (22–32)
                         </button>
                         <button type="button" onclick="window.coSetProductCategory(${idx}, 'General')"
-                            class="${isGeneral ? 'bg-primary text-white' : 'bg-surface text-secondary hover:bg-surface-variant'} px-3 py-1.5 transition-all border-l border-outline-variant">
+                            class="${isGeneral ? 'bg-primary text-white shadow-xs' : 'bg-surface text-secondary hover:bg-surface-variant'} px-3 py-1.5 transition-all border-l border-outline-variant">
                             General
                         </button>
                         ${isCustom ? `
                         <button type="button" onclick="window.coSetProductCategory(${idx}, 'FreeSizes')"
-                            class="bg-surface text-secondary hover:bg-surface-variant px-3 py-1.5 transition-all border-l border-outline-variant flex items-center gap-1">
+                            class="${prod.category === 'FreeSizes' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-surface text-secondary hover:bg-surface-variant'} px-3 py-1.5 transition-all border-l border-outline-variant flex items-center gap-1">
                             <span class="material-symbols-outlined text-[13px] text-emerald-600">storefront</span> Free Sizes
                         </button>` : ''}
                     </div>
@@ -1387,7 +1406,7 @@ function renderProductCard(prod, idx) {
                     <button type="button" onclick="window.coApplyRatioPreset(${idx}, 'clear')" class="ratio-btn px-2.5 py-1 rounded-lg border border-outline-variant text-[11px] font-bold text-error   bg-surface whitespace-nowrap">Clear</button>
                 </div>` : ''}
             </div>
-            <div class="${isGeneral ? 'grid grid-cols-1' : 'grid grid-cols-4 sm:grid-cols-8 gap-2'}">
+            <div class="${isGeneral ? 'grid grid-cols-1' : (isKids ? 'grid grid-cols-3 sm:grid-cols-6 gap-2.5' : 'grid grid-cols-4 sm:grid-cols-8 gap-2')}">
                 ${sizeInputsHtml}
             </div>
         </div>`;
