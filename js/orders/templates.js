@@ -479,9 +479,9 @@ function renderProductsMatrixTab(order) {
                 <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-surface-variant text-on-surface-variant">${order.qty} pcs total</span>
             </div>
 
-            ${products.map((p, pIdx) => {
                 const isGeneral = p.category === 'General' || p.category === 'Free Size';
                 const isKids = p.category === 'Kids';
+                const isFreeSizes = p.category === 'FreeSizes';
                 const sizeKeys = isKids
                     ? ['22', '24', '26', '28', '30', '32']
                     : ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL'];
@@ -498,6 +498,21 @@ function renderProductsMatrixTab(order) {
                             </div>
                         </div>
                         <span class="px-3 py-1 rounded-full text-[12px] font-extrabold bg-primary/10 text-primary border border-primary/20">${p.qty || 0} pcs</span>
+                    </div>
+                ` : isFreeSizes ? `
+                    <div class="flex items-center justify-between mb-2">
+                        <p class="text-[11px] font-bold text-secondary uppercase tracking-wider">Free Sizes / Custom Matrix</p>
+                    </div>
+                    <div class="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                        ${Object.entries(sizesObj).map(([sz, val]) => `
+                        <div class="text-center rounded-xl py-1.5 px-1 border transition-all ${
+                            val > 0 
+                                ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-600 dark:text-emerald-400 font-extrabold' 
+                                : 'bg-surface-container/70 border-outline-variant/40 text-on-surface'
+                        }">
+                            <p class="text-[9px] font-bold ${val > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-secondary'} uppercase">${sz}</p>
+                            <p class="text-[13px] font-extrabold mt-0.5">${val}</p>
+                        </div>`).join('')}
                     </div>
                 ` : `
                     <div class="flex items-center justify-between mb-2">

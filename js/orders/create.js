@@ -12,7 +12,7 @@
  *  print_before_stitch       — Print-First / Sublimation
  *  wash_before_stitch        — Enzyme / Garment Wash
  *  stitch_before_embroidery  — Finished Garment Embellishment
- *  direct_fulfillment        — Direct Sourcing / Trading (no fabric, no decoration, free-form sizes)
+ *  direct_fulfillment        — Direct Sourcing / Trading (no fabric, no decoration; standard Normal/Kids/General or free-form sizes)
  *  full_vertical             — Full Vertical Integration (Yarn-to-Garment)
  */
 
@@ -702,10 +702,10 @@ function syncProductFormState() {
         if (nameInput) prod.name = nameInput.value;
 
         const prodWf = prod.workflowType || coState.orderWorkflowType || 'default';
-        const isProdDirect = workflowIsDirectFulfillment(prodWf) || prod.category === 'FreeSizes';
+        const isFreeSizes = prod.category === 'FreeSizes';
 
-        if (isProdDirect) {
-            // 2. Free sizes for Direct Fulfillment or FreeSizes mode
+        if (isFreeSizes) {
+            // 2. Free sizes mode
             const freeRows = card.querySelectorAll(`[id^="free-row-${idx}-"]`);
             if (freeRows && freeRows.length > 0) {
                 prod.freeSizes = [];
@@ -1220,13 +1220,13 @@ function updateProductSumBadge(idx) {
     const prod = coState.products[idx];
     if (!prod) return;
     const prodWf     = prod.workflowType || coState.orderWorkflowType || 'default';
-    const isDirect   = workflowIsDirectFulfillment(prodWf);
+    const isFreeSizes = prod.category === 'FreeSizes';
     const isGeneral  = prod.category === 'General';
     const currentSum = Object.values(prod.sizes || {}).reduce((s, v) => s + (parseInt(v, 10) || 0), 0);
-    const totalForBadge = isDirect
+    const totalForBadge = isFreeSizes
         ? (prod.freeSizes || []).reduce((s, r) => s + (parseInt(r.qty, 10) || 0), 0)
         : (isGeneral ? (Number(prod.qty) || 0) : currentSum);
-    const isMatch    = isDirect ? (totalForBadge > 0) : (isGeneral ? (prod.qty > 0) : (currentSum > 0 && currentSum === prod.qty));
+    const isMatch    = isFreeSizes ? (totalForBadge > 0) : (isGeneral ? (prod.qty > 0) : (currentSum > 0 && currentSum === prod.qty));
     const badge      = qs(`p-sum-badge-${idx}`);
     if (badge) {
         badge.className = `px-2.5 py-1 rounded-full text-[11px] font-bold ${
@@ -1234,7 +1234,7 @@ function updateProductSumBadge(idx) {
                 ? 'bg-[#008A00]/10 text-[#008A00] border border-[#008A00]/20'
                 : 'bg-error/10 text-error border border-error/20'
         }`;
-        badge.textContent = isDirect
+        badge.textContent = isFreeSizes
             ? `${totalForBadge} pcs total`
             : isGeneral
                 ? `${prod.qty || 0} pcs (General)`
@@ -1262,7 +1262,7 @@ function renderProductCard(prod, idx) {
         pipeline: 'Custom Route'
     };
 
-    const isFreeSizes = isDirect || prod.category === 'FreeSizes';
+    const isFreeSizes = prod.category === 'FreeSizes';
     const isGeneral   = !isFreeSizes && prod.category === 'General';
     const isKids      = !isFreeSizes && !isGeneral && prod.category === 'Kids';
     const isNormal    = !isFreeSizes && !isGeneral && !isKids;
@@ -1305,11 +1305,10 @@ function renderProductCard(prod, idx) {
                     <h4 class="text-[12px] font-extrabold text-[#34C759] uppercase tracking-widest">Sizes & Quantity (Free-form / Trading)</h4>
                 </div>
                 <div class="flex items-center gap-2">
-                    ${isCustom ? `
                     <button type="button" onclick="window.coSetProductCategory(${idx}, 'Normal')"
                         class="text-[11px] font-bold text-secondary bg-surface px-2.5 py-1 rounded-lg border border-outline-variant hover:text-primary transition-colors">
                         Switch to Standard Grid
-                    </button>` : ''}
+                    </button>
                     <span id="p-sum-badge-${idx}" class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-primary/10 text-primary border border-primary/20">
                         ${totalForBadge} pcs total
                     </span>
@@ -1384,7 +1383,7 @@ function renderProductCard(prod, idx) {
                             class="${isGeneral ? 'bg-primary text-white shadow-xs' : 'bg-surface text-secondary hover:bg-surface-variant'} px-3 py-1.5 transition-all border-l border-outline-variant">
                             General
                         </button>
-                        ${isCustom ? `
+                        ${(isCustom || isDirect) ? `
                         <button type="button" onclick="window.coSetProductCategory(${idx}, 'FreeSizes')"
                             class="${prod.category === 'FreeSizes' ? 'bg-emerald-600 text-white shadow-xs' : 'bg-surface text-secondary hover:bg-surface-variant'} px-3 py-1.5 transition-all border-l border-outline-variant flex items-center gap-1">
                             <span class="material-symbols-outlined text-[13px] text-emerald-600">storefront</span> Free Sizes
@@ -1781,8 +1780,7 @@ function renderProducts() {
     container.innerHTML = coState.products.map((p, i) => renderProductCard(p, i)).join('');
 
     const totalQty = coState.products.reduce((s, p) => {
-        const prodWf = p.workflowType || coState.orderWorkflowType || 'default';
-        if (workflowIsDirectFulfillment(prodWf)) {
+        if (p.category === 'FreeSizes') {
             return s + (p.freeSizes || []).reduce((ss, r) => ss + (parseInt(r.qty, 10) || 0), 0);
         }
         return s + (Number(p.qty) || 0);
@@ -1801,8 +1799,9 @@ function renderPricingTable() {
     container.innerHTML = coState.products.map((prod, idx) => {
         const prodWf   = prod.workflowType || wf || 'default';
         const isDirect = workflowIsDirectFulfillment(prodWf);
-        const qty      = isDirect
-            ? prod.freeSizes.reduce((s, r) => s + (r.qty || 0), 0)
+        const isFreeSizes = prod.category === 'FreeSizes';
+        const qty      = isFreeSizes
+            ? (prod.freeSizes || []).reduce((s, r) => s + (r.qty || 0), 0)
             : (prod.qty || 0);
         const cp       = Number(prod.cp) || 0;
         const sp       = Number(prod.unitPrice) || 0;
@@ -1879,9 +1878,9 @@ function calculateFinancials() {
     let totalQty      = 0;
 
     coState.products.forEach((prod, idx) => {
-        const isDirect = workflowIsDirectFulfillment(prod.workflowType || wf);
-        const qty   = isDirect
-            ? prod.freeSizes.reduce((s, r) => s + (r.qty || 0), 0)
+        const isFreeSizes = prod.category === 'FreeSizes';
+        const qty   = isFreeSizes
+            ? (prod.freeSizes || []).reduce((s, r) => s + (r.qty || 0), 0)
             : (prod.qty || 0);
         const sp    = Number(prod.unitPrice) || 0;
         const cp    = Number(prod.cp) || 0;
@@ -1981,9 +1980,9 @@ function buildWorkflowSummary() {
                         </div>`;
                     }).join('');
 
-                    const isDirect = workflowIsDirectFulfillment(prodWf);
-                    const qty = isDirect
-                        ? prod.freeSizes.reduce((s, r) => s + (r.qty || 0), 0)
+                    const isFreeSizes = prod.category === 'FreeSizes';
+                    const qty = isFreeSizes
+                        ? (prod.freeSizes || []).reduce((s, r) => s + (r.qty || 0), 0)
                         : (prod.qty || 0);
 
                     return `
@@ -2020,7 +2019,7 @@ function buildExecutiveSummary() {
     let totalCost = 0;
 
     coState.products.forEach(p => {
-        const qty  = isDirect ? p.freeSizes.reduce((s, r) => s + (r.qty || 0), 0) : (p.qty || 0);
+        const qty  = p.category === 'FreeSizes' ? (p.freeSizes || []).reduce((s, r) => s + (r.qty || 0), 0) : (p.qty || 0);
         const sp   = Number(p.unitPrice) || 0;
         const cp   = Number(p.cp) || 0;
         totalQty      += qty;
@@ -2048,7 +2047,7 @@ function buildExecutiveSummary() {
         <div class="py-2 border-b border-outline-variant/40">
             <span class="text-secondary text-[11px] font-bold uppercase block mb-1">Product Lines</span>
             ${coState.products.map(p => {
-                const qty = isDirect ? p.freeSizes.reduce((s, r) => s + (r.qty || 0), 0) : (p.qty || 0);
+                const qty = p.category === 'FreeSizes' ? (p.freeSizes || []).reduce((s, r) => s + (r.qty || 0), 0) : (p.qty || 0);
                 return `
                 <div class="flex justify-between items-center py-1 text-[13px]">
                     <span class="font-semibold text-on-surface">${p.name || 'Unnamed'}</span>
@@ -2213,9 +2212,9 @@ function validateCurrentStep() {
             }
 
             const prodWf = p.workflowType || coState.orderWorkflowType || 'default';
-            const isProdDirect = workflowIsDirectFulfillment(prodWf);
+            const isFreeSizes = p.category === 'FreeSizes';
 
-            if (isProdDirect) {
+            if (isFreeSizes) {
                 const totalFS = (p.freeSizes || []).reduce((s, r) => s + (parseInt(r.qty, 10) || 0), 0);
                 if (totalFS <= 0) {
                     showProductError(i, `⚠ Enter size quantities for "${pName}" — total is currently 0 pcs`);
@@ -2260,8 +2259,7 @@ function validateCurrentStep() {
 
         // Sync total across all products using each product's specific workflow
         const totalQty = coState.products.reduce((s, p) => {
-            const pWf = p.workflowType || coState.orderWorkflowType || 'default';
-            if (workflowIsDirectFulfillment(pWf)) {
+            if (p.category === 'FreeSizes') {
                 return s + (p.freeSizes || []).reduce((ss, r) => ss + (parseInt(r.qty, 10) || 0), 0);
             }
             return s + (Number(p.qty) || 0);
@@ -2301,7 +2299,8 @@ window.coSaveOrder = async function(launchOption = 'orders_tower') {
     const lineItems = coState.products.map(prod => {
         const prodWf       = prod.workflowType || wf || 'default';
         const isProdDirect = workflowIsDirectFulfillment(prodWf);
-        const qty          = isProdDirect ? prod.freeSizes.reduce((s, r) => s + (r.qty || 0), 0) : (prod.qty || 0);
+        const isFreeSizes  = prod.category === 'FreeSizes';
+        const qty          = isFreeSizes ? (prod.freeSizes || []).reduce((s, r) => s + (r.qty || 0), 0) : (prod.qty || 0);
         const sp           = Number(prod.unitPrice) || 0;
         const cp           = Number(prod.cp) || 0;
         const stages       = getProductWorkflowStages(prod, wf);
@@ -2310,9 +2309,9 @@ window.coSaveOrder = async function(launchOption = 'orders_tower') {
         totalCost    += qty * cp;
         totalQty     += qty;
 
-        // Build sizes object from freeSizes for direct, or standard sizes
-        const sizesMap = isProdDirect
-            ? prod.freeSizes.reduce((acc, r) => { if (r.label) acc[r.label] = r.qty || 0; return acc; }, {})
+        // Build sizes object from freeSizes for FreeSizes, or standard sizes
+        const sizesMap = isFreeSizes
+            ? (prod.freeSizes || []).reduce((acc, r) => { if (r.label) acc[r.label] = r.qty || 0; return acc; }, {})
             : { ...prod.sizes };
 
         return {
@@ -2364,15 +2363,15 @@ window.coSaveOrder = async function(launchOption = 'orders_tower') {
 
     const productsData = coState.products.map(prod => {
         const prodWf       = prod.workflowType || wf || 'default';
-        const isProdDirect = workflowIsDirectFulfillment(prodWf);
-        const qty          = isProdDirect ? prod.freeSizes.reduce((s, r) => s + (r.qty || 0), 0) : (prod.qty || 0);
-        const sizesMap     = isProdDirect
-            ? prod.freeSizes.reduce((acc, r) => { if (r.label) acc[r.label] = r.qty || 0; return acc; }, {})
+        const isFreeSizes  = prod.category === 'FreeSizes';
+        const qty          = isFreeSizes ? (prod.freeSizes || []).reduce((s, r) => s + (r.qty || 0), 0) : (prod.qty || 0);
+        const sizesMap     = isFreeSizes
+            ? (prod.freeSizes || []).reduce((acc, r) => { if (r.label) acc[r.label] = r.qty || 0; return acc; }, {})
             : { ...prod.sizes };
         return {
             id:                  prod.id,
             name:                prod.name.trim(),
-            category:            isProdDirect ? 'General' : prod.category,
+            category:            prod.category || 'Normal',
             qty,
             cp:                  Number(prod.cp) || 0,
             unitPrice:           Number(prod.unitPrice) || 0,
