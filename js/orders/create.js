@@ -391,9 +391,14 @@ function resolveProductSizing(p, order, defaultIdx, globalWf) {
         category = 'Normal';
     }
 
-    // Construct clean standard sizes object
     let sizes = {};
-    if (category === 'Kids') {
+    if (category === 'Both') {
+        const bothKeys = ['22', '24', '26', '28', '30', '32', '34', '36', '38', '40', '42', '44', '46', '48'];
+        bothKeys.forEach(k => { sizes[k] = 0; });
+        Object.entries(rawSizesMap).forEach(([k, v]) => {
+            if (sizes[k] !== undefined) sizes[k] = parseInt(v, 10) || 0;
+        });
+    } else if (category === 'Kids') {
         sizes = { '22': 0, '24': 0, '26': 0, '28': 0, '30': 0, '32': 0 };
         Object.entries(rawSizesMap).forEach(([k, v]) => {
             if (sizes[k] !== undefined) sizes[k] = parseInt(v, 10) || 0;
@@ -419,6 +424,12 @@ function resolveProductSizing(p, order, defaultIdx, globalWf) {
     if (sizeSum === 0 && pQty > 0) {
         if (category === 'General') {
             sizes = { 'Free Size': pQty };
+            sizeSum = pQty;
+        } else if (category === 'Both') {
+            const bothKeys = ['22', '24', '26', '28', '30', '32', '34', '36', '38', '40', '42', '44', '46', '48'];
+            const perSize = Math.floor(pQty / bothKeys.length);
+            const rem = pQty % bothKeys.length;
+            bothKeys.forEach((k, idx) => { sizes[k] = perSize + (idx === 0 ? rem : 0); });
             sizeSum = pQty;
         } else if (category === 'Kids') {
             const kidsKeys = ['22', '24', '26', '28', '30', '32'];
@@ -1040,7 +1051,12 @@ window.coSetProductCategory = function(idx, category) {
     const prod = coState.products[idx];
     if (!prod) return;
     prod.category = category;
-    if (category === 'Kids') {
+    if (category === 'Both') {
+        const bothKeys = ['22', '24', '26', '28', '30', '32', '34', '36', '38', '40', '42', '44', '46', '48'];
+        prod.sizes = {};
+        bothKeys.forEach(k => { prod.sizes[k] = 0; });
+        applyRatioPresetInternal(idx, 'even');
+    } else if (category === 'Kids') {
         prod.sizes = { '22': 0, '24': 0, '26': 0, '28': 0, '30': 0, '32': 0 };
         applyRatioPresetInternal(idx, 'even');
     } else if (category === 'General') {
@@ -1173,6 +1189,7 @@ function applyRatioPresetInternal(idx, presetType) {
         return;
     }
     const isKids = prod.category === 'Kids';
+    const isBoth = prod.category === 'Both';
 
     if (presetType === 'clear') {
         Object.keys(prod.sizes).forEach(k => { prod.sizes[k] = 0; });
@@ -1189,9 +1206,11 @@ function applyRatioPresetInternal(idx, presetType) {
     }
 
     if (presetType === 'bell') {
-        const weights = isKids
-            ? { '22': 1, '24': 2, '26': 4, '28': 4, '30': 2, '32': 1 }
-            : { XS: 1, S: 2, M: 4, L: 4, XL: 2, XXL: 1, '3XL': 1, '4XL': 1 };
+        const weights = isBoth
+            ? { '22': 1, '24': 1, '26': 2, '28': 3, '30': 4, '32': 5, '34': 5, '36': 4, '38': 3, '40': 2, '42': 1, '44': 1, '46': 1, '48': 1 }
+            : (isKids
+                ? { '22': 1, '24': 2, '26': 4, '28': 4, '30': 2, '32': 1 }
+                : { XS: 1, S: 2, M: 4, L: 4, XL: 2, XXL: 1, '3XL': 1, '4XL': 1 });
         const totalWeight = Object.values(weights).reduce((a, b) => a + b, 0);
         const unit = Math.floor(target / totalWeight);
         Object.keys(prod.sizes).forEach(k => { prod.sizes[k] = 0; });
@@ -1265,10 +1284,13 @@ function renderProductCard(prod, idx) {
     const isFreeSizes = prod.category === 'FreeSizes';
     const isGeneral   = !isFreeSizes && prod.category === 'General';
     const isKids      = !isFreeSizes && !isGeneral && prod.category === 'Kids';
-    const isNormal    = !isFreeSizes && !isGeneral && !isKids;
-    const sizeKeys    = isKids
-        ? ['22', '24', '26', '28', '30', '32']
-        : ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL'];
+    const isBoth      = !isFreeSizes && !isGeneral && !isKids && prod.category === 'Both';
+    const isNormal    = !isFreeSizes && !isGeneral && !isKids && !isBoth;
+    const sizeKeys    = isBoth
+        ? ['22', '24', '26', '28', '30', '32', '34', '36', '38', '40', '42', '44', '46', '48']
+        : (isKids
+            ? ['22', '24', '26', '28', '30', '32']
+            : ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL']);
 
     const currentSum = Object.values(prod.sizes || {}).reduce((s, v) => s + (v || 0), 0);
     const totalForBadge = isFreeSizes
@@ -1344,21 +1366,21 @@ function renderProductCard(prod, idx) {
                 </div>
             </div>
         ` : sizeKeys.map(sz => {
-            const displayLabel = isKids ? `${sz}"` : sz;
+            const displayLabel = (isKids || isBoth) ? `${sz}"` : sz;
             const currentVal = prod.sizes[sz] || 0;
             const hasVal = currentVal > 0;
             return `
             <div class="flex flex-col items-center gap-1 rounded-xl p-2 border transition-all ${
                 hasVal 
-                    ? (isKids ? 'bg-amber-500/10 border-amber-500/50 shadow-2xs' : 'bg-primary/10 border-primary/50 shadow-2xs')
+                    ? (isKids ? 'bg-amber-500/10 border-amber-500/50 shadow-2xs' : (isBoth ? 'bg-purple-500/10 border-purple-500/50 shadow-2xs' : 'bg-primary/10 border-primary/50 shadow-2xs'))
                     : 'bg-surface-container/60 hover:bg-surface-container border-outline-variant/40'
             }">
-                <span class="text-[10px] font-extrabold ${hasVal ? (isKids ? 'text-amber-600 dark:text-amber-400' : 'text-primary') : 'text-secondary'} uppercase">${displayLabel}</span>
+                <span class="text-[10px] font-extrabold ${hasVal ? (isKids ? 'text-amber-600 dark:text-amber-400' : (isBoth ? 'text-purple-600 dark:text-purple-400' : 'text-primary')) : 'text-secondary'} uppercase">${displayLabel}</span>
                 <input type="number" min="0" placeholder="0" value="${currentVal || ''}"
                     id="size-input-${idx}-${sz}"
                     data-size-key="${sz}"
                     oninput="window.coUpdateProductSizeCell(${idx}, '${sz}', this.value)"
-                    class="size-cell-input w-full text-center font-extrabold text-[15px] bg-transparent border-0 p-0 focus:ring-0 outline-none ${hasVal ? (isKids ? 'text-amber-600 dark:text-amber-400' : 'text-primary') : 'text-on-surface'}">
+                    class="size-cell-input w-full text-center font-extrabold text-[15px] bg-transparent border-0 p-0 focus:ring-0 outline-none ${hasVal ? (isKids ? 'text-amber-600 dark:text-amber-400' : (isBoth ? 'text-purple-600 dark:text-purple-400' : 'text-primary')) : 'text-on-surface'}">
             </div>`;
         }).join('');
 
@@ -1378,6 +1400,10 @@ function renderProductCard(prod, idx) {
                         <button type="button" onclick="window.coSetProductCategory(${idx}, 'Kids')"
                             class="${isKids ? 'bg-amber-500 text-white shadow-xs' : 'bg-surface text-secondary hover:bg-surface-variant'} px-3 py-1.5 transition-all border-l border-outline-variant">
                             Kids (22–32)
+                        </button>
+                        <button type="button" onclick="window.coSetProductCategory(${idx}, 'Both')"
+                            class="${isBoth ? 'bg-purple-600 text-white shadow-xs' : 'bg-surface text-secondary hover:bg-surface-variant'} px-3 py-1.5 transition-all border-l border-outline-variant">
+                            Both (22–48)
                         </button>
                         <button type="button" onclick="window.coSetProductCategory(${idx}, 'General')"
                             class="${isGeneral ? 'bg-primary text-white shadow-xs' : 'bg-surface text-secondary hover:bg-surface-variant'} px-3 py-1.5 transition-all border-l border-outline-variant">
@@ -1405,7 +1431,7 @@ function renderProductCard(prod, idx) {
                     <button type="button" onclick="window.coApplyRatioPreset(${idx}, 'clear')" class="ratio-btn px-2.5 py-1 rounded-lg border border-outline-variant text-[11px] font-bold text-error   bg-surface whitespace-nowrap">Clear</button>
                 </div>` : ''}
             </div>
-            <div class="${isGeneral ? 'grid grid-cols-1' : (isKids ? 'grid grid-cols-3 sm:grid-cols-6 gap-2.5' : 'grid grid-cols-4 sm:grid-cols-8 gap-2')}">
+            <div class="${isGeneral ? 'grid grid-cols-1' : (isKids ? 'grid grid-cols-3 sm:grid-cols-6 gap-2.5' : (isBoth ? 'grid grid-cols-4 sm:grid-cols-7 gap-2' : 'grid grid-cols-4 sm:grid-cols-8 gap-2'))}">
                 ${sizeInputsHtml}
             </div>
         </div>`;

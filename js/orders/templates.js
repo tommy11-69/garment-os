@@ -481,10 +481,13 @@ function renderProductsMatrixTab(order) {
             ${products.map((p, pIdx) => {
                 const isGeneral = p.category === 'General' || p.category === 'Free Size';
                 const isKids = p.category === 'Kids';
+                const isBoth = p.category === 'Both';
                 const isFreeSizes = p.category === 'FreeSizes';
-                const sizeKeys = isKids
-                    ? ['22', '24', '26', '28', '30', '32']
-                    : ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL'];
+                const sizeKeys = isBoth
+                    ? ['22', '24', '26', '28', '30', '32', '34', '36', '38', '40', '42', '44', '46', '48']
+                    : (isKids
+                        ? ['22', '24', '26', '28', '30', '32']
+                        : ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL']);
 
                 const sizesObj = (p.sizes && typeof p.sizes === 'object') ? p.sizes : {};
 
@@ -516,19 +519,19 @@ function renderProductsMatrixTab(order) {
                     </div>
                 ` : `
                     <div class="flex items-center justify-between mb-2">
-                        <p class="text-[11px] font-bold text-secondary uppercase tracking-wider">${isKids ? 'Kids Size Matrix (22"–32")' : 'Normal Size Matrix (XS–4XL)'}</p>
+                        <p class="text-[11px] font-bold text-secondary uppercase tracking-wider">${isBoth ? 'All Sizes Matrix (22"–48")' : (isKids ? 'Kids Size Matrix (22"–32")' : 'Normal Size Matrix (XS–4XL)')}</p>
                     </div>
-                    <div class="${isKids ? 'grid grid-cols-3 sm:grid-cols-6 gap-2' : 'grid grid-cols-4 sm:grid-cols-8 gap-1.5'}">
+                    <div class="${isBoth ? 'grid grid-cols-4 sm:grid-cols-7 gap-1.5' : (isKids ? 'grid grid-cols-3 sm:grid-cols-6 gap-2' : 'grid grid-cols-4 sm:grid-cols-8 gap-1.5')}">
                         ${sizeKeys.map(sz => {
                             const val = sizesObj[sz] || 0;
-                            const isKid = isKids || /^\d+$/.test(sz);
+                            const isKid = isKids || isBoth || /^\d+$/.test(sz);
                             return `
                             <div class="text-center rounded-xl py-1.5 px-1 border transition-all ${
                                 val > 0 
-                                    ? (isKids ? 'bg-amber-500/10 border-amber-500/40 text-amber-600 dark:text-amber-400 font-extrabold' : 'bg-primary/10 border-primary/40 text-primary font-extrabold') 
+                                    ? (isKids ? 'bg-amber-500/10 border-amber-500/40 text-amber-600 dark:text-amber-400 font-extrabold' : (isBoth ? 'bg-purple-500/10 border-purple-500/40 text-purple-600 dark:text-purple-400 font-extrabold' : 'bg-primary/10 border-primary/40 text-primary font-extrabold')) 
                                     : 'bg-surface-container/70 border-outline-variant/40 text-on-surface'
                             }">
-                                <p class="text-[9px] font-bold ${val > 0 ? (isKids ? 'text-amber-600 dark:text-amber-400' : 'text-primary') : 'text-secondary'} uppercase">${isKid ? sz + '"' : sz}</p>
+                                <p class="text-[9px] font-bold ${val > 0 ? (isKids ? 'text-amber-600 dark:text-amber-400' : (isBoth ? 'text-purple-600 dark:text-purple-400' : 'text-primary')) : 'text-secondary'} uppercase">${isKid ? sz + '"' : sz}</p>
                                 <p class="text-[13px] font-extrabold mt-0.5">${val}</p>
                             </div>`;
                         }).join('')}

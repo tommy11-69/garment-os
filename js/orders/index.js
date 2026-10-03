@@ -1120,8 +1120,13 @@ function generateJobTravelerHTML(order) {
 
     const primaryProduct = (Array.isArray(order.products) && order.products.length > 0) ? order.products[0] : {};
     const isKids = primaryProduct.category === 'Kids';
+    const isBoth = primaryProduct.category === 'Both';
     const isGeneral = primaryProduct.category === 'General';
-    const sizeKeys = isGeneral ? ['Free Size'] : (isKids ? ['22', '24', '26', '28', '30', '32'] : ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL']);
+    const sizeKeys = isGeneral
+        ? ['Free Size']
+        : (isBoth
+            ? ['22', '24', '26', '28', '30', '32', '34', '36', '38', '40', '42', '44', '46', '48']
+            : (isKids ? ['22', '24', '26', '28', '30', '32'] : ['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL']));
     const sizesObj = primaryProduct.sizes || order.stageData?.cutting?.sizes || {};
 
     const sizesHeader = sizeKeys.map(k => `<th style="text-align:center;">${/^\d+$/.test(k) ? k + '"' : k}</th>`).join('');
